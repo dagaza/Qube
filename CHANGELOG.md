@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.31] - 2026-08-26
+
+### Fixed
+- **WinGet CUDA validation:** defer sidecar cognition model load until the first sidecar task (not at QThread start) and remove startup `llama_cpp` DLL registration so post-install validation does not load CUDA backend DLLs before the user loads a chat model.
+
 ## [1.3.3] - 2026-08-25
 
 ### Fixed

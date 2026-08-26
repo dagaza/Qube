@@ -75,7 +75,7 @@ Requires the GitHub Release to include all three Windows `.exe` assets.
 
 Microsoft's installation validation runs a silent install and launches the app on a Defender-enabled VM. If step **08. Installation Validation** fails with **`Validation-Defender-Error`** while **07. Installers Scan** passes, Defender flagged behavior during startup — not a manifest typo.
 
-For **`dagaza.Qube.CUDA`**, this usually means CUDA backend DLLs (`ggml-cuda.dll`, bundled NVIDIA runtime libs) were loaded into the process during validation. Qube defers `llama_cpp` import until a model load is requested so a fresh install (no GGUF on disk) should not load those DLLs at startup.
+For **`dagaza.Qube.CUDA`**, this usually means CUDA backend DLLs (`ggml-cuda.dll`, bundled NVIDIA runtime libs) were loaded into the process during validation. Qube defers `llama_cpp` import until a model load is requested, and the sidecar cognition worker lazy-loads on first task (not at QThread start), so a fresh install should not load CUDA DLLs during WinGet post-install launch.
 
 If validation still fails after a rebuild:
 

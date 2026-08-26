@@ -15,6 +15,20 @@ A git tag `vX.Y.Z` triggers **Build & Release** (`.github/workflows/release.yml`
 
 **Patch numbers (`1.2.1`, `1.2.2`, …) should mean “users can install this build,” not “we fixed another test on main.”**
 
+### Hotfix lane (same minor line, avoid burning `1.3.4`, `1.3.5`, …)
+
+When **`1.3.N` is already published** (GitHub Release live) but you need a small packaging-only fix (WinGet validation, installer smoke, etc.), use a **hotfix patch in the 30+ range** on that minor:
+
+```text
+1.3.3   →  first public 1.3.3 release
+1.3.31  →  hotfix #1 on the 1.3.3 line (e.g. WinGet CUDA Defender)
+1.3.32  →  hotfix #2 if needed
+```
+
+Semver compares numerically (`1.3.31` > `1.3.3`), so package managers treat hotfixes as upgrades. **Reserve `1.3.4`–`1.3.29` for the next feature patch** on the line, or jump to **`1.4.0`** when the minor bumps.
+
+Do **not** use `-rc` / `-h1` suffixes for these — WinGet and Chocolatey expect plain `major.minor.patch`.
+
 ---
 
 ## What each version means

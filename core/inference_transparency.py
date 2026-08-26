@@ -106,6 +106,13 @@ def get_build_snapshot(*, refresh: bool = False) -> Dict[str, Any]:
         "system_info": "",
         "backend_hint": "unknown",
     }
+    from core.llama_cpp_import import get_llama_class
+
+    if get_llama_class() is None:
+        out["backend_hint"] = "unavailable"
+        _build_snapshot_cache = dict(out)
+        return dict(out)
+
     try:
         import llama_cpp
     except ImportError:

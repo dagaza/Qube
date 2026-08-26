@@ -63,10 +63,27 @@ def test_get_llama_class_caches_failure(monkeypatch) -> None:
 def test_worker_modules_do_not_eager_load_llama() -> None:
     """Startup must not import llama_cpp until a model load is requested."""
     repo = Path(__file__).resolve().parents[1]
-    for rel in ("workers/sidecar_llm_worker.py", "workers/native_llama_engine.py"):
+    for rel in (
+        "workers/sidecar_llm_worker.py",
+        "workers/native_llama_engine.py",
+        "main.py",
+    ):
         for line in (repo / rel).read_text(encoding="utf-8").splitlines():
             stripped = line.strip()
             if stripped == "Llama = get_llama_class()":
                 assert line[:1] in {" ", "\t"}, (
                     f"{rel} must not assign Llama at module scope"
                 )
+            if rel == "main.py" and stripped == "prepare_llama_cpp_runtime()":
+                assert line[:1] in {" ", "\t"}, (
+                    f"{rel} must not call prepare_llama_cpp_runtime() at module scope"
+                )
+
+
+def test_sidecar_defers_cognition_load_until_first_command() -> None:
+    text = (Path(__file__).resolve().parents[1] / "workers/sidecar_llm_worker.py").read_text(
+        encoding="utf-8"
+    )
+    assert "_try_load_cognition_model_if_needed" in text
+    run_section = text.split("def run(self)", 1)[1].split("\n    def _run_degraded", 1)[0]
+    assert "_load_cognition_model(path)" not in run_section

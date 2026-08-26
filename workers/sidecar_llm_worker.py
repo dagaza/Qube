@@ -344,23 +344,24 @@ class SidecarLlmWorker(QThread):
         finally:
             self._reloading = False
 
-    def run(self) -> None:
+    def _try_load_cognition_model_if_needed(self) -> tuple[bool, str]:
+        if self.model_loaded:
+            return True, ""
         path = resolve_active_cognition_path()
         if not os.path.isfile(path):
             if not self._warned_missing:
                 logger.warning("[Sidecar] Model not found at %s — sidecar disabled", path)
                 self._warned_missing = True
             self._sync_telemetry_runtime(degraded_reason="model_not_found")
-            self._run_degraded_queue_loop()
-            return
-
+            return False, "model_not_found"
         ok, msg = self._load_cognition_model(path)
-        if not ok:
+        if ok:
+            self._sync_telemetry_runtime()
+        else:
             self._sync_telemetry_runtime(degraded_reason=msg)
-            self._run_degraded_queue_loop()
-            return
-        self._sync_telemetry_runtime()
+        return ok, msg
 
+    def run(self) -> None:
         while not self._stop.is_set():
             try:
                 cmd = self._cmd_queue.get(timeout=0.2)
@@ -382,8 +383,10 @@ class SidecarLlmWorker(QThread):
                 self._fail_command(cmd, "reloading")
                 continue
             if not self.model_loaded:
-                self._fail_command(cmd, "model_unavailable")
-                continue
+                ok, msg = self._try_load_cognition_model_if_needed()
+                if not ok:
+                    self._fail_command(cmd, msg or "model_unavailable")
+                    continue
             try:
                 if op == "title":
                     self._do_title(cmd)
