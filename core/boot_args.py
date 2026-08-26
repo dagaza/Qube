@@ -48,4 +48,12 @@ def parse_boot_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Simulate bootstrap downloads on a timer (no files fetched).",
     )
+    parser.add_argument(
+        "--winget-validation",
+        action="store_true",
+        help=(
+            "Defer llama.cpp / CUDA DLL loads for WinGet-style post-install validation "
+            "(also sets QUBE_WINGET_VALIDATION=1)."
+        ),
+    )
     return parser.parse_args(argv)

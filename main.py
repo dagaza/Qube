@@ -168,6 +168,7 @@ class Qube:
         from core.bootstrap_manifest import BootstrapModelId
         from core.bootstrap_missing_models import stt_model_available
         from core.bootstrap_selection import get_selected_model_ids
+        from core.winget_validation import is_winget_validation_mode
 
         tick("Starting core services…")
         self.audio_worker = AudioListenerWorker()
@@ -193,7 +194,10 @@ class Qube:
             sidecar_client=self.sidecar_client,
         )
         self.tts_worker = TTSWorker()
-        self.gpu_monitor = GPUMonitor()
+        if is_winget_validation_mode():
+            self.gpu_monitor = None
+        else:
+            self.gpu_monitor = GPUMonitor()
         self.active_internet_worker = None
 
     def _boot_memory_workers(self, tick: Callable[[str], None]) -> None:
@@ -276,6 +280,10 @@ class Qube:
             self._start_reindex_for_mode(get_embedding_mode())
 
     def _boot_autoload_model(self, tick: Callable[[str], None]) -> None:
+        from core.winget_validation import is_winget_validation_mode
+
+        if is_winget_validation_mode():
+            return
         if (
             get_engine_mode() == "internal"
             and get_auto_load_last_model_on_startup()
@@ -1599,6 +1607,16 @@ def run_application(
 ) -> int:
     args = parse_boot_args()
     configure_user_model_paths()
+
+    from core.winget_validation import (
+        apply_winget_validation_bootstrap_shortcut,
+        configure_winget_validation_mode,
+        is_winget_validation_mode,
+        write_smoke_result,
+    )
+
+    configure_winget_validation_mode(args)
+    apply_winget_validation_bootstrap_shortcut()
     # Optional: The Windows Taskbar App ID fix we discussed
     if sys.platform == "win32":
         import ctypes
@@ -1798,6 +1816,8 @@ def run_application(
                 qube.window._setup_trace_diff_debug_window()
             qube.window.schedule_scenario_replay()
         qube.show()
+        if is_winget_validation_mode():
+            write_smoke_result(boot_complete=True)
         from PyQt6.QtCore import QTimer
 
         QTimer.singleShot(250, qube.window.focus_chat_composer_if_ready)

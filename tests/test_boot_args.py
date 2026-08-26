@@ -50,6 +50,10 @@ class ParseBootArgsTests(unittest.TestCase):
         args = parse_boot_args(["--mock-bootstrap-download"])
         self.assertTrue(args.mock_bootstrap_download)
 
+    def test_winget_validation_flag(self) -> None:
+        args = parse_boot_args(["--winget-validation"])
+        self.assertTrue(args.winget_validation)
+
 
 if __name__ == "__main__":
     unittest.main()

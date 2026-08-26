@@ -13,8 +13,17 @@ New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
 
 $previousAppData = $env:LOCALAPPDATA
 $env:LOCALAPPDATA = $fakeAppData
+$variantMarker = Join-Path $exe.Parent ".qube-windows-variant"
+$variant = if (Test-Path $variantMarker) { (Get-Content $variantMarker -Raw).Trim() } else { "cpu" }
+if ($variant -eq "cuda") {
+    $env:QUBE_WINGET_VALIDATION = "1"
+}
 try {
-    $proc = Start-Process -FilePath $exe -ArgumentList "--mock-bootstrap-download" -PassThru
+    $launchArgs = @("--mock-bootstrap-download")
+    if ($variant -eq "cuda") {
+        $launchArgs += "--winget-validation"
+    }
+    $proc = Start-Process -FilePath $exe -ArgumentList $launchArgs -PassThru
     Start-Sleep -Seconds 10
     if ($proc.HasExited) {
         throw "App crashed on launch (exit code: $($proc.ExitCode))"

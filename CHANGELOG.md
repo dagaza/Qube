@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.33] - 2026-08-26
+
+### Fixed
+- **WinGet CUDA validation:** add WinGet validation mode (`QUBE_WINGET_VALIDATION`, `--winget-validation`, and a 20-minute post-install grace on CUDA builds) that blocks `llama_cpp` import, defers GPU/NVML probes, and auto-completes shell bootstrap so Microsoft step 08 does not load CUDA DLLs. Release CI runs `smoke_installed_cuda.ps1` to verify.
+
 ## [1.3.32] - 2026-08-26
 
 ### Fixed

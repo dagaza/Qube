@@ -120,6 +120,13 @@ jobs:
       - name: Build installer
         run: iscc /DMyAppVersion=${{ steps.version.outputs.version }} /DMyAppVariant=${{ matrix.variant }} installer\qube.iss
 
+      - name: CUDA silent install launch smoke (WinGet validation guard)
+        if: matrix.variant == 'cuda'
+        shell: pwsh
+        run: |
+          scripts/release/smoke_installed_cuda.ps1 `
+            -SetupPath "installer/output/Qube-${{ steps.version.outputs.version }}-cuda-Setup.exe"
+
       - name: Sign installer
         if: vars.ENABLE_CODE_SIGNING == 'true'
         env:

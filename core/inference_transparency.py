@@ -270,7 +270,15 @@ def merge_native_telemetry_snapshot(
     else:
         # Avoid importing llama_cpp (CUDA DLLs) for toolbar/settings reads before model load.
         build = _static_build_snapshot()
-    hardware = get_hardware_profile_snapshot()
+    from core.winget_validation import (
+        is_winget_validation_mode,
+        validation_hardware_profile_stub,
+    )
+
+    if is_winget_validation_mode():
+        hardware = validation_hardware_profile_stub()
+    else:
+        hardware = get_hardware_profile_snapshot()
     settings = get_settings_snapshot()
 
     settings_match = None

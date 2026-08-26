@@ -64,6 +64,9 @@ def prepare_llama_cpp_runtime() -> None:
 
 def get_llama_class() -> Any | None:
     global _Llama, _attempted, _error
+    if winget_validation_blocks_llama_import():
+        logger.info("llama_cpp import skipped: WinGet validation mode active")
+        return None
     if _attempted:
         return _Llama
     _attempted = True
@@ -79,6 +82,11 @@ def get_llama_class() -> Any | None:
     return _Llama
 
 
+def llama_import_was_attempted() -> bool:
+    """True after the first ``get_llama_class()`` call in this process."""
+    return _attempted
+
+
 def llama_import_error() -> BaseException | None:
     get_llama_class()
     return _error
@@ -90,3 +98,9 @@ def reset_llama_import_state_for_tests() -> None:
     _attempted = False
     _error = None
     _prepared = False
+
+
+def winget_validation_blocks_llama_import() -> bool:
+    from core.winget_validation import is_winget_validation_mode
+
+    return is_winget_validation_mode()

@@ -106,6 +106,19 @@ begin
     KillRunningQube();
 end;
 
+#if MyAppVariant == "cuda"
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  InstallMark: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    InstallMark := ExpandConstant('{app}\.qube-install-ts');
+    SaveStringToFile(InstallMark, '1', False);
+  end;
+end;
+#endif
+
 function InitializeSetup(): Boolean;
 var
   InstalledVersion: String;
