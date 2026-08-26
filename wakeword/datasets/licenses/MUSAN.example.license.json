@@ -1,0 +1,13 @@
+{
+  "asset": "background-noise/musan/noise/free-sound/noise-free-sound-0001.wav",
+  "dataset": "MUSAN",
+  "dataset_version": "v1.0 (2015-12-15)",
+  "source_url": "https://www.openslr.org/17/",
+  "license": "CC-BY-4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "commercial_use": true,
+  "attribution": "MUSAN: A Music, Speech, and Noise Corpus. D. Snyder, G. Chen, D. Povey (2015). arXiv:1510.08484.",
+  "retrieved": "2026-06-16",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "notes": "Example manifest. Real manifests are written by scripts/download_datasets.py."
+}

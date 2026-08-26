@@ -1,0 +1,45 @@
+name: Wakeword Pipeline CI
+
+# Runs only when the wakeword training pipeline changes, independent of the main app CI.
+# Enforces the fail-closed license gate and the full pipeline test suite (incl. the
+# torch-free ONNX contract + evaluate smoke test). The heavy train/export path is
+# torch-gated and skips here; it runs in the pinned training env as a pre-flight.
+on:
+  pull_request:
+    paths:
+      - "wakeword/**"
+      - ".github/workflows/wakeword-ci.yml"
+  push:
+    branches: [main, master, dev]
+    paths:
+      - "wakeword/**"
+      - ".github/workflows/wakeword-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  wakeword:
+    name: license gate + pipeline tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wakeword
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install light CI deps (no torch/tf — training env is separate)
+        run: pip install -r environment/requirements-ci.txt
+
+      - name: Fail-closed license gate
+        # No datasets are downloaded in CI, so --allow-empty passes cleanly; the gate
+        # LOGIC (allowlist/denylist, manifest validation) is covered by the test suite.
+        # Any real *.license.json committed with a non-commercial license fails here.
+        run: python scripts/verify_licenses.py --datasets datasets --require-commercial --allow-empty
+
+      - name: Run wakeword pipeline test suite
+        run: python -m pytest tests -v --tb=short

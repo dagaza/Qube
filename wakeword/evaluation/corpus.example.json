@@ -1,0 +1,28 @@
+{
+  "corpus_version": "2026-06-16",
+  "notes": "Index of the held-out, real-voice evaluation corpus. Raw audio is NOT committed (real voices; treat as sensitive) — distribute out-of-band and reference by relative path.",
+  "speakers": [
+    {
+      "id": "spk01",
+      "gender": "female",
+      "accent": "en-GB",
+      "microphone": "laptop-builtin"
+    },
+    {
+      "id": "spk02",
+      "gender": "male",
+      "accent": "en-US",
+      "microphone": "usb-condenser"
+    }
+  ],
+  "positives": [
+    { "speaker": "spk01", "phrase": "hey qube", "environment": "quiet", "path": "audio/spk01/quiet/hey_qube_01.wav" },
+    { "speaker": "spk02", "phrase": "hey qube", "environment": "noisy", "path": "audio/spk02/noisy/hey_qube_01.wav" }
+  ],
+  "adversarial": [
+    { "speaker": "spk01", "phrase": "hey cube", "environment": "quiet", "path": "audio/spk01/quiet/hey_cube_01.wav" }
+  ],
+  "negatives_longform": [
+    { "description": "podcast clip, no wake word", "duration_seconds": 1800, "path": "audio/longform/podcast_01.wav" }
+  ]
+}

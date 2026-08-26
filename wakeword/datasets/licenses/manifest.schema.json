@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://qubeapp.eu/schemas/wakeword/license-manifest.json",
+  "title": "Wake word asset license manifest",
+  "description": "Provenance sidecar written next to every downloaded or generated asset (<asset>.license.json).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "asset",
+    "dataset",
+    "source_url",
+    "license",
+    "commercial_use",
+    "retrieved"
+  ],
+  "properties": {
+    "asset": {
+      "type": "string",
+      "description": "Path of the asset relative to the datasets/ root."
+    },
+    "dataset": {
+      "type": "string",
+      "description": "Logical dataset name, e.g. 'MUSAN'."
+    },
+    "dataset_version": {
+      "type": "string",
+      "description": "Version / release / snapshot date of the source dataset."
+    },
+    "source_url": {
+      "type": "string",
+      "description": "Canonical download or homepage URL."
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX-style license id, e.g. 'CC-BY-4.0', 'CC0-1.0', 'Apache-2.0'."
+    },
+    "license_url": {
+      "type": "string"
+    },
+    "commercial_use": {
+      "type": "boolean",
+      "description": "Whether the license permits commercial use + redistribution."
+    },
+    "attribution": {
+      "type": "string",
+      "description": "Attribution string to surface for CC-BY-family licenses."
+    },
+    "retrieved": {
+      "type": "string",
+      "description": "ISO date the asset was retrieved / generated (YYYY-MM-DD)."
+    },
+    "sha256": {
+      "type": "string",
+      "description": "Hex sha256 of the asset for reproducibility."
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

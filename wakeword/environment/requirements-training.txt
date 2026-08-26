@@ -1,0 +1,53 @@
+# Pinned TRAINING environment — isolated from the Qube PyQt app.
+#
+# As of 2026 the openWakeWord auto-training stack has heavy dependency rot
+# (missing `piper`, generate_samples() signature drift, torchaudio 2.x removals,
+# AudioSet 404s). Pin aggressively. Python 3.10 is required: torch 1.13.1 and
+# tensorflow 2.8.x only ship cp310 wheels — 3.11+ fails at install.
+#
+# Create with:
+#   py -3.10 -m venv .venv && .venv\Scripts\activate   (Windows)
+#   pip install -r environment/requirements-training.txt
+#
+# These versions are a known-good starting point per the openWakeWord training
+# issues (#296, #317) and the atlas-voice-training frozen stack. Validate end-to-end
+# and bump the lock once a clean run is confirmed, then record the resolved set.
+
+# --- core training stack (pinned) ---
+openwakeword==0.4.0            # match Qube's runtime (requirements.txt)
+torch==1.13.1                  # cp310 wheels only
+torchaudio==0.13.1
+tensorflow-cpu==2.8.1          # tflite export path
+numpy==1.23.5                  # 2.x breaks the 2022-era stack
+scipy==1.10.1
+
+# --- dataset access + audio IO ---
+datasets==2.14.4               # pyarrow/fsspec pins below are required by this
+pyarrow<15.0.0
+fsspec<2024.1.0
+soundfile==0.13.1
+librosa==0.10.1
+webrtcvad==2.0.10              # needs build-essential / VC++ build tools
+
+# --- synthetic speech (positive clips) ---
+piper-tts==1.4.2
+# piper-phonemize: Linux only; install the matching cp310 wheel from
+# https://github.com/rhasspy/piper-phonemize/releases  (see environment/README.md)
+
+# --- export ---
+onnx==1.14.1
+onnxruntime==1.16.3
+onnxscript==0.1.0              # required for newer ONNX export paths
+# onnx2tf: optional ONNX->TFLite path (MIT). TFLite is a convenience for edge targets;
+# the .onnx export is sufficient for Qube's runtime, so this is intentionally unpinned
+# and export.py degrades gracefully if it is absent.
+# onnx2tf
+
+# --- utils ---
+PyYAML==6.0.3
+tqdm==4.67.3
+audiomentations==0.34.1        # noise/RIR augmentation (Apache-2.0)
+
+# For GPU training install the CUDA build of torch instead, e.g.:
+#   pip install torch==1.13.1+cu117 torchaudio==0.13.1 \
+#     --extra-index-url https://download.pytorch.org/whl/cu117

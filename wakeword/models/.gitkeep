@@ -1,0 +1,2 @@
+# Trained models land here as models/<wakeword_id>/<version>/<id>.onnx (+ .tflite, model_card.json).
+# Model binaries are gitignored; the model_card.json provenance is what makes a release reproducible.
