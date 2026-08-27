@@ -1613,6 +1613,7 @@ def run_application(
         configure_winget_validation_mode,
         is_winget_validation_mode,
         log_validation_startup_summary,
+        record_boot_state,
         write_smoke_result,
     )
 
@@ -1829,6 +1830,13 @@ def run_application(
         QTimer.singleShot(0, qube.window.schedule_auto_state_backup)
 
     # Keep a strong reference; otherwise StartupSplashController is GC'd and startup timers never fire.
+    if is_winget_validation_mode():
+        record_boot_state(
+            "before_splash_bootstrap",
+            mock_downloads=bool(args.mock_bootstrap_download),
+            needs_consent=needs_consent,
+            selected_count=len(selected_models),
+        )
     app._startup_splash_controller = bootstrap_with_splash(
         repo_root=repo_root,
         build_app_fn=_build_qube,

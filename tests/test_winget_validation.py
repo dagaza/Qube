@@ -14,6 +14,7 @@ import pytest
 from core import llama_cpp_import as llama_mod
 from core.winget_validation import (
     boot_state_path,
+    boot_trace_path,
     is_winget_validation_mode,
     record_boot_state,
     reset_winget_validation_state_for_tests,
@@ -123,6 +124,37 @@ def test_record_boot_state_writes_when_validation_active(
         record_boot_state("phase_start", phase=1)
         assert smoke_result_path().parent == tmp_path
         assert boot_state_path().parent == tmp_path
+        assert boot_trace_path().parent == tmp_path
     payload = json.loads((tmp_path / ".winget-validation-boot-state.json").read_text(encoding="utf-8"))
     assert payload["state"] == "phase_start"
     assert payload["phase"] == 1
+    trace_lines = (
+        (tmp_path / ".winget-validation-boot-trace.jsonl")
+        .read_text(encoding="utf-8")
+        .strip()
+        .split("\n")
+    )
+    assert len(trace_lines) == 1
+    assert json.loads(trace_lines[0])["state"] == "phase_start"
+
+
+def test_record_boot_state_appends_boot_trace(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUBE_WINGET_VALIDATION", "1")
+    with patch("core.paths.user_data_root", return_value=tmp_path):
+        record_boot_state("phase_start", phase=0)
+        record_boot_state("phase_complete", phase=0)
+    trace_lines = (
+        (tmp_path / ".winget-validation-boot-trace.jsonl")
+        .read_text(encoding="utf-8")
+        .strip()
+        .split("\n")
+    )
+    assert len(trace_lines) == 2
+    assert json.loads(trace_lines[0])["state"] == "phase_start"
+    assert json.loads(trace_lines[1])["state"] == "phase_complete"
+    last_state = json.loads(
+        (tmp_path / ".winget-validation-boot-state.json").read_text(encoding="utf-8")
+    )
+    assert last_state["state"] == "phase_complete"

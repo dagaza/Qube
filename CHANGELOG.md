@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.36] - 2026-08-27
+
+### Fixed
+- **WinGet CUDA validation CI:** append-only boot trace (`.winget-validation-boot-trace.jsonl`), splash-bootstrap boot-state markers from consent through phased boot, and full boot-state/trace dump in `smoke_installed_cuda.ps1` on timeout or failure.
+
 ## [1.3.35] - 2026-08-27
 
 ### Fixed

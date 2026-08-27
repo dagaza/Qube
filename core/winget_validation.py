@@ -19,6 +19,7 @@ _EXPLICIT_TRUTHY = frozenset({"1", "true", "yes", "on"})
 _EXPLICIT_FALSY = frozenset({"0", "false", "no", "off"})
 _SMOKE_RESULT_NAME = ".winget-validation-smoke.json"
 _BOOT_STATE_NAME = ".winget-validation-boot-state.json"
+_BOOT_TRACE_NAME = ".winget-validation-boot-trace.jsonl"
 
 
 def _read_windows_variant() -> str:
@@ -129,6 +130,12 @@ def boot_state_path() -> Path:
     return user_data_root() / _BOOT_STATE_NAME
 
 
+def boot_trace_path() -> Path:
+    from core.paths import user_data_root
+
+    return user_data_root() / _BOOT_TRACE_NAME
+
+
 def record_boot_state(state: str, **extra: Any) -> None:
     """Write diagnostic boot progress for CI when validation mode is active."""
     if not is_winget_validation_mode():
@@ -138,9 +145,12 @@ def record_boot_state(state: str, **extra: Any) -> None:
         "timestamp": time.time(),
     }
     payload.update(extra)
-    path = boot_state_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    line = json.dumps(payload, sort_keys=True) + "\n"
+    root = boot_state_path().parent
+    root.mkdir(parents=True, exist_ok=True)
+    boot_state_path().write_text(line, encoding="utf-8")
+    with boot_trace_path().open("a", encoding="utf-8") as trace_file:
+        trace_file.write(line)
     if extra:
         logger.info("WinGet validation boot state: %s (%s)", state, extra)
     else:

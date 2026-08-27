@@ -26,12 +26,14 @@ $settingsPath = Join-Path $settingsDir "settings.json"
 $cognitionDir = Join-Path $userData "models\cognition"
 $resultPath = Join-Path $userData ".winget-validation-smoke.json"
 $bootStatePath = Join-Path $userData ".winget-validation-boot-state.json"
+$bootTracePath = Join-Path $userData ".winget-validation-boot-trace.jsonl"
 $dummyGguf = Join-Path $cognitionDir "Qwen3-1.7B-Q6_K.gguf"
 
 function Format-SmokeFailureMessage {
     param(
         [string]$ResultPath,
-        [string]$BootStatePath
+        [string]$BootStatePath,
+        [string]$BootTracePath
     )
     $parts = @("WinGet validation smoke did not succeed.")
     if (Test-Path $ResultPath) {
@@ -48,12 +50,21 @@ function Format-SmokeFailureMessage {
     }
     if (Test-Path $BootStatePath) {
         try {
-            $state = Get-Content $BootStatePath -Raw | ConvertFrom-Json
-            if ($state.state) { $parts += "last_boot_state=$($state.state)" }
-            if ($null -ne $state.phase) { $parts += "phase=$($state.phase)" }
+            $parts += "boot_state=$(Get-Content $BootStatePath -Raw)"
         } catch {
             $parts += "boot state present but unreadable"
         }
+    } else {
+        $parts += "no boot state at $BootStatePath"
+    }
+    if (Test-Path $BootTracePath) {
+        try {
+            $parts += "boot_trace=$(Get-Content $BootTracePath -Raw)"
+        } catch {
+            $parts += "boot trace present but unreadable"
+        }
+    } else {
+        $parts += "no boot trace at $BootTracePath"
     }
     return ($parts -join "; ")
 }
@@ -85,6 +96,7 @@ Set-Content -Path $dummyGguf -Value "dummy" -Encoding ascii
 
 Remove-Item $resultPath -Force -ErrorAction SilentlyContinue
 Remove-Item $bootStatePath -Force -ErrorAction SilentlyContinue
+Remove-Item $bootTracePath -Force -ErrorAction SilentlyContinue
 
 Write-Host "Launching installed CUDA EXE with WinGet validation guard..."
 $env:QUBE_WINGET_VALIDATION = "1"
@@ -95,13 +107,13 @@ $proc = Start-Process -FilePath $installedExe `
 $deadline = (Get-Date).AddSeconds(120)
 while ((Get-Date) -lt $deadline) {
     if ($proc.HasExited) {
-        $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath
+        $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath -BootTracePath $bootTracePath
         throw "Installed CUDA app exited early (exit code: $($proc.ExitCode)). $msg"
     }
     if (Test-Path $resultPath) {
         $result = Get-Content $resultPath -Raw | ConvertFrom-Json
         if (-not $result.ok) {
-            $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath
+            $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath -BootTracePath $bootTracePath
             Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
             throw $msg
         }
@@ -112,14 +124,14 @@ while ((Get-Date) -lt $deadline) {
 
 if (-not (Test-Path $resultPath)) {
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-    $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath
+    $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath -BootTracePath $bootTracePath
     throw "Timed out waiting for validation smoke result at $resultPath. $msg"
 }
 
 $result = Get-Content $resultPath -Raw | ConvertFrom-Json
 if (-not $result.ok -or $result.llama_import_attempted) {
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-    $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath
+    $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath -BootTracePath $bootTracePath
     throw "WinGet validation guard failed: llama_cpp import was attempted. $msg"
 }
 
