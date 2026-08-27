@@ -25,7 +25,38 @@ $settingsDir = Join-Path $env:USERPROFILE ".qube"
 $settingsPath = Join-Path $settingsDir "settings.json"
 $cognitionDir = Join-Path $userData "models\cognition"
 $resultPath = Join-Path $userData ".winget-validation-smoke.json"
+$bootStatePath = Join-Path $userData ".winget-validation-boot-state.json"
 $dummyGguf = Join-Path $cognitionDir "Qwen3-1.7B-Q6_K.gguf"
+
+function Format-SmokeFailureMessage {
+    param(
+        [string]$ResultPath,
+        [string]$BootStatePath
+    )
+    $parts = @("WinGet validation smoke did not succeed.")
+    if (Test-Path $ResultPath) {
+        try {
+            $result = Get-Content $ResultPath -Raw | ConvertFrom-Json
+            if ($result.stage) { $parts += "stage=$($result.stage)" }
+            if ($result.error) { $parts += "error=$($result.error)" }
+            if ($null -ne $result.ok) { $parts += "ok=$($result.ok)" }
+        } catch {
+            $parts += "smoke result present but unreadable"
+        }
+    } else {
+        $parts += "no smoke result at $ResultPath"
+    }
+    if (Test-Path $BootStatePath) {
+        try {
+            $state = Get-Content $BootStatePath -Raw | ConvertFrom-Json
+            if ($state.state) { $parts += "last_boot_state=$($state.state)" }
+            if ($null -ne $state.phase) { $parts += "phase=$($state.phase)" }
+        } catch {
+            $parts += "boot state present but unreadable"
+        }
+    }
+    return ($parts -join "; ")
+}
 
 Write-Host "Installing $($setup.Name) silently..."
 Start-Process -Wait -FilePath $setup.FullName `
@@ -50,22 +81,30 @@ Set-Content -Path $dummyGguf -Value "dummy" -Encoding ascii
   "qube.bootstrap.completed": true,
   "qube.sidecar.enabled": true
 }
-'@ | Set-Content -Path $settingsPath -Encoding utf8
+'@ | Set-Content -Path $settingsPath -Encoding utf8NoBOM
 
 Remove-Item $resultPath -Force -ErrorAction SilentlyContinue
+Remove-Item $bootStatePath -Force -ErrorAction SilentlyContinue
 
 Write-Host "Launching installed CUDA EXE with WinGet validation guard..."
 $env:QUBE_WINGET_VALIDATION = "1"
 $proc = Start-Process -FilePath $installedExe `
-    -ArgumentList "--mock-bootstrap-download" `
+    -ArgumentList "--mock-bootstrap-download", "--winget-validation" `
     -PassThru
 
 $deadline = (Get-Date).AddSeconds(120)
 while ((Get-Date) -lt $deadline) {
     if ($proc.HasExited) {
-        throw "Installed CUDA app exited early (exit code: $($proc.ExitCode))"
+        $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath
+        throw "Installed CUDA app exited early (exit code: $($proc.ExitCode)). $msg"
     }
     if (Test-Path $resultPath) {
+        $result = Get-Content $resultPath -Raw | ConvertFrom-Json
+        if (-not $result.ok) {
+            $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            throw $msg
+        }
         break
     }
     Start-Sleep -Seconds 1
@@ -73,16 +112,18 @@ while ((Get-Date) -lt $deadline) {
 
 if (-not (Test-Path $resultPath)) {
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-    throw "Timed out waiting for validation smoke result at $resultPath"
+    $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath
+    throw "Timed out waiting for validation smoke result at $resultPath. $msg"
 }
 
 $result = Get-Content $resultPath -Raw | ConvertFrom-Json
 if (-not $result.ok -or $result.llama_import_attempted) {
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-    throw "WinGet validation guard failed: llama_cpp import was attempted"
+    $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath
+    throw "WinGet validation guard failed: llama_cpp import was attempted. $msg"
 }
 
-Write-Host "CUDA WinGet validation smoke passed (pid $($proc.Id), no llama_cpp import)"
+Write-Host "CUDA WinGet validation smoke passed (pid $($proc.Id), stage $($result.stage), no llama_cpp import)"
 
 if (-not (Test-Path $uninstaller)) {
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue

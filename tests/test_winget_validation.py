@@ -13,8 +13,12 @@ import pytest
 
 from core import llama_cpp_import as llama_mod
 from core.winget_validation import (
+    boot_state_path,
     is_winget_validation_mode,
+    record_boot_state,
     reset_winget_validation_state_for_tests,
+    smoke_result_path,
+    write_smoke_failure,
     write_smoke_result,
 )
 
@@ -83,4 +87,42 @@ def test_write_smoke_result_records_no_llama_import(
         write_smoke_result(boot_complete=True)
     payload = json.loads((tmp_path / ".winget-validation-smoke.json").read_text(encoding="utf-8"))
     assert payload["ok"] is True
+    assert payload["stage"] == "boot_complete"
     assert payload["llama_import_attempted"] is False
+    boot_state = json.loads((tmp_path / ".winget-validation-boot-state.json").read_text(encoding="utf-8"))
+    assert boot_state["state"] == "boot_complete"
+
+
+def test_write_smoke_failure_records_stage_and_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUBE_WINGET_VALIDATION", "1")
+    with patch("core.paths.user_data_root", return_value=tmp_path):
+        write_smoke_failure(stage="phase_2", error="boom")
+    payload = json.loads((tmp_path / ".winget-validation-smoke.json").read_text(encoding="utf-8"))
+    assert payload["ok"] is False
+    assert payload["stage"] == "phase_2"
+    assert payload["error"] == "boom"
+    boot_state = json.loads((tmp_path / ".winget-validation-boot-state.json").read_text(encoding="utf-8"))
+    assert boot_state["state"] == "boot_failed"
+
+
+def test_record_boot_state_skipped_outside_validation_mode(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    with patch("core.paths.user_data_root", return_value=tmp_path):
+        record_boot_state("phase_start", phase=0)
+    assert not (tmp_path / ".winget-validation-boot-state.json").exists()
+
+
+def test_record_boot_state_writes_when_validation_active(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("QUBE_WINGET_VALIDATION", "1")
+    with patch("core.paths.user_data_root", return_value=tmp_path):
+        record_boot_state("phase_start", phase=1)
+        assert smoke_result_path().parent == tmp_path
+        assert boot_state_path().parent == tmp_path
+    payload = json.loads((tmp_path / ".winget-validation-boot-state.json").read_text(encoding="utf-8"))
+    assert payload["state"] == "phase_start"
+    assert payload["phase"] == 1

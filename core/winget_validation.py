@@ -18,6 +18,7 @@ _INSTALL_TS_NAMES = (".qube-install-ts",)
 _EXPLICIT_TRUTHY = frozenset({"1", "true", "yes", "on"})
 _EXPLICIT_FALSY = frozenset({"0", "false", "no", "off"})
 _SMOKE_RESULT_NAME = ".winget-validation-smoke.json"
+_BOOT_STATE_NAME = ".winget-validation-boot-state.json"
 
 
 def _read_windows_variant() -> str:
@@ -78,6 +79,8 @@ def configure_winget_validation_mode(args: Any | None = None) -> None:
     """Sync ``QUBE_WINGET_VALIDATION`` from ``--winget-validation`` CLI flag."""
     if args is not None and getattr(args, "winget_validation", False):
         os.environ["QUBE_WINGET_VALIDATION"] = "1"
+    if is_winget_validation_mode():
+        record_boot_state("validation_mode_configured")
 
 
 def apply_winget_validation_bootstrap_shortcut() -> bool:
@@ -91,12 +94,14 @@ def apply_winget_validation_bootstrap_shortcut() -> bool:
     from core.bootstrap_selection import is_bootstrap_completed, save_bootstrap_selection
 
     if is_bootstrap_completed():
+        record_boot_state("bootstrap_shortcut_skipped", reason="already_completed")
         return False
     save_bootstrap_selection(set())
     os.environ["QUBE_BOOTSTRAP_MOCK_DOWNLOAD"] = "1"
     logger.info(
         "WinGet validation mode: shell bootstrap (no models, mock downloads)."
     )
+    record_boot_state("bootstrap_shortcut_applied")
     return True
 
 
@@ -118,20 +123,98 @@ def smoke_result_path() -> Path:
     return user_data_root() / _SMOKE_RESULT_NAME
 
 
-def write_smoke_result(*, boot_complete: bool = True) -> None:
-    """Record whether ``llama_cpp`` was imported during a validation-mode boot."""
-    from core.llama_cpp_import import llama_import_was_attempted
+def boot_state_path() -> Path:
+    from core.paths import user_data_root
 
-    payload = {
-        "boot_complete": bool(boot_complete),
-        "llama_import_attempted": bool(llama_import_was_attempted()),
-        "ok": not llama_import_was_attempted(),
-        "validation_mode": True,
+    return user_data_root() / _BOOT_STATE_NAME
+
+
+def record_boot_state(state: str, **extra: Any) -> None:
+    """Write diagnostic boot progress for CI when validation mode is active."""
+    if not is_winget_validation_mode():
+        return
+    payload: dict[str, Any] = {
+        "state": state,
+        "timestamp": time.time(),
     }
+    payload.update(extra)
+    path = boot_state_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    if extra:
+        logger.info("WinGet validation boot state: %s (%s)", state, extra)
+    else:
+        logger.info("WinGet validation boot state: %s", state)
+
+
+def log_validation_startup_summary(
+    *,
+    shortcut_applied: bool,
+    needs_consent: bool,
+) -> None:
+    """Log and persist post-shortcut bootstrap/consent decisions for CI diagnosis."""
+    if not is_winget_validation_mode():
+        return
+    from core.bootstrap_selection import is_bootstrap_completed
+
+    validation_mode = is_winget_validation_mode()
+    bootstrap_completed = is_bootstrap_completed()
+    logger.info(
+        "Validation smoke startup: validation=%s shortcut=%s "
+        "bootstrap_completed=%s needs_consent=%s",
+        validation_mode,
+        shortcut_applied,
+        bootstrap_completed,
+        needs_consent,
+    )
+    record_boot_state(
+        "consent_decision",
+        validation_mode=validation_mode,
+        shortcut_applied=shortcut_applied,
+        bootstrap_completed=bootstrap_completed,
+        needs_consent=needs_consent,
+    )
+
+
+def _write_smoke_payload(payload: dict[str, Any]) -> None:
     path = smoke_result_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
     logger.info("WinGet validation smoke result written to %s", path)
+
+
+def write_smoke_result(*, boot_complete: bool = True) -> None:
+    """Record whether ``llama_cpp`` was imported during a validation-mode boot."""
+    from core.llama_cpp_import import llama_import_was_attempted
+
+    llama_attempted = llama_import_was_attempted()
+    payload = {
+        "boot_complete": bool(boot_complete),
+        "llama_import_attempted": bool(llama_attempted),
+        "ok": not llama_attempted,
+        "stage": "boot_complete",
+        "validation_mode": True,
+    }
+    _write_smoke_payload(payload)
+    record_boot_state("boot_complete")
+
+
+def write_smoke_failure(*, stage: str, error: str) -> None:
+    """Record a validation-mode boot failure for CI (non-modal path)."""
+    if not is_winget_validation_mode():
+        return
+    from core.llama_cpp_import import llama_import_was_attempted
+
+    payload = {
+        "boot_complete": False,
+        "error": str(error),
+        "llama_import_attempted": bool(llama_import_was_attempted()),
+        "ok": False,
+        "stage": str(stage),
+        "validation_mode": True,
+    }
+    _write_smoke_payload(payload)
+    record_boot_state("boot_failed", stage=stage, error=str(error))
 
 
 def reset_winget_validation_state_for_tests() -> None:

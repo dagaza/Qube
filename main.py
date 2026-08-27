@@ -1612,11 +1612,12 @@ def run_application(
         apply_winget_validation_bootstrap_shortcut,
         configure_winget_validation_mode,
         is_winget_validation_mode,
+        log_validation_startup_summary,
         write_smoke_result,
     )
 
     configure_winget_validation_mode(args)
-    apply_winget_validation_bootstrap_shortcut()
+    shortcut_applied = apply_winget_validation_bootstrap_shortcut()
     # Optional: The Windows Taskbar App ID fix we discussed
     if sys.platform == "win32":
         import ctypes
@@ -1760,6 +1761,10 @@ def run_application(
 
     selected_models = effective_bootstrap_selection()
     needs_consent = should_show_bootstrap_consent()
+    log_validation_startup_summary(
+        shortcut_applied=shortcut_applied,
+        needs_consent=needs_consent,
+    )
     if args.mock_bootstrap_download:
         os.environ["QUBE_BOOTSTRAP_MOCK_DOWNLOAD"] = "1"
         logger.info("Bootstrap mock downloads enabled (--mock-bootstrap-download).")

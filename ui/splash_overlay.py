@@ -791,6 +791,22 @@ class StartupSplashController(QObject):
         self._bootstrap_running = False
         self._stop_spinner()
         self._view.set_download_detail(f"Startup failed:\n{exc}")
+        from core.winget_validation import is_winget_validation_mode, write_smoke_failure
+
+        if is_winget_validation_mode():
+            phase = getattr(self._phased_runner, "_phase", None)
+            stage = f"phase_{phase}" if phase is not None else "boot"
+            logger.exception(
+                "Splash bootstrap failed in validation mode at %s (no modal)",
+                stage,
+            )
+            write_smoke_failure(stage=stage, error=str(exc))
+            app = QApplication.instance()
+            if app is not None:
+                app.quit()
+            else:
+                sys.exit(1)
+            return
         logger.error("Splash bootstrap failed: %s", exc)
         PrestigeDialog(
             self._shell,
@@ -889,16 +905,23 @@ class _PhasedQubeRunner(QObject):
         step_index = _PHASE_STEPS[self._phase]
         percent = _PHASE_PERCENTS[self._phase]
         self._on_phase(step_index, percent)
+        from core.winget_validation import is_winget_validation_mode, record_boot_state
+
+        phase_index = self._phase
+        if is_winget_validation_mode():
+            record_boot_state("phase_start", phase=phase_index)
         try:
-            self._run_phase(self._phase)
+            self._run_phase(phase_index)
         except Exception as exc:
-            logger.exception("Phased Qube bootstrap failed at phase %d.", self._phase)
+            logger.exception("Phased Qube bootstrap failed at phase %d.", phase_index)
             if self._on_failed is not None:
                 self._on_failed(exc)
                 return
             raise
         if self._cancelled:
             return
+        if is_winget_validation_mode():
+            record_boot_state("phase_complete", phase=phase_index)
         self._phase += 1
         QTimer.singleShot(0, self._run_next)
 

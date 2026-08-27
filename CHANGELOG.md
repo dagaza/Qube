@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.35] - 2026-08-27
+
+### Fixed
+- **WinGet CUDA validation CI:** add file-based boot-state instrumentation, machine-readable smoke failures, non-modal boot errors in validation mode, explicit `--winget-validation` in `smoke_installed_cuda.ps1`, and BOM-free settings pre-seed for release smoke tests.
+
 ## [1.3.34] - 2026-08-26
 
 ### Fixed
