@@ -141,8 +141,13 @@ class Qube:
         tick: Callable[[str], None],
         embedder: EmbeddingModel | None,
     ) -> None:
+        from core.winget_validation import is_winget_validation_mode
+
         if embedder is not None:
             self.embedder = embedder
+        elif is_winget_validation_mode():
+            # Splash may skip embedder; avoid blocking CI on fastembed model download.
+            self.embedder = None
         else:
             tick("Loading embeddings…")
             try:
@@ -293,9 +298,12 @@ class Qube:
             self.llm_worker.refresh_native_model_from_settings()
 
     def _boot_runtime(self, tick: Callable[[str], None]) -> None:
+        from core.winget_validation import is_winget_validation_mode
+
         tick("Starting audio and voice…")
         self.audio_worker.start()
-        self.tts_worker.load_voice(resolve_boot_tts_path())
+        if not is_winget_validation_mode():
+            self.tts_worker.load_voice(resolve_boot_tts_path())
         tick("Ready")
         self._pending_enrichment_context = {}
         self._pending_turn_session_id: str | None = None

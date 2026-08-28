@@ -163,6 +163,7 @@ def test_record_boot_state_appends_boot_trace(
 def test_validation_mode_skips_bootstrap_consent_and_default_selection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    pytest.importorskip("PyQt6")
     monkeypatch.setenv("QUBE_WINGET_VALIDATION", "1")
     from core.bootstrap_selection import (
         effective_bootstrap_selection,
@@ -171,3 +172,36 @@ def test_validation_mode_skips_bootstrap_consent_and_default_selection(
 
     assert should_show_bootstrap_consent() is False
     assert effective_bootstrap_selection() == set()
+
+
+def test_boot_storage_skips_embedder_in_validation_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("PyQt6")
+    monkeypatch.setenv("QUBE_WINGET_VALIDATION", "1")
+    embedder_calls: list[int] = []
+
+    class _FakeEmbedder:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            embedder_calls.append(1)
+
+    class _FakeStore:
+        dim_mismatch = False
+
+        def __init__(self, **kwargs: object) -> None:
+            pass
+
+    class _FakeDb:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+    monkeypatch.setattr("rag.embedder.EmbeddingModel", _FakeEmbedder)
+    monkeypatch.setattr("rag.store.DocumentStore", _FakeStore)
+    monkeypatch.setattr("core.database.DatabaseManager", _FakeDb)
+
+    from main import Qube
+
+    qube = Qube.__new__(Qube)
+    qube._boot_storage(lambda _msg: None, None)
+    assert embedder_calls == []
+    assert qube.embedder is None

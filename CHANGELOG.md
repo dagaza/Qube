@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.38] - 2026-08-28
+
+### Fixed
+- **WinGet CUDA validation CI:** skip fastembed reload in `_boot_storage` and TTS voice load in `_boot_runtime` during validation mode so phased boot does not block on ONNX model download after splash embedder skip.
+
 ## [1.3.37] - 2026-08-28
 
 ### Fixed
