@@ -40,3 +40,18 @@ def test_install_root_frozen_uses_executable_parent(tmp_path):
         sys, "executable", str(fake_exe)
     ):
         assert paths.install_root() == tmp_path
+
+
+def test_resource_path_frozen_uses_meipass(tmp_path):
+    internal_assets = tmp_path / "_internal" / "assets" / "config"
+    internal_assets.mkdir(parents=True)
+    schema = internal_assets / "settings.schema.json"
+    schema.write_text("{}", encoding="utf-8")
+    fake_exe = tmp_path / "Qube.exe"
+    fake_exe.touch()
+    with mock.patch.object(sys, "frozen", True, create=True), mock.patch.object(
+        sys, "executable", str(fake_exe)
+    ), mock.patch.object(sys, "_MEIPASS", str(tmp_path / "_internal"), create=True):
+        assert (
+            paths.resource_path("assets", "config", "settings.schema.json") == schema
+        )

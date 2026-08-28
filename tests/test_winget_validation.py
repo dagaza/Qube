@@ -158,3 +158,16 @@ def test_record_boot_state_appends_boot_trace(
         (tmp_path / ".winget-validation-boot-state.json").read_text(encoding="utf-8")
     )
     assert last_state["state"] == "phase_complete"
+
+
+def test_validation_mode_skips_bootstrap_consent_and_default_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("QUBE_WINGET_VALIDATION", "1")
+    from core.bootstrap_selection import (
+        effective_bootstrap_selection,
+        should_show_bootstrap_consent,
+    )
+
+    assert should_show_bootstrap_consent() is False
+    assert effective_bootstrap_selection() == set()

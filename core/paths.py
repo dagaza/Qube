@@ -18,6 +18,10 @@ def install_root() -> Path:
 
 def resource_path(*parts: str) -> Path:
     """Path to bundled read-only assets shipped with the application."""
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            return Path(meipass).joinpath(*parts)
     return install_root().joinpath(*parts)
 
 

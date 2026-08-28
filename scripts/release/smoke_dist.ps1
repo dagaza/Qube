@@ -4,16 +4,19 @@ $exe = (Resolve-Path (Join-Path $PSScriptRoot "..\..\dist\Qube\Qube.exe")).Path
 $distDir = Split-Path -Parent $exe
 
 $fakeAppData = Join-Path $env:TEMP ("qube-smoke-" + [guid]::NewGuid().ToString())
-$settingsDir = Join-Path $fakeAppData "Qube"
+$fakeProfile = Join-Path $env:TEMP ("qube-smoke-profile-" + [guid]::NewGuid().ToString())
+$settingsDir = Join-Path $fakeProfile ".qube"
 New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
 @'
 {
   "qube.bootstrap.completed": true
 }
-'@ | Set-Content -Path (Join-Path $settingsDir "settings.json") -Encoding utf8
+'@ | Set-Content -Path (Join-Path $settingsDir "settings.json") -Encoding utf8NoBOM
 
 $previousAppData = $env:LOCALAPPDATA
+$previousProfile = $env:USERPROFILE
 $env:LOCALAPPDATA = $fakeAppData
+$env:USERPROFILE = $fakeProfile
 $variantMarker = Join-Path $distDir ".qube-windows-variant"
 $variant = if (Test-Path $variantMarker) { (Get-Content $variantMarker -Raw).Trim() } else { "cpu" }
 if ($variant -eq "cuda") {
@@ -34,5 +37,7 @@ try {
 }
 finally {
     $env:LOCALAPPDATA = $previousAppData
+    $env:USERPROFILE = $previousProfile
     Remove-Item -Recurse -Force $fakeAppData -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $fakeProfile -ErrorAction SilentlyContinue
 }

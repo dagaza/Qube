@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.37] - 2026-08-28
+
+### Fixed
+- **WinGet CUDA validation CI:** resolve bundled `settings.schema.json` from PyInstaller `_MEIPASS` so bootstrap settings persist in frozen builds; skip first-run consent and default model selection in validation mode; fix dist smoke settings pre-seed path (`~/.qube/settings.json`).
+
 ## [1.3.36] - 2026-08-27
 
 ### Fixed

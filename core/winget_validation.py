@@ -99,6 +99,13 @@ def apply_winget_validation_bootstrap_shortcut() -> bool:
         return False
     save_bootstrap_selection(set())
     os.environ["QUBE_BOOTSTRAP_MOCK_DOWNLOAD"] = "1"
+    from core.bootstrap_selection import is_bootstrap_completed
+
+    if not is_bootstrap_completed():
+        logger.warning(
+            "WinGet validation bootstrap shortcut did not persist completion; "
+            "consent bypass still active via validation mode."
+        )
     logger.info(
         "WinGet validation mode: shell bootstrap (no models, mock downloads)."
     )
