@@ -34,6 +34,8 @@ from ui.branded_theme import (
     SPLASH_SPINNER_ARC_LIGHT_HEX,
     SPLASH_SPINNER_TRACK_DARK_RGBA,
     SPLASH_SPINNER_TRACK_LIGHT_RGBA,
+    SPLASH_SURFACE_BG,
+    apply_splash_label_styles,
     branded_theme,
     splash_card_surface_qss,
     splash_compact_card_qss,
@@ -435,7 +437,9 @@ RotatingLogoLabel = RotatingQubeCube
 
 
 class _SplashCardChrome(QWidget):
-    """Rounded splash card surface — QSS only; no custom paint (avoids corner seams)."""
+    """Rounded splash card surface — painted fill + QSS for cross-platform contrast."""
+
+    _CORNER_RADIUS_PX = 16
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -446,6 +450,16 @@ class _SplashCardChrome(QWidget):
     def apply_theme(self, is_dark: bool = True) -> None:
         del is_dark
         self.setStyleSheet(splash_card_surface_qss().strip())
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
+        path = QPainterPath()
+        path.addRoundedRect(rect, self._CORNER_RADIUS_PX, self._CORNER_RADIUS_PX)
+        painter.fillPath(path, QColor(SPLASH_SURFACE_BG))
+        painter.end()
+        super().paintEvent(event)
 
 
 class QubeFirstRunSplitSplash(QWidget):
@@ -625,6 +639,11 @@ class QubeFirstRunSplitSplash(QWidget):
 
     def _apply_styles(self) -> None:
         self.setStyleSheet(splash_split_card_qss())
+        apply_splash_label_styles(
+            title=self.title,
+            hint=self.hint,
+            detail=self.detail,
+        )
 
 
 class QubeSplashCard(QWidget):
@@ -722,3 +741,4 @@ class QubeSplashCard(QWidget):
 
     def _apply_styles(self) -> None:
         self.setStyleSheet(splash_compact_card_qss())
+        apply_splash_label_styles(title=self.title, detail=self.detail)

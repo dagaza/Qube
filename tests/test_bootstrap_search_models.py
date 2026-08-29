@@ -60,6 +60,11 @@ def test_model_is_present_for_balanced_search_preset():
         assert model_is_present(BootstrapModelId.SEARCH_PRESET_BALANCED) is True
 
 
+def test_embedding_preset_cached_on_disk_checks_qube_preset_dir():
+    with patch("core.bootstrap_search_download.qube_preset_complete", return_value=True):
+        assert embedding_preset_cached_on_disk("balanced") is True
+
+
 def test_embedding_preset_cached_on_disk_matches_qdrant_fastembed_layout():
     with patch(
         "core.bootstrap_search_models.search_models_cache_dir",

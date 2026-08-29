@@ -47,12 +47,20 @@ class FastembedBackend:
                 "TextEmbedding.list_supported_models()."
             )
 
+        load_kwargs: dict[str, str] = {}
+        from core.bootstrap_search_download import resolve_qube_preset_path
+
+        preset_path = resolve_qube_preset_path(self._spec.mode_id)
+        if preset_path:
+            load_kwargs["specific_model_path"] = preset_path
+
         logger.info(
-            "Loading fastembed model mode=%s model=%s",
+            "Loading fastembed model mode=%s model=%s preset_path=%s",
             self._spec.mode_id,
             model_name,
+            preset_path or "(fastembed cache)",
         )
-        self._model = TextEmbedding(model_name=model_name)
+        self._model = TextEmbedding(model_name=model_name, **load_kwargs)
         gc.collect()
 
     def unload(self) -> None:

@@ -388,26 +388,23 @@ def _download_kokoro(on_progress: DownloadProgressCallback, spec) -> None:
 
 
 def _download_balanced_search_preset(on_progress: DownloadProgressCallback, spec) -> None:
+    from core.bootstrap_search_download import download_embedding_preset
     from core.bootstrap_search_models import balanced_search_preset_present
-    from core.embedding_modes import DEFAULT_MODE, get_mode_spec
-    from core.embedding_models import probe_embedding_preset_available
-    from core.paths import configure_user_model_paths
+    from core.embedding_modes import DEFAULT_MODE
 
-    configure_user_model_paths()
-
-    mode_spec = get_mode_spec(DEFAULT_MODE)
-    filename = mode_spec.fastembed_model
     step_label = f"Downloading {spec.label}"
-    source = spec.source_display
     if balanced_search_preset_present():
-        on_progress(step_label, filename, 100, source)
-        return
-    on_progress(step_label, filename, 0, source)
-    if not probe_embedding_preset_available(mode_id=DEFAULT_MODE, force=True):
-        from core.bootstrap_search_models import format_search_preset_download_failure
+        from core.embedding_modes import get_mode_spec
 
-        raise RuntimeError(format_search_preset_download_failure(DEFAULT_MODE))
-    on_progress(step_label, filename, 100, source)
+        on_progress(step_label, get_mode_spec(DEFAULT_MODE).fastembed_model, 100, spec.source_display)
+        return
+
+    download_embedding_preset(
+        DEFAULT_MODE,
+        on_progress,
+        step_label=step_label,
+        source_display=spec.source_display,
+    )
 
 
 def download_bootstrap_models(

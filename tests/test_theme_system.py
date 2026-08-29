@@ -972,6 +972,7 @@ def test_resolved_theme_style_helpers():
     early_qss = early_splash_card_qss()
     assert "QubeEarlySplashCard" in early_qss
     assert SPLASH_SURFACE_BG in early_qss
+    assert "rgba(" not in early_qss
     bootstrap_qss = bootstrap_consent_stylesheet(
         splash_theme, split_embedded=False, embedded=True
     )

@@ -28,6 +28,8 @@ def test_early_splash_present_does_not_recurse(qapp_cls) -> None:
 
 def test_early_splash_is_static_opaque_branded_card(qapp_cls) -> None:
     """Pre-import splash must not rely on timers (GUI thread blocks on import)."""
+    from ui.branded_theme import SPLASH_DETAIL_COLOR, SPLASH_TITLE_COLOR
+
     app = qapp_cls.instance() or qapp_cls([])
     splash = EarlySplashController()
     splash.present()
@@ -40,6 +42,19 @@ def test_early_splash_is_static_opaque_branded_card(qapp_cls) -> None:
     qss = early_splash_card_qss()
     assert "QubeEarlySplashCard" in qss
     assert SPLASH_SURFACE_BG in qss
+    assert "rgba(" not in qss
+    assert SPLASH_TITLE_COLOR in splash._status.styleSheet() or SPLASH_DETAIL_COLOR in splash._status.styleSheet()  # noqa: SLF001
 
     splash.dismiss()
     app.processEvents()
+
+
+def test_qss_color_produces_hex_for_cross_platform_splash_qss() -> None:
+    from ui.branded_theme import qss_color, splash_split_card_qss
+
+    assert qss_color(148, 163, 184, 1.0) == "#94a3b8"
+    assert qss_color(148, 163, 184, 0.9).startswith("#94a3b8")
+    assert len(qss_color(148, 163, 184, 0.9)) == 9
+    split_qss = splash_split_card_qss()
+    assert "rgba(" not in split_qss
+    assert "#f8fafc" in split_qss

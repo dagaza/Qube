@@ -21,7 +21,7 @@ from core.platform.window_activation import (
     splash_window_flags,
 )
 from core.startup_exit import arm_force_process_exit, mark_startup_exit_requested
-from ui.branded_theme import early_splash_card_qss
+from ui.branded_theme import apply_splash_label_styles, early_splash_card_qss
 from ui.splash_widget import _SplashCardChrome, resolve_splash_logo_path
 
 logger = logging.getLogger("Qube.UI.EarlySplash")
@@ -104,9 +104,9 @@ class EarlySplashController(QObject):
         self._status.setWordWrap(True)
         card_layout.addWidget(self._status)
 
-        # Widget-level QSS must target EarlySplash object names (replacing chrome
-        # surface QSS would otherwise leave a transparent/black card).
+        # Widget-level QSS plus per-label styles (Windows/macOS ignore rgba() in QSS).
         card.setStyleSheet(early_splash_card_qss().strip())
+        apply_splash_label_styles(title=title, status=self._status)
         outer.addWidget(card)
 
         self._dismissed = False

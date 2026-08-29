@@ -2,25 +2,46 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from core.theme.accessors import theme_for
 from core.theme.color_utils import with_alpha
 from core.theme.tokens import ResolvedTheme
+
+if TYPE_CHECKING:
+    from PyQt6.QtWidgets import QLabel
+
+
+def qss_color(r: int, g: int, b: int, alpha: float = 1.0) -> str:
+    """Hex color for Qt Style Sheets (``#RRGGBB`` or ``#RRGGBBAA``).
+
+    Qt Style Sheets on Windows and macOS often ignore ``rgba(r,g,b,a)`` for
+    ``color`` and ``background``, which leaves splash labels and surfaces black.
+    """
+    red = max(0, min(255, int(r)))
+    green = max(0, min(255, int(g)))
+    blue = max(0, min(255, int(b)))
+    if alpha >= 1.0:
+        return f"#{red:02x}{green:02x}{blue:02x}"
+    channel_a = max(0, min(255, int(round(alpha * 255))))
+    return f"#{red:02x}{green:02x}{blue:02x}{channel_a:02x}"
+
 
 # Locked splash brand palette — matches pre-theme-migration splash on ``dev``.
 # Not derived from user theme overrides (same policy as logo/confetti).
 SPLASH_SURFACE_BG = "#12151f"
 SPLASH_TITLE_COLOR = "#f8fafc"
-SPLASH_HINT_COLOR = "rgba(148, 163, 184, 0.9)"
-SPLASH_DETAIL_COLOR = "rgba(148, 163, 184, 0.95)"
-SPLASH_DIVIDER_COLOR = "rgba(255, 255, 255, 0.12)"
+SPLASH_HINT_COLOR = qss_color(148, 163, 184, 0.9)
+SPLASH_DETAIL_COLOR = qss_color(148, 163, 184, 0.95)
+SPLASH_DIVIDER_COLOR = qss_color(255, 255, 255, 0.12)
 SPLASH_CHROME_ICON = "#94a3b8"
-SPLASH_CHROME_BUTTON_BG = "rgba(18, 21, 31, 0.72)"
-SPLASH_CHROME_BUTTON_BG_HOVER = "rgba(30, 34, 48, 0.9)"
-SPLASH_CHROME_BUTTON_BORDER = "rgba(255, 255, 255, 0.12)"
-SPLASH_CHROME_BUTTON_BORDER_HOVER = "rgba(255, 255, 255, 0.2)"
-SPLASH_STEP_PENDING = "rgba(148, 163, 184, 0.55)"
+SPLASH_CHROME_BUTTON_BG = qss_color(18, 21, 31, 0.72)
+SPLASH_CHROME_BUTTON_BG_HOVER = qss_color(30, 34, 48, 0.9)
+SPLASH_CHROME_BUTTON_BORDER = qss_color(255, 255, 255, 0.12)
+SPLASH_CHROME_BUTTON_BORDER_HOVER = qss_color(255, 255, 255, 0.2)
+SPLASH_STEP_PENDING = qss_color(148, 163, 184, 0.55)
 SPLASH_STEP_ACTIVE = "#c4b5fd"
-SPLASH_STEP_DONE = "rgba(134, 239, 172, 0.85)"
+SPLASH_STEP_DONE = qss_color(134, 239, 172, 0.85)
 SPLASH_PROGRESS_TRACK_RGBA = (255, 255, 255, 20)
 SPLASH_PROGRESS_CHUNK_HEX = "#8b5cf6"
 SPLASH_PROGRESS_TEXT_RGBA = (148, 163, 184, 230)
@@ -34,6 +55,49 @@ SPLASH_SPINNER_ARC_LIGHT_HEX = "#3b82f6"
 def branded_theme(*, is_dark: bool = True) -> ResolvedTheme:
     """Resolved theme for splash/bootstrap surfaces (dark-branded by default)."""
     return theme_for(is_dark=is_dark)
+
+
+def splash_title_label_qss() -> str:
+    return f"color: {SPLASH_TITLE_COLOR}; background-color: transparent;"
+
+
+def splash_hint_label_qss(*, font_size_px: int = 12) -> str:
+    return (
+        f"color: {SPLASH_HINT_COLOR}; background-color: transparent;"
+        f" font-size: {font_size_px}px;"
+    )
+
+
+def splash_detail_label_qss(*, font_size_px: int = 10) -> str:
+    return (
+        f"color: {SPLASH_DETAIL_COLOR}; background-color: transparent;"
+        f" font-size: {font_size_px}px; line-height: 1.35;"
+    )
+
+
+def splash_status_label_qss(*, font_size_px: int = 13) -> str:
+    return (
+        f"color: {SPLASH_DETAIL_COLOR}; background-color: transparent;"
+        f" font-size: {font_size_px}px;"
+    )
+
+
+def apply_splash_label_styles(
+    *,
+    title: "QLabel | None" = None,
+    hint: "QLabel | None" = None,
+    status: "QLabel | None" = None,
+    detail: "QLabel | None" = None,
+) -> None:
+    """Apply per-label QSS so splash text stays readable on every platform."""
+    if title is not None:
+        title.setStyleSheet(splash_title_label_qss())
+    if hint is not None:
+        hint.setStyleSheet(splash_hint_label_qss())
+    if status is not None:
+        status.setStyleSheet(splash_status_label_qss())
+    if detail is not None:
+        detail.setStyleSheet(splash_detail_label_qss())
 
 
 def splash_card_surface_qss(_theme: ResolvedTheme | None = None) -> str:

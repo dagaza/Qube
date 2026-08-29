@@ -96,7 +96,7 @@ def probe_embedding_preset_available(
     mode_id: str | None = None,
     force: bool = False,
 ) -> bool:
-    """Verify the active Fast/Balanced/Power preset can load (may download on first use)."""
+    """Verify the active Fast/Balanced/Power preset can load (streamed download when forced)."""
     from core.app_settings import get_embedding_mode
     from core.bootstrap_search_models import embedding_preset_cached_on_disk
     from core.embedding_modes import normalize_mode_id
@@ -114,14 +114,26 @@ def probe_embedding_preset_available(
     if not force and _preset_available_cache.get(mode, False):
         return True
 
+    if force:
+        from core.bootstrap_search_download import download_embedding_preset_no_progress
+
+        try:
+            download_embedding_preset_no_progress(mode)
+        except RuntimeError:
+            _preset_available_cache[mode] = False
+            return False
+        if not embedding_preset_cached_on_disk(mode):
+            _preset_available_cache[mode] = False
+            return False
+
+    if not embedding_preset_cached_on_disk(mode):
+        return False
+
     try:
         from rag.embedder import EmbeddingModel
 
         model = EmbeddingModel(mode_id=mode)
         if model.vector_dim <= 0:
-            _preset_available_cache[mode] = False
-            return False
-        if not embedding_preset_cached_on_disk(mode):
             _preset_available_cache[mode] = False
             return False
         mark_embedding_preset_available(mode)

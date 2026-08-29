@@ -131,10 +131,12 @@ def test_probe_embedding_preset_available_marks_cache_on_success():
     fake_backend = type("B", (), {"vector_dim": 512, "unload": lambda self: None})()
     fake_model = type("M", (), {"vector_dim": 512, "_backend": fake_backend})()
     with patch("core.embedding_models.gguf_override_available", return_value=False), patch(
+        "core.bootstrap_search_download.download_embedding_preset_no_progress"
+    ), patch(
         "rag.embedder.EmbeddingModel", return_value=fake_model
     ), patch(
         "core.bootstrap_search_models.embedding_preset_cached_on_disk",
-        side_effect=[False, True, True],
+        side_effect=[False, True, True, True],
     ):
         assert em.probe_embedding_preset_available(force=True) is True
     with patch("core.embedding_models.gguf_override_available", return_value=False), patch(

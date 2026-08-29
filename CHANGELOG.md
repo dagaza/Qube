@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.39] - 2026-08-29
+
+### Fixed
+- **Bootstrap search preset download (Windows):** stream Fast/Balanced/Power fastembed ONNX assets file-by-file with visible HTTP progress (same pattern as Whisper) instead of opaque `TextEmbedding` / `snapshot_download`, which could hang at 0% on Jina and other presets during first-run bootstrap and Settings “Prepare search models”.
+- **Early splash (pre-bootstrap):** fix black-on-black card on Windows/macOS by painting an opaque branded surface, using Qt-safe hex QSS colors instead of ignored `rgba()`, and applying explicit title/status label styles so **Loading…** is readable before `import main` completes.
+
 ## [1.3.38] - 2026-08-28
 
 ### Fixed

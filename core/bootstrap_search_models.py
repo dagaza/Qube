@@ -47,6 +47,10 @@ def embedding_preset_cached_on_disk(mode_id: str | None = None) -> bool:
     """True when fastembed ONNX assets for a mode appear present locally (no load)."""
     configure_user_model_paths()
     mode = normalize_mode_id(mode_id)
+    from core.bootstrap_search_download import qube_preset_complete
+
+    if qube_preset_complete(mode):
+        return True
     model_name = get_mode_spec(mode).fastembed_model
     markers = fastembed_model_cache_markers(model_name)
 
