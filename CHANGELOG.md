@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.40] - 2026-08-29
+
+### Fixed
+- **Release CI (Windows CPU):** `smoke_installed.ps1` and `smoke_upgrade.ps1` now launch the installed app with an isolated profile, completed-bootstrap settings, and `--mock-bootstrap-download` (shared with `smoke_dist.ps1`) so the post-upgrade install smoke no longer hangs on first-run bootstrap or model downloads; added 20-minute step timeouts.
+
 ## [1.3.39] - 2026-08-29
 
 ### Fixed

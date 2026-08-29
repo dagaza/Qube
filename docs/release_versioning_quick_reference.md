@@ -29,7 +29,8 @@ When **`1.3.N` is already published** (GitHub Release live) but you need a small
 1.3.36  →  hotfix #6 (splash boot trace + full CI boot-state dump on CUDA smoke failure)
 1.3.37  →  hotfix #7 (frozen settings schema path + validation-mode consent bypass)
 1.3.38  →  hotfix #8 (skip embedder/TTS reload in validation-mode phased boot)
-1.3.39  →  hotfix #9 (streamed search-preset downloads + early splash contrast)
+1.3.39  →  hotfix #9 (streamed search-preset downloads + early splash contrast; tag did not publish — CI hung)
+1.3.40  →  hotfix #10 (release CI install smoke + ships 1.3.39 fixes)
 ```
 
 Semver compares numerically (`1.3.31` > `1.3.3`), so package managers treat hotfixes as upgrades. **Reserve `1.3.4`–`1.3.29` for the next feature patch** on the line, or jump to **`1.4.0`** when the minor bumps.

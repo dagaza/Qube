@@ -4,6 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. "$PSScriptRoot/smoke_launch_env.ps1"
 
 if ($SetupPath) {
     $setup = Get-Item $SetupPath
@@ -32,18 +33,26 @@ if (-not (Test-Path $installedExe)) {
 Write-Host "Silent install verified at $installedExe"
 
 Write-Host "Launching installed EXE (simulates tray background before uninstall)..."
-$proc = Start-Process -FilePath $installedExe -PassThru
-Start-Sleep -Seconds 8
-if ($proc.HasExited) {
-    throw "Installed app crashed on launch (exit code: $($proc.ExitCode))"
+$state = Enter-QubeSmokeLaunchEnvironment
+$proc = $null
+try {
+    $launchArgs = Get-QubeSmokeLaunchArgumentList
+    $proc = Start-Process -FilePath $installedExe -ArgumentList $launchArgs -PassThru
+    Start-Sleep -Seconds 8
+    if ($proc.HasExited) {
+        throw "Installed app crashed on launch (exit code: $($proc.ExitCode))"
+    }
+    if (-not (Get-Process -Id $proc.Id -ErrorAction SilentlyContinue)) {
+        throw "Installed app process exited before uninstall test"
+    }
+    Write-Host "Installed EXE running (pid $($proc.Id))"
 }
-if (-not (Get-Process -Id $proc.Id -ErrorAction SilentlyContinue)) {
-    throw "Installed app process exited before uninstall test"
+finally {
+    Exit-QubeSmokeLaunchEnvironment -State $state
 }
-Write-Host "Installed EXE running (pid $($proc.Id))"
 
 if (-not (Test-Path $uninstaller)) {
-    Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+    Stop-QubeProcessIfRunning -Process $proc
     throw "Uninstaller not found at $uninstaller"
 }
 
@@ -59,6 +68,8 @@ while ((Get-Date) -lt $deadline) {
     }
     Start-Sleep -Seconds 1
 }
+
+Stop-QubeProcessIfRunning -Process $proc
 
 if (Test-Path $installedExe) {
     throw "Uninstall failed — $installedExe still exists"

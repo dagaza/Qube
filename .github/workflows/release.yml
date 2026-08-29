@@ -177,6 +177,7 @@ jobs:
 
       - name: Smoke test installer upgrade
         if: matrix.variant == 'cpu'
+        timeout-minutes: 20
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.version }}"
@@ -191,6 +192,7 @@ jobs:
 
       - name: Silent install, launch, and uninstall
         if: matrix.variant == 'cpu'
+        timeout-minutes: 20
         shell: pwsh
         run: |
           scripts/release/smoke_installed.ps1 `

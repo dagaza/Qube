@@ -81,11 +81,21 @@ if ($oldVersion -eq $newVersion) {
 }
 Write-Host "Upgrade verified (version $oldVersion -> $newVersion at $InstallDir)"
 
+. "$PSScriptRoot/smoke_launch_env.ps1"
+
 Write-Host "Launching upgraded EXE..."
-$proc = Start-Process -FilePath $InstalledExe -PassThru
-Start-Sleep -Seconds 10
-if ($proc.HasExited) {
-    throw "Upgraded app crashed on launch (exit code: $($proc.ExitCode))"
+$state = Enter-QubeSmokeLaunchEnvironment
+$proc = $null
+try {
+    $launchArgs = Get-QubeSmokeLaunchArgumentList
+    $proc = Start-Process -FilePath $InstalledExe -ArgumentList $launchArgs -PassThru
+    Start-Sleep -Seconds 10
+    if ($proc.HasExited) {
+        throw "Upgraded app crashed on launch (exit code: $($proc.ExitCode))"
+    }
+    Write-Host "Upgrade smoke test passed"
 }
-Write-Host "Upgrade smoke test passed"
-Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+finally {
+    Stop-QubeProcessIfRunning -Process $proc
+    Exit-QubeSmokeLaunchEnvironment -State $state
+}
