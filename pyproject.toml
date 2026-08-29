@@ -1,6 +1,6 @@
 [project]
 name = "Qube"
-version = "1.3.40"
+version = "1.3.41"
 description = "Local hardware-accelerated AI desktop assistant"
 requires-python = ">=3.12"
 license = "MIT"

@@ -25,7 +25,9 @@ function Enter-QubeSmokeLaunchEnvironment {
     Initialize-QubeSmokeSettings -SettingsDir (Join-Path $state.FakeProfile ".qube")
     $env:LOCALAPPDATA = $state.FakeAppData
     $env:USERPROFILE = $state.FakeProfile
-    $env:QUBE_BOOTSTRAP_MOCK_DOWNLOAD = "1"
+    # Mock downloads are enabled via --mock-bootstrap-download on the child CLI only.
+    # Do not set QUBE_BOOTSTRAP_MOCK_DOWNLOAD here: inheriting it broke CUDA dist smoke
+    # (WinGet validation mode exited with code 2 on CI).
     return $state
 }
 
@@ -37,7 +39,6 @@ function Exit-QubeSmokeLaunchEnvironment {
     }
     $env:LOCALAPPDATA = $State.PreviousAppData
     $env:USERPROFILE = $State.PreviousProfile
-    Remove-Item Env:QUBE_BOOTSTRAP_MOCK_DOWNLOAD -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force $State.FakeAppData -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force $State.FakeProfile -ErrorAction SilentlyContinue
 }

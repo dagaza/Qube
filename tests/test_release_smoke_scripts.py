@@ -18,3 +18,7 @@ def test_installed_and_upgrade_smoke_use_shared_launch_env():
     installed = (root / "smoke_installed.ps1").read_text(encoding="utf-8")
     assert "Enter-QubeSmokeLaunchEnvironment" in installed
     assert "Exit-QubeSmokeLaunchEnvironment" in installed
+
+    launch_env = (root / "smoke_launch_env.ps1").read_text(encoding="utf-8")
+    assert '$env:QUBE_BOOTSTRAP_MOCK_DOWNLOAD = "1"' not in launch_env
+    assert "Remove-Item Env:QUBE_BOOTSTRAP_MOCK_DOWNLOAD" not in launch_env

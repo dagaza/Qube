@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.41] - 2026-08-29
+
+### Fixed
+- **Release CI (Windows CUDA):** stop inheriting `QUBE_BOOTSTRAP_MOCK_DOWNLOAD=1` in `smoke_launch_env.ps1`; the 1.3.40 refactor caused CUDA dist smoke (`--winget-validation`) to exit with code 2 on CI while 1.3.39 passed with CLI-only mock bootstrap. Dist smoke now dumps WinGet validation artifacts on failure.
+- **Release CI (Linux CUDA):** replace `rg` with `grep` in `verify_linux_cuda_bundle.sh` (GitHub-hosted runners may not have ripgrep installed).
+
 ## [1.3.40] - 2026-08-29
 
 ### Fixed

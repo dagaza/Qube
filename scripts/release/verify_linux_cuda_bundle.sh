@@ -56,14 +56,14 @@ if [[ -z "$llama_lib" ]]; then
 fi
 
 if command -v ldd >/dev/null 2>&1; then
-  missing="$(LD_LIBRARY_PATH="$LIB_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" ldd "$llama_lib" 2>/dev/null | rg "not found" || true)"
-  unexpected="$(printf '%s\n' "$missing" | rg "not found" | rg -v "libcuda\.so\.1" || true)"
+  missing="$(LD_LIBRARY_PATH="$LIB_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" ldd "$llama_lib" 2>/dev/null | grep "not found" || true)"
+  unexpected="$(printf '%s\n' "$missing" | grep "not found" | grep -v "libcuda\.so\.1" || true)"
   if [[ -n "$unexpected" ]]; then
     echo "Unexpected unresolved dependencies for $llama_lib:" >&2
     printf '%s\n' "$unexpected" >&2
     exit 1
   fi
-  if ! printf '%s\n' "$missing" | rg -q "libcuda\.so\.1"; then
+  if ! printf '%s\n' "$missing" | grep -q "libcuda\.so\.1"; then
     echo "WARNING: ldd did not report libcuda.so.1 (driver library is expected on end-user systems)" >&2
   fi
 fi
