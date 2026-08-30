@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.43] - 2026-08-30
+
+### Fixed
+- **Bootstrap (Windows CUDA fresh install):** the 20-minute post-install WinGet grace period no longer marks first-run bootstrap as completed or skips the model-selection consent dialog. Grace still defers CUDA/`llama_cpp` loads for package validation; only explicit `--winget-validation` / `QUBE_WINGET_VALIDATION=1` runs the shell-bootstrap CI shortcut. Stale `qube.bootstrap.completed=true` with no models on disk is reset automatically on next launch.
+- **Bootstrap splash chrome (Windows):** remove the yellow focus stroke on minimise/close controls (`outline: none`, no keyboard focus on chrome buttons).
+- **Bootstrap splash close during phased boot:** closing with **X** while core services are starting no longer blocks the GUI thread on `native_llama_engine.stop_engine()` (30 s wait); splash hides immediately and the existing hard-exit failsafe takes over.
+- **Missing bootstrap models at startup:** stricter Balanced search preset presence (complete Qube preset dir before legacy cache heuristics) so partial leftovers no longer skip re-download; splash shows “re-downloading missing models” and retries search preset download when embedder load fails after a manual delete. Interrupted Hugging Face snapshot downloads (``.incomplete`` blobs under ``models/search``) are detected, cleared, and re-fetched instead of hanging on “Preparing search models (Balanced)”.
+- **Balanced search preset bootstrap download:** stream ONNX and tokenizer assets via ``_download_hf_hub_file`` (the old ``_download_gguf`` path rejected non-``.gguf`` files, so Jina never downloaded into ``presets/balanced/``).
+- **Missing saved native model on startup:** when **Load on startup** points at a deleted or incomplete GGUF, clear the stale saved path, show an in-app notification, and offer **Re-download** in Model Manager when Hugging Face provenance is known.
+- **Windows uninstall user data:** interactive uninstall optionally removes both `%LOCALAPPDATA%\Qube` and `%USERPROFILE%\.qube` (default **No** — keep data for reinstall); full-data wipe helpers include both paths on Windows.
+
 ## [1.3.42] - 2026-08-30
 
 ### Fixed

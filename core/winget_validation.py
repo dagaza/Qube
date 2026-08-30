@@ -68,6 +68,11 @@ def _install_grace_active() -> bool:
     return False
 
 
+def is_winget_smoke_validation() -> bool:
+    """True for explicit CI / sandbox runs (--winget-validation or QUBE_WINGET_VALIDATION=1)."""
+    return _explicit_env_requested() is True
+
+
 def is_winget_validation_mode() -> bool:
     """True when llama.cpp / CUDA backend loads must be deferred for package validation."""
     explicit = _explicit_env_requested()
@@ -80,7 +85,7 @@ def configure_winget_validation_mode(args: Any | None = None) -> None:
     """Sync ``QUBE_WINGET_VALIDATION`` from ``--winget-validation`` CLI flag."""
     if args is not None and getattr(args, "winget_validation", False):
         os.environ["QUBE_WINGET_VALIDATION"] = "1"
-    if is_winget_validation_mode():
+    if is_winget_smoke_validation():
         record_boot_state("validation_mode_configured")
 
 
@@ -88,9 +93,9 @@ def apply_winget_validation_bootstrap_shortcut() -> bool:
     """
     Skip first-run consent and use mock bootstrap downloads.
 
-    Returns True when the shortcut was applied (fresh install under validation mode).
+    Returns True when the shortcut was applied (explicit WinGet smoke / CI only).
     """
-    if not is_winget_validation_mode():
+    if not is_winget_smoke_validation():
         return False
     from core.bootstrap_selection import is_bootstrap_completed, save_bootstrap_selection
 
@@ -144,8 +149,8 @@ def boot_trace_path() -> Path:
 
 
 def record_boot_state(state: str, **extra: Any) -> None:
-    """Write diagnostic boot progress for CI when validation mode is active."""
-    if not is_winget_validation_mode():
+    """Write diagnostic boot progress for CI when explicit smoke validation is active."""
+    if not is_winget_smoke_validation():
         return
     payload: dict[str, Any] = {
         "state": state,
@@ -170,11 +175,11 @@ def log_validation_startup_summary(
     needs_consent: bool,
 ) -> None:
     """Log and persist post-shortcut bootstrap/consent decisions for CI diagnosis."""
-    if not is_winget_validation_mode():
+    if not is_winget_smoke_validation():
         return
     from core.bootstrap_selection import is_bootstrap_completed
 
-    validation_mode = is_winget_validation_mode()
+    validation_mode = is_winget_smoke_validation()
     bootstrap_completed = is_bootstrap_completed()
     logger.info(
         "Validation smoke startup: validation=%s shortcut=%s "
@@ -218,7 +223,7 @@ def write_smoke_result(*, boot_complete: bool = True) -> None:
 
 def write_smoke_failure(*, stage: str, error: str) -> None:
     """Record a validation-mode boot failure for CI (non-modal path)."""
-    if not is_winget_validation_mode():
+    if not is_winget_smoke_validation():
         return
     from core.llama_cpp_import import llama_import_was_attempted
 

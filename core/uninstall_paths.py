@@ -40,8 +40,18 @@ def linux_desktop_integration_paths() -> list[Path]:
 
 
 def user_data_paths() -> list[Path]:
-    """Writable Qube data (models, DB, logs, settings)."""
-    return [user_data_root()]
+    """Writable Qube data (models, DB, logs, settings).
+
+    On Windows, models and the DB live under ``%LOCALAPPDATA%\\Qube`` while
+    ``settings.json`` and several support files live under ``%USERPROFILE%\\.qube``.
+    Both are included so a full data wipe removes everything.
+    """
+    paths = [user_data_root()]
+    if sys.platform == "win32":
+        dot_qube = Path.home() / ".qube"
+        if dot_qube not in paths:
+            paths.append(dot_qube)
+    return paths
 
 
 def support_file_paths() -> list[Path]:

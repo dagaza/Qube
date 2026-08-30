@@ -258,11 +258,12 @@ class NativeLlamaEngine(QThread):
         self._last_retrieval_context: str = ""
         self._inference_transparency_native: Optional[Dict[str, Any]] = None
 
-    def stop_engine(self) -> None:
-        """Request shutdown and wait for the thread to finish."""
+    def stop_engine(self, *, wait_ms: int = 30_000) -> None:
+        """Request shutdown and optionally wait for the thread to finish."""
         self._stop.set()
         self._stamp_enqueue_meta({"op": "shutdown"}, priority=EnginePriority.control)
-        self.wait(30_000)
+        if wait_ms > 0:
+            self.wait(wait_ms)
 
     def request_cancel_generation(self) -> None:
         self._cancel_generation = True

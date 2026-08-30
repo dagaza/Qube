@@ -75,12 +75,12 @@ Requires the GitHub Release to include all three Windows `.exe` assets.
 
 Microsoft's installation validation runs a silent install and launches the app on a Defender-enabled VM. If step **08. Installation Validation** fails with **`Validation-Defender-Error`** while **07. Installers Scan** passes, Defender flagged behavior during startup — not a manifest typo.
 
-For **`dagaza.Qube.CUDA`**, this usually means CUDA backend DLLs (`ggml-cuda.dll`, bundled NVIDIA runtime libs) were loaded into the process during validation. Qube blocks `llama_cpp` import while **WinGet validation mode** is active:
+For **`dagaza.Qube.CUDA`**, this usually means CUDA backend DLLs (`ggml-cuda.dll`, bundled NVIDIA runtime libs) were loaded into the process during validation. Qube blocks `llama_cpp` import while **CUDA deferral mode** is active:
 
-- **`QUBE_WINGET_VALIDATION=1`** or **`--winget-validation`** (CI smoke tests)
-- **20-minute post-install grace** on packaged CUDA builds (`.qube-install-ts` written by the Inno installer)
+- **`QUBE_WINGET_VALIDATION=1`** or **`--winget-validation`** (CI smoke tests) — also skips first-run bootstrap consent and uses a shell install for smoke verification
+- **20-minute post-install grace** on packaged CUDA builds (`.qube-install-ts` written by the Inno installer) — defers CUDA/native loads only; **first-run bootstrap consent still appears**
 
-In validation mode the app skips native autoload, blocks `get_llama_class()`, defers GPU/NVML probes, and auto-completes first-run bootstrap with a shell install (no model downloads).
+In explicit smoke validation mode the app skips native autoload, blocks `get_llama_class()`, defers GPU/NVML probes, and auto-completes first-run bootstrap with a shell install (no model downloads).
 
 Release CI runs `scripts/release/smoke_installed_cuda.ps1` after building the CUDA installer to verify the process stays up without importing `llama_cpp`.
 

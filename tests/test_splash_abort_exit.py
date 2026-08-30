@@ -112,10 +112,25 @@ def test_splash_abort_signals_partial_workers() -> None:
             self.window = _Window()
 
     qube = _PartialQube()
-    StartupSplashController._signal_partial_qube_stop(qube)
+    StartupSplashController._signal_partial_qube_stop(qube, blocking=True)
 
     qube.window.tray_controller.hide_tray.assert_called_once()
-    qube.native_llama_engine.stop_engine.assert_called_once()
+    qube.native_llama_engine.stop_engine.assert_called_once_with(wait_ms=30_000)
+
+
+def test_splash_abort_nonblocking_skips_native_engine_wait() -> None:
+    class _Engine:
+        def __init__(self) -> None:
+            self.stop_engine = MagicMock()
+
+    class _PartialQube:
+        def __init__(self) -> None:
+            self.native_llama_engine = _Engine()
+
+    qube = _PartialQube()
+    StartupSplashController._signal_partial_qube_stop(qube, blocking=False)
+
+    qube.native_llama_engine.stop_engine.assert_called_once_with(wait_ms=0)
 
 
 def test_mark_startup_exit_requested() -> None:

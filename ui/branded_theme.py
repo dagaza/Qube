@@ -200,10 +200,16 @@ def splash_overlay_chrome_button_qss(object_name: str) -> str:
                 background: {SPLASH_CHROME_BUTTON_BG};
                 border: 1px solid {SPLASH_CHROME_BUTTON_BORDER};
                 border-radius: 6px;
+                outline: none;
             }}
             QPushButton#{object_name}:hover {{
                 background: {SPLASH_CHROME_BUTTON_BG_HOVER};
                 border-color: {SPLASH_CHROME_BUTTON_BORDER_HOVER};
+            }}
+            QPushButton#{object_name}:focus {{
+                background: {SPLASH_CHROME_BUTTON_BG};
+                border: 1px solid {SPLASH_CHROME_BUTTON_BORDER};
+                outline: none;
             }}
             """
 

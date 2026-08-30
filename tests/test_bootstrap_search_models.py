@@ -10,19 +10,24 @@ from core.bootstrap_search_models import (
     active_search_preset_satisfied,
     all_search_presets_satisfied,
     balanced_search_preset_present,
+    clear_search_preset_incomplete_cache,
     embedding_preset_cached_on_disk,
     fastembed_model_cache_markers,
     format_search_preset_download_failure,
+    search_preset_has_incomplete_artifacts,
 )
 from core.embedding_modes import DEFAULT_MODE
 
 
-def test_balanced_search_preset_present_uses_disk_cache():
+def test_balanced_search_preset_present_requires_qube_preset_dir():
     from core.embedding_models import clear_embedding_availability_cache
 
     clear_embedding_availability_cache()
     with patch(
-        "core.bootstrap_search_models.embedding_preset_cached_on_disk",
+        "core.bootstrap_search_download.qube_preset_complete",
+        return_value=False,
+    ), patch(
+        "core.bootstrap_search_models.search_preset_has_incomplete_artifacts",
         return_value=False,
     ), patch(
         "core.embedding_models.gguf_override_available",
@@ -30,13 +35,27 @@ def test_balanced_search_preset_present_uses_disk_cache():
     ):
         assert balanced_search_preset_present() is False
     with patch(
-        "core.bootstrap_search_models.embedding_preset_cached_on_disk",
+        "core.bootstrap_search_download.qube_preset_complete",
         return_value=True,
+    ), patch(
+        "core.bootstrap_search_models.search_preset_has_incomplete_artifacts",
+        return_value=False,
     ), patch(
         "core.embedding_models.gguf_override_available",
         return_value=False,
     ):
         assert balanced_search_preset_present() is True
+    with patch(
+        "core.bootstrap_search_download.qube_preset_complete",
+        return_value=False,
+    ), patch(
+        "core.bootstrap_search_models.search_preset_has_incomplete_artifacts",
+        return_value=True,
+    ), patch(
+        "core.embedding_models.gguf_override_available",
+        return_value=False,
+    ):
+        assert balanced_search_preset_present() is False
 
 
 def test_format_search_preset_download_failure_mode_switch():
@@ -65,8 +84,46 @@ def test_embedding_preset_cached_on_disk_checks_qube_preset_dir():
         assert embedding_preset_cached_on_disk("balanced") is True
 
 
+def test_search_preset_has_incomplete_artifacts_detects_hf_blob(tmp_path: Path):
+    cache = tmp_path / "search"
+    snapshot = cache / "models--xenova--jina-embeddings-v2-small-en" / "blobs"
+    snapshot.mkdir(parents=True)
+    (snapshot / "abc.incomplete").write_text("partial", encoding="utf-8")
+    with patch(
+        "core.bootstrap_search_models.search_models_cache_dir",
+        return_value=cache,
+    ), patch("core.bootstrap_search_download.qube_preset_complete", return_value=False), patch(
+        "core.bootstrap_search_download.qube_preset_dir",
+        return_value=cache / "presets" / "balanced",
+    ):
+        assert search_preset_has_incomplete_artifacts("balanced") is True
+
+
+def test_clear_search_preset_incomplete_cache_removes_snapshot(tmp_path: Path):
+    cache = tmp_path / "search"
+    snapshot = cache / "models--xenova--jina-embeddings-v2-small-en"
+    blob_dir = snapshot / "blobs"
+    blob_dir.mkdir(parents=True)
+    (blob_dir / "abc.incomplete").write_text("partial", encoding="utf-8")
+    with patch(
+        "core.bootstrap_search_models.search_models_cache_dir",
+        return_value=cache,
+    ), patch("core.bootstrap_search_download.qube_preset_complete", return_value=False), patch(
+        "core.bootstrap_search_download.qube_preset_dir",
+        return_value=cache / "presets" / "balanced",
+    ):
+        assert clear_search_preset_incomplete_cache("balanced") is True
+        assert not snapshot.exists()
+
+
 def test_embedding_preset_cached_on_disk_matches_qdrant_fastembed_layout():
     with patch(
+        "core.bootstrap_search_models.search_preset_has_incomplete_artifacts",
+        return_value=False,
+    ), patch(
+        "core.bootstrap_search_download.qube_preset_complete",
+        return_value=False,
+    ), patch(
         "core.bootstrap_search_models.search_models_cache_dir",
         return_value=Path("/tmp/qube-search-cache"),
     ), patch("pathlib.Path.is_dir", return_value=True), patch(

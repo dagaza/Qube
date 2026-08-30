@@ -43,9 +43,10 @@ from core.bootstrap_download import (
     download_bootstrap_models,
     format_download_detail,
     model_is_present,
+    selected_models_needing_download,
     simulate_bootstrap_downloads,
 )
-from core.bootstrap_selection import effective_bootstrap_selection, save_bootstrap_selection
+from core.bootstrap_selection import effective_bootstrap_selection, is_bootstrap_completed, save_bootstrap_selection
 from core.platform.window_activation import (
     activate_toplevel_window,
     center_widget_on_screen,
@@ -69,6 +70,7 @@ _FADE_IN_MS = 260
 _MIN_VISIBLE_MS = 380
 _BOOTSTRAP_FALLBACK_MS = _FADE_IN_MS + 200
 _EMBEDDER_POLL_MS = 40
+_EMBEDDER_LOAD_TIMEOUT_SEC = 180.0
 _SPINNER_INTERVAL_MS = 16
 _DOWNLOAD_DONE_PERCENT = 10
 _EMBEDDER_DONE_PERCENT = 22
@@ -213,6 +215,8 @@ class _StartupSplashShell(QWidget):
         btn = QPushButton(self)
         btn.setObjectName(object_name)
         btn.setProperty("class", "WindowControlButton")
+        btn.setFlat(True)
+        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn.setFixedSize(_SPLASH_MINIMIZE_BTN_SIZE, _SPLASH_MINIMIZE_BTN_SIZE)
         btn.setIcon(qta.icon(icon_name, color=SPLASH_CHROME_ICON))
         btn.setIconSize(QSize(12, 12))
@@ -331,6 +335,8 @@ class StartupSplashController(QObject):
         self._download_thread: threading.Thread | None = None
         self._embedder_outcome: tuple[bool, object] | None = None
         self._download_outcome: tuple[bool, object] | None = None
+        self._embedder_repair_attempted = False
+        self._embedder_started_mono: float | None = None
         self._phased_runner: _PhasedQubeRunner | None = None
         self._embedder_poll = QTimer(self)
         self._embedder_poll.setInterval(_EMBEDDER_POLL_MS)
@@ -385,9 +391,14 @@ class StartupSplashController(QObject):
         self._bootstrap_running = False
         self._embedder_poll.stop()
         self._stop_spinner()
+        if self._shell is not None:
+            self._shell.hide()
         if self._phased_runner is not None:
             self._phased_runner.cancel()
-            self._signal_partial_qube_stop(self._phased_runner.partial_qube())
+            self._signal_partial_qube_stop(
+                self._phased_runner.partial_qube(),
+                blocking=False,
+            )
         app = QApplication.instance()
         if app is not None:
             guard = getattr(app, "_single_instance_guard", None)
@@ -400,7 +411,7 @@ class StartupSplashController(QObject):
         arm_force_process_exit()
 
     @staticmethod
-    def _signal_partial_qube_stop(qube: object | None) -> None:
+    def _signal_partial_qube_stop(qube: object | None, *, blocking: bool = True) -> None:
         """Best-effort cooperative stop; hard ``os._exit`` is the reliability backstop."""
         if qube is None:
             return
@@ -427,6 +438,12 @@ class StartupSplashController(QObject):
             worker = getattr(qube, attr, None)
             if worker is None:
                 continue
+            if attr == "native_llama_engine" and hasattr(worker, "stop_engine"):
+                try:
+                    worker.stop_engine(wait_ms=30_000 if blocking else 0)
+                except TypeError:
+                    worker.stop_engine()
+                continue
             for method_name in (
                 "request_graceful_stop",
                 "stop_engine",
@@ -436,6 +453,9 @@ class StartupSplashController(QObject):
             ):
                 method = getattr(worker, method_name, None)
                 if not callable(method):
+                    continue
+                if not blocking and method_name in {"stop", "shutdown"}:
+                    # e.g. DeepResearchWorker.stop() waits on the GUI thread.
                     continue
                 try:
                     method()
@@ -622,14 +642,13 @@ class StartupSplashController(QObject):
         QTimer.singleShot(0, self._begin_model_downloads)
 
     def _models_needing_download(self) -> set[BootstrapModelId]:
-        return {mid for mid in self._selected_models if not model_is_present(mid)}
+        return selected_models_needing_download(self._selected_models)
 
     def _begin_model_downloads(self) -> None:
         if self._exit_requested or self._bootstrap_running:
             return
         self._bootstrap_running = True
         self._set_logo_rotating(True)
-        self._view.set_active_step(0)
         self._view.set_progress_percent(0)
         if self._mock_downloads:
             pending = set(self._selected_models)
@@ -652,6 +671,12 @@ class StartupSplashController(QObject):
         if not pending:
             QTimer.singleShot(0, self._begin_embedder_load)
             return
+        if is_bootstrap_completed():
+            self._view.set_download_detail(
+                "Some selected models are missing — re-downloading…"
+            )
+        else:
+            self._view.set_download_detail("Downloading selected models…")
         self._download_outcome = None
         self._download_thread = threading.Thread(
             target=self._download_thread_main,
@@ -724,6 +749,42 @@ class StartupSplashController(QObject):
             return True
         return gguf_override_available()
 
+    def _splash_search_preset_ready(self) -> bool:
+        from core.bootstrap_search_download import qube_preset_complete
+        from core.bootstrap_search_models import search_preset_has_incomplete_artifacts
+        from core.embedding_modes import DEFAULT_MODE
+
+        if search_preset_has_incomplete_artifacts(DEFAULT_MODE):
+            return False
+        return qube_preset_complete(DEFAULT_MODE)
+
+    def _attempt_search_preset_repair_download(self, *, force: bool = False) -> bool:
+        """Re-download Balanced search preset after missing, partial, or timed-out load."""
+        if self._embedder_repair_attempted or self._exit_requested:
+            return False
+        from core.bootstrap_manifest import BootstrapModelId
+        from core.bootstrap_search_models import clear_search_preset_incomplete_cache
+        from core.embedding_modes import DEFAULT_MODE
+
+        if BootstrapModelId.SEARCH_PRESET_BALANCED not in self._selected_models:
+            return False
+        if self._mock_downloads:
+            return False
+        if not force and self._splash_search_preset_ready():
+            return False
+        self._embedder_repair_attempted = True
+        self._bootstrap_running = False
+        self._embedder_started_mono = None
+        clear_search_preset_incomplete_cache(DEFAULT_MODE)
+        logger.warning(
+            "Balanced search preset incomplete or load failed; starting repair download."
+        )
+        self._view.set_download_detail(
+            "Search models missing or incomplete — re-downloading…"
+        )
+        QTimer.singleShot(0, self._begin_model_downloads)
+        return True
+
     def _begin_embedder_load(self) -> None:
         if self._exit_requested:
             return
@@ -736,12 +797,16 @@ class StartupSplashController(QObject):
             self._view.set_progress_percent(_DOWNLOAD_DONE_PERCENT)
             QTimer.singleShot(0, lambda: self._finish_bootstrap(None))
             return
+        if not self._mock_downloads and not self._splash_search_preset_ready():
+            if self._attempt_search_preset_repair_download(force=True):
+                return
         if is_winget_validation_mode():
             record_boot_state("embedder_start")
         self._set_logo_rotating(True)
         self._view.set_download_detail("Preparing search models (Balanced)…")
         self._view.set_progress_percent(_DOWNLOAD_DONE_PERCENT)
         self._embedder_outcome = None
+        self._embedder_started_mono = time.monotonic()
         self._embedder_thread = threading.Thread(
             target=self._embedder_thread_main,
             name="QubeSplashEmbedder",
@@ -754,9 +819,18 @@ class StartupSplashController(QObject):
     def _embedder_thread_main(self) -> None:
         try:
             embedder = self._load_embedder_worker()
-            self._embedder_outcome = (True, embedder)
+            if embedder is None and self._splash_should_load_embedder():
+                self._embedder_outcome = (
+                    False,
+                    RuntimeError("Search model load failed"),
+                )
+            else:
+                self._embedder_outcome = (True, embedder)
         except Exception as exc:
             self._embedder_outcome = (False, exc)
+
+    def _attempt_embedder_repair_download(self) -> bool:
+        return self._attempt_search_preset_repair_download(force=True)
 
     def _poll_background_threads(self) -> None:
         if self._exit_requested:
@@ -792,11 +866,31 @@ class StartupSplashController(QObject):
                 record_boot_state(
                     "mock_downloads_done" if self._mock_downloads else "downloads_done"
                 )
+            if (
+                not self._mock_downloads
+                and self._splash_should_load_embedder()
+                and not self._splash_search_preset_ready()
+                and self._attempt_search_preset_repair_download(force=True)
+            ):
+                return
             QTimer.singleShot(0, self._begin_embedder_load)
             return
 
         embedder_thread = self._embedder_thread
         if embedder_thread is not None and embedder_thread.is_alive():
+            started = self._embedder_started_mono
+            if (
+                started is not None
+                and (time.monotonic() - started) > _EMBEDDER_LOAD_TIMEOUT_SEC
+            ):
+                logger.error(
+                    "Embedder load timed out after %.0fs; retrying search preset download.",
+                    _EMBEDDER_LOAD_TIMEOUT_SEC,
+                )
+                self._embedder_thread = None
+                self._embedder_outcome = None
+                if self._attempt_search_preset_repair_download(force=True):
+                    return
             return
         if embedder_thread is None:
             return
@@ -809,11 +903,20 @@ class StartupSplashController(QObject):
             return
         ok, payload = outcome
         if not ok:
+            if self._attempt_embedder_repair_download():
+                self._embedder_thread = None
+                self._embedder_outcome = None
+                return
             self._bootstrap_running = False
             logger.error("Embedder init failed: %s", payload)
             if isinstance(payload, BaseException):
                 raise payload
             raise RuntimeError(f"Embedder init failed: {payload!r}")
+        if payload is None and self._splash_should_load_embedder():
+            if self._attempt_embedder_repair_download():
+                self._embedder_thread = None
+                self._embedder_outcome = None
+                return
         QTimer.singleShot(0, lambda: self._finish_bootstrap(payload))
 
     def _finish_bootstrap(self, embedder: object) -> None:

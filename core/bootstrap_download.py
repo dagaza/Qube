@@ -192,6 +192,13 @@ def resolve_model_destination(model_id: BootstrapModelId) -> Path | None:
     return None
 
 
+def selected_models_needing_download(
+    selected: set[BootstrapModelId],
+) -> set[BootstrapModelId]:
+    """Return bootstrap catalogue entries that are selected but absent on disk."""
+    return {mid for mid in selected if not model_is_present(mid)}
+
+
 def model_is_present(model_id: BootstrapModelId) -> bool:
     if model_id == BootstrapModelId.WHISPER_SMALL:
         from core.stt_models import (
@@ -274,7 +281,15 @@ def _download_url_streaming(
     on_progress(step_label, filename, 100, source_display)
 
 
-def _download_gguf(
+def _sanitize_hub_repo_file_path(name: str) -> str:
+    """Repo-relative Hub path for GGUF, ONNX, tokenizer, and other preset assets."""
+    n = (name or "").strip().strip("/")
+    if not n or ".." in n or n.startswith("/"):
+        raise ValueError("Invalid file path.")
+    return n
+
+
+def _download_hf_hub_file(
     *,
     repo_id: str,
     filename: str,
@@ -282,17 +297,20 @@ def _download_gguf(
     on_progress: DownloadProgressCallback,
     step_label: str,
     source_display: str,
+    progress_label: str | None = None,
 ) -> None:
+    """Stream one file from a Hugging Face model repo into ``dest_path``."""
     dest_path.parent.mkdir(parents=True, exist_ok=True)
+    display_name = progress_label or dest_path.name
     if dest_path.is_file():
-        on_progress(step_label, dest_path.name, 100, source_display)
+        on_progress(step_label, display_name, 100, source_display)
         return
 
     repo = _sanitize_repo_id(repo_id)
-    fname = _sanitize_repo_file_path(filename)
+    fname = _sanitize_hub_repo_file_path(filename)
     tmp_path = dest_path.with_suffix(dest_path.suffix + ".part")
     url = hf_hub_url(repo_id=repo, filename=fname, repo_type="model")
-    on_progress(step_label, dest_path.name, 0, source_display)
+    on_progress(step_label, display_name, 0, source_display)
 
     with requests.get(url, stream=True, timeout=(30, 300)) as resp:
         resp.raise_for_status()
@@ -308,10 +326,30 @@ def _download_gguf(
                     pct = int(done * 100 / total)
                 else:
                     pct = min(99, done // (1024 * 1024))
-                on_progress(step_label, dest_path.name, pct, source_display)
+                on_progress(step_label, display_name, pct, source_display)
 
     os.replace(tmp_path, dest_path)
-    on_progress(step_label, dest_path.name, 100, source_display)
+    on_progress(step_label, display_name, 100, source_display)
+
+
+def _download_gguf(
+    *,
+    repo_id: str,
+    filename: str,
+    dest_path: Path,
+    on_progress: DownloadProgressCallback,
+    step_label: str,
+    source_display: str,
+) -> None:
+    _sanitize_repo_file_path(filename)
+    _download_hf_hub_file(
+        repo_id=repo_id,
+        filename=filename,
+        dest_path=dest_path,
+        on_progress=on_progress,
+        step_label=step_label,
+        source_display=source_display,
+    )
 
 
 def _download_whisper(on_progress: DownloadProgressCallback, spec) -> None:

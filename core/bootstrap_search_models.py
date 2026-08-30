@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 import os
+import shutil
 from pathlib import Path
 
 from core.bootstrap_manifest import format_byte_size
 from core.embedding_modes import DEFAULT_MODE, get_mode_spec, normalize_mode_id
 from core.paths import configure_user_model_paths, search_models_cache_dir
+
+logger = logging.getLogger("Qube.Bootstrap.SearchModels")
 
 _MB = 1024 * 1024
 
@@ -43,12 +47,90 @@ def _path_matches_fastembed_markers(path_text: str, markers: tuple[str, ...]) ->
     return any(marker.lower() in lower for marker in markers)
 
 
+def search_preset_local_cache_roots(mode_id: str | None = None) -> list[Path]:
+    """Directories that may hold fastembed / Hugging Face snapshot caches for a preset."""
+    configure_user_model_paths()
+    normalize_mode_id(mode_id)
+    roots: list[Path] = [search_models_cache_dir()]
+    fastembed_env = os.environ.get("FASTEMBED_CACHE_PATH", "").strip()
+    if fastembed_env:
+        env_path = Path(fastembed_env)
+        if env_path not in roots:
+            roots.append(env_path)
+    legacy = Path.home() / ".cache" / "fastembed"
+    if legacy not in roots:
+        roots.append(legacy)
+    xdg_cache = os.environ.get("XDG_CACHE_HOME", "").strip()
+    if xdg_cache:
+        xdg_path = Path(xdg_cache) / "fastembed"
+        if xdg_path not in roots:
+            roots.append(xdg_path)
+    return roots
+
+
+def _snapshot_matches_mode(snapshot_dir: Path, markers: tuple[str, ...]) -> bool:
+    return snapshot_dir.is_dir() and _path_matches_fastembed_markers(snapshot_dir.name, markers)
+
+
+def search_preset_has_incomplete_artifacts(mode_id: str | None = None) -> bool:
+    """True when a preset download was interrupted (``.incomplete`` blobs or partial Qube dir)."""
+    from core.bootstrap_search_download import qube_preset_complete, qube_preset_dir
+
+    mode = normalize_mode_id(mode_id)
+    if qube_preset_complete(mode):
+        return False
+    markers = fastembed_model_cache_markers(get_mode_spec(mode).fastembed_model)
+    preset_base = qube_preset_dir(mode)
+    if preset_base.is_dir():
+        return True
+    for root in search_preset_local_cache_roots(mode):
+        if not root.is_dir():
+            continue
+        for child in root.glob("models--*"):
+            if not _snapshot_matches_mode(child, markers):
+                continue
+            if any(child.rglob("*.incomplete")):
+                return True
+            if not any(child.rglob("*.onnx")):
+                return True
+    return False
+
+
+def clear_search_preset_incomplete_cache(mode_id: str | None = None) -> bool:
+    """Remove partial Qube preset dirs and stale Hugging Face snapshot blobs."""
+    from core.bootstrap_search_download import qube_preset_complete, qube_preset_dir
+
+    mode = normalize_mode_id(mode_id)
+    changed = False
+    markers = fastembed_model_cache_markers(get_mode_spec(mode).fastembed_model)
+    preset_base = qube_preset_dir(mode)
+    if preset_base.is_dir() and not qube_preset_complete(mode):
+        shutil.rmtree(preset_base, ignore_errors=True)
+        changed = True
+    for root in search_preset_local_cache_roots(mode):
+        if not root.is_dir():
+            continue
+        for child in list(root.glob("models--*")):
+            if not _snapshot_matches_mode(child, markers):
+                continue
+            if qube_preset_complete(mode) and not any(child.rglob("*.incomplete")):
+                continue
+            if any(child.rglob("*.incomplete")) or not any(child.rglob("*.onnx")):
+                shutil.rmtree(child, ignore_errors=True)
+                changed = True
+    if changed:
+        logger.warning("Cleared incomplete search preset cache for mode=%s", mode)
+    return changed
+
+
 def embedding_preset_cached_on_disk(mode_id: str | None = None) -> bool:
     """True when fastembed ONNX assets for a mode appear present locally (no load)."""
     configure_user_model_paths()
     mode = normalize_mode_id(mode_id)
     from core.bootstrap_search_download import qube_preset_complete
 
+    if search_preset_has_incomplete_artifacts(mode):
+        return False
     if qube_preset_complete(mode):
         return True
     model_name = get_mode_spec(mode).fastembed_model
@@ -104,12 +186,15 @@ def embedding_preset_cached_on_disk(mode_id: str | None = None) -> bool:
 
 
 def balanced_search_preset_present() -> bool:
-    """True when the default Balanced search preset is cached or a GGUF override is active."""
+    """True when the Balanced preset is fully installed under the Qube preset layout."""
+    from core.bootstrap_search_download import qube_preset_complete
     from core.embedding_models import gguf_override_available
 
     if gguf_override_available():
         return True
-    return embedding_preset_cached_on_disk(DEFAULT_MODE)
+    if search_preset_has_incomplete_artifacts(DEFAULT_MODE):
+        return False
+    return qube_preset_complete(DEFAULT_MODE)
 
 
 def active_search_preset_satisfied(*, probe: bool = False) -> bool:

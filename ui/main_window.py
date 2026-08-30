@@ -2760,6 +2760,43 @@ class MainWindow(QMainWindow):
             self.nav_models.setChecked(True)
             self._route_view(4, self.nav_models)
 
+    def handle_startup_autoload_outcome(self, outcome) -> None:
+        """Notify when startup autoload could not find the saved native .gguf."""
+        from core.native_model_autoload import (
+            NativeModelRefreshOutcome,
+            missing_autoload_model_notification,
+        )
+
+        if not isinstance(outcome, NativeModelRefreshOutcome) or not outcome.notify_user:
+            return
+        if not outcome.missing_display_name:
+            return
+        self.emit_notification(
+            missing_autoload_model_notification(
+                display_name=outcome.missing_display_name,
+                redownload_repo_id=outcome.redownload_repo_id,
+                redownload_filename=outcome.redownload_filename,
+                missing_shards=outcome.missing_shards,
+            )
+        )
+        if hasattr(self, "refresh_toolbar_native_model_dropdown"):
+            self.refresh_toolbar_native_model_dropdown()
+        sv = getattr(self, "_settings_view", None)
+        if sv is not None and hasattr(sv, "sync_active_native_model_label"):
+            sv.sync_active_native_model_label()
+
+    def _open_model_manager_for_redownload(self, repo_id: str, filename: str) -> None:
+        self._open_model_manager_page()
+
+        def _start() -> None:
+            view = self.ensure_model_manager_view()
+            if hasattr(view, "request_hub_redownload"):
+                view.request_hub_redownload(repo_id, filename)
+
+        from PyQt6.QtCore import QTimer
+
+        QTimer.singleShot(200, _start)
+
     def _open_local_model_picker_from_toolbar(self) -> None:
         """Expand the tools pane and open the toolbar Select AI Model menu."""
         self._restore_workspace_from_tray()
@@ -4381,6 +4418,15 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, _jump)
         elif action_id == "open_models":
             self._open_model_manager_page()
+        elif action_id.startswith("open_models_redownload"):
+            from core.native_model_autoload import decode_redownload_action_id
+
+            decoded = decode_redownload_action_id(action_id)
+            if decoded is None:
+                self._open_model_manager_page()
+            else:
+                repo_id, filename = decoded
+                self._open_model_manager_for_redownload(repo_id, filename)
         elif action_id == "open_local_model_picker":
             self._open_local_model_picker_from_toolbar()
         elif action_id == "open_library":

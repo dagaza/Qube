@@ -168,6 +168,7 @@ class Qube:
         self.reindex_worker = None
         self._reindex_revert_embedding_mode: str | None = None
         self._reindex_target_mode: str | None = None
+        self._startup_autoload_outcome = None
 
     def _boot_core_workers(self, tick: Callable[[str], None]) -> None:
         from core.bootstrap_manifest import BootstrapModelId
@@ -295,7 +296,9 @@ class Qube:
             and bool(get_internal_model_path())
         ):
             tick("Loading language model…")
-            self.llm_worker.refresh_native_model_from_settings()
+            self._startup_autoload_outcome = (
+                self.llm_worker.refresh_native_model_from_settings(autoload=True)
+            )
 
     def _boot_runtime(self, tick: Callable[[str], None]) -> None:
         from core.winget_validation import is_winget_validation_mode
@@ -1619,6 +1622,7 @@ def run_application(
     from core.winget_validation import (
         apply_winget_validation_bootstrap_shortcut,
         configure_winget_validation_mode,
+        is_winget_smoke_validation,
         is_winget_validation_mode,
         log_validation_startup_summary,
         record_boot_state,
@@ -1830,7 +1834,12 @@ def run_application(
                 qube.window._setup_trace_diff_debug_window()
             qube.window.schedule_scenario_replay()
         qube.show()
-        if is_winget_validation_mode():
+        outcome = getattr(qube, "_startup_autoload_outcome", None)
+        if outcome is not None and hasattr(qube.window, "handle_startup_autoload_outcome"):
+            from PyQt6.QtCore import QTimer
+
+            QTimer.singleShot(0, lambda: qube.window.handle_startup_autoload_outcome(outcome))
+        if is_winget_smoke_validation():
             write_smoke_result(boot_complete=True)
         from PyQt6.QtCore import QTimer
 
@@ -1838,7 +1847,7 @@ def run_application(
         QTimer.singleShot(0, qube.window.schedule_auto_state_backup)
 
     # Keep a strong reference; otherwise StartupSplashController is GC'd and startup timers never fire.
-    if is_winget_validation_mode():
+    if is_winget_smoke_validation():
         record_boot_state(
             "before_splash_bootstrap",
             mock_downloads=bool(args.mock_bootstrap_download),

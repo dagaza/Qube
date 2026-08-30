@@ -78,6 +78,9 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: no
 const
   UninstallRegKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#SetupSetting("AppId")}_is1';
 
+var
+  DeleteUserData: Boolean;
+
 procedure KillRunningQube();
 var
   ResultCode: Integer;
@@ -97,13 +100,33 @@ function InitializeUninstall(): Boolean;
 begin
   { Must run before AppMutex check or file removal while Qube is in the tray. }
   KillRunningQube();
+  DeleteUserData := False;
+  if not WizardSilent() then
+    DeleteUserData := MsgBox(
+      'Remove your Qube data as well?' + #13#10 + #13#10 +
+      'This deletes models, library, memory, and settings under:' + #13#10 +
+      '  %LOCALAPPDATA%\Qube' + #13#10 +
+      '  %USERPROFILE%\.qube' + #13#10 + #13#10 +
+      'Choose No to keep your data for a future reinstall.',
+      mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
   Result := True;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  LocalData, DotQube: String;
 begin
   if CurUninstallStep = usUninstall then
     KillRunningQube();
+  if (CurUninstallStep = usPostUninstall) and DeleteUserData then
+  begin
+    LocalData := ExpandConstant('{localappdata}') + '\Qube';
+    DotQube := ExpandConstant('{userprofile}') + '\.qube';
+    if DirExists(LocalData) then
+      DelTree(LocalData, True, True, True);
+    if DirExists(DotQube) then
+      DelTree(DotQube, True, True, True);
+  end;
 end;
 
 #if MyAppVariant == "cuda"
@@ -129,6 +152,7 @@ begin
     WizardForm.WelcomeLabel2.Caption :=
       'Setup will update Qube from version ' + InstalledVersion +
       ' to {#MyAppVersion}.' + #13#10 + #13#10 +
-      'Your models, Library, memory, and settings in %LOCALAPPDATA%\Qube are kept.';
+      'Your models, Library, memory, and settings are kept under' + #13#10 +
+      '%LOCALAPPDATA%\Qube and %USERPROFILE%\.qube.';
   end;
 end;

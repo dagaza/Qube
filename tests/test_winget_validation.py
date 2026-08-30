@@ -15,6 +15,7 @@ from core import llama_cpp_import as llama_mod
 from core.winget_validation import (
     boot_state_path,
     boot_trace_path,
+    is_winget_smoke_validation,
     is_winget_validation_mode,
     record_boot_state,
     reset_winget_validation_state_for_tests,
@@ -160,6 +161,35 @@ def test_record_boot_state_appends_boot_trace(
     assert last_state["state"] == "phase_complete"
 
 
+def test_cuda_install_grace_defers_cuda_backend_but_keeps_bootstrap(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pytest.importorskip("PyQt6")
+    exe = tmp_path / "Qube.exe"
+    exe.write_text("", encoding="utf-8")
+    (tmp_path / ".qube-windows-variant").write_text("cuda", encoding="utf-8")
+    marker = tmp_path / ".qube-install-ts"
+    marker.write_text("1", encoding="utf-8")
+    now = time.time()
+    os.utime(marker, (now, now))
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(exe), raising=False)
+
+    from core.bootstrap_selection import (
+        effective_bootstrap_selection,
+        is_bootstrap_completed,
+        should_show_bootstrap_consent,
+    )
+    from core.winget_validation import apply_winget_validation_bootstrap_shortcut
+
+    assert is_winget_validation_mode() is True
+    assert is_winget_smoke_validation() is False
+    assert apply_winget_validation_bootstrap_shortcut() is False
+    assert is_bootstrap_completed() is False
+    assert should_show_bootstrap_consent() is True
+    assert effective_bootstrap_selection() != set()
+
+
 def test_validation_mode_skips_bootstrap_consent_and_default_selection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -205,3 +235,42 @@ def test_boot_storage_skips_embedder_in_validation_mode(
     qube._boot_storage(lambda _msg: None, None)
     assert embedder_calls == []
     assert qube.embedder is None
+
+
+def test_maybe_reset_stale_shell_bootstrap_completion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("PyQt6")
+    import tempfile
+
+    from core.bootstrap_selection import (
+        KEY_COMPLETED,
+        KEY_SELECTED,
+        maybe_reset_stale_shell_bootstrap_completion,
+        should_show_bootstrap_consent,
+    )
+    from core.settings_store import SettingsStore
+
+    schema_path = (
+        Path(__file__).resolve().parent.parent / "assets" / "config" / "settings.schema.json"
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        store = SettingsStore(user_path=Path(tmp) / "settings.json", schema_path=schema_path)
+        store.set(KEY_COMPLETED, True)
+        store.set(KEY_SELECTED, "[]")
+        monkeypatch.setattr(
+            "core.bootstrap_selection.get_settings_store",
+            lambda: store,
+        )
+        monkeypatch.setattr(
+            "core.bootstrap_download.infer_installed_selection",
+            lambda: None,
+        )
+        monkeypatch.setattr(
+            "core.bootstrap_download.model_is_present",
+            lambda _mid: False,
+        )
+
+        assert maybe_reset_stale_shell_bootstrap_completion() is True
+        assert store.get(KEY_COMPLETED) is not True
+        assert should_show_bootstrap_consent() is True

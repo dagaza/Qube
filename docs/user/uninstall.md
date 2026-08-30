@@ -53,13 +53,16 @@ choco uninstall qube -y
 
 ### User data after Windows uninstall
 
-The installer removes the application under `%LOCALAPPDATA%\Programs\Qube\`. User data (models, library, memory, settings) is stored separately under:
+The installer removes the application under `%LOCALAPPDATA%\Programs\Qube\` only. User data is stored in **two** locations on Windows:
 
 ```text
-%LOCALAPPDATA%\Qube\
+%LOCALAPPDATA%\Qube\          — models, library DB, logs
+%USERPROFILE%\.qube\          — settings.json and other support files
 ```
 
-Delete that folder if you want a completely clean removal.
+When you uninstall from **Settings → Apps**, the uninstaller asks whether to remove this data as well. Choose **Yes** for a completely clean removal, or **No** (default) to keep models and settings for a future reinstall.
+
+Silent uninstall (`/VERYSILENT`) **never** deletes user data; remove the folders above manually if needed.
 
 ---
 

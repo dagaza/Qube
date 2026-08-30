@@ -117,7 +117,7 @@ def download_embedding_preset(
     source_display: str = "Hugging Face",
 ) -> None:
     """Download ONNX + tokenizer assets with streamed HTTP progress."""
-    from core.bootstrap_download import _download_gguf
+    from core.bootstrap_download import _download_hf_hub_file
 
     mode = normalize_mode_id(mode_id)
     mode_spec = get_mode_spec(mode)
@@ -128,6 +128,10 @@ def download_embedding_preset(
     if qube_preset_complete(mode):
         on_progress(label, filename, 100, source_display)
         return
+
+    from core.bootstrap_search_models import clear_search_preset_incomplete_cache
+
+    clear_search_preset_incomplete_cache(mode)
 
     base = qube_preset_dir(mode)
     base.mkdir(parents=True, exist_ok=True)
@@ -148,13 +152,14 @@ def download_embedding_preset(
             dest = base / repo_file
             if dest.is_file():
                 continue
-            _download_gguf(
+            _download_hf_hub_file(
                 repo_id=dl_spec.hf_repo,
                 filename=repo_file,
                 dest_path=dest,
                 on_progress=_report,
                 step_label=label,
                 source_display=source_display,
+                progress_label=Path(repo_file).name,
             )
     except Exception as exc:
         from core.bootstrap_search_models import format_search_preset_download_failure

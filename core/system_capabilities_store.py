@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -481,6 +482,29 @@ class SystemCapabilitiesStore:
         if not path:
             return None
         return self._load_provenance_file().get(path)
+
+    def load_model_hf_provenance_map(self) -> dict[str, str]:
+        return dict(self._load_provenance_file())
+
+    def remove_model_hf_provenance(self, local_path: str) -> None:
+        path = str(local_path or "").strip()
+        if not path:
+            return
+        data = self._load_provenance_file()
+        if path in data:
+            del data[path]
+            self._save_provenance_file(data)
+            return
+        basename = os.path.basename(path)
+        if not basename:
+            return
+        changed = False
+        for stored_path in list(data):
+            if os.path.basename(stored_path) == basename:
+                del data[stored_path]
+                changed = True
+        if changed:
+            self._save_provenance_file(data)
 
     def _ensure_publisher_guidance_seeded(self) -> None:
         if self.publisher_guidance_path.exists():

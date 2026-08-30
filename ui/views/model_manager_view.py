@@ -503,6 +503,7 @@ class ModelManagerView(QWidget):
         self._hub_reachable: bool | None = None
         self._hub_status_detail: str = ""
         self._pending_download_retry: bool = False
+        self._pending_hub_redownload: tuple[str, str] | None = None
         self._tour_load_more_preview_active: bool = False
 
         os.makedirs(get_llm_models_dir(), exist_ok=True)
@@ -3079,6 +3080,67 @@ class ModelManagerView(QWidget):
         self._update_gpu_fit_status()
         self._sync_download_action_state()
         self._refresh_download_options_card_geometry()
+        self._try_complete_pending_hub_redownload(seq)
+
+    def request_hub_redownload(self, repo_id: str, filename: str) -> None:
+        """Open a Hub repo and start downloading ``filename`` when the file list is ready."""
+        repo = str(repo_id or "").strip()
+        fname = Path(str(filename or "").strip()).name
+        if not repo or not fname:
+            return
+        self._pending_hub_redownload = (repo, fname)
+        if not self._select_hub_repo_by_id(repo):
+            self._detail_seq += 1
+            seq = self._detail_seq
+            self._current_repo_id = repo
+            if hasattr(self, "detail_title"):
+                self.detail_title.setText(repo)
+            if hasattr(self, "detail_source_btn"):
+                self.detail_source_btn.setVisible(True)
+            self._reload_hub_detail_workers(repo, seq)
+
+    def _select_hub_repo_by_id(self, repo_id: str) -> bool:
+        repo = str(repo_id or "").strip()
+        if not repo or not hasattr(self, "hub_model_list"):
+            return False
+        for row in range(self.hub_model_list.count()):
+            item = self.hub_model_list.item(row)
+            if item is None:
+                continue
+            candidate = str(
+                item.data(HUB_ROW_DOWNLOAD_REPO_ROLE) or item.data(HUB_ROW_REPO_ROLE) or ""
+            ).strip()
+            if candidate == repo:
+                self.hub_model_list.setCurrentItem(item)
+                return True
+        return False
+
+    def _try_complete_pending_hub_redownload(self, seq: int) -> None:
+        pending = getattr(self, "_pending_hub_redownload", None)
+        if not pending:
+            return
+        repo_id, filename = pending
+        if seq != self._detail_seq or self._current_repo_id.strip() != repo_id:
+            return
+        target = filename.lower()
+        if not hasattr(self, "hf_file_combo"):
+            self._pending_hub_redownload = None
+            return
+        for i in range(1, self.hf_file_combo.count()):
+            path = self.hf_file_combo.itemData(i)
+            if path and Path(str(path)).name.lower() == target:
+                self.hf_file_combo.blockSignals(True)
+                self.hf_file_combo.setCurrentIndex(i)
+                self.hf_file_combo.blockSignals(False)
+                self._pending_hub_redownload = None
+                self._update_download_selection_hint()
+                self._update_quant_rationale_label()
+                self._sync_download_action_state()
+                from PyQt6.QtCore import QTimer
+
+                QTimer.singleShot(0, self._start_download)
+                return
+        self._pending_hub_redownload = None
 
     def _on_hf_list_failed(self, err: object, seq: int) -> None:
         if seq != self._detail_seq:

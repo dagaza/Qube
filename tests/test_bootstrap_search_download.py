@@ -7,7 +7,10 @@ from unittest.mock import patch
 
 import pytest
 
-from core.bootstrap_download import _download_balanced_search_preset
+from core.bootstrap_download import (
+    _download_balanced_search_preset,
+    _sanitize_hub_repo_file_path,
+)
 from core.bootstrap_manifest import BOOTSTRAP_MODELS, BootstrapModelId
 from core.bootstrap_search_download import (
     download_embedding_preset,
@@ -22,6 +25,12 @@ def test_resolve_preset_download_spec_balanced_jina_repo():
     assert spec.hf_repo == "xenova/jina-embeddings-v2-small-en"
     assert spec.model_marker == "onnx/model.onnx"
     assert "onnx/model.onnx" in spec.files
+
+
+def test_sanitize_hub_repo_file_path_allows_onnx_and_tokenizer_assets():
+    assert _sanitize_hub_repo_file_path("onnx/model.onnx") == "onnx/model.onnx"
+    assert _sanitize_hub_repo_file_path("config.json") == "config.json"
+    assert _sanitize_hub_repo_file_path("tokenizer.json") == "tokenizer.json"
 
 
 def test_download_embedding_preset_streams_each_file(tmp_path: Path) -> None:
@@ -42,7 +51,7 @@ def test_download_embedding_preset_streams_each_file(tmp_path: Path) -> None:
     ), patch(
         "core.bootstrap_search_download.qube_preset_complete",
         side_effect=_complete,
-    ), patch("core.bootstrap_download._download_gguf") as stream:
+    ), patch("core.bootstrap_download._download_hf_hub_file") as stream:
 
         def _touch(**kwargs: object) -> None:
             dest = kwargs["dest_path"]
@@ -64,7 +73,7 @@ def test_download_embedding_preset_skips_when_complete() -> None:
     events: list[int] = []
 
     with patch("core.bootstrap_search_download.qube_preset_complete", return_value=True), patch(
-        "core.bootstrap_download._download_gguf"
+        "core.bootstrap_download._download_hf_hub_file"
     ) as stream:
         download_embedding_preset(
             "balanced",
@@ -93,7 +102,7 @@ def test_download_embedding_preset_raises_when_files_missing(tmp_path: Path) -> 
         "core.bootstrap_search_download.qube_preset_dir",
         return_value=tmp_path / "presets" / "fast",
     ), patch("core.bootstrap_search_download.qube_preset_complete", return_value=False), patch(
-        "core.bootstrap_download._download_gguf"
+        "core.bootstrap_download._download_hf_hub_file"
     ):
         with pytest.raises(RuntimeError, match="Could not download"):
             download_embedding_preset("fast", lambda *_: None)

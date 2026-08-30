@@ -240,19 +240,41 @@ def preflight_download(
     return True, ""
 
 
-def should_show_bootstrap_consent() -> bool:
-    from core.winget_validation import is_winget_validation_mode
+def maybe_reset_stale_shell_bootstrap_completion() -> bool:
+    """Clear bootstrap.completed left by CUDA install-grace WinGet smoke (no models on disk)."""
+    if not is_bootstrap_completed():
+        return False
+    if get_selected_model_ids():
+        return False
+    from core.bootstrap_download import infer_installed_selection, model_is_present
 
-    if is_winget_validation_mode():
+    if infer_installed_selection():
+        return False
+    if any(model_is_present(mid) for mid in BootstrapModelId):
+        return False
+    store = get_settings_store()
+    store.set(KEY_COMPLETED, False)
+    store.set(KEY_SELECTED, "")
+    logger.warning(
+        "Reset stale bootstrap completion (no selected models and no bootstrap assets on disk)."
+    )
+    return True
+
+
+def should_show_bootstrap_consent() -> bool:
+    from core.winget_validation import is_winget_smoke_validation
+
+    maybe_reset_stale_shell_bootstrap_completion()
+    if is_winget_smoke_validation():
         return False
     maybe_seed_bootstrap_selection_for_existing_install()
     return not is_bootstrap_completed()
 
 
 def effective_bootstrap_selection() -> set[BootstrapModelId]:
-    from core.winget_validation import is_winget_validation_mode
+    from core.winget_validation import is_winget_smoke_validation
 
-    if is_winget_validation_mode():
+    if is_winget_smoke_validation():
         return set()
     if is_bootstrap_completed():
         return get_selected_model_ids()
