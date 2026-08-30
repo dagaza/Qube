@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.42] - 2026-08-30
+
+### Fixed
+- **Release CI (Windows CUDA):** `smoke_dist.ps1` now verifies the CUDA bundle layout instead of launching the dist EXE on CI (same policy as `smoke_linux_dist.sh`). GitHub runners have no NVIDIA driver; WinGet validation launch remains in `smoke_installed_cuda.ps1`.
+
 ## [1.3.41] - 2026-08-29
 
 ### Fixed
