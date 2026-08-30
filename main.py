@@ -1443,6 +1443,11 @@ class Qube:
         """Called automatically when the application is closing."""
         logger.info("Initiating graceful shutdown...")
 
+        if sys.platform == "win32":
+            from core.windows_install_mutex import release_install_mutex
+
+            release_install_mutex()
+
         # 0. Model Manager — Hub search/README/list/download QThreads can block exit if still running
         mm = self.window._model_manager_view
         if mm is not None:

@@ -27,3 +27,13 @@ def acquire_install_mutex() -> None:
         logger.debug("CreateMutexW failed (error %s)", ctypes.get_last_error())
         return
     _handle = int(handle)
+
+
+def release_install_mutex() -> None:
+    """Release the install mutex so silent uninstall can remove files."""
+    global _handle
+    if sys.platform != "win32" or _handle is None:
+        return
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CloseHandle(wintypes.HANDLE(_handle))
+    _handle = None

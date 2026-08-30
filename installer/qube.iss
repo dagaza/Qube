@@ -50,7 +50,7 @@ PrivilegesRequired=lowest
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-CloseApplications=yes
+CloseApplications=force
 AppMutex={#MyAppMutex}
 SetupMutex={#MySetupMutex}
 #ifexist "..\assets\logos\qube.ico"
@@ -87,13 +87,15 @@ var
   Attempt: Integer;
 begin
   { /T terminates child processes so PyInstaller DLLs in _internal release. }
-  for Attempt := 1 to 6 do
+  for Attempt := 1 to 12 do
   begin
     Exec('taskkill.exe', '/F /IM {#MyAppExeName} /T', '', SW_HIDE,
       ewWaitUntilTerminated, ResultCode);
+    if not CheckForMutexes('{#MyAppMutex}') then
+      Break;
     Sleep(500);
   end;
-  Sleep(1000);
+  Sleep(1500);
 end;
 
 function InitializeUninstall(): Boolean;
@@ -101,14 +103,6 @@ begin
   { Must run before AppMutex check or file removal while Qube is in the tray. }
   KillRunningQube();
   DeleteUserData := False;
-  if not WizardSilent() then
-    DeleteUserData := MsgBox(
-      'Remove your Qube data as well?' + #13#10 + #13#10 +
-      'This deletes models, library, memory, and settings under:' + #13#10 +
-      '  %LOCALAPPDATA%\Qube' + #13#10 +
-      '  %USERPROFILE%\.qube' + #13#10 + #13#10 +
-      'Choose No to keep your data for a future reinstall.',
-      mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
   Result := True;
 end;
 
@@ -117,7 +111,17 @@ var
   LocalData, DotQube: String;
 begin
   if CurUninstallStep = usUninstall then
+  begin
     KillRunningQube();
+    if not UninstallSilent() then
+      DeleteUserData := MsgBox(
+        'Remove your Qube data as well?' + #13#10 + #13#10 +
+        'This deletes models, library, memory, and settings under:' + #13#10 +
+        '  %LOCALAPPDATA%\Qube' + #13#10 +
+        '  %USERPROFILE%\.qube' + #13#10 + #13#10 +
+        'Choose No to keep your data for a future reinstall.',
+        mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
+  end;
   if (CurUninstallStep = usPostUninstall) and DeleteUserData then
   begin
     LocalData := ExpandConstant('{localappdata}') + '\Qube';

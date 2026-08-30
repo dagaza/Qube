@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Balanced search preset bootstrap download:** stream ONNX and tokenizer assets via ``_download_hf_hub_file`` (the old ``_download_gguf`` path rejected non-``.gguf`` files, so Jina never downloaded into ``presets/balanced/``).
 - **Missing saved native model on startup:** when **Load on startup** points at a deleted or incomplete GGUF, clear the stale saved path, show an in-app notification, and offer **Re-download** in Model Manager when Hugging Face provenance is known.
 - **Windows uninstall user data:** interactive uninstall optionally removes both `%LOCALAPPDATA%\Qube` and `%USERPROFILE%\.qube` (default **No** — keep data for reinstall); full-data wipe helpers include both paths on Windows.
+- **Release CI (Windows CPU/CUDA):** silent uninstall smoke no longer tears down the isolated launch profile before uninstall (1.3.43 startup holds more open handles); Inno uninstall uses `CloseApplications=force`, mutex-aware `taskkill`, and `UninstallSilent()` for the optional data prompt.
 
 ## [1.3.42] - 2026-08-30
 

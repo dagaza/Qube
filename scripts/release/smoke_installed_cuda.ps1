@@ -5,6 +5,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+. "$PSScriptRoot/smoke_launch_env.ps1"
+
 if ($SetupPath) {
     $setup = Get-Item $SetupPath
 } else {
@@ -104,58 +106,42 @@ $proc = Start-Process -FilePath $installedExe `
     -ArgumentList "--mock-bootstrap-download", "--winget-validation" `
     -PassThru
 
-$deadline = (Get-Date).AddSeconds(120)
-while ((Get-Date) -lt $deadline) {
-    if ($proc.HasExited) {
-        $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath -BootTracePath $bootTracePath
-        throw "Installed CUDA app exited early (exit code: $($proc.ExitCode)). $msg"
-    }
-    if (Test-Path $resultPath) {
-        $result = Get-Content $resultPath -Raw | ConvertFrom-Json
-        if (-not $result.ok) {
+try {
+    $deadline = (Get-Date).AddSeconds(120)
+    while ((Get-Date) -lt $deadline) {
+        if ($proc.HasExited) {
             $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath -BootTracePath $bootTracePath
-            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-            throw $msg
+            throw "Installed CUDA app exited early (exit code: $($proc.ExitCode)). $msg"
         }
-        break
+        if (Test-Path $resultPath) {
+            $result = Get-Content $resultPath -Raw | ConvertFrom-Json
+            if (-not $result.ok) {
+                $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath -BootTracePath $bootTracePath
+                throw $msg
+            }
+            break
+        }
+        Start-Sleep -Seconds 1
     }
-    Start-Sleep -Seconds 1
-}
 
-if (-not (Test-Path $resultPath)) {
-    Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-    $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath -BootTracePath $bootTracePath
-    throw "Timed out waiting for validation smoke result at $resultPath. $msg"
-}
-
-$result = Get-Content $resultPath -Raw | ConvertFrom-Json
-if (-not $result.ok -or $result.llama_import_attempted) {
-    Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-    $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath -BootTracePath $bootTracePath
-    throw "WinGet validation guard failed: llama_cpp import was attempted. $msg"
-}
-
-Write-Host "CUDA WinGet validation smoke passed (pid $($proc.Id), stage $($result.stage), no llama_cpp import)"
-
-if (-not (Test-Path $uninstaller)) {
-    Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-    throw "Uninstaller not found at $uninstaller"
-}
-
-Write-Host "Uninstalling while Qube.exe is still running..."
-Start-Process -Wait -FilePath $uninstaller `
-    -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART"
-
-$deadline = (Get-Date).AddSeconds(30)
-while ((Get-Date) -lt $deadline) {
-    Get-Process -Name Qube -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    if (-not (Test-Path $installedExe)) {
-        break
+    if (-not (Test-Path $resultPath)) {
+        $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath -BootTracePath $bootTracePath
+        throw "Timed out waiting for validation smoke result at $resultPath. $msg"
     }
-    Start-Sleep -Seconds 1
-}
 
-if (Test-Path $installedExe) {
-    throw "Uninstall failed — $installedExe still exists"
+    $result = Get-Content $resultPath -Raw | ConvertFrom-Json
+    if (-not $result.ok -or $result.llama_import_attempted) {
+        $msg = Format-SmokeFailureMessage -ResultPath $resultPath -BootStatePath $bootStatePath -BootTracePath $bootTracePath
+        throw "WinGet validation guard failed: llama_cpp import was attempted. $msg"
+    }
+
+    Write-Host "CUDA WinGet validation smoke passed (pid $($proc.Id), stage $($result.stage), no llama_cpp import)"
+
+    Invoke-QubeSilentUninstallWhileRunning `
+        -Uninstaller $uninstaller `
+        -InstalledExe $installedExe
+    Write-Host "CUDA validation smoke + uninstall verified"
 }
-Write-Host "CUDA validation smoke + uninstall verified"
+finally {
+    Stop-QubeProcessIfRunning -Process $proc
+}

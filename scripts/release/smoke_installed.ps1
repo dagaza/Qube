@@ -46,35 +46,13 @@ try {
         throw "Installed app process exited before uninstall test"
     }
     Write-Host "Installed EXE running (pid $($proc.Id))"
+
+    Invoke-QubeSilentUninstallWhileRunning `
+        -Uninstaller $uninstaller `
+        -InstalledExe $installedExe `
+        -InternalDir $internalDir
 }
 finally {
+    Stop-QubeProcessIfRunning -Process $proc
     Exit-QubeSmokeLaunchEnvironment -State $state
 }
-
-if (-not (Test-Path $uninstaller)) {
-    Stop-QubeProcessIfRunning -Process $proc
-    throw "Uninstaller not found at $uninstaller"
-}
-
-Write-Host "Uninstalling while Qube.exe is still running..."
-Start-Process -Wait -FilePath $uninstaller `
-    -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART"
-
-$deadline = (Get-Date).AddSeconds(30)
-while ((Get-Date) -lt $deadline) {
-    Get-Process -Name Qube -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    if (-not (Test-Path $installedExe) -and -not (Test-Path $internalDir)) {
-        break
-    }
-    Start-Sleep -Seconds 1
-}
-
-Stop-QubeProcessIfRunning -Process $proc
-
-if (Test-Path $installedExe) {
-    throw "Uninstall failed — $installedExe still exists"
-}
-if (Test-Path $internalDir) {
-    throw "Uninstall failed — $internalDir still exists"
-}
-Write-Host "Uninstall verified (app was running during removal)"

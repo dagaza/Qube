@@ -63,3 +63,65 @@ function Stop-QubeProcessIfRunning {
         Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
     }
 }
+
+function Stop-AllQubeProcesses {
+    Get-Process -Name Qube -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+}
+
+function Wait-QubeInstallRemoved {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$InstalledExe,
+        [string]$InternalDir = "",
+        [int]$TimeoutSec = 45
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    while ((Get-Date) -lt $deadline) {
+        Stop-AllQubeProcesses
+        $removed = -not (Test-Path $InstalledExe)
+        if ($removed -and $InternalDir -and (Test-Path $InternalDir)) {
+            $removed = $false
+        }
+        if ($removed) {
+            return
+        }
+        Start-Sleep -Seconds 1
+    }
+
+    if (Test-Path $InstalledExe) {
+        throw "Uninstall failed — $InstalledExe still exists"
+    }
+    if ($InternalDir -and (Test-Path $InternalDir)) {
+        throw "Uninstall failed — $InternalDir still exists"
+    }
+}
+
+function Invoke-QubeSilentUninstallWhileRunning {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Uninstaller,
+        [Parameter(Mandatory = $true)]
+        [string]$InstalledExe,
+        [string]$InternalDir = ""
+    )
+
+    if (-not (Test-Path $Uninstaller)) {
+        throw "Uninstaller not found at $Uninstaller"
+    }
+
+    Write-Host "Uninstalling while Qube.exe is still running..."
+    $uninstall = Start-Process -FilePath $Uninstaller `
+        -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" `
+        -PassThru -Wait
+    if ($uninstall.ExitCode -ne 0) {
+        Write-Host "Uninstaller exit code $($uninstall.ExitCode); force-stopping Qube and retrying..."
+        Stop-AllQubeProcesses
+        Start-Sleep -Seconds 2
+        Start-Process -Wait -FilePath $Uninstaller `
+            -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"
+    }
+
+    Wait-QubeInstallRemoved -InstalledExe $InstalledExe -InternalDir $InternalDir
+    Write-Host "Uninstall verified (app was running during removal)"
+}

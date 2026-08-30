@@ -20,3 +20,11 @@ def test_acquire_install_mutex_is_noop_off_windows(monkeypatch):
     monkeypatch.setattr(mod.sys, "platform", "linux")
     mod.acquire_install_mutex()
     assert mod._handle is None
+    mod.release_install_mutex()
+
+
+def test_release_install_mutex_is_noop_off_windows(monkeypatch):
+    mod._handle = None
+    monkeypatch.setattr(mod.sys, "platform", "linux")
+    mod.release_install_mutex()
+    assert mod._handle is None
