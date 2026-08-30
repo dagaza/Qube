@@ -36,6 +36,7 @@ def _abortable_splash_stub() -> StartupSplashController:
     splash._bootstrap_running = True
     splash._embedder_poll = MagicMock()
     splash._phased_runner = None
+    splash._shell = None
     splash._stop_spinner = MagicMock()
     return splash
 

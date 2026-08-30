@@ -33,6 +33,7 @@ def test_linux_app_paths_use_opt_qube():
 
 
 def test_user_data_paths_use_qube_root(monkeypatch, tmp_path):
+    monkeypatch.setattr(sys, "platform", "linux")
     data_root = tmp_path / "qube-data"
     _patch_user_data_root(monkeypatch, data_root)
     assert user_data_paths() == [data_root]
