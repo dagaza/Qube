@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bootstrap preset downloads:** stop requiring ``preprocessor_config.json`` (404 on Hugging Face for Jina/BGE ONNX repos), which prevented ``onnx/model.onnx`` from ever downloading and left partial tokenizer-only folders under ``presets/balanced/``.
 - **Bootstrap Whisper download:** stream CTranslate2 weight files via ``_download_hf_hub_file`` instead of ``_download_gguf`` (which rejected non-``.gguf`` paths).
 - **Bootstrap splash search repair:** allow up to two preset re-download attempts and block embedder load with a clear message instead of hanging at “Preparing search models (Balanced)” when the preset is still incomplete.
+- **Bootstrap field diagnostics:** ``--bootstrap-trace`` (or ``QUBE_BOOTSTRAP_TRACE=1``) writes granular splash/download/phase events to ``bootstrap-trace.jsonl`` and stderr when launched from a terminal.
 
 ## [1.3.43] - 2026-08-30
 

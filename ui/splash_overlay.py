@@ -483,10 +483,9 @@ class StartupSplashController(QObject):
         self._set_logo_rotating(True)
         self._start_spinner()
         logger.info("First-run consent confirmed; starting downloads.")
-        from core.winget_validation import is_winget_validation_mode, record_boot_state
+        from core.bootstrap_trace import record_startup_progress
 
-        if is_winget_validation_mode():
-            record_boot_state("consent_confirmed", selected_count=len(selected))
+        record_startup_progress("consent_confirmed", selected_count=len(selected))
         QTimer.singleShot(0, self._kick_bootstrap_after_consent)
 
     def _kick_bootstrap_after_consent(self) -> None:
@@ -550,16 +549,15 @@ class StartupSplashController(QObject):
             self._needs_consent,
             self._mock_downloads,
         )
-        from core.winget_validation import is_winget_validation_mode, record_boot_state
+        from core.bootstrap_trace import record_startup_progress
 
-        if is_winget_validation_mode():
-            record_boot_state(
-                "splash_presented",
-                consent_pending=self.consent_pending(),
-                mock_downloads=self._mock_downloads,
-                needs_consent=self._needs_consent,
-                selected_count=len(self._selected_models),
-            )
+        record_startup_progress(
+            "splash_presented",
+            consent_pending=self.consent_pending(),
+            mock_downloads=self._mock_downloads,
+            needs_consent=self._needs_consent,
+            selected_count=len(self._selected_models),
+        )
         QTimer.singleShot(0, self._start_fade_in)
         QTimer.singleShot(_BOOTSTRAP_FALLBACK_MS, self._bootstrap_fallback)
 
@@ -584,14 +582,13 @@ class StartupSplashController(QObject):
         """Queue startup work to run after fade-in completes (or fallback timer)."""
         self._bootstrap_fn = fn
         self._ready_callback = on_ready
-        from core.winget_validation import is_winget_validation_mode, record_boot_state
+        from core.bootstrap_trace import record_startup_progress
 
-        if is_winget_validation_mode():
-            record_boot_state(
-                "splash_run_bootstrap",
-                consent_pending=self.consent_pending(),
-                fade_in_done=self._fade_in_done,
-            )
+        record_startup_progress(
+            "splash_run_bootstrap",
+            consent_pending=self.consent_pending(),
+            fade_in_done=self._fade_in_done,
+        )
         if self._fade_in_done:
             self._kick_bootstrap()
 
@@ -636,10 +633,9 @@ class StartupSplashController(QObject):
         if self._exit_requested or self._bootstrap_kicked or self._bootstrap_fn is None:
             return
         self._bootstrap_kicked = True
-        from core.winget_validation import is_winget_validation_mode, record_boot_state
+        from core.bootstrap_trace import record_startup_progress
 
-        if is_winget_validation_mode():
-            record_boot_state("bootstrap_kicked")
+        record_startup_progress("bootstrap_kicked")
         QTimer.singleShot(0, self._begin_model_downloads)
 
     def _models_needing_download(self) -> set[BootstrapModelId]:
@@ -655,20 +651,22 @@ class StartupSplashController(QObject):
             pending = set(self._selected_models)
         else:
             pending = self._models_needing_download()
-        from core.winget_validation import is_winget_validation_mode, record_boot_state
+        from core.bootstrap_trace import record_startup_progress
 
-        if is_winget_validation_mode():
-            if not pending:
-                record_boot_state(
-                    "downloads_skip",
-                    mock=self._mock_downloads,
-                    pending_count=0,
-                )
-            else:
-                record_boot_state(
-                    "mock_downloads_start" if self._mock_downloads else "downloads_start",
-                    pending_count=len(pending),
-                )
+        pending_ids = sorted(mid.value for mid in pending)
+        if not pending:
+            record_startup_progress(
+                "downloads_skip",
+                mock=self._mock_downloads,
+                pending_count=0,
+                pending_models=pending_ids,
+            )
+        else:
+            record_startup_progress(
+                "mock_downloads_start" if self._mock_downloads else "downloads_start",
+                pending_count=len(pending),
+                pending_models=pending_ids,
+            )
         if not pending:
             QTimer.singleShot(0, self._begin_embedder_load)
             return
@@ -809,19 +807,20 @@ class StartupSplashController(QObject):
     def _begin_embedder_load(self) -> None:
         if self._exit_requested:
             return
-        from core.winget_validation import is_winget_validation_mode, record_boot_state
+        from core.bootstrap_trace import record_startup_progress
 
         if not self._splash_should_load_embedder():
-            if is_winget_validation_mode():
-                record_boot_state("embedder_skip")
+            record_startup_progress("embedder_skip")
             self._view.set_download_detail("Skipping search model load (not selected).")
             self._view.set_progress_percent(_DOWNLOAD_DONE_PERCENT)
             QTimer.singleShot(0, lambda: self._finish_bootstrap(None))
             return
         if self._block_embedder_until_search_preset_ready():
             return
-        if is_winget_validation_mode():
-            record_boot_state("embedder_start")
+        record_startup_progress(
+            "embedder_start",
+            preset_ready=self._splash_search_preset_ready(),
+        )
         self._set_logo_rotating(True)
         self._view.set_download_detail("Preparing search models (Balanced)…")
         self._view.set_progress_percent(_DOWNLOAD_DONE_PERCENT)
@@ -880,12 +879,11 @@ class StartupSplashController(QObject):
                         f"Download failed — continuing with available models.\n{payload}"
                     )
             self._view.set_progress_percent(_DOWNLOAD_DONE_PERCENT)
-            from core.winget_validation import is_winget_validation_mode, record_boot_state
+            from core.bootstrap_trace import record_startup_progress
 
-            if is_winget_validation_mode():
-                record_boot_state(
-                    "mock_downloads_done" if self._mock_downloads else "downloads_done"
-                )
+            record_startup_progress(
+                "mock_downloads_done" if self._mock_downloads else "downloads_done"
+            )
             if (
                 not self._mock_downloads
                 and self._splash_should_load_embedder()
@@ -911,6 +909,12 @@ class StartupSplashController(QObject):
                 logger.error(
                     "Embedder load timed out after %.0fs; retrying search preset download.",
                     _EMBEDDER_LOAD_TIMEOUT_SEC,
+                )
+                from core.bootstrap_trace import record_startup_progress
+
+                record_startup_progress(
+                    "embedder_timeout",
+                    timeout_sec=_EMBEDDER_LOAD_TIMEOUT_SEC,
                 )
                 self._embedder_thread = None
                 self._embedder_outcome = None
@@ -958,10 +962,9 @@ class StartupSplashController(QObject):
         if app is not None:
             app.processEvents()
         logger.info("Splash bootstrap started (phased).")
-        from core.winget_validation import is_winget_validation_mode, record_boot_state
+        from core.bootstrap_trace import record_startup_progress
 
-        if is_winget_validation_mode():
-            record_boot_state("phased_boot_start")
+        record_startup_progress("phased_boot_start")
         self._phased_runner = fn(
             embedder=embedder,
             on_phase=self._on_phase,
@@ -1089,23 +1092,22 @@ class _PhasedQubeRunner(QObject):
         step_index = _PHASE_STEPS[self._phase]
         percent = _PHASE_PERCENTS[self._phase]
         self._on_phase(step_index, percent)
-        from core.winget_validation import is_winget_validation_mode, record_boot_state
+        from core.bootstrap_trace import record_startup_progress
 
         phase_index = self._phase
-        if is_winget_validation_mode():
-            record_boot_state("phase_start", phase=phase_index)
+        record_startup_progress("phase_start", phase=phase_index)
         try:
             self._run_phase(phase_index)
         except Exception as exc:
             logger.exception("Phased Qube bootstrap failed at phase %d.", phase_index)
+            record_startup_progress("phase_failed", phase=phase_index, error=str(exc))
             if self._on_failed is not None:
                 self._on_failed(exc)
                 return
             raise
         if self._cancelled:
             return
-        if is_winget_validation_mode():
-            record_boot_state("phase_complete", phase=phase_index)
+        record_startup_progress("phase_complete", phase=phase_index)
         self._phase += 1
         QTimer.singleShot(0, self._run_next)
 

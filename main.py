@@ -1624,13 +1624,16 @@ def run_application(
     args = parse_boot_args()
     configure_user_model_paths()
 
+    from core.bootstrap_trace import configure_bootstrap_trace, record_startup_progress
+
+    configure_bootstrap_trace(args)
+
     from core.winget_validation import (
         apply_winget_validation_bootstrap_shortcut,
         configure_winget_validation_mode,
         is_winget_smoke_validation,
         is_winget_validation_mode,
         log_validation_startup_summary,
-        record_boot_state,
         write_smoke_result,
     )
 
@@ -1853,7 +1856,7 @@ def run_application(
 
     # Keep a strong reference; otherwise StartupSplashController is GC'd and startup timers never fire.
     if is_winget_smoke_validation():
-        record_boot_state(
+        record_startup_progress(
             "before_splash_bootstrap",
             mock_downloads=bool(args.mock_bootstrap_download),
             needs_consent=needs_consent,

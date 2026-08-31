@@ -457,21 +457,32 @@ def download_bootstrap_models(
     for model_id in ordered:
         spec = BOOTSTRAP_MODELS[model_id]
         step_label = f"Downloading {spec.label}"
+        from core.bootstrap_trace import record_bootstrap_trace
+
+        record_bootstrap_trace("download_model_start", model_id=model_id.value, label=spec.label)
         try:
             if model_id == BootstrapModelId.WHISPER_SMALL:
                 _download_whisper(on_progress, spec)
+                record_bootstrap_trace("download_model_done", model_id=model_id.value)
                 continue
             if model_id == BootstrapModelId.KOKORO_TTS:
                 _download_kokoro(on_progress, spec)
+                record_bootstrap_trace("download_model_done", model_id=model_id.value)
                 continue
             if model_id == BootstrapModelId.SEARCH_PRESET_BALANCED:
                 _download_balanced_search_preset(on_progress, spec)
+                record_bootstrap_trace("download_model_done", model_id=model_id.value)
                 continue
 
             dest = resolve_model_destination(model_id)
             if dest is None:
                 if not spec.hf_repo or not spec.hf_filename:
                     errors.append(f"No download source for {spec.label}.")
+                    record_bootstrap_trace(
+                        "download_model_skipped",
+                        model_id=model_id.value,
+                        reason="no_download_source",
+                    )
                 continue
 
             _download_gguf(
@@ -482,8 +493,14 @@ def download_bootstrap_models(
                 step_label=step_label,
                 source_display=spec.source_display,
             )
+            record_bootstrap_trace("download_model_done", model_id=model_id.value)
         except Exception as exc:
             logger.exception("Bootstrap download failed for %s", spec.label)
+            record_bootstrap_trace(
+                "download_model_failed",
+                model_id=model_id.value,
+                error=str(exc),
+            )
             errors.append(f"{spec.label}: {exc}")
 
     return errors

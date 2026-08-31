@@ -56,4 +56,12 @@ def parse_boot_args(argv: list[str] | None = None) -> argparse.Namespace:
             "(also sets QUBE_WINGET_VALIDATION=1)."
         ),
     )
+    parser.add_argument(
+        "--bootstrap-trace",
+        action="store_true",
+        help=(
+            "Write granular bootstrap/launch steps to bootstrap-trace.jsonl and stderr "
+            "(also sets QUBE_BOOTSTRAP_TRACE=1; run from a terminal on Windows)."
+        ),
+    )
     return parser.parse_args(argv)

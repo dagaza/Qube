@@ -54,6 +54,10 @@ class ParseBootArgsTests(unittest.TestCase):
         args = parse_boot_args(["--winget-validation"])
         self.assertTrue(args.winget_validation)
 
+    def test_bootstrap_trace_flag(self) -> None:
+        args = parse_boot_args(["--bootstrap-trace"])
+        self.assertTrue(args.bootstrap_trace)
+
 
 if __name__ == "__main__":
     unittest.main()

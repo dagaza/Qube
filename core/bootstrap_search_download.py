@@ -149,6 +149,16 @@ def download_embedding_preset(
     try:
         for repo_file in dl_spec.files:
             dest = base / repo_file
+            from core.bootstrap_trace import record_bootstrap_trace
+
+            record_bootstrap_trace(
+                "preset_file_start",
+                mode=mode,
+                repo=dl_spec.hf_repo,
+                repo_file=repo_file,
+                dest=str(dest),
+                already_present=dest.is_file(),
+            )
             if dest.is_file():
                 continue
             _download_hf_hub_file(
@@ -160,7 +170,21 @@ def download_embedding_preset(
                 source_display=source_display,
                 progress_label=Path(repo_file).name,
             )
+            record_bootstrap_trace(
+                "preset_file_done",
+                mode=mode,
+                repo_file=repo_file,
+                bytes=dest.stat().st_size if dest.is_file() else 0,
+            )
     except Exception as exc:
+        from core.bootstrap_trace import record_bootstrap_trace
+
+        record_bootstrap_trace(
+            "preset_download_failed",
+            mode=mode,
+            repo=dl_spec.hf_repo,
+            error=str(exc),
+        )
         from core.bootstrap_search_models import format_search_preset_download_failure
 
         raise RuntimeError(format_search_preset_download_failure(mode)) from exc

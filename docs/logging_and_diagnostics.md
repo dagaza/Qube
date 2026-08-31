@@ -50,9 +50,35 @@ Parsed by `core/boot_args.py`:
 
 | Flag | Example | Effect |
 |------|---------|--------|
-| `--routing-debug` | `python3 main.py --routing-debug` | Opens a **detached Routing Debug side window** (`RoutingDebugView`) at startup. Does **not** enable file logging by itself. |
+| `--routing-debug` | `python3 main.py --routing-debug` | Opens a **detached Routing Debug side window** at startup. Does **not** enable file logging by itself. |
+| `--winget-validation` | `Qube.exe --winget-validation` | CI / WinGet smoke only: defer CUDA loads, mock bootstrap, write `.winget-validation-boot-trace.jsonl`. |
+| `--bootstrap-trace` | `Qube.exe --bootstrap-trace` | Granular bootstrap/launch JSONL + stderr (see below). Also sets `QUBE_BOOTSTRAP_TRACE=1`. |
 
 No other CLI logging flags exist today. All other diagnostics use environment variables or `main.py` edits.
+
+### Bootstrap trace (`--bootstrap-trace`)
+
+For first-run / splash debugging on a test machine (especially Windows):
+
+**Terminal A — launch with trace:**
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Qube\Qube.exe" --bootstrap-trace
+```
+
+**Terminal B — follow the trace file live:**
+
+```powershell
+.\scripts\diagnostics\tail_bootstrap_trace.ps1
+# or manually:
+Get-Content "$env:LOCALAPPDATA\Qube\logs\bootstrap-trace.jsonl" -Wait -Tail 30
+```
+
+Each line is JSON with `event`, `timestamp`, and step-specific fields (`pending_models`, `repo_file`, `phase`, errors, …). The latest event is also mirrored to `bootstrap-state.json`.
+
+Equivalent without CLI flag: `$env:QUBE_BOOTSTRAP_TRACE = "1"` before launch.
+
+Also bumps `QUBE_APP_LOG_LEVEL` to `DEBUG` for richer `qube.log` capture. General app log path: `%LOCALAPPDATA%\Qube\logs\qube.log`.
 
 ---
 
