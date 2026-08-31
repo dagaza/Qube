@@ -20,7 +20,6 @@ _STANDARD_TOKENIZER_FILES: tuple[str, ...] = (
     "tokenizer.json",
     "tokenizer_config.json",
     "special_tokens_map.json",
-    "preprocessor_config.json",
 )
 
 

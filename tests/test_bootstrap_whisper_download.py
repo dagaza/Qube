@@ -25,7 +25,7 @@ def test_download_whisper_streams_each_weight_with_progress(tmp_path: Path) -> N
     ), patch(
         "core.stt_models.bundled_whisper_present",
         return_value=True,
-    ), patch("core.bootstrap_download._download_gguf") as stream:
+    ), patch("core.bootstrap_download._download_hf_hub_file") as stream:
         _download_whisper(on_progress, spec)
 
     assert stream.call_count == len(BUNDLED_WHISPER_WEIGHT_FILES)
@@ -41,7 +41,7 @@ def test_download_whisper_skips_when_already_present() -> None:
     events: list[int] = []
 
     with patch("core.bootstrap_download.model_is_present", return_value=True), patch(
-        "core.bootstrap_download._download_gguf"
+        "core.bootstrap_download._download_hf_hub_file"
     ) as stream:
         _download_whisper(
             lambda _step, _name, pct, _source: events.append(pct),

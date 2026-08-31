@@ -375,13 +375,14 @@ def _download_whisper(on_progress: DownloadProgressCallback, spec) -> None:
 
     try:
         for weight_file in BUNDLED_WHISPER_WEIGHT_FILES:
-            _download_gguf(
+            _download_hf_hub_file(
                 repo_id=BUNDLED_STT_HF_REPO,
                 filename=weight_file,
                 dest_path=dest_dir / weight_file,
                 on_progress=_report_progress,
                 step_label=step_label,
                 source_display=source,
+                progress_label=weight_file,
             )
     except Exception as exc:
         raise RuntimeError(

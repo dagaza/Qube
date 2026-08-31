@@ -25,6 +25,7 @@ def test_resolve_preset_download_spec_balanced_jina_repo():
     assert spec.hf_repo == "xenova/jina-embeddings-v2-small-en"
     assert spec.model_marker == "onnx/model.onnx"
     assert "onnx/model.onnx" in spec.files
+    assert "preprocessor_config.json" not in spec.files
 
 
 def test_sanitize_hub_repo_file_path_allows_onnx_and_tokenizer_assets():

@@ -336,6 +336,7 @@ class StartupSplashController(QObject):
         self._embedder_outcome: tuple[bool, object] | None = None
         self._download_outcome: tuple[bool, object] | None = None
         self._embedder_repair_attempted = False
+        self._search_preset_repair_attempts = 0
         self._embedder_started_mono: float | None = None
         self._phased_runner: _PhasedQubeRunner | None = None
         self._embedder_poll = QTimer(self)
@@ -760,7 +761,8 @@ class StartupSplashController(QObject):
 
     def _attempt_search_preset_repair_download(self, *, force: bool = False) -> bool:
         """Re-download Balanced search preset after missing, partial, or timed-out load."""
-        if self._embedder_repair_attempted or self._exit_requested:
+        _MAX_SEARCH_PRESET_REPAIR_ATTEMPTS = 2
+        if self._exit_requested:
             return False
         from core.bootstrap_manifest import BootstrapModelId
         from core.bootstrap_search_models import clear_search_preset_incomplete_cache
@@ -772,17 +774,36 @@ class StartupSplashController(QObject):
             return False
         if not force and self._splash_search_preset_ready():
             return False
+        if self._search_preset_repair_attempts >= _MAX_SEARCH_PRESET_REPAIR_ATTEMPTS:
+            return False
+        self._search_preset_repair_attempts += 1
         self._embedder_repair_attempted = True
         self._bootstrap_running = False
         self._embedder_started_mono = None
         clear_search_preset_incomplete_cache(DEFAULT_MODE)
         logger.warning(
-            "Balanced search preset incomplete or load failed; starting repair download."
+            "Balanced search preset incomplete or load failed; starting repair download (attempt %d).",
+            self._search_preset_repair_attempts,
         )
         self._view.set_download_detail(
             "Search models missing or incomplete — re-downloading…"
         )
         QTimer.singleShot(0, self._begin_model_downloads)
+        return True
+
+    def _block_embedder_until_search_preset_ready(self) -> bool:
+        """Return True when embedder load must not proceed (preset still missing)."""
+        if self._mock_downloads or not self._splash_should_load_embedder():
+            return False
+        if self._splash_search_preset_ready():
+            return False
+        if self._attempt_search_preset_repair_download(force=True):
+            return True
+        self._bootstrap_running = False
+        self._view.set_download_detail(
+            "Search models could not be downloaded.\n"
+            "Check your internet connection, then close and restart Qube."
+        )
         return True
 
     def _begin_embedder_load(self) -> None:
@@ -797,9 +818,8 @@ class StartupSplashController(QObject):
             self._view.set_progress_percent(_DOWNLOAD_DONE_PERCENT)
             QTimer.singleShot(0, lambda: self._finish_bootstrap(None))
             return
-        if not self._mock_downloads and not self._splash_search_preset_ready():
-            if self._attempt_search_preset_repair_download(force=True):
-                return
+        if self._block_embedder_until_search_preset_ready():
+            return
         if is_winget_validation_mode():
             record_boot_state("embedder_start")
         self._set_logo_rotating(True)
@@ -871,6 +891,11 @@ class StartupSplashController(QObject):
                 and self._splash_should_load_embedder()
                 and not self._splash_search_preset_ready()
                 and self._attempt_search_preset_repair_download(force=True)
+            ):
+                return
+            if (
+                not self._mock_downloads
+                and self._block_embedder_until_search_preset_ready()
             ):
                 return
             QTimer.singleShot(0, self._begin_embedder_load)
