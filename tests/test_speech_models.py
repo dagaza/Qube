@@ -10,6 +10,12 @@ from core import stt_models as sm
 from core import tts_models as tm
 
 
+def _paths_equal(left: Path | None, right: Path) -> None:
+    """Compare paths on Windows where resolve() may use 8.3 short names."""
+    assert left is not None
+    assert os.path.normcase(str(left.resolve())) == os.path.normcase(str(right.resolve()))
+
+
 def _run_in_tmp(fn):
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
@@ -84,7 +90,7 @@ def test_bundled_whisper_present_finds_hf_snapshot_layout():
         (snap / "model.bin").write_bytes(b"x")
         assert sm.bundled_whisper_present() is True
         assert sm.stt_model_available() is True
-        assert sm.resolve_bundled_whisper_load_path() == snap.resolve()
+        _paths_equal(sm.resolve_bundled_whisper_load_path(), snap)
 
     _run_in_tmp(body)
 
@@ -103,7 +109,7 @@ def test_bundled_whisper_prefers_flat_small_over_hf_cache():
         flat = sm.bundled_whisper_dir()
         flat.mkdir(parents=True)
         (flat / "model.bin").write_bytes(b"flat")
-        assert sm.resolve_bundled_whisper_load_path() == flat.resolve()
+        _paths_equal(sm.resolve_bundled_whisper_load_path(), flat)
 
     _run_in_tmp(body)
 
