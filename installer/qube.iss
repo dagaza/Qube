@@ -150,6 +150,9 @@ function InitializeSetup(): Boolean;
 var
   InstalledVersion: String;
 begin
+  { Must run before AppMutex check. Silent/WinGet upgrade hangs forever if Qube.exe
+    still holds dagaza.Qube.AppMutex (suppressed "please close Qube" dialog). }
+  KillRunningQube();
   Result := True;
   if RegQueryStringValue(HKCU, UninstallRegKey, 'DisplayVersion', InstalledVersion) then
   begin

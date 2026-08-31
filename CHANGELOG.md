@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Release CI (Windows CPU):** silent install after the upgrade smoke no longer hangs on Inno `AppMutex`. Setup now `taskkill`s running `Qube.exe` before the mutex check (same as uninstall), and install smokes stop the process tree and wait for exit before launching the next Setup.exe.
+
 ## [1.3.44] - 2026-08-31
 
 ### Added

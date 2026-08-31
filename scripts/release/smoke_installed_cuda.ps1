@@ -71,9 +71,7 @@ function Format-SmokeFailureMessage {
     return ($parts -join "; ")
 }
 
-Write-Host "Installing $($setup.Name) silently..."
-Start-Process -Wait -FilePath $setup.FullName `
-    -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART"
+Install-QubeSilentSetup -SetupPath $setup.FullName
 
 if (-not (Test-Path $installedExe)) {
     throw "Silent install failed — $installedExe not found"

@@ -15,23 +15,17 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. "$PSScriptRoot/smoke_launch_env.ps1"
 
 $AppId = "{B7E4A3F1-92C0-4D8B-A6E5-3F1C7D9B0E42}_is1"
 $UninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$AppId"
 $InstalledExe = Join-Path $InstallDir "Qube.exe"
-$SilentArgs = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART")
 
 function Get-InstalledQubeVersion {
     if (-not (Test-Path $UninstallKey)) {
         return $null
     }
     return (Get-ItemProperty $UninstallKey -ErrorAction SilentlyContinue).DisplayVersion
-}
-
-function Install-QubeSetup {
-    param([string]$SetupPath)
-    Write-Host "Installing $SetupPath silently..."
-    Start-Process -Wait -FilePath $SetupPath -ArgumentList $SilentArgs
 }
 
 foreach ($setup in @($OldSetup, $NewSetup)) {
@@ -44,11 +38,14 @@ if (Test-Path $InstalledExe) {
     Write-Host "Removing leftover install at $InstallDir before upgrade smoke test..."
     $existingUninstaller = Join-Path $InstallDir "unins000.exe"
     if (Test-Path $existingUninstaller) {
-        Start-Process -Wait -FilePath $existingUninstaller -ArgumentList $SilentArgs
+        Stop-AllQubeProcesses
+        Wait-QubeProcessesExited
+        Start-Process -Wait -FilePath $existingUninstaller `
+            -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"
     }
 }
 
-Install-QubeSetup -SetupPath $OldSetup
+Install-QubeSilentSetup -SetupPath $OldSetup
 
 if (-not (Test-Path $InstalledExe)) {
     throw "Initial install failed — $InstalledExe not found"
@@ -63,7 +60,7 @@ if ($ExpectedOldVersion -and $oldVersion -ne $ExpectedOldVersion) {
 }
 Write-Host "Initial install verified (version $oldVersion at $InstallDir)"
 
-Install-QubeSetup -SetupPath $NewSetup
+Install-QubeSilentSetup -SetupPath $NewSetup
 
 if (-not (Test-Path $InstalledExe)) {
     throw "Upgrade failed — $InstalledExe not found"
@@ -80,8 +77,6 @@ if ($oldVersion -eq $newVersion) {
     throw "Upgrade did not change DisplayVersion ($oldVersion)"
 }
 Write-Host "Upgrade verified (version $oldVersion -> $newVersion at $InstallDir)"
-
-. "$PSScriptRoot/smoke_launch_env.ps1"
 
 Write-Host "Launching upgraded EXE..."
 $state = Enter-QubeSmokeLaunchEnvironment

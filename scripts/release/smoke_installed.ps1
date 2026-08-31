@@ -23,9 +23,7 @@ $installedExe = Join-Path $installDir "Qube.exe"
 $internalDir = Join-Path $installDir "_internal"
 $uninstaller = Join-Path $installDir "unins000.exe"
 
-Write-Host "Installing $($setup.Name) silently..."
-Start-Process -Wait -FilePath $setup.FullName `
-    -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART"
+Install-QubeSilentSetup -SetupPath $setup.FullName
 
 if (-not (Test-Path $installedExe)) {
     throw "Silent install failed — $installedExe not found"
