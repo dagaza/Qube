@@ -238,7 +238,7 @@ class AiModelsHandlersMixin:
         set_internal_n_threads(int(v))
         llm = self.workers.get("llm")
         if llm and getattr(llm, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
-            llm.refresh_native_model_from_settings()
+            llm.refresh_native_model_from_settings(notify_hardware_reload=True)
 
     def _on_native_chat_format_changed(self, mode: str) -> None:
         if mode is not None:
@@ -342,7 +342,7 @@ class AiModelsHandlersMixin:
         self._refresh_inference_transparency_panel()
         llm = self.workers.get("llm")
         if llm and getattr(llm, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
-            llm.refresh_native_model_from_settings()
+            llm.refresh_native_model_from_settings(notify_hardware_reload=True)
 
     def _refresh_local_gguf_list(self) -> None:
         if not hasattr(self, "local_gguf_list"):

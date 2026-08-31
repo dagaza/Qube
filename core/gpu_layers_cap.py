@@ -26,6 +26,8 @@ _VRAM_OVERHEAD_MB = 768.0
 _MB_PER_LAYER_ESTIMATE = 200.0
 # When VRAM cannot be detected, allow a conservative range so CPU-only still works
 _UNKNOWN_VRAM_MAX_LAYERS = 99
+# Windows has no reliable VRAM probe yet (Vulkan/iGPU); cap manual slider when unknown.
+_UNKNOWN_VRAM_WIN32_MAX_LAYERS = 32
 # Fraction of the VRAM-derived layer cap to leave for OS / other GPU users (first-run default)
 _HEADROOM_FRACTION = 0.25
 # Unified-memory GPU budget as a fraction of system RAM (Apple Silicon + AMD APU)
@@ -201,6 +203,8 @@ def max_safe_n_gpu_layers(vram_bytes: Optional[int] = None) -> int:
         vram_bytes = detect_gpu_vram_bytes()
 
     if vram_bytes <= 0:
+        if sys.platform == "win32":
+            return min(_ABS_CEILING, _UNKNOWN_VRAM_WIN32_MAX_LAYERS)
         return min(_ABS_CEILING, _UNKNOWN_VRAM_MAX_LAYERS)
 
     mb = float(vram_bytes) / (1024.0 * 1024.0)
@@ -212,7 +216,12 @@ def max_safe_n_gpu_layers(vram_bytes: Optional[int] = None) -> int:
 def default_internal_n_gpu_layers_suggested() -> int:
     """
     First-run default: 75% of the detected safe maximum layer count (0 if no GPU layers advised).
+
+    On Windows without VRAM telemetry, default to CPU-only (0) so Vulkan/iGPU installs do not
+    start with aggressive partial offload that fails llama_context creation.
     """
+    if detect_gpu_vram_bytes() <= 0 and sys.platform == "win32":
+        return 0
     cap = max_safe_n_gpu_layers()
     if cap <= 0:
         return 0

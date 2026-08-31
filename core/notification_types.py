@@ -148,6 +148,36 @@ def mic_error_event(*, detail: str = "") -> NotificationEvent:
     )
 
 
+def native_model_reloaded_from_settings_event(
+    *,
+    model_name: str,
+    cpu_fallback: bool = False,
+) -> NotificationEvent:
+    """Toast when a settings-driven native reload succeeds (GPU/CPU/context)."""
+    name = str(model_name or "").strip() or "Model"
+    if cpu_fallback:
+        body = (
+            f"{name} is ready on CPU — GPU offload did not fit in memory. "
+            "Lower GPU layers in Settings → AI & Models if you want to try again."
+        )
+    else:
+        body = (
+            f"{name} is ready with your updated hardware settings "
+            "(GPU layers, CPU threads, or context limit)."
+        )
+    return NotificationEvent(
+        title="Model reloaded",
+        body=body,
+        severity=NotificationSeverity.SUCCESS,
+        category="system",
+        auto_dismiss_ms=6000,
+        dedupe_key=f"native_hardware_reload:{name}",
+        rate_limit_key="native_hardware_reload",
+        rate_limit_sec=3.0,
+        icon_name="fa5s.cube",
+    )
+
+
 def needs_model_event() -> NotificationEvent:
     from core.app_settings import get_engine_mode
     from core.local_gguf_library import has_local_gguf_models

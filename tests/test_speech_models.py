@@ -84,6 +84,26 @@ def test_bundled_whisper_present_finds_hf_snapshot_layout():
         (snap / "model.bin").write_bytes(b"x")
         assert sm.bundled_whisper_present() is True
         assert sm.stt_model_available() is True
+        assert sm.resolve_bundled_whisper_load_path() == snap.resolve()
+
+    _run_in_tmp(body)
+
+
+def test_bundled_whisper_prefers_flat_small_over_hf_cache():
+    def body(root: Path) -> None:
+        stt_dir = Path(sm.get_stt_models_dir())
+        snap = (
+            stt_dir
+            / "models--Systran--faster-whisper-small"
+            / "snapshots"
+            / "abc123"
+        )
+        snap.mkdir(parents=True)
+        (snap / "model.bin").write_bytes(b"cache")
+        flat = sm.bundled_whisper_dir()
+        flat.mkdir(parents=True)
+        (flat / "model.bin").write_bytes(b"flat")
+        assert sm.resolve_bundled_whisper_load_path() == flat.resolve()
 
     _run_in_tmp(body)
 

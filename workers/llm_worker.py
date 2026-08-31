@@ -361,6 +361,7 @@ class LLMWorker(QThread):
         self.store = store
         self.db = db_manager
         self._native_engine = native_engine
+        self._notify_native_hardware_reload = False
         self._sidecar_client = sidecar_client
         self._last_native_job_cancelled = False
         self.engine_mode = get_engine_mode()
@@ -5195,7 +5196,7 @@ class LLMWorker(QThread):
         set_llm_context_limit(self.context_window)
         logger.debug(f"Context Window updated to {self.context_window}")
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
-            self.refresh_native_model_from_settings()
+            self.refresh_native_model_from_settings(notify_hardware_reload=True)
 
     def set_output_token_limit_enabled(self, enabled: bool) -> None:
         self.output_token_limit_enabled = bool(enabled)
@@ -5422,6 +5423,7 @@ class LLMWorker(QThread):
         self,
         *,
         autoload: bool = False,
+        notify_hardware_reload: bool = False,
     ) -> "NativeModelRefreshOutcome":
         """Load or reload the native .gguf from QSettings (path, GPU layers, context)."""
         from core.native_model_autoload import (
@@ -5432,6 +5434,8 @@ class LLMWorker(QThread):
         noop = NativeModelRefreshOutcome(attempted=False)
         if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) != "internal" or not self._native_engine:
             return noop
+        if notify_hardware_reload:
+            self._notify_native_hardware_reload = True
         if self.isRunning():
             self.cancel_generation()
             # Give the current turn a brief window to unwind so model load can proceed quickly.

@@ -92,7 +92,20 @@ def iter_whisper_weight_dirs(stt_dir: Path | None = None) -> list[Path]:
 
 def bundled_whisper_present() -> bool:
     """True when the bundled Whisper small weights exist under ``~/.qube/models/stt/``."""
-    return bool(iter_whisper_weight_dirs())
+    return resolve_bundled_whisper_load_path() is not None
+
+
+def resolve_bundled_whisper_load_path() -> Path | None:
+    """Directory to pass to faster-whisper for the bundled default.
+
+    Prefers the flat ``stt/small/`` layout from bootstrap; falls back to legacy
+    Hugging Face hub-cache snapshots under ``stt/models--.../snapshots/``.
+    """
+    flat = bundled_whisper_dir()
+    if _looks_like_ct2_whisper_dir(flat):
+        return flat
+    dirs = iter_whisper_weight_dirs()
+    return dirs[0] if dirs else None
 
 
 def is_protected_stt_model(path: str) -> bool:

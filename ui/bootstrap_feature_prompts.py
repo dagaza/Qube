@@ -15,8 +15,22 @@ from workers.bootstrap_model_download_worker import BootstrapModelDownloadWorker
 
 logger = logging.getLogger("Qube.UI.BootstrapFeaturePrompts")
 
-DEFAULT_MAIN_LLM_ID = BootstrapModelId.LLM_QWEN35_9B
+MAIN_LLM_REQUIRED_TITLE = "Model required"
+MAIN_LLM_REQUIRED_BODY = (
+    "Chat needs a local conversational model.\n\n"
+    "Open Model Manager to download a model that fits your hardware, "
+    "then select it from the toolbar."
+)
 
+
+def _open_model_manager_from_parent(parent: QWidget) -> None:
+    window = parent.window()
+    if window is None:
+        return
+    if hasattr(window, "_open_model_manager_page"):
+        window._open_model_manager_page()
+    elif hasattr(window, "_on_notification_action"):
+        window._on_notification_action("open_models")
 
 def format_bootstrap_model_confirm_body(
     model_id: BootstrapModelId,
@@ -264,11 +278,22 @@ def main_llm_model_available() -> bool:
 
 
 def ensure_main_llm_for_chat(parent: QWidget, *, is_dark: bool | None = None) -> bool:
+    """Return True when a conversational model is ready; otherwise prompt for Model Manager."""
     if main_llm_model_available():
         return True
-    return ensure_bootstrap_model_downloaded(
+
+    if is_dark is None:
+        is_dark = getattr(parent.window(), "_is_dark_theme", True)
+
+    confirm = PrestigeDialog(
         parent,
-        DEFAULT_MAIN_LLM_ID,
-        feature_label="Chat with the local AI",
+        MAIN_LLM_REQUIRED_TITLE,
+        MAIN_LLM_REQUIRED_BODY,
         is_dark=is_dark,
+        tone="danger",
+        dialog_width=460,
+        confirm_text="Open Model Manager",
     )
+    if confirm.exec():
+        _open_model_manager_from_parent(parent)
+    return False

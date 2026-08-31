@@ -14,7 +14,9 @@ from core.bootstrap_selection import (
     save_bootstrap_selection,
 )
 from ui.bootstrap_feature_prompts import (
+    MAIN_LLM_REQUIRED_BODY,
     format_bootstrap_model_confirm_body,
+    ensure_main_llm_for_chat,
     main_llm_model_available,
 )
 
@@ -90,3 +92,59 @@ def test_format_bootstrap_model_confirm_body():
 def test_main_llm_model_available_external_mode(monkeypatch):
     monkeypatch.setattr("core.app_settings.get_engine_mode", lambda: "external")
     assert main_llm_model_available() is True
+
+
+def test_ensure_main_llm_for_chat_skips_when_model_ready(monkeypatch):
+    monkeypatch.setattr(
+        "ui.bootstrap_feature_prompts.main_llm_model_available", lambda: True
+    )
+    with patch("ui.bootstrap_feature_prompts.PrestigeDialog") as dlg_cls:
+        assert ensure_main_llm_for_chat(object()) is True
+        dlg_cls.assert_not_called()
+
+
+def test_ensure_main_llm_for_chat_prompts_model_manager(monkeypatch):
+    monkeypatch.setattr(
+        "ui.bootstrap_feature_prompts.main_llm_model_available", lambda: False
+    )
+    opened: list[bool] = []
+
+    class FakeWindow:
+        def _open_model_manager_page(self) -> None:
+            opened.append(True)
+
+    class FakeParent:
+        def window(self):
+            return FakeWindow()
+
+    with patch("ui.bootstrap_feature_prompts.PrestigeDialog") as dlg_cls:
+        dlg_cls.return_value.exec.return_value = True
+        assert ensure_main_llm_for_chat(FakeParent()) is False
+
+    assert opened == [True]
+    _parent, title, body = dlg_cls.call_args[0]
+    assert title == "Model required"
+    assert body == MAIN_LLM_REQUIRED_BODY
+    assert "Qwen" not in body
+    assert dlg_cls.call_args[1]["confirm_text"] == "Open Model Manager"
+
+
+def test_ensure_main_llm_for_chat_cancel_does_not_open_model_manager(monkeypatch):
+    monkeypatch.setattr(
+        "ui.bootstrap_feature_prompts.main_llm_model_available", lambda: False
+    )
+    opened: list[bool] = []
+
+    class FakeWindow:
+        def _open_model_manager_page(self) -> None:
+            opened.append(True)
+
+    class FakeParent:
+        def window(self):
+            return FakeWindow()
+
+    with patch("ui.bootstrap_feature_prompts.PrestigeDialog") as dlg_cls:
+        dlg_cls.return_value.exec.return_value = None
+        assert ensure_main_llm_for_chat(FakeParent()) is False
+
+    assert opened == []
