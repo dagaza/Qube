@@ -8,6 +8,11 @@
 ; Silent install (WinGet / CI):
 ;   Qube-1.0.0-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 ;
+; Silent uninstall (keeps user data by default):
+;   unins000.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+; Full silent wipe (models, library, settings):
+;   unins000.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DELETEUSERDATA=1
+;
 
 #define MyAppName      "Qube"
 #ifndef MyAppVersion
@@ -98,17 +103,39 @@ begin
   Sleep(1500);
 end;
 
+function DeleteUserDataRequested(): Boolean;
+var
+  Param: String;
+begin
+  Param := LowerCase(Trim(ExpandConstant('{param:DELETEUSERDATA}')));
+  Result :=
+    (Param = '1') or (Param = 'yes') or (Param = 'true') or (Param = 'on');
+end;
+
+procedure RemoveQubeUserData();
+var
+  LocalData, DotQube: String;
+begin
+  LocalData := ExpandConstant('{localappdata}') + '\Qube';
+  { Inno has no {userprofile} constant — use the USERPROFILE env var (see IS help: {%NAME}). }
+  DotQube := ExpandConstant('{%USERPROFILE}') + '\.qube';
+  if DirExists(LocalData) then
+    DelTree(LocalData, True, True, True);
+  if DirExists(DotQube) then
+    DelTree(DotQube, True, True, True);
+end;
+
 function InitializeUninstall(): Boolean;
 begin
   { Must run before AppMutex check or file removal while Qube is in the tray. }
   KillRunningQube();
   DeleteUserData := False;
+  if UninstallSilent() and DeleteUserDataRequested() then
+    DeleteUserData := True;
   Result := True;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
-var
-  LocalData, DotQube: String;
 begin
   if CurUninstallStep = usUninstall then
   begin
@@ -123,14 +150,7 @@ begin
         mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
   end;
   if (CurUninstallStep = usPostUninstall) and DeleteUserData then
-  begin
-    LocalData := ExpandConstant('{localappdata}') + '\Qube';
-    DotQube := ExpandConstant('{userprofile}') + '\.qube';
-    if DirExists(LocalData) then
-      DelTree(LocalData, True, True, True);
-    if DirExists(DotQube) then
-      DelTree(DotQube, True, True, True);
-  end;
+    RemoveQubeUserData();
 end;
 
 #if MyAppVariant == "cuda"

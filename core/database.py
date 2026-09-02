@@ -1169,6 +1169,51 @@ class DatabaseManager:
                 )
             return [dict(row) for row in cursor.fetchall()]
 
+    def get_user_library_documents_for_composer(
+        self,
+        query: str = "",
+        limit: int = 200,
+    ) -> list[dict]:
+        """User-ingested library docs for ``@[file:…]`` (excludes Qube help corpus)."""
+        q = (query or "").strip().lower()
+        fetch_limit = max(limit * 4, limit)
+        with self._get_connection() as conn:
+            if q:
+                cursor = conn.execute(
+                    """
+                    SELECT d.*, lf.name AS folder_name
+                    FROM documents d
+                    LEFT JOIN library_folders lf ON lf.id = d.folder_id
+                    WHERE COALESCE(lf.allows_user_ingest, 1) = 1
+                      AND instr(lower(d.filename), ?) > 0
+                    ORDER BY d.ingested_at DESC
+                    LIMIT ?
+                    """,
+                    (q, fetch_limit),
+                )
+            else:
+                cursor = conn.execute(
+                    """
+                    SELECT d.*, lf.name AS folder_name
+                    FROM documents d
+                    LEFT JOIN library_folders lf ON lf.id = d.folder_id
+                    WHERE COALESCE(lf.allows_user_ingest, 1) = 1
+                    ORDER BY d.ingested_at DESC
+                    LIMIT ?
+                    """,
+                    (fetch_limit,),
+                )
+            rows = [dict(row) for row in cursor.fetchall()]
+        filtered: list[dict] = []
+        for row in rows:
+            filename = str(row.get("filename") or "").strip()
+            if not filename or is_qube_managed_document_filename(filename):
+                continue
+            filtered.append(row)
+            if len(filtered) >= limit:
+                break
+        return filtered
+
     def delete_document_metadata(self, filename: str):
         with self._get_connection() as conn:
             conn.execute("DELETE FROM documents WHERE filename = ?", (filename,))

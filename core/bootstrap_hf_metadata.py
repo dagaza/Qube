@@ -13,11 +13,6 @@ from core.bootstrap_manifest import BOOTSTRAP_MODELS, BootstrapModelId
 
 logger = logging.getLogger("Qube.Bootstrap.HFMetadata")
 
-_KOKORO_FILES: tuple[tuple[str, str], ...] = (
-    ("hexgrad/Kokoro-82M", "kokoro-v1.0.onnx"),
-    ("hexgrad/Kokoro-82M", "voices-v1.0.bin"),
-)
-
 
 class BootstrapSizeSource(StrEnum):
     HUGGINGFACE = "huggingface"
@@ -58,24 +53,38 @@ def _fetch_hf_file_size_bytes(repo_id: str, filename: str) -> int | None:
     return None
 
 
+def _fetch_url_content_length(url: str) -> int | None:
+    try:
+        with requests.head(url, timeout=(10, 30), allow_redirects=True) as resp:
+            if resp.status_code == 200:
+                raw = resp.headers.get("content-length")
+                if raw:
+                    return int(raw)
+    except Exception as exc:
+        logger.debug("HEAD size probe failed for %s: %s", url, exc)
+    return None
+
+
 def resolve_bootstrap_size(model_id: BootstrapModelId) -> ResolvedBootstrapSize:
     spec = BOOTSTRAP_MODELS[model_id]
     fallback = int(spec.size_bytes)
 
     if model_id == BootstrapModelId.KOKORO_TTS:
+        from core.tts_models import KOKORO_BUNDLED_ASSETS, KOKORO_DOWNLOAD_SOURCE_DISPLAY
+
         total = 0
         found = 0
-        for repo, fname in _KOKORO_FILES:
-            sz = _fetch_hf_file_size_bytes(repo, fname)
+        for _filename, url in KOKORO_BUNDLED_ASSETS:
+            sz = _fetch_url_content_length(url)
             if sz is not None:
                 total += sz
                 found += 1
-        if found == len(_KOKORO_FILES):
+        if found == len(KOKORO_BUNDLED_ASSETS):
             return ResolvedBootstrapSize(
                 model_id=model_id,
                 size_bytes=total,
-                source=BootstrapSizeSource.HUGGINGFACE,
-                detail="hexgrad/Kokoro-82M (onnx + voices)",
+                source=BootstrapSizeSource.ESTIMATE,
+                detail=f"{KOKORO_DOWNLOAD_SOURCE_DISPLAY} release (onnx + voices)",
             )
         return ResolvedBootstrapSize(
             model_id=model_id,

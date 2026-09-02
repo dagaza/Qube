@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+## [1.3.46] - 2026-09-02
+
+### Fixed
+- **Kokoro TTS download (bootstrap + Settings):** ONNX assets now download from the official `thewh1teagle/kokoro-onnx` GitHub release instead of removed files on `hexgrad/Kokoro-82M` (fixes 404 on first-run bootstrap and **Download base TTS model**).
+- **Composer `@[file:…]` mentions:** exclude the built-in Qube help corpus from file picker results; ignore tool/category routing tokens when filtering filenames.
+- **Frameless modals (Windows/Linux):** centralize prestige-style dialog chrome so borders and translucency re-apply reliably after the native window handle exists.
+- **Windows silent uninstall wipe:** Inno Setup supports `/DELETEUSERDATA=1` to remove `%LOCALAPPDATA%\Qube` and `%USERPROFILE%\.qube` during silent uninstall; fix `{userprofile}` expansion via `{%USERPROFILE}`.
+- **WinGet install grace:** post-install validation runs without mock bootstrap downloads; diagnostics distinguish smoke vs install-grace paths and write grace boot traces for CUDA release CI.
+
+### Added
+- **Release CI (CUDA):** richer WinGet validation smoke failure output (mode, grace trace) and clearer wait/retry handling in `smoke_installed_cuda.ps1`.
+
 ## [1.3.45] - 2026-08-31
 
 ### Added

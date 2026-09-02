@@ -7,7 +7,7 @@ from collections.abc import Callable
 
 import qtawesome as qta
 from PyQt6.QtCore import Qt, QTimer, QSize
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QShowEvent
 from PyQt6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -38,6 +38,10 @@ from core.theme.widget_styles import (
     PRESTIGE_SOURCE_CONTAINER,
 )
 from core.web_search_audit import web_search_audit_log_env_override
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
+)
 from mcp.routing_debug import routing_debug_log_env_override
 from ui.components.prestige_dialog import _resolve_is_dark_from_parent
 from ui.components.toggle import PrestigeToggle
@@ -65,8 +69,7 @@ class DiagnosticLogViewerDialog(QDialog):
 
         self.setWindowTitle(spec.title)
         self.setModal(False)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
         self.resize(820, 620)
 
         self._poll_timer = QTimer(self)
@@ -314,6 +317,10 @@ class DiagnosticLogViewerDialog(QDialog):
     def _on_open_external(self) -> None:
         if not open_path_in_system(self._spec.path_fn()):
             logger.warning("Could not open diagnostic log externally: %s", self._spec.path_fn())
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
 
     def closeEvent(self, event) -> None:
         self._poll_timer.stop()

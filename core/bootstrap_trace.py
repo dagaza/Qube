@@ -108,9 +108,9 @@ def record_bootstrap_trace(event: str, **extra: Any) -> None:
 def record_startup_progress(event: str, **extra: Any) -> None:
     """Record bootstrap progress for field trace and WinGet CI smoke (when active)."""
     record_bootstrap_trace(event, **extra)
-    from core.winget_validation import is_winget_smoke_validation, record_boot_state
+    from core.winget_validation import validation_diagnostics_active, record_boot_state
 
-    if is_winget_smoke_validation():
+    if validation_diagnostics_active():
         record_boot_state(event, **extra)
 
 

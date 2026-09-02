@@ -262,19 +262,19 @@ def maybe_reset_stale_shell_bootstrap_completion() -> bool:
 
 
 def should_show_bootstrap_consent() -> bool:
-    from core.winget_validation import is_winget_smoke_validation
+    from core.winget_validation import is_winget_validation_mode
 
     maybe_reset_stale_shell_bootstrap_completion()
-    if is_winget_smoke_validation():
+    if is_winget_validation_mode():
         return False
     maybe_seed_bootstrap_selection_for_existing_install()
     return not is_bootstrap_completed()
 
 
 def effective_bootstrap_selection() -> set[BootstrapModelId]:
-    from core.winget_validation import is_winget_smoke_validation
+    from core.winget_validation import is_winget_validation_mode
 
-    if is_winget_smoke_validation():
+    if is_winget_validation_mode():
         return set()
     if is_bootstrap_completed():
         return get_selected_model_ids()

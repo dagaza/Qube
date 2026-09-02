@@ -210,6 +210,26 @@ class SidebarFolderTests(unittest.TestCase):
         docs = self.db.get_library_documents_for_sidebar_search("needle")
         self.assertTrue(any(d["filename"] == "needle.pdf" for d in docs))
 
+    def test_composer_file_picker_excludes_qube_help_corpus(self) -> None:
+        main_id = self.db.get_main_library_folder_id()
+        qube_id = self.db.get_qube_library_folder_id()
+        self.db.add_document_metadata(
+            "qube/documentation/features/library.md",
+            1.0,
+            5,
+            folder_id=qube_id,
+        )
+        self.db.add_document_metadata(
+            "my-report.pdf",
+            120.0,
+            10,
+            folder_id=main_id,
+        )
+        docs = self.db.get_user_library_documents_for_composer()
+        filenames = {d["filename"] for d in docs}
+        self.assertIn("my-report.pdf", filenames)
+        self.assertNotIn("qube/documentation/features/library.md", filenames)
+
     def test_pin_and_unpin_session(self) -> None:
         session_id = self.db.create_session("Pinned chat")
         self.assertTrue(self.db.set_session_pinned(session_id, True))

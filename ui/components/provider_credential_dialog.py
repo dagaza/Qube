@@ -17,6 +17,10 @@ from PyQt6.QtWidgets import (
 )
 
 from core.knowledge.provider_credentials import get_provider_credential_spec
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
+)
 from core.theme.accessors import theme_for
 from core.theme.color_utils import with_alpha
 from core.theme.widget_styles import (
@@ -61,8 +65,7 @@ class ProviderCredentialDialog(QDialog):
         self._provider_id = provider_id
 
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
         self.setFixedWidth(_DIALOG_WIDTH)
         self.setMinimumHeight(_DIALOG_MIN_HEIGHT)
 
@@ -160,6 +163,7 @@ class ProviderCredentialDialog(QDialog):
 
     def showEvent(self, event: QShowEvent) -> None:  # noqa: N802 — Qt API
         super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
         _center_dialog_on_host(self)
 
     def done(self, result: int) -> None:  # noqa: N802 — Qt API

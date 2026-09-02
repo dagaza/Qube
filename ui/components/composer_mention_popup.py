@@ -992,10 +992,7 @@ class ComposerMentionPopup(QWidget):
             return
         q = self._search_query()
         try:
-            if q:
-                docs = self._db.get_library_documents_for_sidebar_search(q, limit=80)
-            else:
-                docs = self._db.get_library_documents(limit=80, offset=0)
+            docs = self._db.get_user_library_documents_for_composer(q, limit=200)
         except Exception:
             docs = []
         shown = 0

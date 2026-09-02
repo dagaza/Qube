@@ -24,6 +24,10 @@ class TestResolveScopedFilter(unittest.TestCase):
     def test_partial_category_not_consumed_in_scoped(self) -> None:
         self.assertEqual(resolve_scoped_filter("file", "fil"), "fil")
 
+    def test_library_not_used_as_file_filter(self) -> None:
+        self.assertEqual(resolve_scoped_filter("file", "library"), "")
+        self.assertEqual(resolve_scoped_filter("file", "lib"), "")
+
     def test_internet_is_item_filter(self) -> None:
         self.assertEqual(resolve_scoped_filter("tool", "internet"), "internet")
 
@@ -63,7 +67,7 @@ class TestSearchComposerMentions(unittest.TestCase):
 
     def test_files_from_db(self) -> None:
         db = MagicMock()
-        db.get_library_documents_for_sidebar_search.return_value = [
+        db.get_user_library_documents_for_composer.return_value = [
             {"filename": "Internet Policy.pdf", "chunk_count": 3},
         ]
         db.get_sessions_for_sidebar_search.return_value = []

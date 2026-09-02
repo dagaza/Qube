@@ -399,21 +399,12 @@ def _download_whisper(on_progress: DownloadProgressCallback, spec) -> None:
 
 
 def _download_kokoro(on_progress: DownloadProgressCallback, spec) -> None:
-    from core.tts_models import BUNDLED_DEFAULT_FILENAME, BUNDLED_VOICES_FILENAME
+    from core.tts_models import KOKORO_BUNDLED_ASSETS
 
     base = Path(tts_default_path()).parent
     step_label = f"Downloading {spec.label}"
-    files = (
-        (
-            base / BUNDLED_DEFAULT_FILENAME,
-            BUNDLED_DEFAULT_FILENAME,
-            "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1.0.onnx",
-        ),
-        (
-            base / BUNDLED_VOICES_FILENAME,
-            BUNDLED_VOICES_FILENAME,
-            "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/voices-v1.0.bin",
-        ),
+    files = tuple(
+        (base / filename, filename, url) for filename, url in KOKORO_BUNDLED_ASSETS
     )
     for path, name, url in files:
         _download_url_streaming(

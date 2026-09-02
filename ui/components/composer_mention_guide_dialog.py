@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QShowEvent
 from PyQt6.QtWidgets import (
     QDialog,
     QFrame,
@@ -15,6 +16,10 @@ from PyQt6.QtWidgets import (
 )
 
 from core.composer_mention_guide import build_composer_mention_guide_text
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
+)
 from core.theme.view_theme import view_resolved_theme
 from core.theme.widget_styles import (
     PRESTIGE_ACCENT_LABEL,
@@ -35,8 +40,7 @@ class ComposerMentionGuideDialog(QDialog):
             is_dark = _resolve_is_dark_from_parent(parent)
         theme = view_resolved_theme(parent, is_dark=is_dark)
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
         self.setMinimumSize(640, 520)
         self.resize(720, 620)
 
@@ -94,6 +98,10 @@ class ComposerMentionGuideDialog(QDialog):
         inner.addLayout(btn_row)
 
         outer.addWidget(container)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
 
 
 def show_composer_mention_guide(parent=None, *, is_dark: bool | None = None) -> None:

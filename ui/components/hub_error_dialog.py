@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, QUrl
-from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtGui import QDesktopServices, QShowEvent
 from PyQt6.QtWidgets import QDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QSizePolicy
 
 from core.hf_hub_errors import HF_STATUS_URL, HubErrorInfo
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
+)
 from core.theme.accessors import theme_for
 from core.theme.color_utils import with_alpha
 from core.theme.widget_styles import (
@@ -33,8 +37,7 @@ class HubErrorDialog(QDialog):
         super().__init__(parent)
         self._info = info
         self._retry_chosen = False
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
 
         retry = info.retryable if show_retry is None else bool(show_retry)
         status = info.show_status_link if show_status is None else bool(show_status)
@@ -123,6 +126,10 @@ class HubErrorDialog(QDialog):
         btns.addStretch()
         c_layout.addLayout(btns)
         outer.addWidget(container)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
 
     def _choose_retry(self) -> None:
         self._retry_chosen = True

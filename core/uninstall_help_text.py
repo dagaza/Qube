@@ -23,8 +23,9 @@ _WINDOWS = (
     "WinGet: winget uninstall -e --id dagaza.Qube\n"
     "Chocolatey: choco uninstall qube -y\n"
     "Application files live under %LOCALAPPDATA%\\Programs\\Qube\\ (removed by "
-    "the uninstaller). User data is kept separately at %LOCALAPPDATA%\\Qube\\ — "
-    "delete that folder for a full wipe."
+    "the uninstaller). User data lives under %LOCALAPPDATA%\\Qube\\ and "
+    "%USERPROFILE%\\.qube\\ — the interactive uninstaller can remove both; "
+    "silent uninstall keeps them unless you add /DELETEUSERDATA=1."
 )
 
 _MACOS = (

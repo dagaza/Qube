@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QShowEvent
 from PyQt6.QtWidgets import QDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
+
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
+)
 
 from core.theme.families_policy import (
     NAV_FALLBACK_CANCEL_ACTION,
@@ -34,8 +40,14 @@ def prompt_theme_polarity_fallback(
     """Ask how to proceed when the current theme family lacks the target polarity."""
     dialog = QDialog(parent)
     dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
-    dialog.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-    dialog.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    configure_frameless_dialog_host(dialog)
+
+    def _on_show(event: QShowEvent) -> None:
+        QDialog.showEvent(dialog, event)
+        apply_frameless_dialog_chrome(dialog)
+        _center_dialog_on_host(dialog)
+
+    dialog.showEvent = _on_show  # type: ignore[method-assign]
 
     theme = _dialog_theme(parent, is_dark)
     accent, confirm_fg = prestige_accent_colors(theme, tone="default", title="Theme")
@@ -104,6 +116,5 @@ def prompt_theme_polarity_fallback(
 
     root.addWidget(container)
     dialog.adjustSize()
-    _center_dialog_on_host(dialog)
     dialog.exec()
     return result

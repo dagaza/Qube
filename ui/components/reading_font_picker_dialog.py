@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QShowEvent
 from PyQt6.QtWidgets import (
     QDialog,
     QFrame,
@@ -17,6 +17,10 @@ from PyQt6.QtWidgets import (
 )
 
 from core.reading_fonts import system_reading_font_families
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
+)
 from core.theme.widget_styles import (
     PRESTIGE_DIALOG_CANCEL,
     PRESTIGE_DIALOG_CONFIRM,
@@ -46,8 +50,7 @@ class ReadingFontPickerDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
         self.setMinimumWidth(460)
         self.setMinimumHeight(420)
 
@@ -130,8 +133,9 @@ class ReadingFontPickerDialog(QDialog):
     def selected_family(self) -> str | None:
         return self._selected_family
 
-    def showEvent(self, event) -> None:
+    def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
         _center_dialog_on_host(self)
         self._search.setFocus(Qt.FocusReason.OtherFocusReason)
 

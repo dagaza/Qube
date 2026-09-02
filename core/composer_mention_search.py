@@ -6,7 +6,11 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from core.composer_attachments import ComposerAttachment, composer_tools_for_palette
+from core.composer_attachments import (
+    COMPOSER_TOOLS,
+    ComposerAttachment,
+    composer_tools_for_palette,
+)
 from core.composer_commands import COMPOSER_COMMANDS, ComposerCommand
 from core.composer_mention_trigger import filter_root_row_indices
 from core.composer_skills import ComposerSkillMention, list_skill_mentions_for_palette
@@ -90,12 +94,28 @@ def _category_consumed_tokens(kind: str) -> set[str]:
     return tokens
 
 
+def _file_scoped_routing_tokens() -> frozenset[str]:
+    """Tokens typed while picking a tool/category, not as filename filters."""
+    tokens = set(_category_consumed_tokens("file"))
+    tokens.update(_TOOL_ALIASES.keys())
+    tokens.update(_TOOL_ALIASES.values())
+    tokens.update({"reference", "document"})
+    for tool in COMPOSER_TOOLS:
+        tokens.add(str(tool["id"]).lower())
+        for word in str(tool.get("label") or "").lower().replace("-", " ").split():
+            if word:
+                tokens.add(word)
+    return frozenset(tokens)
+
+
 def resolve_scoped_filter(kind: str, raw_query: str) -> str:
     """In-section filter after stripping consumed category routing tokens."""
     q = (raw_query or "").strip().lower()
     if not q:
         return ""
     if q in _category_consumed_tokens(kind):
+        return ""
+    if kind == "file" and q in _file_scoped_routing_tokens():
         return ""
     return q
 
@@ -236,7 +256,7 @@ def search_composer_mentions(
 
     if db is not None:
         try:
-            docs = db.get_library_documents_for_sidebar_search(q, limit=file_limit * 4)
+            docs = db.get_user_library_documents_for_composer(q, limit=file_limit * 4)
         except Exception:
             docs = []
         file_count = 0

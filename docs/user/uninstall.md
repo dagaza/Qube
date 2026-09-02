@@ -39,6 +39,12 @@ Silent uninstall (IT scripts):
 & "$env:LOCALAPPDATA\Programs\Qube\unins000.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 ```
 
+Full silent wipe (also removes user data):
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Qube\unins000.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DELETEUSERDATA=1
+```
+
 ### WinGet
 
 ```powershell
@@ -62,7 +68,7 @@ The installer removes the application under `%LOCALAPPDATA%\Programs\Qube\` only
 
 When you uninstall from **Settings → Apps**, the uninstaller asks whether to remove this data as well. Choose **Yes** for a completely clean removal, or **No** (default) to keep models and settings for a future reinstall.
 
-Silent uninstall (`/VERYSILENT`) **never** deletes user data; remove the folders above manually if needed.
+Silent uninstall (`/VERYSILENT`) **does not** delete user data unless you also pass **`/DELETEUSERDATA=1`** (or `yes` / `true` / `on`). Without that flag, remove the folders above manually if needed.
 
 ---
 

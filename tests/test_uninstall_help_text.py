@@ -29,3 +29,9 @@ def test_uninstall_help_paragraphs_include_backup_guidance():
     assert "backup & restore" in intro
     assert "state backup" in intro
     assert "knowledge pack" in intro
+
+
+def test_uninstall_help_mentions_silent_deleteuserdata_on_windows():
+    text = "\n".join(mod.uninstall_help_paragraphs())
+    assert "DELETEUSERDATA=1" in text
+    assert "%USERPROFILE%\\.qube" in text

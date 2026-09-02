@@ -31,8 +31,7 @@ def _pcm_peak_level(pcm: bytes) -> float:
 def ensure_bundled_kokoro_assets(model_path: str, *, allow_download: bool = False) -> None:
     """Ensure Kokoro ONNX + voices exist locally; download only when explicitly allowed."""
     from core.tts_models import (
-        BUNDLED_DEFAULT_FILENAME,
-        BUNDLED_VOICES_FILENAME,
+        KOKORO_BUNDLED_ASSETS,
         bundled_default_path,
         is_protected_tts_model,
     )
@@ -43,12 +42,8 @@ def ensure_bundled_kokoro_assets(model_path: str, *, allow_download: bool = Fals
     base_dir = os.path.dirname(bundled_default_path())
     os.makedirs(base_dir, exist_ok=True)
 
-    onnx_path = os.path.join(base_dir, BUNDLED_DEFAULT_FILENAME)
-    bin_path = os.path.join(base_dir, BUNDLED_VOICES_FILENAME)
-
     files_to_check = {
-        onnx_path: "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/kokoro-v1.0.onnx",
-        bin_path: "https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/voices-v1.0.bin",
+        os.path.join(base_dir, filename): url for filename, url in KOKORO_BUNDLED_ASSETS
     }
 
     for file_path, url in files_to_check.items():
@@ -59,7 +54,8 @@ def ensure_bundled_kokoro_assets(model_path: str, *, allow_download: bool = Fals
                     "(download from Settings → Voice & Audio or first-run bootstrap)."
                 )
             print(f"[SYSTEM] Downloading missing required file: {os.path.basename(file_path)}...")
-            response = requests.get(url, stream=True)
+            response = requests.get(url, stream=True, timeout=(30, 300))
+            response.raise_for_status()
             with open(file_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)

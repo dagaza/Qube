@@ -19,6 +19,10 @@ from core.library_ingest_modes import (
     precision_ingest_license_message,
 )
 from core.library_pro_features import default_import_ingest_mode, user_has_pro_library_ingest
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
+)
 from core.theme.svg_icons import themed_fa_icon
 from ui.components.prestige_dialog import (
     _center_dialog_on_host,
@@ -54,10 +58,7 @@ class LibraryIngestModeDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
         self.setMinimumWidth(480)
 
         self._selected_mode: str | None = None
@@ -184,6 +185,7 @@ class LibraryIngestModeDialog(QDialog):
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
         _center_dialog_on_host(self)
         self.raise_()
         self.activateWindow()

@@ -21,6 +21,18 @@ logger = logging.getLogger("Qube.TTSModels")
 BUNDLED_DEFAULT_FILENAME = "kokoro-v1.0.onnx"
 BUNDLED_VOICES_FILENAME = "voices-v1.0.bin"
 BUNDLED_TTS_LABEL = "Kokoro v1.0 (bundled default)"
+# ONNX assets ship with thewh1teagle/kokoro-onnx releases (not hexgrad/Kokoro-82M on HF).
+KOKORO_DOWNLOAD_RELEASE = "model-files-v1.1"
+KOKORO_DOWNLOAD_BASE = (
+    f"https://github.com/thewh1teagle/kokoro-onnx/releases/download/{KOKORO_DOWNLOAD_RELEASE}"
+)
+KOKORO_ONNX_DOWNLOAD_URL = f"{KOKORO_DOWNLOAD_BASE}/{BUNDLED_DEFAULT_FILENAME}"
+KOKORO_VOICES_DOWNLOAD_URL = f"{KOKORO_DOWNLOAD_BASE}/{BUNDLED_VOICES_FILENAME}"
+KOKORO_DOWNLOAD_SOURCE_DISPLAY = "github.com/thewh1teagle/kokoro-onnx"
+KOKORO_BUNDLED_ASSETS: tuple[tuple[str, str], ...] = (
+    (BUNDLED_DEFAULT_FILENAME, KOKORO_ONNX_DOWNLOAD_URL),
+    (BUNDLED_VOICES_FILENAME, KOKORO_VOICES_DOWNLOAD_URL),
+)
 DEFAULT_KOKORO_VOICE = "af_heart"
 TTS_SUBDIR = "tts"
 SUPPORTED_TTS_ENGINES = ("Kokoro ONNX", "Piper ONNX")

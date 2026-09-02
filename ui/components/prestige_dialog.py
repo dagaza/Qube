@@ -18,6 +18,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QShowEvent
 
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
+)
 from core.knowledge.ui_adapter import (
     source_provenance_metadata_parts,
     source_type_label_for_row,
@@ -209,10 +213,7 @@ class PrestigeDialog(QDialog):
     ):
         super().__init__(parent)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
 
         fixed_w = int(dialog_width) if dialog_width is not None else None
         if fixed_w is not None:
@@ -295,6 +296,7 @@ class PrestigeDialog(QDialog):
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
         _center_dialog_on_host(self)
         self.raise_()
         self.activateWindow()
@@ -324,8 +326,7 @@ class SourcePreviewer(QDialog):
         theme = _dialog_theme(parent, is_dark)
         accent = theme.link
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
         self.setWindowTitle(f"Source — {filename}")
         self.setMinimumSize(600, 500)
         self.resize(720, 560)
@@ -374,6 +375,10 @@ class SourcePreviewer(QDialog):
         inner.addLayout(btn_row)
 
         outer.addWidget(container)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
 
 
 def _source_sort_key(src: dict) -> tuple:
@@ -474,8 +479,7 @@ class CitationSourcesDialog(QDialog):
         self._src_list = src_list
         transparency = dict(transparency or {})
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
         self.setMinimumSize(_CITATION_SOURCES_MIN_W, _CITATION_SOURCES_MIN_H)
         self.resize(_CITATION_SOURCES_DEFAULT_W, _CITATION_SOURCES_DEFAULT_H)
 
@@ -687,6 +691,7 @@ class CitationSourcesDialog(QDialog):
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
         _frame_dialog_within_host(
             self,
             preferred_width=_CITATION_SOURCES_DEFAULT_W,

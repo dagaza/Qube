@@ -120,7 +120,7 @@ BOOTSTRAP_MODELS: dict[BootstrapModelId, BootstrapModelSpec] = {
         locked_in_recommended=False,
         default_recommended=True,
         default_advanced=False,
-        source_display="huggingface.co/hexgrad/Kokoro-82M",
+        source_display="github.com/thewh1teagle/kokoro-onnx",
     ),
     BootstrapModelId.SEARCH_PRESET_BALANCED: BootstrapModelSpec(
         model_id=BootstrapModelId.SEARCH_PRESET_BALANCED,

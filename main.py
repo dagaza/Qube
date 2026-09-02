@@ -1631,7 +1631,6 @@ def run_application(
     from core.winget_validation import (
         apply_winget_validation_bootstrap_shortcut,
         configure_winget_validation_mode,
-        is_winget_smoke_validation,
         is_winget_validation_mode,
         log_validation_startup_summary,
         write_smoke_result,
@@ -1847,7 +1846,7 @@ def run_application(
             from PyQt6.QtCore import QTimer
 
             QTimer.singleShot(0, lambda: qube.window.handle_startup_autoload_outcome(outcome))
-        if is_winget_smoke_validation():
+        if is_winget_validation_mode():
             write_smoke_result(boot_complete=True)
         from PyQt6.QtCore import QTimer
 
@@ -1855,7 +1854,7 @@ def run_application(
         QTimer.singleShot(0, qube.window.schedule_auto_state_backup)
 
     # Keep a strong reference; otherwise StartupSplashController is GC'd and startup timers never fire.
-    if is_winget_smoke_validation():
+    if is_winget_validation_mode():
         record_startup_progress(
             "before_splash_bootstrap",
             mock_downloads=bool(args.mock_bootstrap_download),

@@ -41,15 +41,16 @@ def test_resolve_gguf_falls_back_to_estimate_when_hf_unavailable():
     assert resolved.source is BootstrapSizeSource.ESTIMATE
 
 
-def test_resolve_kokoro_sums_hf_files():
+def test_resolve_kokoro_sums_release_assets():
     with patch(
-        "core.bootstrap_hf_metadata._fetch_hf_file_size_bytes",
+        "core.bootstrap_hf_metadata._fetch_url_content_length",
         side_effect=[10_000_000, 5_000_000],
     ):
         resolved = resolve_bootstrap_size(BootstrapModelId.KOKORO_TTS)
 
     assert resolved.size_bytes == 15_000_000
-    assert resolved.source is BootstrapSizeSource.HUGGINGFACE
+    assert resolved.source is BootstrapSizeSource.ESTIMATE
+    assert "kokoro-onnx" in resolved.detail
 
 
 def test_resolve_all_bootstrap_sizes_returns_every_model():

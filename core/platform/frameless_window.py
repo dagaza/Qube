@@ -5,12 +5,34 @@ from __future__ import annotations
 import logging
 import sys
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget
 
 logger = logging.getLogger("Qube.Platform.FramelessWindow")
 
 _DWMWA_WINDOW_CORNER_PREFERENCE = 33
 _DWMWCP_DONOTROUND = 1
+
+
+def frameless_dialog_window_flags() -> Qt.WindowType:
+    """Window flags for prestige-style frameless modals."""
+    return (
+        Qt.WindowType.FramelessWindowHint
+        | Qt.WindowType.Dialog
+        | Qt.WindowType.NoDropShadowWindowHint
+    )
+
+
+def configure_frameless_dialog_host(widget: QWidget) -> None:
+    """Apply standard frameless translucent host settings (call from ``__init__``)."""
+    widget.setWindowFlags(frameless_dialog_window_flags())
+    widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    widget.setAutoFillBackground(False)
+
+
+def apply_frameless_dialog_chrome(widget: QWidget) -> None:
+    """Re-apply borderless chrome once the native window handle exists (``showEvent``)."""
+    apply_translucent_window_chrome(widget, transparent_stylesheet=True)
 
 
 def apply_translucent_window_chrome(

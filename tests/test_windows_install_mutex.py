@@ -23,6 +23,22 @@ def test_initialize_setup_kills_running_qube_before_appmutex():
     assert "KillRunningQube();" in body
 
 
+def test_uninstall_uses_userprofile_env_var_not_invalid_constant():
+    repo = Path(__file__).resolve().parents[1]
+    text = (repo / "installer" / "qube.iss").read_text(encoding="utf-8")
+    assert "ExpandConstant('{%USERPROFILE}')" in text
+    assert "ExpandConstant('{userprofile}')" not in text
+
+
+def test_uninstall_supports_silent_deleteuserdata_flag():
+    repo = Path(__file__).resolve().parents[1]
+    text = (repo / "installer" / "qube.iss").read_text(encoding="utf-8")
+    assert "function DeleteUserDataRequested(): Boolean;" in text
+    assert "{param:DELETEUSERDATA}" in text
+    assert "/DELETEUSERDATA=1" in text
+    assert "if UninstallSilent() and DeleteUserDataRequested() then" in text
+
+
 def test_acquire_install_mutex_is_noop_off_windows(monkeypatch):
     mod._handle = None
     monkeypatch.setattr(mod.sys, "platform", "linux")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QShowEvent
 from PyQt6.QtWidgets import (
     QDialog,
     QFrame,
@@ -15,6 +16,10 @@ from PyQt6.QtWidgets import (
 )
 
 from core.theme.accessors import theme_for
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
+)
 from core.theme.color_utils import with_alpha
 from core.theme.widget_styles import (
     PRESTIGE_ACCENT_LABEL,
@@ -58,8 +63,7 @@ class ResearchMapDialog(QDialog):
         surface = theme.surface_elevated if theme.is_dark else theme.surface
         hover_bg = with_alpha(theme.text_primary, 0.05)
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
         self.setMinimumSize(520, 420)
         self.resize(640, 520)
 
@@ -197,3 +201,7 @@ class ResearchMapDialog(QDialog):
         inner.addLayout(btn_row)
 
         outer.addWidget(container)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        super().showEvent(event)
+        apply_frameless_dialog_chrome(self)

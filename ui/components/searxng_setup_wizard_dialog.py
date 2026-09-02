@@ -28,6 +28,10 @@ from core.knowledge.discovery.searxng_wizard import (
     probe_searxng_base_url,
     scan_local_searxng_candidates,
 )
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
+)
 from core.theme.accessors import theme_for
 from core.theme.color_utils import with_alpha
 from core.theme.widget_styles import (
@@ -92,8 +96,7 @@ class SearXNGSetupWizardDialog(QDialog):
         hover_bg = with_alpha(theme.text_primary, 0.05)
 
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
         self.setFixedWidth(_DIALOG_WIDTH)
 
         outer = QVBoxLayout(self)
@@ -236,6 +239,7 @@ class SearXNGSetupWizardDialog(QDialog):
 
     def showEvent(self, event: QShowEvent) -> None:  # noqa: N802 — Qt API
         super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
         _center_dialog_on_host(self)
 
     def _api_key_value(self) -> str | None:

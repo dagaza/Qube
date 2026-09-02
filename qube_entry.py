@@ -12,6 +12,10 @@ logger = logging.getLogger("Qube.Entry")
 
 
 def run() -> int:
+    from core.winget_validation import record_validation_entry
+
+    record_validation_entry()
+
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )

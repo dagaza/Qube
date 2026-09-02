@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 from PyQt6.QtCore import Qt, QTimer, QFileSystemWatcher, pyqtSignal, QSize
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QShowEvent
 from PyQt6.QtWidgets import (
     QDialog,
     QFrame,
@@ -21,6 +21,10 @@ from core.settings_store import (
     default_user_settings_path,
     get_settings_store,
     open_user_settings_in_editor,
+)
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
 )
 from core.theme.accessors import theme_for
 from core.theme.color_utils import with_alpha
@@ -53,10 +57,7 @@ class SettingsJsonEditorDialog(QDialog):
 
         self.setWindowTitle("settings.json")
         self.setModal(False)
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog
-        )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
         self.resize(760, 580)
 
         self._build_ui()
@@ -234,8 +235,9 @@ class SettingsJsonEditorDialog(QDialog):
         self._apply_theme_styles()
         self._update_validation_status()
 
-    def showEvent(self, event) -> None:
+    def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
         self._ensure_watched()
         self._poll_timer.start()
         if not self._editor.toPlainText().strip():

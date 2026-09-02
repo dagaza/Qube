@@ -25,6 +25,10 @@ from core.wakeword_pro_features import (
     user_has_pro_wakeword_library,
     wakeword_selection_allowed,
 )
+from core.platform.frameless_window import (
+    apply_frameless_dialog_chrome,
+    configure_frameless_dialog_host,
+)
 from ui.components.modal_backdrop import resolve_modal_backdrop_host
 from ui.components.selector_button import SelectorButton
 from ui.components.wakeword_testbed_theme import wakeword_testbed_stylesheet
@@ -47,8 +51,7 @@ class WakewordTestbedDialog(QDialog):
         self._is_dark = getattr(parent, "_is_dark_theme", True)
         self.setWindowTitle("Wakeword Test Lab")
         self.setModal(True)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        configure_frameless_dialog_host(self)
         self.resize(740, 600)
 
         self._test_state = WakewordTestbedState()
@@ -1064,6 +1067,7 @@ class WakewordTestbedDialog(QDialog):
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
+        apply_frameless_dialog_chrome(self)
         if self._backdrop_host is not None:
             self._backdrop_host.acquire_modal_backdrop()
 
