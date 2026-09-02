@@ -8,6 +8,7 @@
 - **Frameless modals (Windows/Linux):** centralize prestige-style dialog chrome so borders and translucency re-apply reliably after the native window handle exists.
 - **Windows silent uninstall wipe:** Inno Setup supports `/DELETEUSERDATA=1` to remove `%LOCALAPPDATA%\Qube` and `%USERPROFILE%\.qube` during silent uninstall; fix `{userprofile}` expansion via `{%USERPROFILE}`.
 - **WinGet install grace:** post-install validation runs without mock bootstrap downloads; diagnostics distinguish smoke vs install-grace paths and write grace boot traces for CUDA release CI.
+- **Dependencies:** bump `pypdf` to 6.16.1 (CVE-2026-84309/84310/84311).
 
 ### Added
 - **Release CI (CUDA):** richer WinGet validation smoke failure output (mode, grace trace) and clearer wait/retry handling in `smoke_installed_cuda.ps1`.

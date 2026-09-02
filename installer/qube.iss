@@ -117,7 +117,7 @@ var
   LocalData, DotQube: String;
 begin
   LocalData := ExpandConstant('{localappdata}') + '\Qube';
-  { Inno has no {userprofile} constant — use the USERPROFILE env var (see IS help: {%NAME}). }
+  // Inno has no userprofile constant — use the USERPROFILE env var (see IS help: {%NAME}).
   DotQube := ExpandConstant('{%USERPROFILE}') + '\.qube';
   if DirExists(LocalData) then
     DelTree(LocalData, True, True, True);
