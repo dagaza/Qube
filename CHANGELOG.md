@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [1.3.48] - 2026-09-03
+
+### Fixed
+- **TTS (installed builds):** Bundle Kokoro dependency assets in PyInstaller — `language_tags`, `phonemizer`, and `espeakng_loader` (native library + espeak-ng-data) — so TTS loads on Windows, macOS, and Linux frozen builds.
+- **Bootstrap Nemotron download:** Point Nemotron 3 Nano 4B Q8 at the public `unsloth/NVIDIA-Nemotron-3-Nano-4B-GGUF` repo (fixes 401 Unauthorized from the gated `bartowski/...-BF16-GGUF` catalogue entry).
+
 ## [1.3.47] - 2026-09-03
 
 ### Fixed
