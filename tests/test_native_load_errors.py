@@ -36,5 +36,11 @@ def test_pyinstaller_spec_bundles_voice_package_data():
     spec = (
         __import__("pathlib").Path(__file__).resolve().parent.parent / "qube.spec"
     ).read_text(encoding="utf-8")
-    assert "kokoro_onnx" in spec
-    assert "openwakeword" in spec
+    for pkg in (
+        "kokoro_onnx",
+        "openwakeword",
+        "language_tags",
+        "phonemizer",
+        "espeakng_loader",
+    ):
+        assert pkg in spec

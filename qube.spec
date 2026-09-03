@@ -25,14 +25,25 @@ datas = [
     ("system_data", "system_data"),
 ]
 datas += collect_data_files("qtawesome", include_py_files=False)
-for _pkg in ("mf2py", "extruct", "recipe_scrapers", "kokoro_onnx", "openwakeword"):
+for _pkg in (
+    "mf2py",
+    "extruct",
+    "recipe_scrapers",
+    "kokoro_onnx",
+    "openwakeword",
+    # Kokoro → phonemizer → language_tags (TTS fails without json/index.json in frozen builds)
+    "language_tags",
+    "phonemizer",
+    # Kokoro tokenizer → espeakng_loader (lib + espeak-ng-data for phonemize)
+    "espeakng_loader",
+):
     try:
         datas += collect_data_files(_pkg, include_py_files=False)
     except Exception:
         pass
 
 binaries = []
-for package in ("PyAudio", "onnxruntime", "ctranslate2", "llama_cpp"):
+for package in ("PyAudio", "onnxruntime", "ctranslate2", "llama_cpp", "espeakng_loader"):
     try:
         binaries += collect_dynamic_libs(package)
     except Exception:

@@ -235,6 +235,13 @@ def test_sidecar_qwen17_uses_unsloth_gguf_repo():
     assert spec.hf_filename == "Qwen3-1.7B-Q6_K.gguf"
 
 
+def test_nemotron_nano_uses_public_unsloth_gguf_repo():
+    spec = BOOTSTRAP_MODELS[BootstrapModelId.LLM_NEMOTRON_NANO]
+    assert spec.hf_repo == "unsloth/NVIDIA-Nemotron-3-Nano-4B-GGUF"
+    assert spec.hf_filename == "NVIDIA-Nemotron-3-Nano-4B-Q8_0.gguf"
+    assert "BF16-GGUF" not in spec.hf_repo
+
+
 def test_save_bootstrap_selection_persists_voice_defaults(monkeypatch):
     import tempfile
 
