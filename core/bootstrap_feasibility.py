@@ -163,6 +163,8 @@ def assess_model_feasibility(
     model_id: BootstrapModelId,
     selected: set[BootstrapModelId],
     assessment: BootstrapSessionAssessment,
+    *,
+    enforce_memory: bool = True,
 ) -> BootstrapModelFeasibility:
     sizes = assessment.size_bytes
     size_entry = assessment.resolved_sizes.get(model_id)
@@ -189,7 +191,7 @@ def assess_model_feasibility(
                 f"headroom {format_byte_size(max(0, headroom))})."
             )
 
-    if not memory_ok:
+    if not memory_ok and enforce_memory:
         return BootstrapModelFeasibility(
             model_id=model_id,
             disk_ok=disk_ok,
@@ -208,7 +210,7 @@ def assess_model_feasibility(
     return BootstrapModelFeasibility(
         model_id=model_id,
         disk_ok=True,
-        memory_ok=True,
+        memory_ok=memory_ok,
         block_reason=BootstrapBlockReason.NONE,
         message=memory_msg,
     )
@@ -218,12 +220,19 @@ def models_blocked_for_session(
     selected: set[BootstrapModelId],
     candidates: set[BootstrapModelId],
     assessment: BootstrapSessionAssessment,
+    *,
+    enforce_memory: bool = True,
 ) -> dict[BootstrapModelId, BootstrapModelFeasibility]:
     blocked: dict[BootstrapModelId, BootstrapModelFeasibility] = {}
     for model_id in candidates:
         if model_id in selected:
             continue
-        fit = assess_model_feasibility(model_id, selected, assessment)
+        fit = assess_model_feasibility(
+            model_id,
+            selected,
+            assessment,
+            enforce_memory=enforce_memory,
+        )
         if fit.block_reason is not BootstrapBlockReason.NONE:
             blocked[model_id] = fit
     return blocked
@@ -346,6 +355,7 @@ def can_proceed_with_selection(
     assessment: BootstrapSessionAssessment,
     *,
     allow_empty: bool = False,
+    enforce_memory: bool = True,
 ) -> tuple[bool, str]:
     if not selected:
         if allow_empty:
@@ -356,9 +366,10 @@ def can_proceed_with_selection(
             "Not enough free disk space for the current selection. "
             "Deselect models or free disk space."
         )
-    memory_ok, memory_message = selected_session_feasible(selected, assessment)
-    if not memory_ok:
-        return False, memory_message
+    if enforce_memory:
+        memory_ok, memory_message = selected_session_feasible(selected, assessment)
+        if not memory_ok:
+            return False, memory_message
     return True, ""
 
 

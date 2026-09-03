@@ -5,13 +5,38 @@ from __future__ import annotations
 import pytest
 from PyQt6.QtCore import Qt
 
+from core.bootstrap_feasibility import build_session_assessment
+from core.bootstrap_hf_metadata import BootstrapSizeSource, ResolvedBootstrapSize
 from core.bootstrap_manifest import (
+    BOOTSTRAP_MODELS,
     BootstrapModelId,
     consent_model_order,
     consent_tier_tag,
     locked_recommended_ids,
 )
+from core.hardware_capability_profile import HardwareCapabilityProfile, HardwareTier
 from ui.bootstrap_consent_dialog import BootstrapConsentPanel
+
+
+def _compact_assessment():
+    resolved = {
+        model_id: ResolvedBootstrapSize(
+            model_id=model_id,
+            size_bytes=BOOTSTRAP_MODELS[model_id].size_bytes,
+            source=BootstrapSizeSource.HUGGINGFACE,
+            detail="test",
+        )
+        for model_id in BootstrapModelId
+    }
+    profile = HardwareCapabilityProfile(
+        total_ram_gb=8.0,
+        total_vram_gb=0.0,
+        cpu_cores=4,
+        gpu_name=None,
+        gpu_backend="cpu",
+        tier=HardwareTier.COMPACT,
+    )
+    return build_session_assessment(resolved=resolved, profile=profile)
 
 
 @pytest.fixture
@@ -19,6 +44,35 @@ def bootstrap_panel(qtbot):
     panel = BootstrapConsentPanel()
     qtbot.addWidget(panel)
     return panel
+
+
+def test_advanced_allows_memory_blocked_main_llm_selection(bootstrap_panel, qtbot, monkeypatch):
+    bootstrap_panel._assessment = _compact_assessment()
+    bootstrap_panel._apply_advanced_defaults()
+    monkeypatch.setattr("core.bootstrap_selection.available_disk_bytes", lambda: int(64 * 1024**3))
+
+    nemotron_cb = bootstrap_panel._checkboxes[BootstrapModelId.LLM_NEMOTRON_NANO]
+    assert nemotron_cb.isEnabled() is True
+
+    qtbot.mouseClick(nemotron_cb, Qt.MouseButton.LeftButton)
+
+    assert nemotron_cb.isChecked()
+    assert BootstrapModelId.LLM_NEMOTRON_NANO in bootstrap_panel._effective_selection()
+    assert bootstrap_panel._download_btn.isEnabled() is True
+
+
+def test_recommended_blocks_memory_blocked_main_llm_selection(bootstrap_panel, qtbot, monkeypatch):
+    bootstrap_panel._assessment = _compact_assessment()
+    monkeypatch.setattr("core.bootstrap_selection.available_disk_bytes", lambda: int(64 * 1024**3))
+    bootstrap_panel._rebuild_model_list(persist_first=False)
+
+    nemotron_cb = bootstrap_panel._checkboxes[BootstrapModelId.LLM_NEMOTRON_NANO]
+    assert nemotron_cb.isEnabled() is False
+
+    qtbot.mouseClick(nemotron_cb, Qt.MouseButton.LeftButton)
+
+    assert not nemotron_cb.isChecked()
+    assert BootstrapModelId.LLM_NEMOTRON_NANO not in bootstrap_panel._effective_selection()
 
 
 def test_deselect_all_advanced_clears_optional_models(bootstrap_panel, qtbot):

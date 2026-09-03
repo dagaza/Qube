@@ -236,3 +236,26 @@ def test_tts_resolve_boot_falls_back_to_piper():
         assert boot == str(piper.resolve())
 
     _run_in_tmp(body)
+
+
+def test_tts_describe_disk_state_reports_missing_voices():
+    def body(_root: Path) -> None:
+        tts_dir = Path(tm.get_tts_models_dir())
+        (tts_dir / tm.BUNDLED_DEFAULT_FILENAME).write_bytes(b"x")
+        on_disk, detail = tm.describe_tts_model_disk_state()
+        assert on_disk is False
+        assert tm.BUNDLED_VOICES_FILENAME in detail
+
+    _run_in_tmp(body)
+
+
+def test_tts_describe_disk_state_ok_when_bundled_present():
+    def body(_root: Path) -> None:
+        tts_dir = Path(tm.get_tts_models_dir())
+        (tts_dir / tm.BUNDLED_DEFAULT_FILENAME).write_bytes(b"x")
+        (tts_dir / tm.BUNDLED_VOICES_FILENAME).write_bytes(b"v")
+        on_disk, detail = tm.describe_tts_model_disk_state()
+        assert on_disk is True
+        assert detail == ""
+
+    _run_in_tmp(body)

@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import logging
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 import qtawesome as qta
 from PyQt6.QtWidgets import (
@@ -14,10 +15,11 @@ from PyQt6.QtWidgets import (
     QToolButton,
     QStyledItemDelegate, QListView, QMenu, QListWidget, QListWidgetItem, QSlider,
     QButtonGroup, QPlainTextEdit, QGraphicsOpacityEffect, QStackedWidget, QSizePolicy,
+    QWidgetAction,
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer, QFileSystemWatcher, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QFontMetrics, QResizeEvent, QShowEvent
-from core.audio_utils import get_audio_devices, get_input_devices, get_output_devices
+from core.audio_utils import get_input_devices, get_output_devices, build_audio_device_menu_rows
 from core.local_gguf_display import format_local_gguf_display, local_gguf_sort_key
 from core.network import is_port_open
 from core.settings_store import (
@@ -115,6 +117,10 @@ from core.tts_models import (
     get_tts_models_dir,
     is_protected_tts_model,
     list_selectable_tts_models,
+    migrate_legacy_tts_layout,
+    migrate_stale_tts_override,
+    any_supported_tts_model_on_disk,
+    describe_tts_model_disk_state,
     resolve_active_tts_path,
     validate_tts_model_path,
 )
@@ -396,55 +402,173 @@ class VoiceHandlersMixin:
         if self._wakeword_testbed_dialog is not None:
             self._wakeword_testbed_dialog.on_wakeword_selection_changed()
 
+    def _resolve_active_input_device_index(self) -> int | None:
+        saved = get_audio_input_device_index()
+        if saved is not None:
+            return saved
+        worker = getattr(self, "audio_worker", None)
+        if worker is not None:
+            worker_idx = getattr(worker, "input_device_index", None)
+            if worker_idx is not None:
+                return int(worker_idx)
+        return None
+
+    def _resolve_active_output_device_index(self) -> int | None:
+        saved = get_audio_output_device_index()
+        if saved is not None:
+            return saved
+        worker = getattr(self, "tts_worker", None)
+        if worker is not None:
+            worker_idx = getattr(worker, "current_device_index", None)
+            if worker_idx is not None:
+                return int(worker_idx)
+        return None
+
+    @staticmethod
+    def _device_name_for_index(
+        devices: list[tuple[int, str]],
+        device_index: int | None,
+    ) -> str | None:
+        if device_index is None:
+            return None
+        for idx, name in devices:
+            if idx == device_index:
+                return name
+        return None
+
+    def _build_refreshing_audio_device_menu(
+        self,
+        button,
+        *,
+        list_devices: Callable[[], list[tuple[int, str]]],
+        resolve_active_index: Callable[[], int | None],
+        on_selected: Callable[[int], None],
+        empty_label: str,
+    ) -> None:
+        menu = QMenu(button)
+        menu.setObjectName("PrestigeMenu")
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        self._apply_menu_theme(menu, is_dark)
+
+        list_widget = QListWidget()
+        list_widget.setObjectName("PrestigeMenuList")
+        list_widget.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
+        list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        def refresh_menu() -> None:
+            devices = list_devices()
+            active_idx = resolve_active_index()
+            list_widget.clear()
+            for idx, label in build_audio_device_menu_rows(devices, active_idx):
+                row = QListWidgetItem(label)
+                row.setData(Qt.ItemDataRole.UserRole, idx)
+                list_widget.addItem(row)
+
+            if not devices:
+                row = QListWidgetItem(empty_label)
+                row.setFlags(Qt.ItemFlag.NoItemFlags)
+                list_widget.addItem(row)
+
+            required_height = max(1, list_widget.count()) * 32 + 10
+            main_win = self.window()
+            max_height = int(main_win.height() * 0.5) if main_win else 400
+            list_widget.setFixedHeight(min(required_height, max_height))
+
+        def sync_dropdown_width() -> None:
+            content_w = list_widget.sizeHintForColumn(0) + 40
+            list_widget.setFixedWidth(max(button.width() - 8, content_w, 220))
+
+        def on_item_clicked(item: QListWidgetItem) -> None:
+            idx = item.data(Qt.ItemDataRole.UserRole)
+            if idx is None:
+                return
+            device_index = int(idx)
+            name = self._device_name_for_index(list_devices(), device_index)
+            on_selected(device_index)
+            if name:
+                from ui.views.settings.widgets import refit_settings_selector_width
+
+                button.setText(name)
+                refit_settings_selector_width(button)
+                button.update()
+            menu.hide()
+
+        menu.aboutToShow.connect(refresh_menu)
+        menu.aboutToShow.connect(sync_dropdown_width)
+        list_widget.itemClicked.connect(on_item_clicked)
+
+        action = QWidgetAction(menu)
+        action.setDefaultWidget(list_widget)
+        menu.addAction(action)
+        button.setMenu(menu)
+
+    def _sync_input_device_selector_label(self) -> None:
+        if not hasattr(self, "mic_selector"):
+            return
+        mics = get_input_devices()
+        active_name = self._device_name_for_index(
+            mics,
+            self._resolve_active_input_device_index(),
+        )
+        if active_name:
+            self.mic_selector.setText(active_name)
+        elif mics:
+            self.mic_selector.setText(mics[0][1])
+        else:
+            self.mic_selector.setText("Select Input Device...")
+
+    def _sync_output_device_selector_label(self) -> None:
+        if not hasattr(self, "device_selector"):
+            return
+        outputs = get_output_devices()
+        active_name = self._device_name_for_index(
+            outputs,
+            self._resolve_active_output_device_index(),
+        )
+        if active_name:
+            self.device_selector.setText(active_name)
+        elif outputs:
+            self.device_selector.setText(outputs[0][1])
+        else:
+            self.device_selector.setText("Select Output Device...")
+
     def _populate_audio_device_selectors(self) -> None:
         if getattr(self, "_audio_device_selectors_populated", False):
             return
         if not hasattr(self, "mic_selector"):
             return
 
-        mics, outputs = get_audio_devices()
-        if mics:
-            self._build_prestige_menu(
-                self.mic_selector,
-                [(name, idx) for idx, name in mics],
-                self._on_input_device_selected,
-            )
-            saved_input_idx = get_audio_input_device_index()
-            if saved_input_idx is not None and self.audio_worker:
-                self.audio_worker.set_input_device(saved_input_idx)
-            active_mic_name = mics[0][1]
-            active_input_idx = saved_input_idx
-            if active_input_idx is None and self.audio_worker and hasattr(self.audio_worker, 'input_device_index'):
-                active_input_idx = self.audio_worker.input_device_index
-            if active_input_idx is not None:
-                for idx, name in mics:
-                    if idx == active_input_idx:
-                        active_mic_name = name; break
-            self.mic_selector.setText(active_mic_name)
+        self._build_refreshing_audio_device_menu(
+            self.mic_selector,
+            list_devices=get_input_devices,
+            resolve_active_index=self._resolve_active_input_device_index,
+            on_selected=self._on_input_device_selected,
+            empty_label="No microphones found",
+        )
+        saved_input_idx = get_audio_input_device_index()
+        if saved_input_idx is not None and self.audio_worker:
+            self.audio_worker.set_input_device(saved_input_idx)
+        self._sync_input_device_selector_label()
 
-        if outputs:
-            self._build_prestige_menu(
-                self.device_selector,
-                [(name, idx) for idx, name in outputs],
-                self._on_output_device_selected,
-            )
-            saved_output_idx = get_audio_output_device_index()
-            if saved_output_idx is not None and self.tts_worker:
-                self.tts_worker.set_device(saved_output_idx)
-            active_output_name = outputs[0][1]
-            active_output_idx = saved_output_idx
-            if active_output_idx is None and self.tts_worker and hasattr(self.tts_worker, 'current_device_index'):
-                active_output_idx = self.tts_worker.current_device_index
-            if active_output_idx is not None:
-                for idx, name in outputs:
-                    if idx == active_output_idx:
-                        active_output_name = name; break
-            self.device_selector.setText(active_output_name)
+        self._build_refreshing_audio_device_menu(
+            self.device_selector,
+            list_devices=get_output_devices,
+            resolve_active_index=self._resolve_active_output_device_index,
+            on_selected=self._on_output_device_selected,
+            empty_label="No output devices found",
+        )
+        saved_output_idx = get_audio_output_device_index()
+        if saved_output_idx is not None and self.tts_worker:
+            self.tts_worker.set_device(saved_output_idx)
+        self._sync_output_device_selector_label()
 
         if self.audio_worker and hasattr(self, "wakeword_selector"):
             self.wakeword_selector.pressed.connect(self._on_wakeword_selector_pressed)
             self._sync_wakeword_catalog(trigger="settings load")
 
+        self._sync_tts_voice_controls_state()
         self._audio_device_selectors_populated = True
 
     def _populate_engine_selectors(self) -> None:
@@ -510,13 +634,77 @@ class VoiceHandlersMixin:
     def _on_audio_input_hint_clicked(self) -> None:
         self.mic_vu_hint_requested.emit()
 
+    def _tts_engine_ready(self) -> bool:
+        return bool(
+            self.tts_worker and getattr(self.tts_worker, "active_adapter", None)
+        )
+
+    def _voice_preview_unavailable_message(self) -> str:
+        worker = getattr(self, "tts_worker", None)
+        last_error = getattr(worker, "_last_load_error", None) if worker else None
+        if last_error:
+            return (
+                "Qube could not load the text-to-speech model:\n\n"
+                f"{last_error}"
+            )
+
+        on_disk, detail = describe_tts_model_disk_state()
+        if on_disk:
+            return (
+                "A text-to-speech model is on disk but has not been loaded yet.\n\n"
+                "Use Refresh under Text-to-speech in this settings page, or reopen "
+                "Voice & Audio, then try preview again."
+            )
+        if detail:
+            return detail
+        return "Load a text-to-speech model before previewing voices."
+
+    def _sync_tts_voice_controls_state(self) -> None:
+        ready = self._tts_engine_ready()
+        placeholder = "Select Voice..." if ready else "Load TTS model first..."
+
+        if hasattr(self, "voice_selector"):
+            self.voice_selector.setEnabled(ready)
+            if not ready:
+                self.voice_selector.setText(placeholder)
+                self.voice_selector.setMenu(QMenu(self.voice_selector))
+            elif not self.voice_selector.text() or self.voice_selector.text() == placeholder:
+                from core.tts_models import resolve_default_tts_voice
+
+                voices = getattr(self.tts_worker, "active_adapter", None)
+                if voices is not None:
+                    available = getattr(voices, "available_voices", [])
+                    if available:
+                        active = getattr(
+                            self.tts_worker,
+                            "active_voice_name",
+                            resolve_default_tts_voice(available),
+                        )
+                        self.voice_selector.setText(active)
+
+        for btn_name in ("tts_voice_preview_btn", "audio_output_preview_btn"):
+            btn = getattr(self, btn_name, None)
+            if btn is not None:
+                btn.setEnabled(ready)
+
+    def _attempt_tts_model_load_if_needed(self) -> None:
+        if self._tts_engine_ready():
+            return
+        if not any_supported_tts_model_on_disk():
+            self._sync_tts_voice_controls_state()
+            return
+        self._reload_tts_from_settings()
+        self._sync_tts_voice_controls_state()
+
     def _play_tts_voice_preview(self) -> None:
-        if not self.tts_worker or not getattr(self.tts_worker, "active_adapter", None):
+        if not self._tts_engine_ready():
+            self._attempt_tts_model_load_if_needed()
+        if not self._tts_engine_ready():
             is_dark = getattr(self.window(), "_is_dark_theme", True)
             PrestigeDialog(
                 self.window(),
                 "Voice preview unavailable",
-                "Load a text-to-speech model before previewing voices.",
+                self._voice_preview_unavailable_message(),
                 is_dark=is_dark,
             ).exec()
             return
@@ -721,9 +909,13 @@ class VoiceHandlersMixin:
         self._sync_active_stt_label()
 
     def _on_refresh_tts_models_clicked(self) -> None:
+        migrate_legacy_tts_layout()
+        migrate_stale_tts_override()
         self._sync_tts_models_dir_label()
         self._refresh_tts_model_list()
         self._sync_active_tts_label()
+        self._reload_tts_from_settings()
+        self._sync_tts_voice_controls_state()
 
     def _reload_stt_from_settings(self) -> None:
         self.stt_model_changed.emit()

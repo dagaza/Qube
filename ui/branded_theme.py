@@ -350,18 +350,18 @@ def bootstrap_consent_stylesheet(
                 font-weight: 700;
             }}
             QLabel#BootstrapTierTagStronglyRecommended {{
-                background: {with_alpha(t.warning, 0.14)};
-                color: {t.warning};
-                border: 1px solid {with_alpha(t.warning, 0.28)};
+                background: {with_alpha(t.success, 0.14)};
+                color: {t.success};
+                border: 1px solid {with_alpha(t.success, 0.28)};
                 border-radius: 8px;
                 padding: 2px 8px;
                 font-size: 10px;
                 font-weight: 700;
             }}
             QLabel#BootstrapTierTagRecommended {{
-                background: {with_alpha(t.info, 0.14)};
-                color: {with_alpha(t.info, 0.75)};
-                border: 1px solid {with_alpha(t.info, 0.28)};
+                background: {with_alpha(t.success, 0.14)};
+                color: {t.success};
+                border: 1px solid {with_alpha(t.success, 0.28)};
                 border-radius: 8px;
                 padding: 2px 8px;
                 font-size: 10px;
@@ -386,9 +386,9 @@ def bootstrap_consent_stylesheet(
                 font-weight: 700;
             }}
             QLabel#BootstrapBlockTagMemory {{
-                background: {with_alpha(t.error, 0.14)};
-                color: {with_alpha(t.error, 0.75)};
-                border: 1px solid {with_alpha(t.error, 0.3)};
+                background: {with_alpha(t.error, 0.18)};
+                color: {t.error};
+                border: 1px solid {with_alpha(t.error, 0.45)};
                 border-radius: 8px;
                 padding: 2px 8px;
                 font-size: 10px;

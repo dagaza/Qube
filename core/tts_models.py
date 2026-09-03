@@ -183,6 +183,29 @@ def any_supported_tts_model_on_disk() -> bool:
     return False
 
 
+def describe_tts_model_disk_state() -> tuple[bool, str]:
+    """Return whether valid TTS assets exist on disk and a short user-facing detail."""
+    for entry in list_selectable_tts_models():
+        if not os.path.isfile(entry.path):
+            continue
+        ok, msg = validate_tts_model_path(entry.path)
+        if ok:
+            return True, ""
+        if msg:
+            return False, msg
+
+    bundled = bundled_default_path()
+    ok, msg = validate_tts_model_path(bundled)
+    if msg:
+        return False, msg
+    return (
+        False,
+        f"Missing Kokoro files in {get_tts_models_dir()}. "
+        f"Download {BUNDLED_DEFAULT_FILENAME} and {BUNDLED_VOICES_FILENAME}, "
+        "or add a supported Piper .onnx model.",
+    )
+
+
 def resolve_boot_tts_path() -> str:
     """Path to load at startup — active selection, else first valid model in ``models/tts/``."""
     path = resolve_active_tts_path()

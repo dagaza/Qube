@@ -545,6 +545,8 @@ class Qube:
                 sv._sync_active_tts_label()
             if hasattr(sv, "_refresh_tts_model_list"):
                 sv._refresh_tts_model_list()
+            if hasattr(sv, "_sync_tts_voice_controls_state"):
+                sv._sync_tts_voice_controls_state()
 
     def _wire_library_app_routes(self) -> None:
         lv = self.window.peek_library_view()

@@ -188,6 +188,53 @@ def test_summarize_blocked_models_splits_disk_and_memory():
     assert "memory" not in summary.lower()
 
 
+def test_assess_model_feasibility_advisory_memory_when_not_enforced():
+    assessment = _assessment(
+        profile=HardwareCapabilityProfile(
+            total_ram_gb=8.0,
+            total_vram_gb=0.0,
+            cpu_cores=4,
+            gpu_name=None,
+            gpu_backend="cpu",
+            tier=HardwareTier.COMPACT,
+        ),
+    )
+    selected = {BootstrapModelId.SIDECAR_QWEN17}
+    fit = assess_model_feasibility(
+        BootstrapModelId.LLM_NEMOTRON_NANO,
+        selected,
+        assessment,
+        enforce_memory=False,
+    )
+
+    assert fit.block_reason is BootstrapBlockReason.NONE
+    assert not fit.memory_ok
+    assert "not enough memory" in fit.message.lower()
+
+
+def test_can_proceed_allows_memory_oversized_selection_when_not_enforced(monkeypatch):
+    from core.bootstrap_feasibility import can_proceed_with_selection
+
+    assessment = _assessment(
+        profile=HardwareCapabilityProfile(
+            total_ram_gb=8.0,
+            total_vram_gb=0.0,
+            cpu_cores=4,
+            gpu_name=None,
+            gpu_backend="cpu",
+            tier=HardwareTier.COMPACT,
+        ),
+    )
+    monkeypatch.setattr("core.bootstrap_selection.available_disk_bytes", lambda: int(64 * 1024**3))
+    selected = {
+        BootstrapModelId.SIDECAR_QWEN17,
+        BootstrapModelId.LLM_NEMOTRON_NANO,
+    }
+    ok, message = can_proceed_with_selection(selected, assessment, enforce_memory=False)
+    assert ok
+    assert message == ""
+
+
 def test_selected_session_feasible_flags_oversized_main_llm():
     assessment = _assessment(
         profile=HardwareCapabilityProfile(

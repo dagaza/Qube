@@ -4787,9 +4787,12 @@ class MainWindow(QMainWindow):
 
     def update_tts_voice_dropdowns(self, model_name: str, voices: list) -> None:
         """Populate Settings and toolbar TTS voice selectors when voices load."""
+        settings = self._settings_view
         if not voices:
             self._cached_tts_model_name = ""
             self._cached_tts_voices = []
+            if settings is not None and hasattr(settings, "_sync_tts_voice_controls_state"):
+                settings._sync_tts_voice_controls_state()
             return
 
         self._cached_tts_model_name = model_name
@@ -4812,6 +4815,8 @@ class MainWindow(QMainWindow):
             self._on_tts_voice_selected,
         )
         self._sync_settings_tts_voice_selector()
+        if settings is not None and hasattr(settings, "_sync_tts_voice_controls_state"):
+            settings._sync_tts_voice_controls_state()
 
         self._on_tts_voice_selected(active)
 

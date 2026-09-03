@@ -404,6 +404,8 @@ class SettingsView(
             self._refresh_tts_model_list()
             self._sync_active_stt_label()
             self._sync_active_tts_label()
+            self._attempt_tts_model_load_if_needed()
+            self._sync_tts_voice_controls_state()
             return
 
         if section_id == "ai.models":

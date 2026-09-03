@@ -151,6 +151,8 @@ class TTSWorker(QThread):
         self.active_adapter = None
         self.active_voice_name = "Default"
         self.current_device_index = None
+        self._last_load_error: str | None = None
+        self._last_stream_error: str | None = None
         self._last_playback_level_emit = 0.0
         
         # --- NEW: Voice Bypass Flag ---
@@ -177,8 +179,16 @@ class TTSWorker(QThread):
 
     def set_device(self, index):
         self.current_device_index = index
-        if self.active_adapter:
-            self.load_voice(self.model_path) 
+        if not self.active_adapter:
+            return
+        try:
+            self.stream = self._open_output_stream(self.active_adapter.sample_rate)
+            self._last_stream_error = None
+        except Exception as exc:
+            self.stream = None
+            self._last_stream_error = str(exc)
+            logger.warning("[TTS] Failed to reopen output stream for device %s: %s", index, exc)
+            self.status_update.emit(f"TTS output device unavailable: {exc}")
             
     def set_voice(self, voice_name):
         self.active_voice_name = voice_name
@@ -186,6 +196,47 @@ class TTSWorker(QThread):
 
     def _normalize_tts_queue_key(self, text: str) -> str:
         return " ".join(str(text or "").split()).strip().lower()
+
+    def _close_output_stream(self) -> None:
+        if not self.stream:
+            return
+        try:
+            self.stream.stop_stream()
+            self.stream.close()
+        except Exception:
+            pass
+        self.stream = None
+
+    def _open_output_stream(self, sample_rate: int):
+        """Open the PyAudio output stream, falling back to the system default device."""
+        device_candidates: list[int | None] = []
+        if self.current_device_index is not None:
+            device_candidates.append(self.current_device_index)
+        if None not in device_candidates:
+            device_candidates.append(None)
+
+        last_error: Exception | None = None
+        for device_index in device_candidates:
+            try:
+                stream = self.audio.open(
+                    format=pyaudio.paInt16,
+                    channels=1,
+                    rate=sample_rate,
+                    output=True,
+                    output_device_index=device_index,
+                    frames_per_buffer=1024,
+                )
+                if device_index != self.current_device_index:
+                    logger.warning(
+                        "[TTS] Output device %s unavailable; using system default.",
+                        self.current_device_index,
+                    )
+                return stream
+            except Exception as exc:
+                last_error = exc
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("No audio output device available")
 
     def load_voice(self, model_path) -> bool:
         """Load a TTS ONNX model. Returns True on success; restores the prior adapter on failure."""
@@ -198,6 +249,7 @@ class TTSWorker(QThread):
 
         architecture = classify_tts_architecture(model_path)
         if architecture is None:
+            self._last_load_error = UNSUPPORTED_TTS_ARCHITECTURE_MSG
             self.status_update.emit(f"TTS error: {UNSUPPORTED_TTS_ARCHITECTURE_MSG}")
             return False
 
@@ -207,21 +259,18 @@ class TTSWorker(QThread):
             else:
                 new_adapter = PiperAdapter(model_path)
 
-            if previous_stream:
-                try:
-                    previous_stream.stop_stream()
-                    previous_stream.close()
-                except Exception:
-                    pass
+            self._close_output_stream()
 
-            new_stream = self.audio.open(
-                format=pyaudio.paInt16,
-                channels=1,
-                rate=new_adapter.sample_rate,
-                output=True,
-                output_device_index=self.current_device_index,
-                frames_per_buffer=1024,
-            )
+            try:
+                new_stream = self._open_output_stream(new_adapter.sample_rate)
+                self._last_stream_error = None
+            except Exception as stream_exc:
+                new_stream = None
+                self._last_stream_error = str(stream_exc)
+                logger.warning(
+                    "[TTS] Model loaded but output stream unavailable (will retry on playback): %s",
+                    stream_exc,
+                )
 
             self.model_path = model_path
             self.active_adapter = new_adapter
@@ -232,8 +281,14 @@ class TTSWorker(QThread):
                 self.active_adapter.available_voices
             )
 
+            self._last_load_error = None
             self.model_loaded.emit(os.path.basename(model_path), self.active_adapter.available_voices)
-            self.status_update.emit(f"TTS Engine Ready ({self.active_adapter.sample_rate}Hz)")
+            if new_stream is not None:
+                self.status_update.emit(f"TTS Engine Ready ({self.active_adapter.sample_rate}Hz)")
+            else:
+                self.status_update.emit(
+                    "TTS model loaded; select a working output device before playback."
+                )
             return True
 
         except Exception as e:
@@ -241,6 +296,7 @@ class TTSWorker(QThread):
             self.model_path = previous_path
             self.active_voice_name = previous_voice
             self.stream = previous_stream
+            self._last_load_error = str(e)
             logger.exception("[TTS] Failed to load model %s: %s", model_path, e)
             self.status_update.emit(f"Failed to load TTS model: {e}")
             return False
@@ -353,23 +409,13 @@ class TTSWorker(QThread):
 
                 if getattr(self, 'stream', None) is None:
                     try:
-                        if getattr(self, 'pyaudio_instance', None) is None:
-                            self.pyaudio_instance = pyaudio.PyAudio()
-
-                        sample_rate = (
-                            self.active_adapter.sample_rate
-                            if self.active_adapter is not None
-                            else 24000
-                        )
-                        self.stream = self.pyaudio_instance.open(
-                            format=pyaudio.paInt16,
-                            channels=1,
-                            rate=sample_rate,
-                            output=True,
-                            output_device_index=self.current_device_index,
-                        )
+                        if self.active_adapter is None:
+                            continue
+                        self.stream = self._open_output_stream(self.active_adapter.sample_rate)
+                        self._last_stream_error = None
                     except Exception as e:
-                        self.status_update.emit(f"Failed to rebuild stream: {e}")
+                        self._last_stream_error = str(e)
+                        self.status_update.emit(f"Failed to open output stream: {e}")
                         continue
 
                 self.status_update.emit("🔊 Previewing voice..." if voice_preview else "🔊 Speaking...")

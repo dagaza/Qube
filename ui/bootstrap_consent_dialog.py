@@ -72,6 +72,7 @@ from ui.splash_widget import resolve_splash_logo_path
 
 # Estimated/Verified download-size chips — sizing logic stays; UI hidden for now.
 _SHOW_BOOTSTRAP_SIZE_CHIPS = False
+_MEMORY_BLOCK_CHIP_LABEL = "Not enough RAM"
 
 
 class _BootstrapModelScrollArea(QScrollArea):
@@ -666,7 +667,12 @@ class BootstrapConsentPanel(QWidget):
     def _update_row_badges(self) -> None:
         selected = self._effective_selection()
         visible = set(self._visible_model_ids())
-        blocked = models_blocked_for_session(selected, visible, self._assessment)
+        blocked = models_blocked_for_session(
+            selected,
+            visible,
+            self._assessment,
+            enforce_memory=self._enforce_memory_blocks(),
+        )
         for model_id in self._tier_tags:
             self._apply_tier_tag(model_id)
         for model_id, size_tag in self._size_tags.items():
@@ -679,7 +685,7 @@ class BootstrapConsentPanel(QWidget):
                     block_tag.setText("Disk")
                     block_tag.setObjectName("BootstrapBlockTagDisk")
                 elif fit.block_reason is BootstrapBlockReason.MEMORY:
-                    block_tag.setText("Memory")
+                    block_tag.setText(_MEMORY_BLOCK_CHIP_LABEL)
                     block_tag.setObjectName("BootstrapBlockTagMemory")
                 else:
                     block_tag.hide()
@@ -730,7 +736,12 @@ class BootstrapConsentPanel(QWidget):
     def _update_feasibility_notes(self) -> None:
         selected = self._effective_selection()
         for model_id, note in self._feasibility_notes.items():
-            fit = assess_model_feasibility(model_id, selected, self._assessment)
+            fit = assess_model_feasibility(
+                model_id,
+                selected,
+                self._assessment,
+                enforce_memory=self._enforce_memory_blocks(),
+            )
             cb = self._checkboxes.get(model_id)
             is_checked = cb.isChecked() if cb is not None else model_id in selected
             if is_checked and fit.message and fit.block_reason is BootstrapBlockReason.NONE:
@@ -799,6 +810,10 @@ class BootstrapConsentPanel(QWidget):
         if hint is BootstrapHintLevel.INFO:
             return "BootstrapModelDescInfo"
         return "BootstrapModelDesc"
+
+    def _enforce_memory_blocks(self) -> bool:
+        """Recommended mode blocks on detected memory limits; Advanced treats them as advisory."""
+        return not self._advanced
 
     def _legend_text(self) -> str:
         return "Highlighted rows show trade-offs when changing core models."
@@ -961,6 +976,7 @@ class BootstrapConsentPanel(QWidget):
             self._title.setText("Advanced configuration")
             self._intro.setText(
                 "Fine-tune downloads or continue without models for a minimal shell install. "
+                "Memory guidance is advisory — choose any model if you know your system better. "
                 "Features you enable later can prompt you to download the models they need."
             )
             self._legend.setText(self._legend_text())
@@ -1015,20 +1031,37 @@ class BootstrapConsentPanel(QWidget):
     def _update_disk_affordability(self) -> None:
         selected = self._effective_selection()
         visible = set(self._visible_model_ids())
-        blocked = models_blocked_for_session(selected, visible, self._assessment)
+        blocked = models_blocked_for_session(
+            selected,
+            visible,
+            self._assessment,
+            enforce_memory=self._enforce_memory_blocks(),
+        )
         for model_id, row in self._rows.items():
             if self._is_locked_in_view(model_id):
                 continue
             cb = self._checkboxes[model_id]
             fit = blocked.get(model_id)
-            session_blocked = fit is not None and not cb.isChecked()
+            if fit is None and self._advanced:
+                fit = assess_model_feasibility(
+                    model_id,
+                    selected,
+                    self._assessment,
+                    enforce_memory=False,
+                )
+            session_blocked = fit is not None and fit.block_reason is not BootstrapBlockReason.NONE and not cb.isChecked()
             row.set_disk_blocked(session_blocked)
             if session_blocked and fit is not None:
                 cb.setEnabled(False)
                 cb.setToolTip(self._checkbox_tooltip(model_id, fit=fit))
             else:
                 cb.setEnabled(True)
-                cb.setToolTip(self._checkbox_tooltip(model_id))
+                cb.setToolTip(
+                    self._checkbox_tooltip(
+                        model_id,
+                        fit=fit if self._advanced and fit is not None and fit.message else None,
+                    )
+                )
         self._update_row_badges()
         self._update_feasibility_notes()
 
@@ -1056,7 +1089,12 @@ class BootstrapConsentPanel(QWidget):
             if not self._advanced:
                 base.update(locked_recommended_ids())
                 base = normalize_selection(base)
-            fit = assess_model_feasibility(model_id, base, self._assessment)
+            fit = assess_model_feasibility(
+                model_id,
+                base,
+                self._assessment,
+                enforce_memory=self._enforce_memory_blocks(),
+            )
             if fit.block_reason is not BootstrapBlockReason.NONE:
                 self._selection_state[model_id] = False
                 selected = normalize_selection(
@@ -1155,6 +1193,7 @@ class BootstrapConsentPanel(QWidget):
             selected,
             self._assessment,
             allow_empty=allow_shell,
+            enforce_memory=self._enforce_memory_blocks(),
         )
 
         if headroom < 0:
@@ -1187,7 +1226,10 @@ class BootstrapConsentPanel(QWidget):
                 self._disk_status_line(download_bytes=download_bytes, headroom=headroom)
             )
             blocked = models_blocked_for_session(
-                selected, set(self._visible_model_ids()), self._assessment
+                selected,
+                set(self._visible_model_ids()),
+                self._assessment,
+                enforce_memory=self._enforce_memory_blocks(),
             )
             if blocked:
                 self._disk_notice.setText(self._blocked_models_detail(blocked))
@@ -1271,6 +1313,7 @@ class BootstrapConsentPanel(QWidget):
             selected,
             self._assessment,
             allow_empty=allow_empty,
+            enforce_memory=self._enforce_memory_blocks(),
         )
         if not can_proceed:
             if "disk space" in message.lower():

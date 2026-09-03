@@ -44,3 +44,34 @@ def test_load_voice_rolls_back_adapter_on_init_failure():
     assert worker.active_adapter is prior
     assert worker.model_path == "/old/kokoro-v1.0.onnx"
     worker.model_loaded.emit.assert_not_called()
+
+
+def test_load_voice_keeps_adapter_when_output_stream_fails():
+    worker = TTSWorker.__new__(TTSWorker)
+    worker.audio = MagicMock()
+    worker.status_update = MagicMock()
+    worker.model_loaded = MagicMock()
+    worker.active_adapter = None
+    worker.model_path = ""
+    worker.active_voice_name = "Default"
+    worker.stream = None
+    worker.current_device_index = 99
+
+    adapter = MagicMock()
+    adapter.sample_rate = 24000
+    adapter.available_voices = ["af_heart", "af_bella"]
+    worker.audio.open.side_effect = OSError("[Errno -9996] Invalid device")
+
+    with patch("core.tts_models.classify_tts_architecture", return_value="kokoro"), patch(
+        "workers.tts_worker.KokoroAdapter", return_value=adapter
+    ):
+        ok = TTSWorker.load_voice(worker, "/tmp/kokoro-v1.0.onnx")
+
+    assert ok is True
+    assert worker.active_adapter is adapter
+    assert worker.stream is None
+    assert worker._last_stream_error
+    worker.model_loaded.emit.assert_called_once_with(
+        "kokoro-v1.0.onnx",
+        ["af_heart", "af_bella"],
+    )
