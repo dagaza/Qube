@@ -103,34 +103,18 @@ class KokoroAdapter:
         self.available_voices = voices_data.files
 
     def synthesize(self, text, voice_name):
-        import asyncio
-        import threading
-        import queue
-        
-        audio_queue = queue.Queue()
-
-        async def fetch_stream():
-            try:
-                # Kokoro-ONNX supports streaming chunks
-                stream = self.engine.create_stream(text, voice=voice_name, speed=1.0, lang="en-us")
-                async for samples, _ in stream:
-                    pcm_data = (samples * 32767).astype(np.int16).tobytes()
-                    audio_queue.put(pcm_data)
-            except Exception as e:
-                audio_queue.put(e)
-            finally:
-                audio_queue.put(None) 
-
-        def run_async():
-            asyncio.run(fetch_stream())
-
-        threading.Thread(target=run_async, daemon=True).start()
-
-        while True:
-            chunk = audio_queue.get()
-            if chunk is None: break
-            if isinstance(chunk, Exception): raise chunk
-            yield chunk
+        # Use Kokoro's synchronous API. The async create_stream path nests asyncio.run()
+        # in a helper thread and can hang on Windows, blocking the TTS worker queue.
+        samples, _sample_rate = self.engine.create(
+            text,
+            voice=voice_name,
+            speed=1.0,
+            lang="en-us",
+        )
+        pcm_data = (samples * 32767).astype(np.int16).tobytes()
+        chunk_size = 8192
+        for offset in range(0, len(pcm_data), chunk_size):
+            yield pcm_data[offset : offset + chunk_size]
 
 
 class TTSWorker(QThread):
@@ -209,9 +193,10 @@ class TTSWorker(QThread):
 
     def _open_output_stream(self, sample_rate: int):
         """Open the PyAudio output stream, falling back to the system default device."""
+        requested_device = self.current_device_index
         device_candidates: list[int | None] = []
-        if self.current_device_index is not None:
-            device_candidates.append(self.current_device_index)
+        if requested_device is not None:
+            device_candidates.append(requested_device)
         if None not in device_candidates:
             device_candidates.append(None)
 
@@ -226,17 +211,40 @@ class TTSWorker(QThread):
                     output_device_index=device_index,
                     frames_per_buffer=1024,
                 )
-                if device_index != self.current_device_index:
+                if device_index != requested_device:
                     logger.warning(
                         "[TTS] Output device %s unavailable; using system default.",
-                        self.current_device_index,
+                        requested_device,
                     )
+                    self.current_device_index = device_index
                 return stream
             except Exception as exc:
                 last_error = exc
         if last_error is not None:
             raise last_error
         raise RuntimeError("No audio output device available")
+
+    def _ensure_output_stream(self) -> bool:
+        """Ensure an active PyAudio stream exists for the current adapter."""
+        if self.active_adapter is None:
+            return False
+        if self.stream is not None:
+            try:
+                if self.stream.is_active():
+                    return True
+            except Exception:
+                pass
+            self._close_output_stream()
+        try:
+            self.stream = self._open_output_stream(self.active_adapter.sample_rate)
+            self._last_stream_error = None
+            return True
+        except Exception as exc:
+            self.stream = None
+            self._last_stream_error = str(exc)
+            logger.warning("[TTS] Failed to open output stream: %s", exc)
+            self.status_update.emit(f"Failed to open output stream: {exc}")
+            return False
 
     def load_voice(self, model_path) -> bool:
         """Load a TTS ONNX model. Returns True on success; restores the prior adapter on failure."""
@@ -320,8 +328,18 @@ class TTSWorker(QThread):
 
     def queue_voice_preview(self, text: str) -> None:
         """Play a short sample in Settings; ignores mute and chat playback UI."""
-        if not text or not text.strip() or not self.active_adapter:
+        if not text or not text.strip():
+            logger.info("[TTS] Voice preview skipped — empty phrase.")
             return
+        if not self.active_adapter:
+            logger.warning("[TTS] Voice preview skipped — TTS engine not loaded.")
+            return
+        logger.info(
+            "[TTS] Queueing voice preview (%d chars, voice=%s, device=%s).",
+            len(text.strip()),
+            self.active_voice_name,
+            self.current_device_index,
+        )
         self._interrupt_tts = True
         self._last_queued_tts_key = ""
         if hasattr(self, "sentence_queue"):
@@ -408,14 +426,7 @@ class TTSWorker(QThread):
                     continue
 
                 if getattr(self, 'stream', None) is None:
-                    try:
-                        if self.active_adapter is None:
-                            continue
-                        self.stream = self._open_output_stream(self.active_adapter.sample_rate)
-                        self._last_stream_error = None
-                    except Exception as e:
-                        self._last_stream_error = str(e)
-                        self.status_update.emit(f"Failed to open output stream: {e}")
+                    if not self._ensure_output_stream():
                         continue
 
                 self.status_update.emit("🔊 Previewing voice..." if voice_preview else "🔊 Speaking...")
@@ -451,9 +462,11 @@ class TTSWorker(QThread):
                             self.stream.write(chunk)
 
                 except Exception as e:
+                    logger.exception("[TTS] Playback failed: %s", e)
                     self.status_update.emit(f"Audio Error: {e}")
 
                 if voice_preview:
+                    logger.info("[TTS] Voice preview finished.")
                     self.playback_level.emit(0.0)
                     continue
 

@@ -722,6 +722,7 @@ class VoiceHandlersMixin:
             getattr(self, "_tts_voice_preview_phrase_index", 0)
         )
         self._tts_voice_preview_phrase_index = next_index
+        logger.info("[TTS] Settings voice preview requested.")
         self.tts_worker.queue_voice_preview(phrase)
 
     def _show_custom_model_paths_license_dialog(self) -> None:

@@ -26,6 +26,8 @@ def test_queue_voice_preview_uses_preview_sentinel():
     worker._last_queued_tts_key = ""
     worker._interrupt_tts = False
     worker.active_adapter = object()
+    worker.active_voice_name = "af_heart"
+    worker.current_device_index = None
     worker.isRunning = lambda: False
     worker.start = lambda: None
 
