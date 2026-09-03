@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+## [1.3.49] - 2026-09-03
+
+### Fixed
+- **TTS voice preview (Windows):** Use Kokoro's synchronous `create()` API instead of async `create_stream()` so the TTS worker does not hang on Windows and block Settings preview / output test buttons.
+- **TTS output device fallback:** When the selected output device is unavailable, persist the working system-default device for playback instead of retrying the bad index on every preview.
+- **TTS preview diagnostics:** Log Settings preview requests, queueing, playback failures, and completion in `Qube.Audio`.
+
 ## [1.3.48] - 2026-09-03
 
 ### Fixed
