@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.3.47] - 2026-09-03
+
+### Fixed
+- **Windows audio devices:** Filter duplicate PortAudio endpoints (prefer WASAPI) so Settings input/output lists align with Windows Sound; refresh device menus when opened so hot-plugged USB/Bluetooth devices appear without restart.
+- **TTS voice settings (Windows):** Load Kokoro when ONNX + voices are on disk even if the PyAudio output stream fails at boot; retry with the system default output device; auto-reload when opening Voice & Audio or using TTS Refresh; disable the voice picker and preview buttons until the engine is ready; surface specific load/preview errors instead of a generic message.
+- **Bootstrap consent:** Allow feasibility checks to skip RAM enforcement when appropriate so low-memory sessions can still proceed with disk-only guidance.
+- **Light theme splash:** Improve splash card text contrast on light backgrounds.
+
 ## [1.3.46] - 2026-09-02
 
 ### Fixed
