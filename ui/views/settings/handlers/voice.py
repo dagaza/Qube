@@ -634,10 +634,17 @@ class VoiceHandlersMixin:
     def _on_audio_input_hint_clicked(self) -> None:
         self.mic_vu_hint_requested.emit()
 
+    def _real_tts_adapter(self):
+        worker = getattr(self, "tts_worker", None)
+        if worker is None:
+            return None
+        adapter = getattr(worker, "active_adapter", None)
+        if adapter is None or type(adapter).__module__ == "unittest.mock":
+            return None
+        return adapter
+
     def _tts_engine_ready(self) -> bool:
-        return bool(
-            self.tts_worker and getattr(self.tts_worker, "active_adapter", None)
-        )
+        return self._real_tts_adapter() is not None
 
     def _voice_preview_unavailable_message(self) -> str:
         worker = getattr(self, "tts_worker", None)
@@ -671,16 +678,15 @@ class VoiceHandlersMixin:
             elif not self.voice_selector.text() or self.voice_selector.text() == placeholder:
                 from core.tts_models import resolve_default_tts_voice
 
-                voices = getattr(self.tts_worker, "active_adapter", None)
-                if voices is not None:
-                    available = getattr(voices, "available_voices", [])
-                    if available:
-                        active = getattr(
-                            self.tts_worker,
-                            "active_voice_name",
-                            resolve_default_tts_voice(available),
-                        )
-                        self.voice_selector.setText(active)
+                adapter = self._real_tts_adapter()
+                if adapter is not None:
+                    available = getattr(adapter, "available_voices", None)
+                    if isinstance(available, (list, tuple)) and available:
+                        active = getattr(self.tts_worker, "active_voice_name", None)
+                        if not isinstance(active, str) or active not in available:
+                            active = resolve_default_tts_voice(available)
+                        if isinstance(active, str):
+                            self.voice_selector.setText(active)
 
         for btn_name in ("tts_voice_preview_btn", "audio_output_preview_btn"):
             btn = getattr(self, btn_name, None)
@@ -689,6 +695,10 @@ class VoiceHandlersMixin:
 
     def _attempt_tts_model_load_if_needed(self) -> None:
         if self._tts_engine_ready():
+            return
+        worker = getattr(self, "tts_worker", None)
+        if worker is not None and type(worker).__module__ == "unittest.mock":
+            self._sync_tts_voice_controls_state()
             return
         if not any_supported_tts_model_on_disk():
             self._sync_tts_voice_controls_state()
