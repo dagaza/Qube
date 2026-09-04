@@ -9,6 +9,14 @@ import numpy as np
 from workers.tts_worker import KokoroAdapter, TTSWorker
 
 
+def test_kokoro_onnx_version_supports_float_speed_input():
+    """Bundled kokoro-v1.0.onnx expects speed=float; 0.5.x passed int32 (ONNX error)."""
+    from importlib.metadata import version
+    from packaging.version import Version
+
+    assert Version(version("kokoro-onnx")) >= Version("0.6.1")
+
+
 def test_kokoro_synthesize_uses_sync_create():
     adapter = KokoroAdapter.__new__(KokoroAdapter)
     adapter.sample_rate = 24000
