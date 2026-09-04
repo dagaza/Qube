@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.3.50] - 2026-09-04
+
+### Fixed
+- **TTS Kokoro inference:** Upgrade `kokoro-onnx` to 0.6.1 so the `speed` input matches the bundled `kokoro-v1.0.onnx` model (float32). Fixes ONNX Runtime `INVALID_ARGUMENT` errors during voice preview and playback on installed builds.
+
 ## [1.3.49] - 2026-09-03
 
 ### Fixed
