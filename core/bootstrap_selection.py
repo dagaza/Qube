@@ -241,7 +241,7 @@ def preflight_download(
 
 
 def maybe_reset_stale_shell_bootstrap_completion() -> bool:
-    """Clear bootstrap.completed left by CUDA install-grace WinGet smoke (no models on disk)."""
+    """Clear bootstrap.completed left by a prior shell-bootstrap run with no models on disk."""
     if not is_bootstrap_completed():
         return False
     if get_selected_model_ids():

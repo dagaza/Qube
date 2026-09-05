@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- **CUDA first-run bootstrap:** Remove the 20-minute post-install “install grace” path that skipped bootstrap consent and model downloads on fresh CUDA installs (including GitHub downloads and the installer’s Launch Qube step). First launch now runs the normal bootstrap flow. Explicit `--winget-validation` remains for release CI smoke only.
+
 ## [1.3.50] - 2026-09-04
 
 ### Fixed

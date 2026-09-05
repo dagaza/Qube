@@ -36,8 +36,9 @@ def test_installed_and_upgrade_smoke_use_shared_launch_env():
     assert "Install-QubeSilentSetup" in upgrade
     cuda = (root / "smoke_installed_cuda.ps1").read_text(encoding="utf-8")
     assert "Install-QubeSilentSetup" in cuda
-    assert "Phase 2: WinGet install-grace launch" in cuda
-    assert 'Wait-ValidationSmokeResult -Process $graceProc -ExpectedMode "install_grace"' in cuda
+    assert "Explicit smoke validation (--winget-validation)" in cuda
+    assert 'Wait-ValidationSmokeResult -Process $smokeProc -ExpectedMode "smoke"' in cuda
+    assert "Phase 2: WinGet install-grace launch" not in cuda
 
 
 def test_smoke_dist_cuda_skips_runtime_launch():

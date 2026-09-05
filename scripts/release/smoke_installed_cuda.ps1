@@ -1,4 +1,4 @@
-# Silent install, launch CUDA build with WinGet validation guard, verify no llama_cpp import.
+# Silent install, launch CUDA build with explicit WinGet validation guard, verify no llama_cpp import.
 param(
     [string]$SetupPath = ""
 )
@@ -29,22 +29,19 @@ $cognitionDir = Join-Path $userData "models\cognition"
 $resultPath = Join-Path $userData ".winget-validation-smoke.json"
 $bootStatePath = Join-Path $userData ".winget-validation-boot-state.json"
 $bootTracePath = Join-Path $userData ".winget-validation-boot-trace.jsonl"
-$graceTracePath = Join-Path $userData ".winget-validation-grace.jsonl"
 $dummyGguf = Join-Path $cognitionDir "Qwen3-1.7B-Q6_K.gguf"
 
 function Clear-ValidationDiagnostics {
     Remove-Item $resultPath -Force -ErrorAction SilentlyContinue
     Remove-Item $bootStatePath -Force -ErrorAction SilentlyContinue
     Remove-Item $bootTracePath -Force -ErrorAction SilentlyContinue
-    Remove-Item $graceTracePath -Force -ErrorAction SilentlyContinue
 }
 
 function Format-SmokeFailureMessage {
     param(
         [string]$ResultPath,
         [string]$BootStatePath,
-        [string]$BootTracePath,
-        [string]$GraceTracePath = ""
+        [string]$BootTracePath
     )
     $parts = @("WinGet validation smoke did not succeed.")
     if (Test-Path $ResultPath) {
@@ -78,13 +75,6 @@ function Format-SmokeFailureMessage {
     } else {
         $parts += "no boot trace at $BootTracePath"
     }
-    if ($GraceTracePath -and (Test-Path $GraceTracePath)) {
-        try {
-            $parts += "grace_trace=$(Get-Content $GraceTracePath -Raw)"
-        } catch {
-            $parts += "grace trace present but unreadable"
-        }
-    }
     return ($parts -join "; ")
 }
 
@@ -101,8 +91,7 @@ function Wait-ValidationSmokeResult {
             $msg = Format-SmokeFailureMessage `
                 -ResultPath $resultPath `
                 -BootStatePath $bootStatePath `
-                -BootTracePath $bootTracePath `
-                -GraceTracePath $graceTracePath
+                -BootTracePath $bootTracePath
             throw "Installed CUDA app exited early (exit code: $($Process.ExitCode)). $msg"
         }
         if (Test-Path $resultPath) {
@@ -115,8 +104,7 @@ function Wait-ValidationSmokeResult {
                 $msg = Format-SmokeFailureMessage `
                     -ResultPath $resultPath `
                     -BootStatePath $bootStatePath `
-                    -BootTracePath $bootTracePath `
-                    -GraceTracePath $graceTracePath
+                    -BootTracePath $bootTracePath
                 throw $msg
             }
             return $result
@@ -127,8 +115,7 @@ function Wait-ValidationSmokeResult {
     $msg = Format-SmokeFailureMessage `
         -ResultPath $resultPath `
         -BootStatePath $bootStatePath `
-        -BootTracePath $bootTracePath `
-        -GraceTracePath $graceTracePath
+        -BootTracePath $bootTracePath
     throw "Timed out waiting for validation smoke result at $resultPath. $msg"
 }
 
@@ -139,14 +126,9 @@ if (-not (Test-Path $installedExe)) {
 }
 Write-Host "Silent install verified at $installedExe"
 
-$installMarker = Join-Path $installDir ".qube-install-ts"
-if (-not (Test-Path $installMarker)) {
-    throw "Missing CUDA install grace marker: $installMarker"
-}
-
 Clear-ValidationDiagnostics
 
-Write-Host "Phase 1: explicit smoke validation (--winget-validation)..."
+Write-Host "Explicit smoke validation (--winget-validation)..."
 
 # Simulate a validation VM with completed bootstrap and a sidecar model on disk.
 New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
@@ -170,42 +152,17 @@ try {
         $msg = Format-SmokeFailureMessage `
             -ResultPath $resultPath `
             -BootStatePath $bootStatePath `
-            -BootTracePath $bootTracePath `
-            -GraceTracePath $graceTracePath
+            -BootTracePath $bootTracePath
         throw "WinGet validation guard failed: llama_cpp import was attempted. $msg"
     }
-    Write-Host "Phase 1 passed (pid $($smokeProc.Id), stage $($smokeResult.stage), no llama_cpp import)"
-}
-finally {
-    Stop-QubeProcessIfRunning -Process $smokeProc
-    Remove-Item Env:QUBE_WINGET_VALIDATION -ErrorAction SilentlyContinue
-}
-
-Write-Host "Phase 2: WinGet install-grace launch (no validation flags)..."
-
-Clear-ValidationDiagnostics
-Remove-Item $settingsPath -Force -ErrorAction SilentlyContinue
-Remove-Item $dummyGguf -Force -ErrorAction SilentlyContinue
-
-$graceProc = Start-Process -FilePath $installedExe -PassThru
-
-try {
-    $graceResult = Wait-ValidationSmokeResult -Process $graceProc -ExpectedMode "install_grace"
-    if ($graceResult.llama_import_attempted) {
-        $msg = Format-SmokeFailureMessage `
-            -ResultPath $resultPath `
-            -BootStatePath $bootStatePath `
-            -BootTracePath $bootTracePath `
-            -GraceTracePath $graceTracePath
-        throw "Install-grace validation failed: llama_cpp import was attempted. $msg"
-    }
-    Write-Host "Phase 2 passed (pid $($graceProc.Id), stage $($graceResult.stage), no llama_cpp import)"
+    Write-Host "CUDA validation smoke passed (pid $($smokeProc.Id), stage $($smokeResult.stage), no llama_cpp import)"
 
     Invoke-QubeSilentUninstallWhileRunning `
         -Uninstaller $uninstaller `
         -InstalledExe $installedExe
-    Write-Host "CUDA validation smoke + install-grace + uninstall verified"
+    Write-Host "CUDA validation smoke + uninstall verified"
 }
 finally {
-    Stop-QubeProcessIfRunning -Process $graceProc
+    Stop-QubeProcessIfRunning -Process $smokeProc
+    Remove-Item Env:QUBE_WINGET_VALIDATION -ErrorAction SilentlyContinue
 }

@@ -75,25 +75,25 @@ Requires the GitHub Release to include all three Windows `.exe` assets.
 
 Microsoft's installation validation runs a silent install and launches the app on a Defender-enabled VM. If step **08. Installation Validation** fails with **`Validation-Defender-Error`** while **07. Installers Scan** passes, Defender flagged behavior during startup — not a manifest typo.
 
-For **`dagaza.Qube.CUDA`**, this usually means CUDA backend DLLs (`ggml-cuda.dll`, bundled NVIDIA runtime libs) were loaded into the process during validation. Qube blocks `llama_cpp` import while **CUDA deferral mode** is active:
+For **`dagaza.Qube.CUDA`**, that usually means CUDA backend DLLs (`ggml-cuda.dll`, bundled NVIDIA runtime libs) loaded during the automated post-install launch.
 
-- **`QUBE_WINGET_VALIDATION=1`** or **`--winget-validation`** (CI smoke phase 1) — explicit smoke path with mock bootstrap downloads
-- **20-minute post-install grace** on packaged CUDA builds (`.qube-install-ts` written by the Inno installer) — matches Microsoft WinGet step 08: defers CUDA/native loads, skips first-run consent, writes diagnostics under `%LOCALAPPDATA%\Qube\` (`.winget-validation-smoke.json`, `.winget-validation-boot-trace.jsonl`, `.winget-validation-grace.jsonl`)
+Qube mitigates accidental early CUDA loads in all builds by deferring `llama_cpp` import until an explicit model load (`core/llama_cpp_import.py`, empty PyInstaller runtime hook). Release CI additionally runs an **explicit smoke** launch with validation guards:
 
-In validation mode the app skips native autoload, blocks `get_llama_class()`, defers GPU/NVML probes, and auto-completes first-run bootstrap with a shell install (no model downloads).
+- **`QUBE_WINGET_VALIDATION=1`** or **`--winget-validation`** — CI smoke only: defer CUDA/native loads, mock bootstrap downloads, write diagnostics under `%LOCALAPPDATA%\Qube\` (`.winget-validation-smoke.json`, `.winget-validation-boot-trace.jsonl`)
 
-Release CI runs `scripts/release/smoke_installed_cuda.ps1` after building the CUDA installer:
+Normal user installs (GitHub, WinGet once cleared, installer “Launch Qube”) always run the real first-run bootstrap; there is no post-install grace window.
 
-1. Phase 1 — explicit `--winget-validation` smoke (sidecar-on-disk scenario)
-2. Phase 2 — silent install marker only, no validation flags (WinGet install-grace parity)
-
-If validation still fails after a rebuild:
+If **`dagaza.Qube.CUDA`** validation still fails after a rebuild:
 
 1. Download the validation artifact (`InstallationVerification_Result.json`) from the PR checks when available.
 2. Submit `Qube-<version>-cuda-Setup.exe` as a **software developer** false positive at [Microsoft WDSI](https://www.microsoft.com/en-us/wdsi/filesubmission).
 3. Comment on the winget-pkgs PR with the submission ID and `@wingetbot run` after clearance.
 
 Enabling Authenticode signing (`ENABLE_CODE_SIGNING` — see [`docs/releasing.md`](../docs/releasing.md)) improves SmartScreen/Defender trust for future releases.
+
+Release CI runs `scripts/release/smoke_installed_cuda.ps1` after building the CUDA installer:
+
+1. Silent install, then explicit `--winget-validation` smoke (sidecar-on-disk scenario, no `llama_cpp` import)
 
 ## Template files
 

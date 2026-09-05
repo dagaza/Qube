@@ -1,4 +1,9 @@
-"""WinGet / Defender-safe startup mode for CUDA Windows builds."""
+"""Explicit WinGet / CI smoke mode for CUDA Windows builds.
+
+Install-grace (post-install auto-validation) was removed: it skipped real-user
+bootstrap without reliably passing Microsoft catalog validation. Use
+``--winget-validation`` / ``QUBE_WINGET_VALIDATION=1`` for release CI only.
+"""
 
 from __future__ import annotations
 
@@ -12,33 +17,13 @@ from typing import Any, Literal
 
 logger = logging.getLogger("Qube.WinGetValidation")
 
-# Post-install grace for packaged CUDA builds (WinGet step 08 launches soon after install).
-_GRACE_SECONDS = 20 * 60
-_INSTALL_TS_NAMES = (".qube-install-ts",)
 _EXPLICIT_TRUTHY = frozenset({"1", "true", "yes", "on"})
 _EXPLICIT_FALSY = frozenset({"0", "false", "no", "off"})
 _SMOKE_RESULT_NAME = ".winget-validation-smoke.json"
 _BOOT_STATE_NAME = ".winget-validation-boot-state.json"
 _BOOT_TRACE_NAME = ".winget-validation-boot-trace.jsonl"
-_GRACE_TRACE_NAME = ".winget-validation-grace.jsonl"
 
-ValidationModeLabel = Literal["smoke", "install_grace"]
-
-
-def _read_windows_variant() -> str:
-    env = os.environ.get("QUBE_WINDOWS_VARIANT", "").strip().lower()
-    if env:
-        return env
-    if not getattr(sys, "frozen", False):
-        return ""
-    exe_dir = Path(sys.executable).resolve().parent
-    for candidate in (
-        exe_dir / ".qube-windows-variant",
-        exe_dir / "_internal" / ".qube-windows-variant",
-    ):
-        if candidate.is_file():
-            return candidate.read_text(encoding="utf-8").strip().lower()
-    return ""
+ValidationModeLabel = Literal["smoke"]
 
 
 def _explicit_env_requested() -> bool | None:
@@ -50,53 +35,20 @@ def _explicit_env_requested() -> bool | None:
     return raw in _EXPLICIT_TRUTHY
 
 
-def _install_grace_active() -> bool:
-    if _read_windows_variant() != "cuda":
-        return False
-    if not getattr(sys, "frozen", False):
-        return False
-    exe_dir = Path(sys.executable).resolve().parent
-    now = time.time()
-    for name in _INSTALL_TS_NAMES:
-        for candidate in (exe_dir / name, exe_dir / "_internal" / name):
-            if not candidate.is_file():
-                continue
-            age = now - candidate.stat().st_mtime
-            if age < _GRACE_SECONDS:
-                logger.info(
-                    "WinGet validation install grace active (%.0fs since install marker)",
-                    age,
-                )
-                return True
-    return False
-
-
 def is_winget_smoke_validation() -> bool:
     """True for explicit CI / sandbox runs (--winget-validation or QUBE_WINGET_VALIDATION=1)."""
     return _explicit_env_requested() is True
 
 
-def is_winget_install_grace() -> bool:
-    """True during post-install grace without explicit smoke validation flags."""
-    if _explicit_env_requested() is not None:
-        return False
-    return _install_grace_active()
-
-
 def is_winget_validation_mode() -> bool:
-    """True when llama.cpp / CUDA backend loads must be deferred for package validation."""
-    explicit = _explicit_env_requested()
-    if explicit is not None:
-        return explicit
-    return _install_grace_active()
+    """True when llama.cpp / CUDA backend loads must be deferred for CI smoke runs."""
+    return is_winget_smoke_validation()
 
 
 def validation_mode_label() -> ValidationModeLabel | None:
     """Return the active WinGet validation path for diagnostics payloads."""
     if is_winget_smoke_validation():
         return "smoke"
-    if is_winget_install_grace():
-        return "install_grace"
     return None
 
 
@@ -115,13 +67,9 @@ def configure_winget_validation_mode(args: Any | None = None) -> None:
 
 def apply_winget_validation_bootstrap_shortcut() -> bool:
     """
-    Skip first-run consent and use a shell bootstrap selection.
-
-    Smoke mode also enables mock bootstrap downloads for CI.
-    Install grace uses the same consent bypass without mock downloads.
+    CI smoke only: skip first-run consent and use shell bootstrap with mock downloads.
     """
-    mode = validation_mode_label()
-    if mode is None:
+    if not is_winget_smoke_validation():
         return False
     from core.bootstrap_selection import is_bootstrap_completed, save_bootstrap_selection
 
@@ -129,8 +77,7 @@ def apply_winget_validation_bootstrap_shortcut() -> bool:
         record_boot_state("bootstrap_shortcut_skipped", reason="already_completed")
         return False
     save_bootstrap_selection(set())
-    if mode == "smoke":
-        os.environ["QUBE_BOOTSTRAP_MOCK_DOWNLOAD"] = "1"
+    os.environ["QUBE_BOOTSTRAP_MOCK_DOWNLOAD"] = "1"
     from core.bootstrap_selection import is_bootstrap_completed
 
     if not is_bootstrap_completed():
@@ -138,12 +85,8 @@ def apply_winget_validation_bootstrap_shortcut() -> bool:
             "WinGet validation bootstrap shortcut did not persist completion; "
             "consent bypass still active via validation mode."
         )
-    logger.info(
-        "WinGet validation mode (%s): shell bootstrap (no models%s).",
-        mode,
-        ", mock downloads" if mode == "smoke" else "",
-    )
-    record_boot_state("bootstrap_shortcut_applied", mock_downloads=mode == "smoke")
+    logger.info("WinGet validation mode (smoke): shell bootstrap with mock downloads.")
+    record_boot_state("bootstrap_shortcut_applied", mock_downloads=True)
     return True
 
 
@@ -177,14 +120,8 @@ def boot_trace_path() -> Path:
     return user_data_root() / _BOOT_TRACE_NAME
 
 
-def grace_trace_path() -> Path:
-    from core.paths import user_data_root
-
-    return user_data_root() / _GRACE_TRACE_NAME
-
-
 def record_boot_state(state: str, **extra: Any) -> None:
-    """Write diagnostic boot progress for CI and WinGet install-grace launches."""
+    """Write diagnostic boot progress for explicit CI smoke runs."""
     mode = validation_mode_label()
     if mode is None:
         return
@@ -200,9 +137,6 @@ def record_boot_state(state: str, **extra: Any) -> None:
     boot_state_path().write_text(line, encoding="utf-8")
     with boot_trace_path().open("a", encoding="utf-8") as trace_file:
         trace_file.write(line)
-    if mode == "install_grace":
-        with grace_trace_path().open("a", encoding="utf-8") as grace_file:
-            grace_file.write(line)
     if extra:
         logger.info("WinGet validation boot state: %s (%s)", state, extra)
     else:

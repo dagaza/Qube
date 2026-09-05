@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
-import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,9 +11,9 @@ import pytest
 
 from core import llama_cpp_import as llama_mod
 from core.winget_validation import (
+    apply_winget_validation_bootstrap_shortcut,
     boot_state_path,
     boot_trace_path,
-    is_winget_install_grace,
     is_winget_smoke_validation,
     is_winget_validation_mode,
     record_boot_state,
@@ -35,14 +33,10 @@ def _reset_state(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("QUBE_WINDOWS_VARIANT", raising=False)
 
 
-def _install_grace_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def _cuda_install_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     exe = tmp_path / "Qube.exe"
     exe.write_text("", encoding="utf-8")
     (tmp_path / ".qube-windows-variant").write_text("cuda", encoding="utf-8")
-    marker = tmp_path / ".qube-install-ts"
-    marker.write_text("1", encoding="utf-8")
-    now = time.time()
-    os.utime(marker, (now, now))
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     monkeypatch.setattr(sys, "executable", str(exe), raising=False)
     return exe
@@ -51,28 +45,26 @@ def _install_grace_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> P
 def test_explicit_env_enables_validation_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("QUBE_WINGET_VALIDATION", "1")
     assert is_winget_validation_mode() is True
+    assert is_winget_smoke_validation() is True
     assert validation_mode_label() == "smoke"
 
 
-def test_explicit_env_can_disable_install_grace(
+def test_explicit_env_false_disables_validation_mode(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("QUBE_WINGET_VALIDATION", "0")
-    monkeypatch.setattr(sys, "frozen", True, raising=False)
-    monkeypatch.setattr(sys, "executable", str(tmp_path / "Qube.exe"), raising=False)
-    (tmp_path / ".qube-windows-variant").write_text("cuda", encoding="utf-8")
-    (tmp_path / ".qube-install-ts").write_text("1", encoding="utf-8")
+    _cuda_install_fixture(tmp_path, monkeypatch)
     assert is_winget_validation_mode() is False
     assert validation_mode_label() is None
 
 
-def test_cuda_install_grace_enables_validation_mode(
+def test_fresh_cuda_install_without_validation_flag_is_normal_boot(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    _install_grace_fixture(tmp_path, monkeypatch)
-    assert is_winget_validation_mode() is True
-    assert is_winget_install_grace() is True
-    assert validation_mode_label() == "install_grace"
+    _cuda_install_fixture(tmp_path, monkeypatch)
+    assert is_winget_validation_mode() is False
+    assert validation_mode_label() is None
+    assert apply_winget_validation_bootstrap_shortcut() is False
 
 
 def test_get_llama_class_skipped_without_import_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -176,54 +168,40 @@ def test_record_boot_state_appends_boot_trace(
     assert last_state["state"] == "phase_complete"
 
 
-def test_install_grace_writes_grace_trace_and_result(
+def test_smoke_validation_writes_boot_trace_on_entry(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    _install_grace_fixture(tmp_path, monkeypatch)
+    monkeypatch.setenv("QUBE_WINGET_VALIDATION", "1")
     with patch("core.paths.user_data_root", return_value=tmp_path):
         record_validation_entry()
         write_smoke_result(boot_complete=True)
     payload = json.loads((tmp_path / ".winget-validation-smoke.json").read_text(encoding="utf-8"))
-    assert payload["mode"] == "install_grace"
+    assert payload["mode"] == "smoke"
     assert payload["ok"] is True
-    grace_lines = (
-        (tmp_path / ".winget-validation-grace.jsonl")
+    trace_lines = (
+        (tmp_path / ".winget-validation-boot-trace.jsonl")
         .read_text(encoding="utf-8")
         .strip()
         .split("\n")
     )
-    assert len(grace_lines) >= 2
-    assert json.loads(grace_lines[0])["state"] == "process_entry"
-    assert json.loads(grace_lines[0])["mode"] == "install_grace"
+    assert len(trace_lines) >= 2
+    assert json.loads(trace_lines[0])["state"] == "process_entry"
+    assert json.loads(trace_lines[0])["mode"] == "smoke"
 
 
-def test_install_grace_failure_is_recorded(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    _install_grace_fixture(tmp_path, monkeypatch)
-    with patch("core.paths.user_data_root", return_value=tmp_path):
-        write_smoke_failure(stage="phase_1", error="boom")
-    payload = json.loads((tmp_path / ".winget-validation-smoke.json").read_text(encoding="utf-8"))
-    assert payload["mode"] == "install_grace"
-    assert payload["ok"] is False
-    assert payload["error"] == "boom"
-
-
-def test_cuda_install_grace_skips_consent_and_applies_shortcut(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_explicit_smoke_validation_skips_consent_and_applies_shortcut(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     pytest.importorskip("PyQt6")
-    _install_grace_fixture(tmp_path, monkeypatch)
+    monkeypatch.setenv("QUBE_WINGET_VALIDATION", "1")
 
     from core.bootstrap_selection import (
         effective_bootstrap_selection,
         is_bootstrap_completed,
         should_show_bootstrap_consent,
     )
-    from core.winget_validation import apply_winget_validation_bootstrap_shortcut
 
     assert is_winget_validation_mode() is True
-    assert is_winget_smoke_validation() is False
     assert apply_winget_validation_bootstrap_shortcut() is True
     assert is_bootstrap_completed() is True
     assert should_show_bootstrap_consent() is False
