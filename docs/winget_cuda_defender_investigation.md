@@ -29,7 +29,40 @@ This document records **what we know**, **what we suspect**, and **what to test*
 
 **WDSI detection name to use:** `Trojan:Win32/Wacatac.B!ml`
 
-**Important:** Step 08 launches **`Qube.exe`**, not the Setup wrapper. WDSI submission should prioritize **installed `Qube.exe`** (under 50 MiB). `ggml-cuda.dll` is too large for WDSI/VT upload — cite hash + provenance in Additional information ([`winget_wdsi_submission.md`](winget_wdsi_submission.md)).
+### VirusTotal corroboration (`Qube.exe`, 2026-09-07)
+
+| Field | Value |
+|-------|--------|
+| **VT report** | https://www.virustotal.com/gui/file/c653feeb6de980e92d47f7898c395cd1693a1edfe44d2ad7a0f27d8111766506 |
+| **Score** | 4 / 75 malicious (67 undetected at query time) |
+| **Popular threat label** | `dropper.` (VT clustering — **not** evidence of dropper behavior) |
+
+| Engine | Detection |
+|--------|-----------|
+| **Microsoft** | **`Trojan:Win32/Wacatac.B!ml`** |
+| Bkav Pro | `W32.Malware.EDE6264E` |
+| APEX | `Malicious` |
+| Zillya | `Dropper.Agent.Win32.746397` |
+
+The **`!ml`** suffix indicates a **machine-learning / heuristic** classification — common for unsigned PyInstaller apps and often addressable via WDSI false-positive submission.
+
+### `ggml-cuda.dll` (context, not the WDSI upload target)
+
+| Field | Value |
+|-------|--------|
+| **Size** | 929,903,616 bytes (~886 MiB) — normal for cu124 wheel with multi-arch CUDA kernels |
+| **SHA-256** | `81924BB0F75EAF45029114D3F34D32CA7936FD4E9DBD06630497A6A3A39861E8` |
+| **VT hash lookup** | 404 (not indexed; too large for VT upload, 650 MiB API cap) |
+
+| Platform | Upload limit | `ggml-cuda.dll` |
+|----------|--------------|-----------------|
+| **WDSI portal** | ~50 MiB | **Cannot upload** — cite hash + provenance in Additional information |
+| **VirusTotal** | 650 MiB (large-file API) | **Cannot upload** (886 MiB) |
+| **VT hash search** | — | Works; no public report yet |
+
+WinGet step 08 failure aligns with **`Qube.exe`** (VT-confirmed Microsoft detection), not necessarily with `ggml-cuda.dll` loading during validation. The DLL’s size explains why the CUDA **installer is ~1.04 GiB** while CPU/Vulkan stay ~200 MiB.
+
+**Important:** Step 08 launches **`Qube.exe`**, not the Setup wrapper. WDSI submission should prioritize **installed `Qube.exe`** (~31 MiB). Do **not** ZIP `_internal` for WDSI — cite `ggml-cuda.dll` hash in Additional information and offer a secure direct link only if analysts request the binary ([`winget_wdsi_submission.md`](winget_wdsi_submission.md)).
 
 ---
 

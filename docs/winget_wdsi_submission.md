@@ -182,17 +182,18 @@ Contact: dan@zadobrischi.com — additional builds or build steps available on r
 Post on the blocked **`winget-pkgs`** PR:
 
 ```
-Validation-Defender-Error on step 08 (Installation Validation): we believe this is a
-Microsoft Defender false positive on the CUDA build's legitimate NVIDIA/llama.cpp
-runtime (ggml-cuda.dll), not a manifest or installer defect. Step 07 passes.
+Validation-Defender-Error on step 08 (Installation Validation): Microsoft classifies the
+installed CUDA Qube.exe as Trojan:Win32/Wacatac.B!ml (VirusTotal + Windows 11 test VM).
+Step 07 (Installers Scan) passes. This is not a manifest or installer defect.
 
 Submitted to Microsoft Security Intelligence (WDSI) as software developer false positive:
 
 - Submission ID: [FILL]
 - Publisher: Dan Zadobrischi (dagaza)
-- File: Qube.exe (CUDA v1.3.50), SHA-256: C653FEEB6DE980E92D47F7898C395CD1693A1EDFE44D2AD7A0F27D8111766506
+- File submitted: Qube.exe (CUDA v1.3.50), SHA-256: C653FEEB6DE980E92D47F7898C395CD1693A1EDFE44D2AD7A0F27D8111766506
 - Installer: Qube-1.3.50-cuda-Setup.exe, SHA-256: 4E9F8B49D41AF0EF4667C4371129EC1D9DE4ACB2745FA1A9D69B7065D11CCF08
 - Detection: Trojan:Win32/Wacatac.B!ml
+- Bundled context (hash only; 886 MiB, not uploaded): ggml-cuda.dll 81924BB0F75EAF45029114D3F34D32CA7936FD4E9DBD06630497A6A3A39861E8
 - https://www.qubeapp.eu | https://github.com/dagaza/Qube
 
 Please re-run validation after Microsoft clears the submission.
