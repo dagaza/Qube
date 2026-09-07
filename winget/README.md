@@ -86,7 +86,7 @@ Normal user installs (GitHub, WinGet once cleared, installer “Launch Qube”) 
 If **`dagaza.Qube.CUDA`** validation still fails after a rebuild:
 
 1. Download the validation artifact (`InstallationVerification_Result.json`) from the PR checks when available.
-2. Submit `Qube-<version>-cuda-Setup.exe` as a **software developer** false positive at [Microsoft WDSI](https://www.microsoft.com/en-us/wdsi/filesubmission).
+2. Read **[`docs/winget_cuda_defender_investigation.md`](../docs/winget_cuda_defender_investigation.md)** (diagnosis) and **[`docs/winget_wdsi_submission.md`](../docs/winget_wdsi_submission.md)** (WDSI submission) — submit installed **`Qube.exe`** and/or the CUDA Setup.exe as a **software developer** false positive at [Microsoft WDSI](https://www.microsoft.com/en-us/wdsi/filesubmission).
 3. Comment on the winget-pkgs PR with the submission ID and `@wingetbot run` after clearance.
 
 Enabling Authenticode signing (`ENABLE_CODE_SIGNING` — see [`docs/releasing.md`](../docs/releasing.md)) improves SmartScreen/Defender trust for future releases.

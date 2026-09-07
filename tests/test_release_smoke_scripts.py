@@ -47,3 +47,14 @@ def test_smoke_dist_cuda_skips_runtime_launch():
     assert "verify_windows_cuda_bundle.ps1" in text
     assert '$variant -eq "cuda"' in text
     assert "--winget-validation" not in text
+
+
+def test_release_workflow_publishes_windows_checksums():
+    workflow = (
+        Path(__file__).resolve().parent.parent / ".github" / "workflows" / "release.yml"
+    ).read_text(encoding="utf-8")
+    assert "write_windows_installer_checksums.py" in workflow
+    assert "SHA256SUMS.txt" in workflow
+    assert "steps.checksums.outputs.cpu_sha256" in workflow
+    assert "steps.checksums.outputs.vulkan_sha256" in workflow
+    assert "steps.checksums.outputs.cuda_sha256" in workflow

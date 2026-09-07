@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added
+- **WinGet / Defender docs:** investigation playbook and WDSI submission guide for CUDA `Validation-Defender-Error`.
+- **Release checksums:** publish SHA-256 for all Windows installers in GitHub Release notes and attach `SHA256SUMS.txt`.
+
 ### Fixed
 - **CUDA first-run bootstrap:** Remove the 20-minute post-install “install grace” path that skipped bootstrap consent and model downloads on fresh CUDA installs (including GitHub downloads and the installer’s Launch Qube step). First launch now runs the normal bootstrap flow. Explicit `--winget-validation` remains for release CI smoke only.
 
