@@ -423,6 +423,12 @@ jobs:
     needs: [build, macos-build, linux-build]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
       - uses: actions/download-artifact@v4
         with:
           pattern: installer-*-${{ needs.build.outputs.version }}
@@ -437,12 +443,6 @@ jobs:
         with:
           pattern: linux-*
           merge-multiple: true
-
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Write Windows installer checksums
         id: checksums
