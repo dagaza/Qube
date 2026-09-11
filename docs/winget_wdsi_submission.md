@@ -133,46 +133,42 @@ Portal: https://www.microsoft.com/en-us/wdsi/filesubmission
 
 ## 5. Additional information (final text)
 
-Copy into the WDSI **Additional information** box (≤1900 characters). Update version and hashes before submit.
+Copy into the WDSI **Additional information** box (**hard limit 1900 characters**; the block below is ~1720). Update version and hashes before submit.
 
 ```
-Product: Qube (CUDA build) — WinGet ID dagaza.Qube.CUDA
+Product: Qube CUDA — WinGet dagaza.Qube.CUDA
 Publisher: Dan Zadobrischi (GitHub: dagaza)
-Website: https://www.qubeapp.eu
-Source: https://github.com/dagaza/Qube (MIT, open source)
+Site: https://www.qubeapp.eu | Source: https://github.com/dagaza/Qube (MIT)
 Release: https://github.com/dagaza/Qube/releases/tag/v1.3.50
+Contact: dan@qubeapp.eu | dan@zadobrischi.com
 
-File submitted: Qube.exe (NVIDIA CUDA GPU build), SHA-256: C653FEEB6DE980E92D47F7898C395CD1693A1EDFE44D2AD7A0F27D8111766506.
-Installer (same version): Qube-1.3.50-cuda-Setup.exe, SHA-256: 4E9F8B49D41AF0EF4667C4371129EC1D9DE4ACB2745FA1A9D69B7065D11CCF08.
-Optional component (hash only — file is 886 MiB, exceeds WDSI 50 MiB upload cap):
-ggml-cuda.dll, SHA-256: 81924BB0F75EAF45029114D3F34D32CA7936FD4E9DBD06630497A6A3A39861E8
-(929,903,616 bytes; llama-cpp-python cu124 wheel; available on request if analysts need the binary).
-Code signing: Currently unsigned; Authenticode signing planned for future releases.
+Submitted: Qube.exe (CUDA), SHA-256:
+C653FEEB6DE980E92D47F7898C395CD1693A1EDFE44D2AD7A0F27D8111766506
+Installer: Qube-1.3.50-cuda-Setup.exe, SHA-256:
+4E9F8B49D41AF0EF4667C4371129EC1D9DE4ACB2745FA1A9D69B7065D11CCF08
+Defender test VM: AMProductVersion 4.18.26080.3, sig 1.459.91.0
+Detection: Trojan:Win32/Wacatac.B!ml (VirusTotal + local Win11, 2026-09-07)
 
-Qube is a legitimate local-first desktop AI assistant. Users run LLM inference
-on their own hardware; chat, document library, and memory stay on-device. The
-CUDA variant uses llama.cpp with NVIDIA GPU offload (ggml-cuda.dll and bundled
-NVIDIA CUDA 12.4 runtime libraries from the official llama-cpp-python cu124
-wheel). There is no C2, credential theft, persistence, or unwanted bundling.
+ggml-cuda.dll (886 MiB, hash only; exceeds 50 MiB upload):
+81924BB0F75EAF45029114D3F34D32CA7936FD4E9DBD06630497A6A3A39861E8
+(llama-cpp-python cu124 wheel; binary on request). Unsigned; signing planned.
 
-False positive context — WinGet catalog validation:
-Package dagaza.Qube.CUDA is submitted to microsoft/winget-pkgs. Step 07
-(Installers Scan) passes; step 08 (Installation Validation) fails with
-Validation-Defender-Error when the app launches after silent install on a
-Defender-enabled VM. Blocked PR: https://github.com/microsoft/winget-pkgs/pull/429353.
-Defender threat name: Trojan:Win32/Wacatac.B!ml (VirusTotal + local Windows 11 test, 2026-09-07).
+Qube is a local-first desktop AI assistant: on-device LLM inference, chat,
+documents, memory. CUDA build uses llama.cpp + NVIDIA GPU (ggml-cuda.dll,
+CUDA 12.4 libs from official cu124 wheel). No C2, credential theft,
+persistence, or unwanted bundling.
 
-Technical mitigations in product:
-- llama_cpp/CUDA DLLs are not loaded at process startup; import is deferred
-  until the user loads a GGUF model (core/llama_cpp_import.py).
-- First-run bootstrap downloads models from Hugging Face only after user consent.
-- CPU and Vulkan Windows builds pass WinGet validation; only CUDA bundles
-  NVIDIA inference libraries.
+WinGet false positive: microsoft/winget-pkgs dagaza.Qube.CUDA — step 07
+(Installers Scan) passes; step 08 (Installation Validation) fails
+Validation-Defender-Error when Qube.exe launches after silent install.
+Blocked PR: https://github.com/microsoft/winget-pkgs/pull/429353
 
-Expected behavior: PyQt6 UI, optional mic for wake word, optional Hugging Face
-downloads with consent. ggml-cuda.dll loads only when loading a local model.
+Mitigations: CUDA DLLs not loaded at startup; deferred until user loads a
+GGUF model (core/llama_cpp_import.py). Hugging Face downloads only after
+user consent. CPU and Vulkan Windows builds pass WinGet validation.
 
-Contact: dan@zadobrischi.com — additional builds or build steps available on request.
+Expected: PyQt6 UI; optional mic for wake word; ggml-cuda.dll loads only when
+loading a local model. Additional builds or build steps on request.
 ```
 
 ---
