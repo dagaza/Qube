@@ -73,6 +73,8 @@ gh workflow run winget-submit.yml -f version=1.2.5
 
 Requires the GitHub Release to include all three Windows `.exe` assets.
 
+**Do not** also re-run the failed `winget` job on an old **Build & Release** run after `winget-submit` succeeds — that creates duplicate PRs for the same version. `submit_winget_packages.py` skips submit when an open PR with the same title already exists.
+
 ### WinGet `Validation-Defender-Error` (CUDA)
 
 Microsoft's installation validation runs a silent install and launches the app on a Defender-enabled VM. If step **08. Installation Validation** fails with **`Validation-Defender-Error`** while **07. Installers Scan** passes, Defender flagged behavior during startup — not a manifest typo.

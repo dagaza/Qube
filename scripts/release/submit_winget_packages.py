@@ -4,8 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -16,6 +20,30 @@ from core.winget_release_variants import (  # noqa: E402
     WINGET_VARIANTS,
     package_identifier,
 )
+
+_WINGET_PKGS = "microsoft/winget-pkgs"
+
+
+def find_open_pr_url(*, token: str, title: str) -> str | None:
+    """Return an open winget-pkgs PR URL with the exact title, if one exists."""
+    query = urllib.parse.quote(
+        f'repo:{_WINGET_PKGS} is:pr is:open "{title}" in:title'
+    )
+    request = urllib.request.Request(
+        f"https://api.github.com/search/issues?q={query}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            payload = json.load(response)
+    except urllib.error.HTTPError as exc:
+        print(f"WARNING: could not search for existing PRs ({exc.code}); submitting anyway.")
+        return None
+    items = payload.get("items") or []
+    return items[0]["html_url"] if items else None
 
 
 def submit_winget_packages(
@@ -38,6 +66,12 @@ def submit_winget_packages(
                 f"Rendered manifest folder missing for {package_id}: {manifest_dir}"
             )
 
+        pr_title = f"{package_id} {version}"
+        existing = find_open_pr_url(token=token, title=pr_title)
+        if existing:
+            print(f"WinGet submit skipped for {package_id} ({version}): open PR {existing}")
+            continue
+
         command = [
             str(wingetcreate),
             "submit",
@@ -46,7 +80,7 @@ def submit_winget_packages(
             token,
             "--no-open",
             "--prtitle",
-            f"{package_id} {version}",
+            pr_title,
         ]
         print(f"WinGet submit for {package_id} ({version})...")
         if dry_run:
