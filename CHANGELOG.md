@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [1.3.51] - 2026-09-11
+
 ### Added
 - **WinGet / Defender docs:** investigation playbook and WDSI submission guide for CUDA `Validation-Defender-Error`.
 - **Release checksums:** publish SHA-256 for all Windows installers in GitHub Release notes and attach `SHA256SUMS.txt`.
