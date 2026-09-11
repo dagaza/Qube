@@ -63,6 +63,8 @@ Set repository secret:
 
 The release workflow runs `scripts/release/submit_winget_packages.py` after each tag. It submits the rendered split manifests under `winget/out/<version>/` for **dagaza.Qube**, **dagaza.Qube.Vulkan**, and **dagaza.Qube.CUDA** via `wingetcreate submit` (one PR per package ID).
 
+Before submit, CI calls `scripts/release/sync_winget_fork.sh` to merge `microsoft/winget-pkgs` **master** into the PAT owner's fork (required when the fork is behind upstream). The WinGet job uses `continue-on-error: true` so a fork/submit failure does not fail the release after assets are published.
+
 ### Catch-up without retagging
 
 ```bash

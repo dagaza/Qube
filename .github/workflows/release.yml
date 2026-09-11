@@ -590,6 +590,8 @@ jobs:
   winget:
     needs: [build, release, winget-manifests]
     runs-on: windows-latest
+    # WinGet PR submit is best-effort after the GitHub Release is published.
+    continue-on-error: true
     if: github.repository == 'dagaza/Qube' && vars.WINGET_AUTO_SUBMIT == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -602,6 +604,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Sync winget-pkgs fork with upstream
+        shell: bash
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_SUBMIT_TOKEN }}
+        run: bash scripts/release/sync_winget_fork.sh "$WINGET_TOKEN"
 
       - name: Submit WinGet manifest PRs (CPU, Vulkan, CUDA)
         shell: bash

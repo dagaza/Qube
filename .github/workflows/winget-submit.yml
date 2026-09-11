@@ -57,6 +57,12 @@ jobs:
             --vulkan-sha256 $vulkan `
             --cuda-sha256 $cuda
 
+      - name: Sync winget-pkgs fork with upstream
+        shell: bash
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_SUBMIT_TOKEN }}
+        run: bash scripts/release/sync_winget_fork.sh "$WINGET_TOKEN"
+
       - name: Submit WinGet manifest PRs (CPU, Vulkan, CUDA)
         shell: bash
         env:
