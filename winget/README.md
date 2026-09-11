@@ -59,7 +59,7 @@ Set repository secret:
 
 | Secret | Purpose |
 |--------|---------|
-| `WINGET_SUBMIT_TOKEN` | GitHub PAT with rights to push to your `winget-pkgs` fork and open PRs |
+| `WINGET_SUBMIT_TOKEN` | GitHub PAT with **`repo`** scope to push to your `winget-pkgs` fork and open PRs. For **automated fork sync** in CI, also enable the **`workflow`** scope (upstream adds workflow files). Without it, sync the fork manually on GitHub before submit. |
 
 The release workflow runs `scripts/release/submit_winget_packages.py` after each tag. It submits the rendered split manifests under `winget/out/<version>/` for **dagaza.Qube**, **dagaza.Qube.Vulkan**, and **dagaza.Qube.CUDA** via `wingetcreate submit` (one PR per package ID).
 
