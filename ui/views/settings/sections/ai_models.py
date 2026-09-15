@@ -61,10 +61,13 @@ from ui.views.settings.widgets import (
     add_subsection_to_form,
     add_section_reset_footer,
     add_settings_card_form,
+    add_settings_field_row,
     make_disclosure_row,
     make_external_engine_hint,
+    make_settings_nested_form,
     make_subsection_label,
     prepare_settings_card_form,
+    settings_layout_row,
     track_internal_ai_label,
     wrap_subsection,
     add_settings_full_width_row,
@@ -97,8 +100,8 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "OpenAI-compatible server to use when External inference is selected."
     )
 
-    engine_form.addRow("AI Engine", host.engine_selector)
-    engine_form.addRow("External Provider", host.provider_selector)
+    add_settings_field_row(engine_form, "AI Engine", host.engine_selector)
+    add_settings_field_row(engine_form, "External Provider", host.provider_selector)
     add_settings_full_width_row(engine_form, make_external_engine_hint(host))
     engine_card_layout.addWidget(engine_form_host)
     section_layout.addWidget(engine_card)
@@ -118,10 +121,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         ),
     )
 
-    local_models_inner = QWidget()
-    local_models_form = QFormLayout(local_models_inner)
-    local_models_form.setSpacing(15)
-    local_models_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+    local_models_inner, local_models_form = make_settings_nested_form()
 
     host.models_dir_label = QLabel()
     host.models_dir_label.setWordWrap(True)
@@ -158,7 +158,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.active_native_model_lbl = QLabel()
 
     local_models_form.addRow("Model storage", host.models_dir_label)
-    local_models_form.addRow("On this device", local_row)
+    local_models_form.addRow("On this device", settings_layout_row(local_row))
     local_models_form.addRow("Active model", host.active_native_model_lbl)
 
     host._ai_local_models_subsection = wrap_subsection(
@@ -170,10 +170,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         host, add_subsection_to_form(local_startup_form, "Startup", anchor="startup")
     )
 
-    startup_inner = QWidget()
-    startup_form = QFormLayout(startup_inner)
-    startup_form.setSpacing(15)
-    startup_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+    startup_inner, startup_form = make_settings_nested_form()
 
     host.auto_load_last_model_cb = QCheckBox("Load last used model on startup")
     host.auto_load_last_model_cb.setToolTip(

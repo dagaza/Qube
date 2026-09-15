@@ -310,24 +310,53 @@ def _install_form_label_column_ruler(form: QFormLayout) -> None:
     form.addRow(ruler, field)
 
 
+def _apply_settings_form_layout_defaults(form: QFormLayout, *, horizontal_inset: int) -> None:
+    form.setSpacing(SETTINGS_CARD_FORM_ROW_SPACING)
+    form.setHorizontalSpacing(12)
+    form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+    form.setFormAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+    form.setContentsMargins(
+        horizontal_inset,
+        0,
+        horizontal_inset,
+        SETTINGS_CARD_FORM_ROW_SPACING,
+    )
+    form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+
+
+def make_settings_field_row_widget(field: QWidget) -> QWidget:
+    """Wrap a fixed-width control so the form field column still spans the card."""
+    row = QWidget()
+    row.setMinimumWidth(0)
+    row.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    row_layout = QHBoxLayout(row)
+    row_layout.setContentsMargins(0, 0, 0, 0)
+    row_layout.setSpacing(0)
+    row_layout.addWidget(field, alignment=Qt.AlignmentFlag.AlignLeft)
+    row_layout.addStretch(1)
+    return row
+
+
 def make_settings_form() -> tuple[QWidget, QFormLayout]:
     """Standard settings QFormLayout host (label column + field column rhythm)."""
     form_host = QWidget()
     form_host.setMinimumWidth(0)
     form_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
     form = QFormLayout(form_host)
-    form.setSpacing(SETTINGS_CARD_FORM_ROW_SPACING)
-    form.setHorizontalSpacing(12)
-    form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-    inset = SETTINGS_CARD_FORM_HORIZONTAL_INSET
-    form.setContentsMargins(
-        inset,
-        0,
-        inset,
-        SETTINGS_CARD_FORM_ROW_SPACING,
+    _apply_settings_form_layout_defaults(
+        form, horizontal_inset=SETTINGS_CARD_FORM_HORIZONTAL_INSET
     )
-    form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
     _install_form_label_column_ruler(form)
+    return form_host, form
+
+
+def make_settings_nested_form() -> tuple[QWidget, QFormLayout]:
+    """Nested mini-form inside a card row (matches field-column expansion on macOS)."""
+    form_host = QWidget()
+    form_host.setMinimumWidth(0)
+    form_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    form = QFormLayout(form_host)
+    _apply_settings_form_layout_defaults(form, horizontal_inset=0)
     return form_host, form
 
 
@@ -352,6 +381,11 @@ def add_settings_field_row(
     form: QFormLayout, label: str | QWidget, field: QWidget
 ) -> None:
     """Add a classic label + field row (controls align to the shared field column)."""
+    policy = field.sizePolicy()
+    if policy.horizontalPolicy() == QSizePolicy.Policy.Fixed:
+        field = make_settings_field_row_widget(field)
+    else:
+        _prepare_settings_form_row_widget(field)
     form.addRow(label, field)
 
 
