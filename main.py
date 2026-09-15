@@ -1811,8 +1811,11 @@ def run_application(
         )
 
     def _on_qube_ready(qube: Qube) -> None:
+        from core.platform.macos_dock import install_macos_dock_reopen_handler
+
         activation_target["qube"] = qube
         qube.window._qube = qube
+        install_macos_dock_reopen_handler(qube.window._restore_workspace_from_tray)
         if is_bootstrap_completed():
             if hasattr(qube.window, "voice_input_toggle"):
                 qube.window.voice_input_toggle.setChecked(get_voice_input_default())
