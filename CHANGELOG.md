@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [1.3.52] - 2026-09-16
+
+### Fixed
+- **macOS Dock:** Restore the main window when the Dock icon is clicked after hide-to-tray (red X), without affecting menu bar tray or Desktop Companion single-click use.
+- **Settings (macOS):** AI Engine and local model rows expand to the full card width on narrow layouts instead of collapsing left.
+
+### Changed
+- **WinGet auto-submit:** Sync the fork before opening PRs; skip submit when an open PR already exists for the version; document PAT requirements and tolerate sync failure without failing the release job.
+
 ## [1.3.51] - 2026-09-11
 
 ### Added
