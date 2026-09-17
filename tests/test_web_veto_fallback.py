@@ -13,6 +13,7 @@ from core.memory_filters import (
     EXPLICIT_WEB_EMPTY_SUFFIX,
     PREFERENCE_APPLICATION_SUFFIX,
     WEB_CAPABILITY_DISABLED_SUFFIX,
+    compute_web_capability_blocked,
     detect_explicit_web_request,
     query_implies_live_web_intent,
 )
@@ -28,6 +29,45 @@ class WebVetoFallbackTests(unittest.TestCase):
         )
         system = compose_system_prompt(blocks)
         self.assertIn(WEB_CAPABILITY_DISABLED_SUFFIX.strip()[:40], system)
+
+    def test_web_capability_blocked_when_internet_disabled(self):
+        query = "Who won the 2026 NBA Finals?"
+        self.assertTrue(
+            compute_web_capability_blocked(
+                explicit_web_request=True,
+                mcp_internet_enabled=False,
+                force_web=False,
+                query=query,
+            )
+        )
+
+    def test_force_web_clears_web_capability_blocked(self):
+        query = "Who won the 2026 NBA Finals?"
+        self.assertFalse(
+            compute_web_capability_blocked(
+                explicit_web_request=True,
+                mcp_internet_enabled=False,
+                force_web=True,
+                query=query,
+            )
+        )
+
+    def test_composer_internet_web_route_uses_retrieval_prompt_not_disabled_suffix(
+        self,
+    ):
+        blocks = build_prompt_blocks(
+            execution_route="WEB",
+            explicit_remember_active=False,
+            web_capability_blocked=False,
+            has_retrieval_sources=True,
+            retrieval_context="--- [1]: 2026 NBA Finals --- Knicks beat Spurs.",
+        )
+        system = compose_system_prompt(blocks)
+        self.assertNotIn(
+            WEB_CAPABILITY_DISABLED_SUFFIX.strip()[:40],
+            system,
+        )
+        self.assertIn("live web search results", system.lower())
 
     def test_joke_query_without_live_web_intent(self):
         self.assertFalse(query_implies_live_web_intent("Tell me a joke."))

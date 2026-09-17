@@ -67,6 +67,7 @@ from ui.views.settings.widgets import (
     make_settings_nested_form,
     make_subsection_label,
     prepare_settings_card_form,
+    prepare_settings_wrapped_label,
     settings_layout_row,
     track_internal_ai_label,
     wrap_subsection,
@@ -124,7 +125,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     local_models_inner, local_models_form = make_settings_nested_form()
 
     host.models_dir_label = QLabel()
-    host.models_dir_label.setWordWrap(True)
+    prepare_settings_wrapped_label(host.models_dir_label)
 
     local_row = QHBoxLayout()
     host.local_gguf_list = SettingsScrollListWidget()
@@ -156,10 +157,11 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     local_row.addLayout(local_btn_col)
 
     host.active_native_model_lbl = QLabel()
+    prepare_settings_wrapped_label(host.active_native_model_lbl)
 
-    local_models_form.addRow("Model storage", host.models_dir_label)
+    add_settings_field_row(local_models_form, "Model storage", host.models_dir_label)
     local_models_form.addRow("On this device", settings_layout_row(local_row))
-    local_models_form.addRow("Active model", host.active_native_model_lbl)
+    add_settings_field_row(local_models_form, "Active model", host.active_native_model_lbl)
 
     host._ai_local_models_subsection = wrap_subsection(
         local_models_inner, anchor="local_models"

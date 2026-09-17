@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import platform
 import re
 import sys
@@ -18,6 +19,7 @@ from core.__version__ import __version__
 from core.help_corpus_manifest import parse_version, version_at_least
 from core.linux_release_variants import appimage_filename, deb_filename, normalize_linux_variant
 from core.paths import install_root
+from core.support_feedback import GITHUB_RELEASES_URL
 
 logger = logging.getLogger("Qube.AppReleaseUpdate")
 
@@ -78,7 +80,7 @@ class AppUpdateCheckResult:
             status=AppUpdateStatus.ERROR,
             current_version=current_version,
             error_message=message,
-            release_page_url=f"https://github.com/{GITHUB_REPO}/releases",
+            release_page_url=GITHUB_RELEASES_URL,
         )
 
 
@@ -115,7 +117,7 @@ def detect_linux_release_variant() -> str:
         except ValueError:
             logger.warning("Ignoring invalid Linux variant marker at %s", marker)
 
-    appimage_path = sys.environ.get("APPIMAGE", "").strip()
+    appimage_path = os.environ.get("APPIMAGE", "").strip()
     if appimage_path:
         from core.linux_appimage_install import parse_appimage_filename
 

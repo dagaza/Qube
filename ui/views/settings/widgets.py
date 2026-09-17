@@ -293,8 +293,17 @@ class SettingsSectionDivider(QWidget):
 
 def _prepare_settings_form_row_widget(widget: QWidget) -> None:
     policy = widget.sizePolicy()
-    if policy.horizontalPolicy() != QSizePolicy.Policy.Fixed:
-        widget.setSizePolicy(QSizePolicy.Policy.Expanding, policy.verticalPolicy())
+    horizontal = policy.horizontalPolicy()
+    vertical = policy.verticalPolicy()
+    if horizontal != QSizePolicy.Policy.Fixed:
+        horizontal = QSizePolicy.Policy.Expanding
+    if vertical in (
+        QSizePolicy.Policy.Expanding,
+        QSizePolicy.Policy.MinimumExpanding,
+        QSizePolicy.Policy.Preferred,
+    ):
+        vertical = QSizePolicy.Policy.Minimum
+    widget.setSizePolicy(horizontal, vertical)
     widget.setMinimumWidth(0)
 
 
@@ -310,10 +319,21 @@ def _install_form_label_column_ruler(form: QFormLayout) -> None:
     form.addRow(ruler, field)
 
 
-def _apply_settings_form_layout_defaults(form: QFormLayout, *, horizontal_inset: int) -> None:
+def _apply_settings_form_layout_defaults(
+    form: QFormLayout,
+    *,
+    horizontal_inset: int,
+    label_align_top: bool = False,
+) -> None:
     form.setSpacing(SETTINGS_CARD_FORM_ROW_SPACING)
     form.setHorizontalSpacing(12)
-    form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+    label_align = Qt.AlignmentFlag.AlignRight
+    label_align |= (
+        Qt.AlignmentFlag.AlignTop
+        if label_align_top
+        else Qt.AlignmentFlag.AlignVCenter
+    )
+    form.setLabelAlignment(label_align)
     form.setFormAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
     form.setContentsMargins(
         horizontal_inset,
@@ -328,7 +348,7 @@ def make_settings_field_row_widget(field: QWidget) -> QWidget:
     """Wrap a fixed-width control so the form field column still spans the card."""
     row = QWidget()
     row.setMinimumWidth(0)
-    row.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    row.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
     row_layout = QHBoxLayout(row)
     row_layout.setContentsMargins(0, 0, 0, 0)
     row_layout.setSpacing(0)
@@ -341,7 +361,7 @@ def make_settings_form() -> tuple[QWidget, QFormLayout]:
     """Standard settings QFormLayout host (label column + field column rhythm)."""
     form_host = QWidget()
     form_host.setMinimumWidth(0)
-    form_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    form_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
     form = QFormLayout(form_host)
     _apply_settings_form_layout_defaults(
         form, horizontal_inset=SETTINGS_CARD_FORM_HORIZONTAL_INSET
@@ -354,10 +374,21 @@ def make_settings_nested_form() -> tuple[QWidget, QFormLayout]:
     """Nested mini-form inside a card row (matches field-column expansion on macOS)."""
     form_host = QWidget()
     form_host.setMinimumWidth(0)
-    form_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    form_host.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
     form = QFormLayout(form_host)
-    _apply_settings_form_layout_defaults(form, horizontal_inset=0)
+    _apply_settings_form_layout_defaults(form, horizontal_inset=0, label_align_top=True)
     return form_host, form
+
+
+def prepare_settings_wrapped_label(label: QLabel) -> None:
+    """Word-wrapped path or status text inside a settings form field column."""
+    label.setWordWrap(True)
+    label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+    label.setMinimumWidth(0)
+    label.setSizePolicy(
+        QSizePolicy.Policy.Expanding,
+        QSizePolicy.Policy.Minimum,
+    )
 
 
 def add_settings_full_width_row(form: QFormLayout, widget: QWidget) -> None:
@@ -478,18 +509,25 @@ def make_settings_action_status_label() -> QLabel:
     lbl = QLabel("")
     lbl.setObjectName("SettingsActionStatus")
     lbl.setWordWrap(True)
+    lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+    lbl.setFixedHeight(0)
     return lbl
 
 
-def make_settings_action_row(button: QPushButton) -> QWidget:
-    """Left-aligned action button with trailing stretch."""
+def make_settings_left_aligned_control_row(control: QWidget) -> QWidget:
+    """Left-aligned control row (toggle, selector, spinbox) below a label or hint."""
     row = QWidget()
     row_layout = QHBoxLayout(row)
     row_layout.setContentsMargins(0, 0, 0, 0)
     row_layout.setSpacing(0)
-    row_layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignLeft)
+    row_layout.addWidget(control, alignment=Qt.AlignmentFlag.AlignLeft)
     row_layout.addStretch(1)
     return row
+
+
+def make_settings_action_row(button: QPushButton) -> QWidget:
+    """Left-aligned action button with trailing stretch."""
+    return make_settings_left_aligned_control_row(button)
 
 
 def wrap_subsection(content: QWidget, *, anchor: str | None = None) -> QWidget:

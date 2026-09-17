@@ -64,13 +64,14 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     add_subsection_to_form(updates_form, "Software updates", anchor="software-updates")
 
     host.software_updates_hint_lbl = make_settings_hint(
-        "Check GitHub Releases for a newer build, or open the update guide in Library → Qube."
+        "Check for a newer build on qubeapp.eu or GitHub Releases, "
+        "or open the update guide in Library → Qube."
     )
 
     host.check_for_updates_btn = QPushButton("Check for updates")
     apply_brand_primary(host.check_for_updates_btn, icon_name="fa5s.sync-alt")
     host.check_for_updates_btn.setToolTip(
-        "Contact GitHub Releases and compare with your installed version."
+        "Compare your installed version with the latest release and open a download link."
     )
     host.check_for_updates_btn.clicked.connect(host._on_check_for_updates_clicked)
 

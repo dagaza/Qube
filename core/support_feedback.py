@@ -3,6 +3,17 @@
 from __future__ import annotations
 
 QUBE_WEBSITE_URL = "https://www.qubeapp.eu"
+GITHUB_RELEASES_URL = "https://github.com/dagaza/Qube/releases"
+
+
+def manual_update_download_message() -> str:
+    """User-facing fallback when in-app update check cannot open a direct download."""
+    return (
+        "You can download updates from the Qube website:\n"
+        f"{QUBE_WEBSITE_URL}\n\n"
+        "Or browse releases on GitHub:\n"
+        f"{GITHUB_RELEASES_URL}"
+    )
 
 
 def qube_website_url():

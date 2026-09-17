@@ -7,6 +7,7 @@ import logging
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from core.app_release_update import AppUpdateCheckResult, check_for_app_update
+from core.support_feedback import GITHUB_RELEASES_URL
 
 logger = logging.getLogger("Qube.AppUpdateCheckWorker")
 
@@ -26,6 +27,6 @@ class AppUpdateCheckWorker(QThread):
                 status=AppUpdateStatus.ERROR,
                 current_version=__version__,
                 error_message="Could not check for updates.",
-                release_page_url="https://github.com/dagaza/Qube/releases",
+                release_page_url=GITHUB_RELEASES_URL,
             )
         self.finished.emit(result)

@@ -23,6 +23,8 @@ from core.memory_filters import (
     PREFERENCE_APPLICATION_SUFFIX,
     RECALL_FUSION_SYSTEM_SUFFIX,
     WEB_CAPABILITY_DISABLED_SUFFIX,
+    EVIDENCE_CONFLICT_SYNTHESIS_SUFFIX,
+    EVIDENCE_LOW_RELIABILITY_SYNTHESIS_SUFFIX,
     RAG_CAPABILITY_DISABLED_SUFFIX,
     STRICT_ISOLATION_SYSTEM_SUFFIX,
     EXPLICIT_WEB_EMPTY_SUFFIX,
@@ -173,6 +175,8 @@ def build_prompt_blocks(
     skill_guidance: str = "",
     retrieval_source_count: int = 0,
     web_hit_count: int = 0,
+    evidence_has_conflicts: bool = False,
+    evidence_low_reliability: bool = False,
 ) -> PromptBlocks:
     """
     Assemble persona + suffix lists for the current turn.
@@ -286,6 +290,10 @@ def build_prompt_blocks(
             suffixes.append(CITATION_DISCIPLINE_SUFFIX)
             if int(web_hit_count or 0) > 1 or int(retrieval_source_count or 0) > 1:
                 suffixes.append(_WEB_MULTI_SOURCE_SUFFIX)
+            if evidence_has_conflicts:
+                suffixes.append(EVIDENCE_CONFLICT_SYNTHESIS_SUFFIX)
+            elif evidence_low_reliability:
+                suffixes.append(EVIDENCE_LOW_RELIABILITY_SYNTHESIS_SUFFIX)
     elif composer_conversation_ref and (retrieval_context or "").strip():
         suffixes.append(CONVERSATION_REF_SYSTEM_SUFFIX)
 

@@ -215,6 +215,11 @@ class PersistenceHandlersMixin:
     def _show_settings_file_status(self, message: str, *, persistent: bool = False) -> None:
         self._cancel_settings_file_status_fade()
         self.settings_file_status_lbl.setText(message)
+        if message.strip():
+            self.settings_file_status_lbl.setMinimumHeight(0)
+            self.settings_file_status_lbl.setMaximumHeight(16777215)
+        else:
+            self.settings_file_status_lbl.setFixedHeight(0)
         if persistent or not message.strip():
             return
         seq = self._settings_file_status_sequence
@@ -247,6 +252,7 @@ class PersistenceHandlersMixin:
         if seq != self._settings_file_status_sequence:
             return
         self.settings_file_status_lbl.clear()
+        self.settings_file_status_lbl.setFixedHeight(0)
         self.settings_file_status_lbl.setGraphicsEffect(None)
         self._settings_file_status_fade_anim = None
 

@@ -24,7 +24,9 @@ from ui.views.settings.widgets import (
     add_subsection_to_form,
     make_settings_action_row,
     make_settings_hint,
+    make_settings_left_aligned_control_row,
     register_settings_selector_width,
+    schedule_settings_selector_refit,
 )
 
 
@@ -85,41 +87,38 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.state_backup_auto_enabled_toggle.toggled.connect(
         host._on_state_backup_auto_enabled_toggled
     )
-    auto_enabled_row = QWidget()
-    auto_enabled_layout = QHBoxLayout(auto_enabled_row)
-    auto_enabled_layout.setContentsMargins(0, 0, 0, 0)
-    auto_enabled_layout.setSpacing(12)
-    auto_enabled_label = make_settings_hint(
-        "Run a local backup on startup when the interval has elapsed."
+    add_settings_full_width_row(
+        auto_form,
+        make_settings_hint(
+            "Run a local backup on startup when the interval has elapsed."
+        ),
     )
-    auto_enabled_layout.addWidget(auto_enabled_label, 1)
-    auto_enabled_layout.addWidget(host.state_backup_auto_enabled_toggle, 0)
-    add_settings_full_width_row(auto_form, auto_enabled_row)
+    add_settings_full_width_row(
+        auto_form,
+        make_settings_left_aligned_control_row(host.state_backup_auto_enabled_toggle),
+    )
 
+    interval_labels = [
+        _interval_label(days) for days in _backup_settings.BACKUP_INTERVAL_DAYS_CHOICES
+    ]
     host.state_backup_interval_selector = SelectorButton(
         _interval_label(_backup_settings.get_backup_interval_days()),
         is_dark=is_dark,
     )
-    register_settings_selector_width(host.state_backup_interval_selector)
+    register_settings_selector_width(host.state_backup_interval_selector, *interval_labels)
+    schedule_settings_selector_refit(host.state_backup_interval_selector)
     host.state_backup_interval_selector.setToolTip(
         "Minimum time between automatic backups."
     )
     host.state_backup_interval_selector.clicked.connect(
         host._on_state_backup_interval_menu_requested
     )
-    interval_row = QWidget()
-    interval_row_layout = QHBoxLayout(interval_row)
-    interval_row_layout.setContentsMargins(0, 0, 0, 0)
-    interval_row_layout.setSpacing(12)
-    interval_row_layout.addWidget(make_settings_hint("Backup interval"), 0)
-    interval_row_layout.addWidget(host.state_backup_interval_selector, 1)
-    add_settings_full_width_row(auto_form, interval_row)
+    add_settings_full_width_row(auto_form, make_settings_hint("Backup interval"))
+    add_settings_full_width_row(
+        auto_form,
+        make_settings_left_aligned_control_row(host.state_backup_interval_selector),
+    )
 
-    retention_row = QWidget()
-    retention_row_layout = QHBoxLayout(retention_row)
-    retention_row_layout.setContentsMargins(0, 0, 0, 0)
-    retention_row_layout.setSpacing(12)
-    retention_row_layout.addWidget(make_settings_hint("Keep automatic backups"), 0)
     host.state_backup_retention_spin = NoScrollSpinBox()
     host.state_backup_retention_spin.setRange(1, 10)
     host.state_backup_retention_spin.setValue(_backup_settings.get_backup_retention_count())
@@ -129,9 +128,11 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.state_backup_retention_spin.valueChanged.connect(
         host._on_state_backup_retention_changed
     )
-    retention_row_layout.addWidget(host.state_backup_retention_spin, 0)
-    retention_row_layout.addStretch()
-    add_settings_full_width_row(auto_form, retention_row)
+    add_settings_full_width_row(auto_form, make_settings_hint("Keep automatic backups"))
+    add_settings_full_width_row(
+        auto_form,
+        make_settings_left_aligned_control_row(host.state_backup_retention_spin),
+    )
 
     host.state_backup_include_wallpapers_cb = QCheckBox(
         "Include wallpapers in automatic backups"

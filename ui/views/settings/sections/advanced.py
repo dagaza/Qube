@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget, QSizePolicy
 
 from core.settings_store import default_user_settings_path
 from ui.components.brand_buttons import apply_brand_primary
@@ -47,14 +47,23 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         "Format, validate, and save — or reload when the file changes on disk."
     )
     host.open_settings_json_btn.clicked.connect(host._on_open_settings_json_clicked)
-    add_settings_full_width_row(
-        json_form, make_settings_action_row(host.open_settings_json_btn)
-    )
 
     host.settings_file_status_lbl = make_settings_action_status_label()
     host._settings_file_status_sequence = 0
     host._settings_file_status_fade_anim = None
-    add_settings_full_width_row(json_form, host.settings_file_status_lbl)
+
+    json_action_col = QWidget()
+    json_action_col.setSizePolicy(
+        QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+    )
+    json_action_col_layout = QVBoxLayout(json_action_col)
+    json_action_col_layout.setContentsMargins(0, 0, 0, 0)
+    json_action_col_layout.setSpacing(6)
+    json_action_col_layout.addWidget(
+        make_settings_action_row(host.open_settings_json_btn)
+    )
+    json_action_col_layout.addWidget(host.settings_file_status_lbl)
+    add_settings_full_width_row(json_form, json_action_col)
     layout.addWidget(json_card)
 
     return widget

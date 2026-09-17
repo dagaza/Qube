@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [1.3.53] - 2026-09-17
+
+### Fixed
+- **Web search:** Fix `UnboundLocalError` on `@internet` / WEB routes caused by a shadowed `get_retrieval_profile` import in `LLMWorker`.
+- **Web search (@internet):** Stop injecting the “internet disabled” system prompt when composer `@internet` forces a live search while the global internet toggle is off.
+- **Web answers:** Detect cross-source epistemic conflicts (e.g. scheduled vs completed outcome snippets) in general-web bundles and add synthesis guidance so the model does not merge incompatible claims.
+- **Settings (form layout):** Improve card form row sizing on macOS and narrow layouts — top-aligned multi-line labels, wrapped path/status text, and tighter vertical sizing for toggles and action rows.
+- **Updates:** Manual update fallback now points users to both the Qube website and GitHub Releases; Linux AppImage detection reads `APPIMAGE` via `os.environ`.
+
 ## [1.3.52] - 2026-09-16
 
 ### Fixed

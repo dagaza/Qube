@@ -8,6 +8,7 @@ from unittest.mock import patch
 from core.app_release_update import (
     AppUpdateStatus,
     check_for_app_update,
+    detect_linux_release_variant,
     preferred_release_asset_names,
     _normalize_release_version,
     _pick_asset_url,
@@ -62,6 +63,16 @@ def test_check_for_app_update_reports_update_available() -> None:
     assert result.status == AppUpdateStatus.UPDATE_AVAILABLE
     assert result.latest_version == "9.9.9"
     assert result.download_url == "https://example/Qube-9.9.9-Setup.exe"
+
+
+def test_detect_linux_release_variant_reads_appimage_env(monkeypatch) -> None:
+    monkeypatch.delenv("APPIMAGE", raising=False)
+    monkeypatch.setattr(
+        "core.app_release_update.install_root",
+        lambda: __import__("pathlib").Path("/nonexistent"),
+    )
+    monkeypatch.setenv("APPIMAGE", "/tmp/Qube-1.0.0-x86_64-cuda.AppImage")
+    assert detect_linux_release_variant() == "cuda"
 
 
 def test_check_for_app_update_reports_up_to_date() -> None:

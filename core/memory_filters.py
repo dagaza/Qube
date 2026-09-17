@@ -495,6 +495,23 @@ WEB_CAPABILITY_DISABLED_SUFFIX: str = (
     "Do NOT re-announce unrelated stored preferences."
 )
 
+EVIDENCE_CONFLICT_SYNTHESIS_SUFFIX: str = (
+    " IMPORTANT: retrieved sources disagree on basic facts or event state "
+    "(for example, one source describes a future or scheduled event while "
+    "another states a completed outcome). Do NOT merge incompatible claims "
+    "in one answer. Prefer sources that directly answer the user's question "
+    "with a definitive outcome; omit scheduling or preview language that "
+    "contradicts that outcome. If uncertainty remains, say briefly that "
+    "sources conflict."
+)
+
+EVIDENCE_LOW_RELIABILITY_SYNTHESIS_SUFFIX: str = (
+    " IMPORTANT: retrieved evidence for this turn is limited or shallow "
+    "(snippet-only previews). Answer from the strongest directly relevant "
+    "source; avoid combining peripheral details that may be stale or refer "
+    "to a different event phase."
+)
+
 EXPLICIT_WEB_EMPTY_SUFFIX: str = (
     " IMPORTANT: the user explicitly asked for an online/web search, but "
     "no usable web results were returned this turn. Your first sentence MUST "
@@ -1083,6 +1100,30 @@ def should_run_internet_search_for_route(
         or query_implies_live_web_intent(query, decision=decision)
     )
 
+
+def compute_web_capability_blocked(
+    *,
+    explicit_web_request: bool,
+    mcp_internet_enabled: bool,
+    force_web: bool = False,
+    web_vetoed: bool = False,
+    query: str = "",
+    decision: dict | None = None,
+) -> bool:
+    """True when live-web intent cannot be satisfied this turn.
+
+    Mirrors the internet search gate in ``LLMWorker``: composer ``@internet``
+    and other ``force_web`` overrides allow search even when the global MCP
+    internet toggle is off, so capability is not blocked on those turns.
+    """
+    web_search_allowed = bool(mcp_internet_enabled or force_web)
+    return bool(
+        explicit_web_request and not web_search_allowed
+    ) or bool(
+        web_vetoed and query_implies_live_web_intent(query, decision=decision)
+    )
+
+
 PREFERENCE_APPLICATION_SUFFIX: str = (
     " Apply stored presentation preferences silently when formatting "
     "answers (units, locale, name, verbosity). Do NOT re-announce or "
@@ -1258,6 +1299,8 @@ __all__ = [
     "GROUNDED_ANSWER_SYSTEM_SUFFIX",
     "NO_SOURCES_SYSTEM_SUFFIX",
     "WEB_CAPABILITY_DISABLED_SUFFIX",
+    "EVIDENCE_CONFLICT_SYNTHESIS_SUFFIX",
+    "EVIDENCE_LOW_RELIABILITY_SYNTHESIS_SUFFIX",
     "RAG_CAPABILITY_DISABLED_SUFFIX",
     "STRICT_ISOLATION_SYSTEM_SUFFIX",
     "EXPLICIT_WEB_EMPTY_SUFFIX",
@@ -1274,6 +1317,7 @@ __all__ = [
     "should_downgrade_embedding_rag_on_continuation",
     "should_downgrade_short_vague_retrieval_on_first_turn",
     "should_run_internet_search_for_route",
+    "compute_web_capability_blocked",
     "PREFERENCE_APPLICATION_SUFFIX",
     "CHAT_PERSONALITY_SUFFIX",
     "NARRATIVE_RECALL_SYSTEM_SUFFIX",

@@ -8,13 +8,13 @@ from typing import Callable
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
-    QFormLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMenu,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -75,8 +75,11 @@ from ui.views.settings.sections.privacy_tier_controls import add_open_privacy_da
 from ui.views.settings.settings_card_style import begin_settings_section_card
 from ui.views.settings.widgets import (
     add_settings_card_form,
+    add_settings_field_row,
     add_subsection_to_form,
+    make_settings_nested_form,
     register_settings_selector_width,
+    settings_layout_row,
     wrap_subsection,
     add_settings_full_width_row,
     add_settings_span_row,
@@ -419,10 +422,7 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     )
     layout.addWidget(intro)
 
-    controls = QWidget()
-    controls_form = QFormLayout(controls)
-    controls_form.setContentsMargins(0, 0, 0, 0)
-    controls_form.setSpacing(8)
+    controls, controls_form = make_settings_nested_form()
 
     _privacy_tiers = (TIER_PRIVATE, TIER_BALANCED, TIER_ENHANCED, TIER_SEARXNG)
     host.discovery_privacy_tier_selector = SelectorButton(
@@ -505,10 +505,8 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     host.advanced_discovery_toggle.toggled.connect(host._on_advanced_discovery_toggled)
     add_settings_full_width_row(controls_form, adv_toggle_row)
 
-    host.advanced_discovery_panel = QWidget()
-    adv_panel_layout = QFormLayout(host.advanced_discovery_panel)
+    host.advanced_discovery_panel, adv_panel_layout = make_settings_nested_form()
     adv_panel_layout.setContentsMargins(16, 0, 0, 0)
-    adv_panel_layout.setSpacing(8)
 
     host.discovery_budget_spin = QSpinBox()
     host.discovery_budget_spin.setRange(0, 500)
@@ -522,9 +520,13 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     )
     host.discovery_budget_spin.valueChanged.connect(host._on_discovery_budget_override_changed)
     host._discovery_budget_last_applied = get_ddg_session_budget_override()
-    adv_panel_layout.addRow("Session limit override", host.discovery_budget_spin)
+    add_settings_field_row(
+        adv_panel_layout, "Session limit override", host.discovery_budget_spin
+    )
 
-    add_settings_full_width_row(adv_panel_layout, make_settings_hint(
+    add_settings_span_row(
+        adv_panel_layout,
+        make_settings_hint(
             "Burst limit is fixed at 6 live queries per 10 minutes. "
             "Lowering the session limit is always allowed; raising above the "
             f"default ({DEFAULT_DDG_SESSION_BUDGET}) requires confirmation."
@@ -534,6 +536,11 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
     add_settings_full_width_row(controls_form, host.advanced_discovery_panel)
 
     host.discovery_searxng_url_field = QLineEdit()
+    host.discovery_searxng_url_field.setMinimumWidth(0)
+    host.discovery_searxng_url_field.setSizePolicy(
+        QSizePolicy.Policy.Expanding,
+        QSizePolicy.Policy.Fixed,
+    )
     host.discovery_searxng_url_field.setPlaceholderText("https://search.example.org")
     host.discovery_searxng_url_field.setToolTip(
         "Base URL of your SearXNG instance (used with the SearXNG privacy tier)."
@@ -546,13 +553,16 @@ def build_web_discovery_policy_section(host, *, is_dark: bool) -> QWidget:
         "Detect local instances, test connectivity, and apply the SearXNG privacy tier."
     )
     host.discovery_searxng_setup_btn.clicked.connect(host._on_searxng_setup_wizard_clicked)
-    searxng_url_row = QWidget()
-    searxng_url_row_layout = QHBoxLayout(searxng_url_row)
+    searxng_url_row_layout = QHBoxLayout()
     searxng_url_row_layout.setContentsMargins(0, 0, 0, 0)
     searxng_url_row_layout.setSpacing(8)
     searxng_url_row_layout.addWidget(host.discovery_searxng_url_field, stretch=1)
     searxng_url_row_layout.addWidget(host.discovery_searxng_setup_btn)
-    controls_form.addRow("SearXNG base URL", searxng_url_row)
+    add_settings_field_row(
+        controls_form,
+        "SearXNG base URL",
+        settings_layout_row(searxng_url_row_layout),
+    )
 
     host.discovery_conservative_label = QLabel()
     host.discovery_conservative_label.setWordWrap(True)

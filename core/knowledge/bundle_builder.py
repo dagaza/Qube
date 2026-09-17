@@ -6,6 +6,7 @@ import time
 import uuid
 from typing import Any
 
+from core.knowledge.conflicts.detect import detect_evidence_conflicts
 from core.knowledge.ranking.authority import authority_score_for_url, tier_label_for_url
 from core.knowledge.ranking.freshness import freshness_score
 from core.knowledge.types import (
@@ -14,6 +15,7 @@ from core.knowledge.types import (
     COVERAGE_NONE,
     COVERAGE_POOR,
     EvidenceBundle,
+    EvidenceConflict,
     EvidenceObject,
     SERVICE_GENERAL_WEB,
     SERVICE_INTERNAL_CORPUS,
@@ -105,6 +107,22 @@ def _compute_confidence(sources: tuple[EvidenceObject, ...]) -> float:
     return max(0.0, min(0.75, avg_rel * 0.6 + count_factor * 0.25))
 
 
+def _bundle_conflict_fields(
+    sources: tuple[EvidenceObject, ...],
+    *,
+    topic: str,
+    reliability_summary: float,
+) -> tuple[tuple[str, ...], tuple[EvidenceConflict, ...], float]:
+    """Derive conflict warnings and adjusted reliability for a source set."""
+    conflicts = detect_evidence_conflicts(sources, topic=topic)
+    extra_warnings: list[str] = []
+    adjusted_reliability = reliability_summary
+    if conflicts:
+        extra_warnings.append("material_conflict")
+        adjusted_reliability = min(reliability_summary, 0.45)
+    return tuple(extra_warnings), conflicts, adjusted_reliability
+
+
 def build_general_web_bundle(
     *,
     query_raw: str,
@@ -135,6 +153,13 @@ def build_general_web_bundle(
         sum(s.reliability_score for s in sources) / len(sources) if sources else 0.0
     )
     diversity_summary = min(1.0, len({s.adapter for s in sources}) / 3.0)
+    conflict_warnings, conflicts, reliability_summary = _bundle_conflict_fields(
+        sources,
+        topic=query_resolved,
+        reliability_summary=reliability_summary,
+    )
+    if conflict_warnings:
+        warnings = list(dict.fromkeys((*warnings, *conflict_warnings)))
 
     return EvidenceBundle(
         bundle_id=str(uuid.uuid4()),
@@ -154,7 +179,7 @@ def build_general_web_bundle(
         sources=sources,
         rejected_count=rejected_count,
         warnings=tuple(warnings),
-        conflicts=(),
+        conflicts=conflicts,
         stop_reason=stop_reason if sources else "no_evidence",
         adapter_calls=adapter_calls,
     )
@@ -220,6 +245,13 @@ def build_fetched_general_web_bundle(
         else 0.0
     )
     diversity_summary = min(1.0, len({s.url for s in source_tuple if s.url}) / 3.0)
+    conflict_warnings, conflicts, reliability_summary = _bundle_conflict_fields(
+        source_tuple,
+        topic=query_resolved,
+        reliability_summary=reliability_summary,
+    )
+    if conflict_warnings:
+        bundle_warnings = list(dict.fromkeys((*bundle_warnings, *conflict_warnings)))
 
     return EvidenceBundle(
         bundle_id=str(uuid.uuid4()),
@@ -239,7 +271,7 @@ def build_fetched_general_web_bundle(
         sources=source_tuple,
         rejected_count=rejected_count,
         warnings=tuple(bundle_warnings),
-        conflicts=(),
+        conflicts=conflicts,
         stop_reason=stop_reason if source_tuple else "no_evidence",
         adapter_calls=adapter_calls,
     )

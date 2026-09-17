@@ -148,6 +148,7 @@ from core.memory_filters import (
     should_downgrade_short_vague_retrieval_on_first_turn,
     library_lane_allowed,
     should_run_internet_search_for_route,
+    compute_web_capability_blocked,
 )
 from core.discourse_intent import (
     FOLLOW_UP_SUPPRESS_THRESHOLD,
@@ -2699,10 +2700,13 @@ class LLMWorker(QThread):
         rag_vetoed = bool(
             isinstance(decision, dict) and decision.get("rag_vetoed_tool_disabled")
         )
-        web_capability_blocked = bool(
-            explicit_web_request and not self.mcp_internet_enabled
-        ) or bool(
-            web_vetoed and query_implies_live_web_intent(clean_prompt, decision=decision)
+        web_capability_blocked = compute_web_capability_blocked(
+            explicit_web_request=explicit_web_request,
+            mcp_internet_enabled=bool(self.mcp_internet_enabled),
+            force_web=force_web,
+            web_vetoed=web_vetoed,
+            query=clean_prompt,
+            decision=decision if isinstance(decision, dict) else None,
         )
         explicit_library_request = query_explicitly_requests_library_search(
             clean_prompt,
@@ -3002,7 +3006,6 @@ class LLMWorker(QThread):
         if execution_route == "CAPABILITY":
             import time as _cap_time
 
-            from core.app_settings import get_retrieval_profile
             from core.integrations.capability_inspect import build_capability_inspect_trace
             from core.integrations.capability_invoke import invoke_gated_capability
             from core.integrations.capability_trace import (
@@ -4344,6 +4347,20 @@ class LLMWorker(QThread):
                 self.routing_debug_record_added.emit(dataclasses.asdict(updated_skills))
                 self._persist_routing_debug_record(updated_skills)
 
+        evidence_has_conflicts = False
+        evidence_low_reliability = False
+        if _evidence_bundle is not None and _evidence_bundle.sources:
+            evidence_has_conflicts = bool(_evidence_bundle.conflicts)
+            if not evidence_has_conflicts:
+                bundle_warnings = _evidence_bundle.warnings or ()
+                if float(_evidence_bundle.reliability_summary) < 0.5:
+                    evidence_low_reliability = True
+                elif (
+                    "serp_snippet_only" in bundle_warnings
+                    and len(_evidence_bundle.sources) >= 2
+                ):
+                    evidence_low_reliability = True
+
         prompt_blocks = build_prompt_blocks(
             execution_route=execution_route,
             explicit_remember_active=explicit_remember_active,
@@ -4388,6 +4405,8 @@ class LLMWorker(QThread):
                 for s in all_ui_sources
                 if isinstance(s, dict) and str(s.get("type", "")).lower() == "web"
             ),
+            evidence_has_conflicts=evidence_has_conflicts,
+            evidence_low_reliability=evidence_low_reliability,
         )
         if prompt_blocks.no_sources_mode:
             logger.info(

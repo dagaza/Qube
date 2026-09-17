@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QLabel, QSizePolicy
 
 
@@ -28,8 +29,12 @@ def make_settings_hint(text: str) -> QLabel:
     """L5 muted body copy for settings sections."""
     hint = QLabel(text)
     hint.setWordWrap(True)
+    hint.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
     hint.setObjectName("SettingsHint")
-    hint.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+    hint.setSizePolicy(
+        QSizePolicy.Policy.Expanding,
+        QSizePolicy.Policy.Minimum,
+    )
     hint.setMinimumWidth(0)
     return hint
 
