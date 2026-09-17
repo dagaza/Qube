@@ -23,6 +23,7 @@ from ui.views.settings.widgets import (
     prepare_settings_card_form,
     prepare_settings_wrapped_label,
     register_settings_selector_width,
+    refit_settings_selector_width,
     settings_layout_row,
     wrap_subsection,
     add_settings_full_width_row,
@@ -221,9 +222,6 @@ def test_web_discovery_searxng_url_row_expands(_qube_app):
 
 @pytest.mark.ui
 def test_backup_interval_selector_fits_widest_label(_qube_app):
-    from ui.components.selector_button import SelectorButton
-    from ui.views.settings.widgets import register_settings_selector_width
-
     selector = SelectorButton("Every 30 days", is_dark=True)
     labels = ["Every 7 days", "Every 14 days", "Every 30 days", "Every 90 days"]
     register_settings_selector_width(selector, *labels)
@@ -233,6 +231,8 @@ def test_backup_interval_selector_fits_widest_label(_qube_app):
     page_layout = QVBoxLayout(page)
     page_layout.addWidget(selector)
     page.show()
+    QApplication.processEvents()
+    refit_settings_selector_width(selector)
     QApplication.processEvents()
 
     fm = selector.fontMetrics()
