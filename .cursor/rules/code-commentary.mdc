@@ -1,0 +1,33 @@
+---
+description: Conventions for code comments, docstrings, config comments, and in-repo docs.
+alwaysApply: true
+---
+
+# Code commentary: no personal names
+
+Conversation context often references people by name ("Dan and I discussed...",
+"per your friend's feedback"). This context is for *your* understanding only. Do
+**not** carry those names into anything committed to the repo.
+
+**Applies to:** code comments, docstrings, config/YAML comments, Dockerfiles,
+commit messages, and in-repo docs (`*.md`).
+
+- Attribute the *substance*, not the person. Describe the reasoning, requirement,
+  or trade-off directly.
+- Never invent, guess, or infer author/reviewer names from chat context.
+
+```python
+# ❌ BAD — leaks a name from conversation context
+# Dan's #1 quality risk is the false-accept rate on similar words.
+
+# ✅ GOOD — states the substance
+# The #1 quality risk is the false-accept rate on phonetically similar words.
+```
+
+```yaml
+# ❌ BAD:  examples: 50000   # Dan's target
+# ✅ GOOD: examples: 50000   # production target
+```
+
+If provenance genuinely matters, reference a durable artifact instead of a person
+(e.g. "per docs/roadmap.md", "per review feedback", "per work item #42").
