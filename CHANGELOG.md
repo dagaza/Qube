@@ -9,6 +9,7 @@
 - **Settings (form layout):** Improve card form row sizing on macOS and narrow layouts — top-aligned multi-line labels, wrapped path/status text, and tighter vertical sizing for toggles and action rows.
 - **CI (Windows):** Refit settings selector width in layout tests after `show()` so font metrics match production and widest labels are not elided on Windows.
 - **Release CI:** Pin `action-gh-release` to v2.6.0, upload assets sequentially, delete orphan draft releases before publish, and upload large Windows installers last to avoid concurrent asset upload failures.
+- **Dependencies:** Bump `soupsieve` to 2.9.2 (CVE-2026-85999, CVE-2026-86000).
 - **Updates:** Manual update fallback now points users to both the Qube website and GitHub Releases; Linux AppImage detection reads `APPIMAGE` via `os.environ`.
 
 ## [1.3.52] - 2026-09-16
