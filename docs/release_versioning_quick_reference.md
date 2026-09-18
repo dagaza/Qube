@@ -93,6 +93,14 @@ Typical case: test failure before build/release jobs run.
    | Prefer not to delete tags | Use **`vX.Y.Z-rc.N`** for validation (see below), ship **`vX.Y.Z`** only when RC passes |
    | Tag already announced / mirrors picked it up | Ship **`vX.Y.(Z+1)`** with a real fix — do not rewrite history |
 
+### Release job failed after partial upload (draft GitHub Release)
+
+Typical case: `softprops/action-gh-release` hits `Error saving asset` while uploading many large artifacts in parallel. A **draft** release may exist with only some assets attached; downstream jobs (`winget`, `homebrew`, `chocolatey-push`) are skipped.
+
+1. Fix release infra on **`main`** (see `.github/workflows/release.yml` — pinned action version, sequential uploads, draft cleanup).
+2. Delete the orphan **draft** release on GitHub (or let the release job’s cleanup step remove it on the next run).
+3. Re-tag the same `vX.Y.Z` once green — same rules as “nothing was published” above.
+
 ### Installers were published (release job succeeded)
 
 - **Never** force-move or delete the tag.
