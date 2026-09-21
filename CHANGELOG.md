@@ -2,6 +2,7 @@
 
 ### Fixed
 - **WinGet submit:** Verify the `winget-pkgs` fork is synced with upstream before `wingetcreate submit`, and document manual sync via `gh api merge-upstream` when the PAT lacks the `workflow` scope.
+- **Dependencies:** Bump `anyio` to 4.14.2 (CVE-2026-63374, CVE-2026-64847).
 
 ## [1.3.53] - 2026-09-17
 
