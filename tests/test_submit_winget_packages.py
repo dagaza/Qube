@@ -29,14 +29,15 @@ def test_submit_winget_packages_submits_all_rendered_manifests(tmp_path):
         calls.append(command)
         return mock.Mock(returncode=0)
 
-    with mock.patch.object(_mod, "find_open_pr_url", return_value=None):
-        with mock.patch("subprocess.run", side_effect=_run):
-            _mod.submit_winget_packages(
-                version="1.3.0",
-                token="token",
-                wingetcreate=wingetcreate,
-                manifest_root=manifest_root,
-            )
+    with mock.patch.object(_mod, "ensure_fork_ready_for_submit"):
+        with mock.patch.object(_mod, "find_open_pr_url", return_value=None):
+            with mock.patch("subprocess.run", side_effect=_run):
+                _mod.submit_winget_packages(
+                    version="1.3.0",
+                    token="token",
+                    wingetcreate=wingetcreate,
+                    manifest_root=manifest_root,
+                )
 
     assert len(calls) == 3
     assert all(call[1] == "submit" for call in calls)
@@ -58,36 +59,56 @@ def test_submit_winget_packages_skips_when_open_pr_exists(tmp_path):
         calls.append(command)
         return mock.Mock(returncode=0)
 
-    with mock.patch.object(
-        _mod,
-        "find_open_pr_url",
-        side_effect=[
-            "https://github.com/microsoft/winget-pkgs/pull/433222",
-            None,
-            None,
-        ],
-    ):
-        with mock.patch("subprocess.run", side_effect=_run):
-            _mod.submit_winget_packages(
-                version="1.3.51",
-                token="token",
-                wingetcreate=wingetcreate,
-                manifest_root=manifest_root,
-            )
+    with mock.patch.object(_mod, "ensure_fork_ready_for_submit"):
+        with mock.patch.object(
+            _mod,
+            "find_open_pr_url",
+            side_effect=[
+                "https://github.com/microsoft/winget-pkgs/pull/433222",
+                None,
+                None,
+            ],
+        ):
+            with mock.patch("subprocess.run", side_effect=_run):
+                _mod.submit_winget_packages(
+                    version="1.3.51",
+                    token="token",
+                    wingetcreate=wingetcreate,
+                    manifest_root=manifest_root,
+                )
 
     assert len(calls) == 2
     assert calls[0][2].endswith("dagaza.Qube.Vulkan")
     assert calls[1][2].endswith("dagaza.Qube.CUDA")
 
 
+def test_ensure_fork_ready_for_submit_accepts_identical_or_ahead():
+    with mock.patch.object(_mod, "fork_owner", return_value="dagaza"):
+        with mock.patch.object(_mod, "fork_sync_status", return_value="identical"):
+            _mod.ensure_fork_ready_for_submit(token="token")
+        with mock.patch.object(_mod, "fork_sync_status", return_value="ahead"):
+            _mod.ensure_fork_ready_for_submit(token="token")
+
+
+def test_ensure_fork_ready_for_submit_exits_when_behind(capsys):
+    with mock.patch.object(_mod, "fork_owner", return_value="dagaza"):
+        with mock.patch.object(_mod, "fork_sync_status", return_value="behind"):
+            with pytest.raises(SystemExit, match="1"):
+                _mod.ensure_fork_ready_for_submit(token="token")
+    err = capsys.readouterr().err
+    assert "behind" in err
+    assert "merge-upstream" in err
+
+
 def test_submit_winget_packages_requires_manifest_dir(tmp_path):
     wingetcreate = tmp_path / "wingetcreate.exe"
     wingetcreate.write_text("", encoding="utf-8")
 
-    with pytest.raises(FileNotFoundError, match="Rendered manifest folder missing"):
-        _mod.submit_winget_packages(
-            version="1.3.0",
-            token="token",
-            wingetcreate=wingetcreate,
-            manifest_root=tmp_path / "empty",
-        )
+    with mock.patch.object(_mod, "ensure_fork_ready_for_submit"):
+        with pytest.raises(FileNotFoundError, match="Rendered manifest folder missing"):
+            _mod.submit_winget_packages(
+                version="1.3.0",
+                token="token",
+                wingetcreate=wingetcreate,
+                manifest_root=tmp_path / "empty",
+            )

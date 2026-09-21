@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- **WinGet submit:** Verify the `winget-pkgs` fork is synced with upstream before `wingetcreate submit`, and document manual sync via `gh api merge-upstream` when the PAT lacks the `workflow` scope.
+
 ## [1.3.53] - 2026-09-17
 
 ### Fixed

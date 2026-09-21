@@ -34,9 +34,11 @@ fi
 echo "ERROR: could not sync ${FORK} (HTTP ${HTTP})." >&2
 if echo "${BODY}" | grep -q '"workflow" scope'; then
   echo "The WINGET_SUBMIT_TOKEN PAT needs the 'workflow' scope to merge upstream" >&2
-  echo "workflow file changes, OR sync the fork manually on GitHub:" >&2
+  echo "workflow file changes, OR sync the fork manually:" >&2
+  echo "  gh api repos/${FORK}/merge-upstream -f branch=master" >&2
   echo "  https://github.com/${FORK}/compare/master...microsoft:winget-pkgs:master" >&2
 else
   echo "Open https://github.com/${FORK}/fork and sync with upstream, then retry." >&2
+  echo "  gh api repos/${FORK}/merge-upstream -f branch=master" >&2
 fi
 exit 1

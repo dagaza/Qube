@@ -22,6 +22,54 @@ from core.winget_release_variants import (  # noqa: E402
 )
 
 _WINGET_PKGS = "microsoft/winget-pkgs"
+_UPSTREAM = "microsoft/winget-pkgs"
+
+
+def _github_api_get(path: str, *, token: str) -> dict:
+    request = urllib.request.Request(
+        f"https://api.github.com{path}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return json.load(response)
+
+
+def fork_owner(*, token: str) -> str:
+    return str(_github_api_get("/user", token=token)["login"])
+
+
+def fork_sync_status(*, token: str, owner: str) -> str:
+    """Compare fork master to upstream master (identical, ahead, behind, diverged)."""
+    payload = _github_api_get(
+        f"/repos/{owner}/winget-pkgs/compare/master...{_UPSTREAM}:master",
+        token=token,
+    )
+    return str(payload.get("status") or "unknown")
+
+
+def ensure_fork_ready_for_submit(*, token: str) -> None:
+    owner = fork_owner(token=token)
+    status = fork_sync_status(token=token, owner=owner)
+    if status in ("identical", "ahead"):
+        print(f"WinGet fork {owner}/winget-pkgs is {status} relative to upstream.")
+        return
+    print(
+        f"ERROR: {owner}/winget-pkgs is {status} relative to {_UPSTREAM} master.",
+        file=sys.stderr,
+    )
+    print(
+        "Sync the fork before wingetcreate submit. If merge-upstream returns HTTP 422, "
+        "add the 'workflow' scope to WINGET_SUBMIT_TOKEN or run manually:",
+        file=sys.stderr,
+    )
+    print(
+        f"  gh api repos/{owner}/winget-pkgs/merge-upstream -f branch=master",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 
 def find_open_pr_url(*, token: str, title: str) -> str | None:
@@ -57,6 +105,9 @@ def submit_winget_packages(
     version = version.removeprefix("v")
     if not wingetcreate.is_file():
         raise FileNotFoundError(f"wingetcreate not found: {wingetcreate}")
+
+    if not dry_run:
+        ensure_fork_ready_for_submit(token=token)
 
     for variant in WINGET_VARIANTS:
         package_id = package_identifier(variant)
