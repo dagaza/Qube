@@ -71,15 +71,14 @@ jobs:
         run: |
           $version = "${{ inputs.version }}" -replace '^v',''
           $raw = "${{ inputs.packages }}"
-          $args = @(
-            "-Version", $version,
-            "-PackageRoot", "chocolatey/out/$version"
-          )
+          $pushArgs = @{
+            Version = $version
+            PackageRoot = "chocolatey/out/$version"
+          }
           if ($raw.Trim()) {
-            $ids = $raw.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+            $ids = @($raw.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ })
             if ($ids.Count -gt 0) {
-              $args += "-PackageIds"
-              $args += $ids
+              $pushArgs.PackageIds = $ids
             }
           }
-          & scripts/release/push_chocolatey_packages.ps1 @args
+          & scripts/release/push_chocolatey_packages.ps1 @pushArgs
