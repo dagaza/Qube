@@ -7,7 +7,7 @@
     <authors>dagaza</authors>
     <owners>dagaza</owners>
     <projectUrl>https://github.com/dagaza/Qube</projectUrl>
-    <iconUrl>https://cdn.jsdelivr.net/gh/dagaza/Qube@main/assets/logos/qube.ico</iconUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/dagaza/Qube@main/assets/logos/qube_logo_256.png</iconUrl>
     <licenseUrl>https://github.com/dagaza/Qube/blob/main/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <packageSourceUrl>https://github.com/dagaza/Qube/tree/main/chocolatey</packageSourceUrl>

@@ -45,6 +45,10 @@ CI renders versioned package files into `chocolatey/out/<version>/` during relea
    choco install qube-cuda
    ```
 
+### `qube-cuda` stuck in moderation
+
+If a CUDA version is **Waiting for Maintainer**, new pushes return **403 Forbidden** until that version is **self-rejected** or approved. See **[`docs/chocolatey_cuda_moderation.md`](../docs/chocolatey_cuda_moderation.md)**.
+
 ## Automated updates
 
 Set repository variables:
@@ -59,7 +63,15 @@ Set repository secret:
 |--------|---------|
 | `CHOCOLATEY_API_KEY` | Push-only API key from chocolatey.org |
 
-The release workflow pushes all three packages after the GitHub Release is published and the Chocolatey install smoke test passes.
+The release workflow pushes all three packages after the GitHub Release is published and the Chocolatey install smoke test passes. The push script fails if any variant returns a non-zero exit code (a 403 on `qube-cuda` no longer reports success for the whole job).
+
+### Catch-up without retagging
+
+```bash
+gh workflow run chocolatey-submit.yml -f version=1.3.53 -f packages=qube-cuda
+```
+
+Requires the GitHub Release to include all three Windows `.exe` assets (installers are downloaded to compute SHA256 even when pushing a single package).
 
 ## Local testing
 

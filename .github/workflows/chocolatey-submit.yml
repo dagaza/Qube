@@ -1,0 +1,85 @@
+name: Chocolatey Submit
+
+# Catch-up Chocolatey pushes without cutting a new app release.
+# Requires the GitHub Release installers for the requested version.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version to submit (e.g. 1.3.53 or v1.3.53)"
+        required: true
+        type: string
+      packages:
+        description: "Comma-separated package IDs to push (default: all three)"
+        required: false
+        type: string
+        default: "qube,qube-vulkan,qube-cuda"
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  chocolatey:
+    runs-on: windows-latest
+    if: github.repository == 'dagaza/Qube'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Download Windows installers and render Chocolatey packages
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = "${{ inputs.version }}" -replace '^v',''
+          New-Item -ItemType Directory -Force -Path installers | Out-Null
+          $base = "https://github.com/dagaza/Qube/releases/download/v$version"
+          $files = @(
+            "Qube-$version-Setup.exe",
+            "Qube-$version-vulkan-Setup.exe",
+            "Qube-$version-cuda-Setup.exe"
+          )
+          foreach ($file in $files) {
+            $dest = Join-Path installers $file
+            Write-Host "Downloading $base/$file ..."
+            curl.exe -fL "$base/$file" -o $dest
+            if (-not (Test-Path $dest)) { throw "Missing downloaded installer: $dest" }
+          }
+          $cpu = (Get-FileHash "installers/Qube-$version-Setup.exe" -Algorithm SHA256).Hash
+          $vulkan = (Get-FileHash "installers/Qube-$version-vulkan-Setup.exe" -Algorithm SHA256).Hash
+          $cuda = (Get-FileHash "installers/Qube-$version-cuda-Setup.exe" -Algorithm SHA256).Hash
+          python scripts/render_chocolatey_package.py `
+            --version $version `
+            --cpu-sha256 $cpu `
+            --vulkan-sha256 $vulkan `
+            --cuda-sha256 $cuda
+          foreach ($pkg in @("qube", "qube-vulkan", "qube-cuda")) {
+            choco pack "chocolatey/out/$version/$pkg/$pkg.nuspec" `
+              --output-directory "chocolatey/out/$version/$pkg"
+          }
+
+      - name: Push Chocolatey packages
+        shell: pwsh
+        env:
+          CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+        run: |
+          $version = "${{ inputs.version }}" -replace '^v',''
+          $raw = "${{ inputs.packages }}"
+          $args = @(
+            "-Version", $version,
+            "-PackageRoot", "chocolatey/out/$version"
+          )
+          if ($raw.Trim()) {
+            $ids = $raw.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+            if ($ids.Count -gt 0) {
+              $args += "-PackageIds"
+              $args += $ids
+            }
+          }
+          & scripts/release/push_chocolatey_packages.ps1 @args
