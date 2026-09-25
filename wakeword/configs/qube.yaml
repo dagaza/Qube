@@ -1,0 +1,58 @@
+# Wake word config: "Qube" (single word)
+# Train with:  python scripts/train.py --config configs/qube.yaml
+#
+# NOTE: `phrase` is the *Piper TTS phonetic spelling*, not the display text.
+# `keube` is the current best approximation of the "Cube" sound — but it is a
+# hypothesis. Run the M3 variant sweep before committing to a full 50k run.
+
+wakeword:
+  id: keube                       # becomes the wakeword_id discovered by Qube
+  display_name: "Qube"
+  phrase: "keube"
+  # Phonetically-similar phrases the model must learn to REJECT (low false-accept).
+  adversarial_phrases:
+    - "cube"
+    - "kube"
+    - "queue"
+    - "tube"
+    - "a cube"
+
+training:
+  examples: 50000                 # production target; pilot at 5000 first
+  steps: 50000                    # production target; pilot at 10000 first
+  false_penalty: 2500             # higher => fewer phantom triggers, needs clearer speech
+  layer_dim: 32
+  augmentation_rounds: 2
+  seed: 1337                      # recorded in model_card.json for reproducibility
+
+data:
+  sample_rate: 16000              # MUST match Qube's audio worker (RATE=16000)
+  negative_features: datasets/features/librispeech_negatives.npy
+  fp_validation_features: datasets/features/fp_validation.npy
+  # Source audio (commercially licensed) for M2 feature precomputation.
+  negative_source_paths:
+    - datasets/speech             # LibriSpeech (CC-BY-4.0)
+  validation_source_paths:
+    - datasets/speech             # LibriSpeech dev (CC-BY-4.0)
+    - datasets/background-noise   # MUSAN (CC-BY-4.0)
+  background_paths:
+    - datasets/background-noise
+    - datasets/music
+  rir_paths:
+    - datasets/room-impulse
+
+evaluation:
+  # Ship rule used by evaluate.py: max recall subject to FP/hr <= cap.
+  # Single short words false-trigger more, so hold the FP cap tighter here.
+  max_false_positives_per_hour: 0.5
+  min_recall: 0.85
+
+export:
+  formats: [onnx, tflite]
+  # Suggested install path inside Qube once validated in the Test Lab:
+  install_hint: "~/.qube/models/wakeword/en/keube/"
+
+provenance:
+  tier: commercial                # "commercial" requires a green license gate
+  require_commercial_license: true
+  oww_commit: "PINNED_COMMIT_TBD" # pin before first production run

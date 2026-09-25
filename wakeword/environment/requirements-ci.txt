@@ -1,0 +1,19 @@
+# Light CI dependencies for the wakeword pipeline TEST SUITE only.
+#
+# This is deliberately NOT the training environment. The pinned torch / tensorflow /
+# openWakeWord / piper stack lives in requirements-training.txt and is only needed to
+# actually train/export models. CI just needs to run the unit + smoke tests, which keep
+# every heavy dependency behind a lazy import or a pytest.importorskip guard:
+#
+#   - numpy        : the only hard runtime dependency of the pure pipeline logic
+#   - onnx + onnxruntime : let the torch-free ONNX contract + evaluate smoke test RUN
+#                          (the full train->export smoke test stays torch-gated and skips)
+#   - PyYAML       : config loading (lib/config.py)
+#   - pytest       : test runner
+#
+# soundfile, openwakeword, torch, and tensorflow are intentionally absent so CI stays fast.
+numpy
+onnx
+onnxruntime
+PyYAML
+pytest
