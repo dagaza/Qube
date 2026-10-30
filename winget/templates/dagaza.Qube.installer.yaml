@@ -9,4 +9,4 @@ Installers:
       Silent: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
       SilentWithProgress: /SILENT /SUPPRESSMSGBOXES /NORESTART
 ManifestType: installer
-ManifestVersion: 1.6.0
+ManifestVersion: 1.28.0

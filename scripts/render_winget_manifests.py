@@ -23,7 +23,15 @@ from core.winget_release_variants import (  # noqa: E402
 )
 
 _SILENT = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
-_MANIFEST_VERSION = "1.6.0"
+_MANIFEST_VERSION = "1.28.0"
+
+
+def _schema_header(manifest_type: str) -> str:
+    """YAML language-server schema comment matching winget-pkgs submissions."""
+    return (
+        f"# yaml-language-server: $schema="
+        f"https://aka.ms/winget-manifest.{manifest_type}.{_MANIFEST_VERSION}.schema.json\n\n"
+    )
 
 
 def _repo_root() -> Path:
@@ -45,7 +53,7 @@ def _render_variant(
     hash_value = sha256.upper()
 
     (package_dir / f"{package_id}.yaml").write_text(
-        f"""PackageIdentifier: {package_id}
+        f"""{_schema_header("version")}PackageIdentifier: {package_id}
 PackageVersion: {version}
 DefaultLocale: en-US
 ManifestType: version
@@ -54,7 +62,7 @@ ManifestVersion: {_MANIFEST_VERSION}
         encoding="utf-8",
     )
 
-    installer_body = f"""PackageIdentifier: {package_id}
+    installer_body = f"""{_schema_header("installer")}PackageIdentifier: {package_id}
 PackageVersion: {version}
 InstallerType: inno
 Installers:
@@ -68,7 +76,7 @@ ManifestType: installer
 ManifestVersion: {_MANIFEST_VERSION}
 """
     if variant == "vulkan":
-        installer_body = f"""PackageIdentifier: {package_id}
+        installer_body = f"""{_schema_header("installer")}PackageIdentifier: {package_id}
 PackageVersion: {version}
 Dependencies:
   PackageDependencies:
@@ -92,7 +100,7 @@ ManifestVersion: {_MANIFEST_VERSION}
 
     tags_yaml = "\n".join(f"  - {tag}" for tag in package_tags(variant))
     (package_dir / f"{package_id}.locale.en-US.yaml").write_text(
-        f"""PackageIdentifier: {package_id}
+        f"""{_schema_header("defaultLocale")}PackageIdentifier: {package_id}
 PackageVersion: {version}
 PackageLocale: en-US
 Publisher: dagaza

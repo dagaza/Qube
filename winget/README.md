@@ -19,8 +19,10 @@ Install **one** variant only; all share user data in `%LOCALAPPDATA%\Qube`.
 3. Fork [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs).
 4. For each package folder under `winget/out/<version>/`, copy into winget-pkgs:
    - `dagaza.Qube/` → `manifests/d/dagaza/Qube/<version>/`
-   - `dagaza.Qube.Vulkan/` → `manifests/d/dagaza/Qube.Vulkan/<version>/`
-   - `dagaza.Qube.CUDA/` → `manifests/d/dagaza/Qube.CUDA/<version>/`
+   - `dagaza.Qube.Vulkan/` → `manifests/d/dagaza/Qube/Vulkan/<version>/`
+   - `dagaza.Qube.CUDA/` → `manifests/d/dagaza/Qube/CUDA/<version>/`
+
+   Rendered manifests use **`ManifestVersion: 1.28.0`** (required for new submissions in winget-pkgs as of late 2026). Version-update PRs for packages already on older schema may stay on that schema until bumped.
 5. Validate locally, e.g.:
 
    ```powershell
