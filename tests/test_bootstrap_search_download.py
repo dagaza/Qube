@@ -22,7 +22,7 @@ from core.bootstrap_search_download import (
 
 def test_resolve_preset_download_spec_balanced_jina_repo():
     spec = resolve_preset_download_spec("balanced")
-    assert spec.hf_repo == "xenova/jina-embeddings-v2-small-en"
+    assert spec.hf_repo == "Xenova/jina-embeddings-v2-small-en"
     assert spec.model_marker == "onnx/model.onnx"
     assert "onnx/model.onnx" in spec.files
     assert "preprocessor_config.json" not in spec.files
@@ -65,7 +65,7 @@ def test_download_embedding_preset_streams_each_file(tmp_path: Path) -> None:
 
     assert stream.call_count == len(dl_spec.files)
     repos = {call.kwargs["repo_id"] for call in stream.call_args_list}
-    assert repos == {"xenova/jina-embeddings-v2-small-en"}
+    assert repos == {"Xenova/jina-embeddings-v2-small-en"}
     assert events
     assert events[-1][1] == 100
 

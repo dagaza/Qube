@@ -37,7 +37,7 @@ _PRESET_DOWNLOAD_SPECS: dict[ModeId, FastembedPresetDownloadSpec] = {
         model_marker="model_optimized.onnx",
     ),
     "balanced": FastembedPresetDownloadSpec(
-        hf_repo="xenova/jina-embeddings-v2-small-en",
+        hf_repo="Xenova/jina-embeddings-v2-small-en",
         files=_STANDARD_TOKENIZER_FILES + ("onnx/model.onnx",),
         model_marker="onnx/model.onnx",
     ),
