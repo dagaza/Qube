@@ -12,6 +12,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from core.winget_release_variants import (  # noqa: E402
+    PRIVACY_POLICY_URL,
     WINGET_VARIANTS,
     installer_url,
     package_description,
@@ -105,6 +106,7 @@ PackageVersion: {version}
 PackageLocale: en-US
 Publisher: dagaza
 PublisherUrl: https://github.com/dagaza
+PrivacyUrl: {PRIVACY_POLICY_URL}
 PackageName: {package_name(variant)}
 Moniker: {package_moniker(variant)}
 License: MIT

@@ -101,6 +101,12 @@ Release CI runs `scripts/release/smoke_installed_cuda.ps1` after building the CU
 
 1. Silent install, then explicit `--winget-validation` smoke (sidecar-on-disk scenario, no `llama_cpp` import)
 
+## Privacy policy URL (`PrivacyUrl`)
+
+WinGet locale manifests include **`PrivacyUrl`** pointing at the [product privacy policy](../docs/privacy-policy.md) on GitHub (`main`). That satisfies/winget repository **policy 1.5** for AI assistants that process user content locally. The Qube **website** privacy notice at [qubeapp.eu](https://www.qubeapp.eu) covers site visits only.
+
+Merge the policy doc to `main` on GitHub before submitting manifests, so the linked URL resolves for moderators and validation.
+
 ## Template files
 
 The files under `winget/templates/` document the manifest shape. Release builds use `scripts/render_winget_manifests.py` instead of editing these directly.

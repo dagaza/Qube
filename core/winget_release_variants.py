@@ -11,6 +11,9 @@ from core.windows_release_variants import (
 
 WINGET_VARIANTS: tuple[str, ...] = WINDOWS_RELEASE_VARIANTS
 
+# Linked from winget defaultLocale manifests (repository policy 1.5).
+PRIVACY_POLICY_URL = "https://github.com/dagaza/Qube/blob/main/docs/privacy-policy.md"
+
 _PACKAGE_IDS: dict[str, str] = {
     "cpu": "dagaza.Qube",
     "vulkan": "dagaza.Qube.Vulkan",

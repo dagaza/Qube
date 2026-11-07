@@ -3,6 +3,7 @@ PackageVersion: 0.0.0
 PackageLocale: en-US
 Publisher: dagaza
 PublisherUrl: https://github.com/dagaza
+PrivacyUrl: https://github.com/dagaza/Qube/blob/main/docs/privacy-policy.md
 PackageName: Qube (CUDA)
 Moniker: qube-cuda
 License: MIT
