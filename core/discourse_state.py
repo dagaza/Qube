@@ -13,6 +13,8 @@ from core.discourse_patterns import (
     has_possessive_anaphor,
     is_deictic_prompt,
     is_deictic_topic_phrase,
+    is_source_name,
+    strip_source_venue_phrases,
 )
 from core.discourse_prompt_rewrite import validate_stored_discourse_topic
 from core.discourse_referent_policy import (
@@ -26,6 +28,14 @@ from core.discourse_types import ReferentSource, TopicType
 
 _GAME_HINTS = re.compile(
     r"\b(game|video game|roguelike|deckbuilder|playthrough|boss fight|card game)\b",
+    re.I,
+)
+# "verify that dark matter exists": ``that`` introduces a clause, not a back-reference.
+_VERIFY_CLAUSE_CAPTURE = re.compile(
+    r"\b(?:check|verify|confirm|validate|fact[\s-]?check|double[\s-]?check|make\s+sure)\s+"
+    r"(?:that|whether|if)\s+"
+    r"(?!(?:this|that|it|its|they|them|these|those|he|she|his|her|their|the\s+same)\b)"
+    r"(.{3,160}?)\s*[?.!]*$",
     re.I,
 )
 _ABOUT_CAPTURE = re.compile(
@@ -143,9 +153,26 @@ def _normalize_concept_subject(subject: str) -> Optional[str]:
 
 
 def _extract_topic_from_text(text: str) -> tuple[Optional[str], TopicType]:
+    topic, topic_type = _extract_topic_candidate(text)
+    if topic and is_source_name(topic):
+        stripped = strip_source_venue_phrases(text)
+        if stripped and stripped != (text or "").strip():
+            topic, topic_type = _extract_topic_candidate(stripped)
+        if topic and is_source_name(topic):
+            return None, "unknown"
+    return topic, topic_type
+
+
+def _extract_topic_candidate(text: str) -> tuple[Optional[str], TopicType]:
     s = (text or "").strip()
     if not s:
         return None, "unknown"
+
+    m = _VERIFY_CLAUSE_CAPTURE.search(s)
+    if m:
+        topic = strip_source_venue_phrases(m.group(1)).strip(" .?!")
+        if len(topic) >= 3 and not is_source_name(topic):
+            return topic[:120], _infer_topic_type(topic, s)
 
     parsed = extract_entity_and_aspect(s)
     if parsed.entity and parsed.aspect:

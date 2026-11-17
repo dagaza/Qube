@@ -94,7 +94,10 @@ from core.engine_input_trace import (
 )
 from core.response_quality import evaluate_response_quality
 from core.model_performance_store import ModelPerformanceStore
+from core.gpu_offload_diagnostics import dri_render_node_accessible
 from core.inference_transparency import (
+    get_build_snapshot,
+    gpu_offload_inactive_reason,
     log_inference_transparency,
     merge_native_telemetry_snapshot,
     snapshot_from_loaded_llama,
@@ -257,6 +260,7 @@ class NativeLlamaEngine(QThread):
         self._template_output_profile: Optional[TemplateOutputProfile] = None
         self._last_retrieval_context: str = ""
         self._inference_transparency_native: Optional[Dict[str, Any]] = None
+        self._gpu_offload_inactive_reason: str | None = None
 
     def stop_engine(self, *, wait_ms: int = 30_000) -> None:
         """Request shutdown and optionally wait for the thread to finish."""
@@ -664,6 +668,10 @@ class NativeLlamaEngine(QThread):
                 if label != "requested":
                     if label == "cpu_ctx2048":
                         self.status_update.emit("Retrying load on CPU with smaller context…")
+                    elif label.startswith("gpu_ctx"):
+                        self.status_update.emit(
+                            f"Retrying GPU load with smaller context ({ctx:,} tokens)…"
+                        )
                     else:
                         self.status_update.emit("Retrying load on CPU (GPU layers = 0)…")
                 init_kw = dict(
@@ -694,8 +702,20 @@ class NativeLlamaEngine(QThread):
 
     def _do_load(self, cmd: dict) -> None:
         path = resolve_internal_model_path(cmd.get("path") or "")
-        n_gpu = int(cmd.get("n_gpu_layers", 0))
-        n_ctx = int(cmd.get("n_ctx", 4096))
+        requested_n_gpu = int(cmd.get("n_gpu_layers", 0))
+        n_gpu = requested_n_gpu
+        requested_n_ctx = int(cmd.get("n_ctx", 4096))
+        from core.native_context_cap import cap_native_load_n_ctx
+
+        n_ctx, ctx_cap_reason = cap_native_load_n_ctx(
+            requested=requested_n_ctx,
+            n_gpu_layers=n_gpu,
+            model_path=path,
+        )
+        if ctx_cap_reason:
+            self.status_update.emit(
+                f"Context capped to {n_ctx:,} tokens for GPU load (unified memory)"
+            )
         n_threads = int(cmd.get("n_threads") or 0)
         if n_threads < 1:
             n_threads = max(1, int(os.cpu_count() or 4))
@@ -905,11 +925,24 @@ class NativeLlamaEngine(QThread):
                 self._inference_transparency_native = snapshot_from_loaded_llama(
                     self._llama,
                     model_path=path,
-                    requested_n_gpu_layers=n_gpu,
+                    requested_n_gpu_layers=requested_n_gpu,
                     n_ctx=n_ctx,
                     n_threads=n_threads,
                     role="native",
                 )
+                build = get_build_snapshot(refresh=True)
+                self._gpu_offload_inactive_reason = gpu_offload_inactive_reason(
+                    requested_n_gpu_layers=requested_n_gpu,
+                    supports_gpu_offload=bool(build.get("supports_gpu_offload")),
+                    load_fallback_label=load_label,
+                    dri_render_accessible=dri_render_node_accessible(),
+                )
+                if self._gpu_offload_inactive_reason:
+                    logger.warning(
+                        "[Native] GPU offload inactive (reason=%s, requested_n_gpu_layers=%s)",
+                        self._gpu_offload_inactive_reason,
+                        requested_n_gpu,
+                    )
                 log_inference_transparency(
                     logger,
                     role="Native",
@@ -920,6 +953,7 @@ class NativeLlamaEngine(QThread):
             except Exception as e:
                 logger.debug("[Native] inference transparency capture failed: %s", e)
                 self._inference_transparency_native = None
+                self._gpu_offload_inactive_reason = None
             self._router_profile_key = reg_name
             try:
                 upsert_profile_from_loaded_model(
@@ -931,8 +965,10 @@ class NativeLlamaEngine(QThread):
                 logger.debug("[ModelRouter] upsert_profile_from_loaded_model failed: %s", e)
             self._cancel_generation = False
             ready_msg = f"Native model ready: {os.path.basename(path)}"
-            if getattr(self, "_load_fallback_label", "requested") != "requested":
+            if str(getattr(self, "_load_fallback_label", "requested")).startswith("cpu"):
                 ready_msg += " (CPU fallback — adjust GPU layers in Settings)"
+            elif self._gpu_offload_inactive_reason:
+                ready_msg += " (CPU only — GPU offload unavailable in this session)"
             self.load_finished.emit(True, os.path.basename(path))
             self.status_update.emit(ready_msg)
             # Behavior profiling runs on a separate queued op so chat/generate is not
@@ -946,6 +982,7 @@ class NativeLlamaEngine(QThread):
             self._llama = None
             self._model_path = None
             self._inference_transparency_native = None
+            self._gpu_offload_inactive_reason = None
             self._model_reasoning_profile = None
             self._execution_mode = "unknown"
             self.execution_policy = None
@@ -1040,6 +1077,7 @@ class NativeLlamaEngine(QThread):
             self._llama = None
             self._model_path = None
             self._inference_transparency_native = None
+            self._gpu_offload_inactive_reason = None
             self._last_trace_preflight = None
             self._last_formatted_prompt = None
             self._gt_token_ids = []

@@ -137,6 +137,8 @@ from core.composer_draft import (
 )
 from core.composer_skills import ComposerSkillMention, parse_composer_input, strip_all_composer_tokens_for_display
 from core.help_action_blocks import HelpActionChip, parse_help_action_blocks
+from core.app_notification_types import AppNotificationRequest
+from core.conversation_branch import BranchError, branch_session
 from core.conversation_export import (
     export_conversation_markdown,
     export_folder_zip,
@@ -2149,6 +2151,37 @@ class ConversationsView(QWidget):
         btn.setIconSize(QSize(14, 14))
         btn.setStyleSheet(theme.style(AGENT_COPY_BUTTON))
 
+    def _style_agent_branch_button(self, btn: QPushButton, is_dark: bool) -> None:
+        theme = self._theme(is_dark)
+        btn.setIcon(themed_fa_icon("fa5s.code-branch", theme.color(MUTED_ICON), 16))
+        btn.setIconSize(QSize(14, 14))
+        btn.setStyleSheet(theme.style(AGENT_COPY_BUTTON))
+
+    def _sync_agent_branch_button(
+        self, agent: AgentMessageLabel, btn: QPushButton | None = None
+    ) -> None:
+        btn = btn or getattr(agent, "_branch_action_btn", None)
+        if btn is None:
+            return
+        mid = getattr(agent, "_db_message_id", None)
+        enabled = bool(mid)
+        if (
+            enabled
+            and getattr(self, "current_agent_msg", None) is agent
+            and (
+                getattr(self, "_llm_in_progress", False)
+                or getattr(self, "_is_agent_typing", False)
+            )
+        ):
+            enabled = False
+        btn.setVisible(True)
+        btn.setEnabled(enabled)
+        btn.setToolTip(
+            "Branch to a new conversation from here"
+            if enabled
+            else "Available after this answer is saved"
+        )
+
     def _sync_agent_export_button(
         self, agent: AgentMessageLabel, btn: QPushButton | None = None
     ) -> None:
@@ -2431,12 +2464,25 @@ class ConversationsView(QWidget):
         agent._export_action_btn = export_btn
         self._sync_agent_export_button(agent, export_btn)
 
+        branch_btn = QPushButton()
+        branch_btn.setObjectName("AgentMessageBranchBtn")
+        branch_btn.setFixedSize(28, 28)
+        branch_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        branch_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._style_agent_branch_button(branch_btn, is_dark)
+        branch_btn.clicked.connect(
+            lambda _checked=False, lbl=agent: self._branch_from_assistant_message(lbl)
+        )
+        agent._branch_action_btn = branch_btn
+        self._sync_agent_branch_button(agent, branch_btn)
+
         agent._telemetry_labels = self._default_agent_telemetry_labels(is_dark)
         agent._telemetry_values = {}
 
         copy_row.addWidget(copy_btn, 0, Qt.AlignmentFlag.AlignLeft)
         copy_row.addWidget(sources_btn, 0, Qt.AlignmentFlag.AlignLeft)
         copy_row.addWidget(export_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        copy_row.addWidget(branch_btn, 0, Qt.AlignmentFlag.AlignLeft)
         copy_row.addStretch(1)
         copy_row.addSpacing(12)
         for key in ("stt", "ttft", "tts", "tps"):
@@ -2522,9 +2568,13 @@ class ConversationsView(QWidget):
                 menu = export_btn.menu()
                 if menu is not None:
                     self._apply_menu_theme(menu, is_dark)
+            branch_btn = w.findChild(QPushButton, "AgentMessageBranchBtn")
+            if branch_btn is not None:
+                self._style_agent_branch_button(branch_btn, is_dark)
             for agent in w.findChildren(AgentMessageLabel):
                 self._sync_agent_sources_button(agent, sources_btn)
                 self._sync_agent_export_button(agent, export_btn)
+                self._sync_agent_branch_button(agent, branch_btn)
                 labels = getattr(agent, "_telemetry_labels", None)
                 if labels:
                     for lbl in labels.values():
@@ -2909,7 +2959,10 @@ class ConversationsView(QWidget):
             themed_fa_icon("fa5s.plus", accent_icon_color(self._theme()), 16)
         )
         self.new_chat_btn.setIconSize(QSize(16, 16))
-        self.new_chat_btn.setToolTip("New conversation")
+        _new_chat_key = QKeySequence(QKeySequence.StandardKey.AddTab).toString(
+            QKeySequence.SequenceFormat.NativeText
+        )
+        self.new_chat_btn.setToolTip(f"New conversation ({_new_chat_key})")
         apply_ghost_icon_button_style(self.new_chat_btn, self._theme())
         actions_outer.addWidget(self.new_chat_btn)
 
@@ -3486,6 +3539,7 @@ class ConversationsView(QWidget):
         self._schedule_transcript_timeline_refresh()
         if finalize:
             self._sync_agent_export_button(cur)
+            self._sync_agent_branch_button(cur)
         if self._focus_mode_enabled:
             self._apply_reader_focus_opacity()
 
@@ -3495,6 +3549,7 @@ class ConversationsView(QWidget):
         *,
         citation_sources=_UNSET_SOURCES,
         evidence_transparency=None,
+        db_message_id: str | None = None,
     ) -> None:
         token = self._sanitize_agent_stream_text(str(token or ""))
         if not token:
@@ -3524,6 +3579,8 @@ class ConversationsView(QWidget):
                 QSizePolicy.Policy.Preferred,
             )
             self.current_agent_msg._assistant_turn_id = self._user_turn_id
+            if db_message_id:
+                self.current_agent_msg._db_message_id = str(db_message_id)
             self.current_agent_msg.attach_citation_handling(self)
             self._style_agent_message_shell(self.current_agent_msg)
 
@@ -3905,6 +3962,35 @@ class ConversationsView(QWidget):
             )
             self._sync_telemetry_session_egress(str(self.active_session_id))
 
+    def resubmit_web_search_turn(self, session_id: str, raw: str) -> bool:
+        """Re-ask a message whose web search was blocked; returns False when busy."""
+        if self._llm_in_progress or self.llm is None or self.llm.isRunning():
+            return False
+        session_id = str(session_id or "")
+        if session_id and session_id != str(getattr(self, "active_session_id", "") or ""):
+            self._open_session(session_id)
+            self._select_history_session_row(session_id)
+        clean, attachments, enforced_skills = parse_composer_input(raw)
+        self._llm_in_progress = True
+        self._awaiting_tts_end = False
+        self._tts_playing = False
+        self.set_input_enabled(False)
+        self._refresh_send_stop_button()
+        self.log_user_message(raw, pending_assistant=True)
+
+        from core.input_source import INPUT_SOURCE_TEXT
+
+        self.llm.generate_response(
+            clean if clean else raw,
+            self._ensure_active_session_for_send(),
+            attachments=attachments,
+            enforced_skills=enforced_skills,
+            persist_content=raw,
+            input_source=INPUT_SOURCE_TEXT,
+        )
+        self._sync_telemetry_session_egress(str(self.active_session_id))
+        return True
+
     def _ensure_active_session_for_send(self) -> str:
         if not hasattr(self, "active_session_id") or not self.active_session_id:
             recent_sessions = self.db.get_recent_sessions(limit=1)
@@ -4036,6 +4122,7 @@ class ConversationsView(QWidget):
         transparency = dict(payload.get("evidence_transparency") or {})
         bundle_id = payload.get("bundle_id")
         bundle_id_str = str(bundle_id) if bundle_id else None
+        assistant_msg_id: str | None = None
 
         if session_id and report:
             from core.knowledge.ui_sources_payload import encode_sources_payload
@@ -4044,7 +4131,7 @@ class ConversationsView(QWidget):
                 sources,
                 transparency=transparency or None,
             )
-            self.db.add_message(
+            assistant_msg_id = self.db.add_message(
                 session_id,
                 "assistant",
                 report,
@@ -4069,6 +4156,7 @@ class ConversationsView(QWidget):
                 report,
                 citation_sources=sources,
                 evidence_transparency=transparency or None,
+                db_message_id=assistant_msg_id,
             )
             self._flush_agent_markdown_coalesce_immediate(finalize=True)
             self._is_agent_typing = False
@@ -4440,9 +4528,30 @@ class ConversationsView(QWidget):
 
     def _load_selected_chat(self, item):
         from PyQt6.QtCore import Qt
+
         session_id = item.data(Qt.ItemDataRole.UserRole)
+        self._open_session(str(session_id))
+
+    def _select_history_session_row(self, session_id: str) -> None:
+        from PyQt6.QtCore import Qt
+
+        target = str(session_id or "")
+        if not target:
+            return
+        for i in range(self.history_list.count()):
+            item = self.history_list.item(i)
+            if item is None:
+                continue
+            if str(item.data(Qt.ItemDataRole.UserRole) or "") == target:
+                self.history_list.setCurrentItem(item)
+                return
+
+    def _open_session(self, session_id: str) -> None:
+        session_id = str(session_id or "")
+        if not session_id:
+            return
         self.active_session_id = session_id
-        self._sync_telemetry_session_egress(str(session_id))
+        self._sync_telemetry_session_egress(session_id)
         self._reset_composer_draft()
         self._notify_llm_active_session_changed()
         if hasattr(self, "text_input") and hasattr(self.text_input, "_sync_mention_context"):
@@ -4471,6 +4580,7 @@ class ConversationsView(QWidget):
                     msg["content"],
                     citation_sources=msg.get("sources"),
                     evidence_transparency=msg.get("evidence_transparency"),
+                    db_message_id=str(msg.get("id") or "") or None,
                 )
                 self._is_agent_typing = False
 
@@ -4482,6 +4592,77 @@ class ConversationsView(QWidget):
         self._scroll_to_bottom()
         self._schedule_transcript_timeline_refresh()
         self._refresh_conversation_action_buttons()
+
+    def _bind_assistant_message_id_from_db(
+        self, session_id: str, agent: AgentMessageLabel | None
+    ) -> None:
+        if agent is None or getattr(agent, "_db_message_id", None):
+            return
+        mid = self.db.get_latest_message_id(session_id, role="assistant")
+        if mid:
+            agent._db_message_id = mid
+            self._sync_agent_branch_button(agent)
+
+    def _branch_from_assistant_message(self, agent: AgentMessageLabel) -> None:
+        if getattr(self, "_llm_in_progress", False) or getattr(
+            self, "_deep_research_in_progress", False
+        ):
+            self._notify_branch_blocked()
+            return
+        through_id = getattr(agent, "_db_message_id", None)
+        source_id = getattr(self, "active_session_id", None)
+        if not through_id or not source_id:
+            return
+        try:
+            result = branch_session(
+                self.db,
+                source_session_id=str(source_id),
+                through_message_id=str(through_id),
+            )
+        except BranchError as exc:
+            win = self.window()
+            if win is not None and hasattr(win, "show_app_notification"):
+                win.show_app_notification(
+                    AppNotificationRequest(
+                        title="Could not branch",
+                        body=str(exc),
+                        severity="warning",
+                        category="conversations",
+                    )
+                )
+            return
+
+        self._reset_web_toggle()
+        self._reload_history_sidebar()
+        self._select_history_session_row(result.new_session_id)
+        self._open_session(result.new_session_id)
+        QTimer.singleShot(0, self.focus_composer_if_ready)
+
+        win = self.window()
+        if win is not None and hasattr(win, "show_app_notification"):
+            win.show_app_notification(
+                AppNotificationRequest(
+                    title="Branched conversation",
+                    body=f"Continuing from “{result.source_title}” in “{result.new_title}”.",
+                    severity="info",
+                    category="conversations",
+                    auto_dismiss_ms=5000,
+                )
+            )
+
+    def _notify_branch_blocked(self) -> None:
+        win = self.window()
+        if win is None or not hasattr(win, "show_app_notification"):
+            return
+        win.show_app_notification(
+            AppNotificationRequest(
+                title="Branch unavailable",
+                body="Wait until the current reply finishes before branching.",
+                severity="warning",
+                category="conversations",
+                auto_dismiss_ms=4000,
+            )
+        )
 
     def _apply_menu_theme(self, menu, is_dark: bool):
         """Standardizes the menu appearance to match the Prestige theme."""
@@ -5268,6 +5449,9 @@ class ConversationsView(QWidget):
                     logger.debug("[CitationIntegrity] ui_finalize telemetry failed", exc_info=True)
             self._flush_agent_markdown_coalesce_immediate(finalize=True)
             self._hide_agent_typing_row()
+            cur = getattr(self, "current_agent_msg", None)
+            if cur is not None:
+                self._bind_assistant_message_id_from_db(sid, cur)
         elif self._llm_in_progress:
             logger.warning(
                 "[ChatUI] LLM finished for session %s but active is %s; releasing UI anyway.",

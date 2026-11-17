@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 import os
 import sys
@@ -16,14 +17,15 @@ _error: BaseException | None = None
 _prepared = False
 
 
-def llama_cpp_lib_dir() -> Path | None:
+def llama_cpp_package_root() -> Path | None:
+    """Resolve the llama-cpp-python install tree without importing ``llama_cpp``."""
     if getattr(sys, "frozen", False):
         exe_dir = Path(sys.executable).resolve().parent
         meipass = getattr(sys, "_MEIPASS", None)
         candidates = [
-            exe_dir / "_internal" / "llama_cpp" / "lib",
-            Path(meipass) / "llama_cpp" / "lib" if meipass else None,
-            Path(meipass) / "_internal" / "llama_cpp" / "lib" if meipass else None,
+            exe_dir / "_internal" / "llama_cpp",
+            Path(meipass) / "llama_cpp" if meipass else None,
+            Path(meipass) / "_internal" / "llama_cpp" if meipass else None,
         ]
         for path in candidates:
             if path is not None and path.is_dir():
@@ -31,13 +33,27 @@ def llama_cpp_lib_dir() -> Path | None:
         return None
 
     try:
-        import llama_cpp
-
-        pkg = Path(llama_cpp.__file__).resolve().parent
-        lib = pkg / "lib"
-        return lib if lib.is_dir() else pkg
+        spec = importlib.util.find_spec("llama_cpp")
+        if spec is None or not spec.origin:
+            return None
+        return Path(spec.origin).resolve().parent
     except Exception:
         return None
+
+
+def llama_cpp_lib_dir() -> Path | None:
+    if getattr(sys, "frozen", False):
+        root = llama_cpp_package_root()
+        if root is None:
+            return None
+        lib = root / "lib"
+        return lib if lib.is_dir() else root
+
+    root = llama_cpp_package_root()
+    if root is None:
+        return None
+    lib = root / "lib"
+    return lib if lib.is_dir() else root
 
 
 def prepare_llama_cpp_runtime() -> None:
@@ -50,16 +66,23 @@ def prepare_llama_cpp_runtime() -> None:
     if lib_dir is None:
         return
 
+    lib_prefix = str(lib_dir)
     if sys.platform == "win32":
         if hasattr(os, "add_dll_directory"):
             try:
-                os.add_dll_directory(str(lib_dir))
+                os.add_dll_directory(lib_dir)
             except OSError as exc:
                 logger.debug("add_dll_directory failed for %s: %s", lib_dir, exc)
-        path_prefix = str(lib_dir)
         current = os.environ.get("PATH", "")
-        if path_prefix not in current.split(os.pathsep):
-            os.environ["PATH"] = path_prefix + os.pathsep + current
+        if lib_prefix not in current.split(os.pathsep):
+            os.environ["PATH"] = lib_prefix + os.pathsep + current
+    elif sys.platform.startswith("linux"):
+        current = os.environ.get("LD_LIBRARY_PATH", "")
+        parts = [p for p in current.split(os.pathsep) if p]
+        if lib_prefix not in parts:
+            os.environ["LD_LIBRARY_PATH"] = (
+                lib_prefix + (os.pathsep + current if current else "")
+            )
 
 
 def get_llama_class() -> Any | None:

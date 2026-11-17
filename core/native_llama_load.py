@@ -18,6 +18,9 @@ def is_retryable_native_load_error(exc: BaseException) -> bool:
             "cuda error",
             "vulkan",
             "gpu buffer",
+            "cannot allocate",
+            "bad alloc",
+            "enomem",
         )
     )
 
@@ -37,6 +40,13 @@ def native_load_attempts(n_gpu_layers: int, n_ctx: int) -> list[NativeLoadAttemp
         seen.add(key)
 
     if gpu > 0:
+        for smaller, label in (
+            (8192, "gpu_ctx8192"),
+            (4096, "gpu_ctx4096"),
+            (2048, "gpu_ctx2048"),
+        ):
+            if ctx > smaller:
+                _add(gpu, smaller, label)
         _add(0, ctx, "cpu")
         if ctx > 2048:
             _add(0, 2048, "cpu_ctx2048")

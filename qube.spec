@@ -70,6 +70,9 @@ _hidden_imports = [
     "onnxruntime",
     "tflite_runtime",
     "llama_cpp",
+    # Lazy-imported by core/knowledge/discovery/ddg_http.py (browser-like DDG requests)
+    "curl_cffi",
+    "curl_cffi.requests",
 ]
 _excludes = []
 if _IS_MACOS:

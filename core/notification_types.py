@@ -148,6 +148,59 @@ def mic_error_event(*, detail: str = "") -> NotificationEvent:
     )
 
 
+def native_gpu_offload_inactive_event(
+    *,
+    model_name: str,
+    reason: str,
+) -> NotificationEvent:
+    """Warn when GPU layers are configured but llama.cpp runs on CPU only."""
+    name = str(model_name or "").strip() or "Model"
+    if reason == "no_dri_access":
+        detail = (
+            "Chat still works on CPU. The GPU device nodes under /dev/dri are not "
+            "accessible to this Qube process. Start Qube from your normal desktop "
+            "session (not a restricted IDE terminal), then log out and back in if "
+            "you were recently added to the render group."
+        )
+    elif reason == "libdrm_shadowed":
+        detail = (
+            "Chat still works on CPU. A Python package (usually a ROCm build of torch) "
+            "loaded its own older libdrm_amdgpu before the Vulkan driver, so no Vulkan "
+            "GPU device was found. Restart Qube; if this persists, report it with "
+            "~/.qube/logs/qube.log."
+        )
+    elif reason == "vulkan_runtime_unavailable":
+        detail = (
+            "Chat still works on CPU. A Vulkan-capable llama-cpp build is installed, "
+            "but no Vulkan GPU device was found in this session. Check that "
+            "`vulkaninfo --summary` lists your GPU (mesa-vulkan-drivers installed), "
+            "then restart Qube and reload the model."
+        )
+    else:
+        detail = (
+            "Chat still works on CPU. Install a GPU-capable llama-cpp build "
+            "(Vulkan on AMD/Intel Linux): run ./scripts/install_llama_cpp_gpu.sh "
+            "from the Qube repo, then restart Qube."
+        )
+    body = (
+        f"{name} loaded successfully, but GPU offload is inactive while Settings "
+        f"still request GPU layers. {detail}"
+    )
+    return NotificationEvent(
+        title="Model on CPU (GPU offload inactive)",
+        body=body,
+        severity=NotificationSeverity.WARNING,
+        category="system",
+        action_label="Open AI & Models",
+        action_id="open_settings_section:ai.models",
+        auto_dismiss_ms=0,
+        dedupe_key=f"native_gpu_offload_inactive:{reason}",
+        rate_limit_key="native_gpu_offload_inactive",
+        rate_limit_sec=120.0,
+        tray_bump=True,
+    )
+
+
 def native_model_reloaded_from_settings_event(
     *,
     model_name: str,
@@ -381,37 +434,93 @@ def provider_limit_notification_event(event: object) -> NotificationEvent:
     )
 
 
+ACTION_DDG_VERIFY_CHALLENGE = "ddg_verify_challenge"
+ACTION_DDG_RESUME_SEARCH = "ddg_resume_search"
+
+
 def ddg_backoff_event(*, remaining_seconds: int = 0) -> NotificationEvent:
     """Warn when DuckDuckGo is paused after a bot challenge."""
     from core.knowledge.discovery.backoff import ddg_bot_backoff_seconds
 
     total_seconds = ddg_bot_backoff_seconds()
     minutes = max(1, (total_seconds + 59) // 60)
-    body = (
-        "DuckDuckGo returned a bot challenge, so DDG searches are paused for "
-        f"{minutes} minutes to avoid further blocks. "
-        "Web searches will continue using Brave or Wikipedia fallbacks when available."
-    )
+    pause = f"for {minutes} minutes"
     if remaining_seconds > 0:
         remaining_minutes = max(1, (remaining_seconds + 59) // 60)
-        body = (
-            f"DuckDuckGo returned a bot challenge. DDG searches are paused for "
-            f"about {remaining_minutes} more minutes "
-            f"(~{minutes} min total) to avoid further blocks. "
-            "Web searches will continue using Brave or Wikipedia fallbacks when available."
-        )
+        pause = f"for about {remaining_minutes} more minutes (~{minutes} min total)"
+    body = (
+        f"DuckDuckGo asked to verify you're human, so DDG searches are paused {pause}. "
+        "Brave or Wikipedia fallbacks are used meanwhile. To skip the wait, complete "
+        "the check in your browser, then resume the search in Qube."
+    )
     return NotificationEvent(
         title="DuckDuckGo search paused",
         body=body,
         severity=NotificationSeverity.WARNING,
         category="tool",
-        action_label="Discovery settings",
-        action_id="open_settings_knowledge_web_discovery",
-        auto_dismiss_ms=15000,
+        action_label="Verify in browser",
+        action_id=ACTION_DDG_VERIFY_CHALLENGE,
+        auto_dismiss_ms=20000,
         dedupe_key="ddg_backoff",
         rate_limit_key="ddg_backoff",
         rate_limit_sec=300.0,
         tray_bump=True,
+    )
+
+
+def ddg_resume_ready_event(*, has_blocked_turn: bool) -> NotificationEvent:
+    """Shown after the challenge opens in the browser; resumes once the user is done."""
+    if has_blocked_turn:
+        body = (
+            "Complete the DuckDuckGo check in your browser (it may also just show "
+            "results). When you're done, resume to re-ask your last question with "
+            "live web results."
+        )
+        action_label = "Resume search"
+    else:
+        body = (
+            "Complete the DuckDuckGo check in your browser (it may also just show "
+            "results). When you're done, re-enable DuckDuckGo for your next searches."
+        )
+        action_label = "Re-enable DuckDuckGo"
+    return NotificationEvent(
+        title="Finish the check, then resume",
+        body=body,
+        severity=NotificationSeverity.INFO,
+        category="tool",
+        action_label=action_label,
+        action_id=ACTION_DDG_RESUME_SEARCH,
+        auto_dismiss_ms=0,
+        dedupe_key="ddg_resume_ready",
+    )
+
+
+def ddg_search_resumed_event(*, rerun_started: bool) -> NotificationEvent:
+    body = (
+        "DuckDuckGo is re-enabled. Re-asking your last question with live web results."
+        if rerun_started
+        else "DuckDuckGo is re-enabled for your next web searches."
+    )
+    return NotificationEvent(
+        title="Web search resumed",
+        body=body,
+        severity=NotificationSeverity.SUCCESS,
+        category="tool",
+        auto_dismiss_ms=6000,
+        dedupe_key="ddg_search_resumed",
+    )
+
+
+def ddg_resume_busy_event() -> NotificationEvent:
+    return NotificationEvent(
+        title="Qube is still replying",
+        body="Wait for the current reply to finish, then click Resume search again.",
+        severity=NotificationSeverity.INFO,
+        category="tool",
+        action_label="Resume search",
+        action_id=ACTION_DDG_RESUME_SEARCH,
+        auto_dismiss_ms=0,
+        dedupe_key="ddg_resume_ready",
     )
 
 

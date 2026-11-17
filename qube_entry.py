@@ -5,9 +5,6 @@ from __future__ import annotations
 import logging
 import sys
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication
-
 logger = logging.getLogger("Qube.Entry")
 
 
@@ -15,6 +12,13 @@ def run() -> int:
     from core.winget_validation import record_validation_entry
 
     record_validation_entry()
+
+    from core.gpu_driver_preload import preload_system_gpu_driver_libs
+
+    preload_system_gpu_driver_libs()
+
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import QApplication
 
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough

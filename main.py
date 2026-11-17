@@ -2,8 +2,15 @@ import sys
 import os
 from collections.abc import Callable
 from pathlib import Path
+
 os.environ["QUBE_LLM_DEBUG"] = "1"
 os.environ["QUBE_LOG_RAW_COMPLETION"] = "1"
+
+# Must run before ``workers`` imports torch (ROCm wheels bundle an older libdrm_amdgpu
+# that breaks Mesa RADV, leaving llama.cpp without a Vulkan device).
+from core.gpu_driver_preload import preload_system_gpu_driver_libs
+
+preload_system_gpu_driver_libs()
 
 from core.__version__ import __version__
 
@@ -1625,6 +1632,11 @@ def run_application(
 ) -> int:
     args = parse_boot_args()
     configure_user_model_paths()
+
+    logger.info(
+        "[GPUDriverPreload] system libs pinned: %s",
+        preload_system_gpu_driver_libs() or "none",
+    )
 
     from core.bootstrap_trace import configure_bootstrap_trace, record_startup_progress
 

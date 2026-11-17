@@ -1,9 +1,30 @@
 ## [Unreleased]
 
+## [1.3.54] - 2026-11-17
+
+### Added
+- **Conversations:** Branch from any assistant message into a new session (prefix copy, folder lineage, knowledge-graph copy for evidence in the branch).
+- **Conversations:** **New conversation** window shortcut (standard **Add Tab**) when the Conversations page is active.
+- **Web discovery:** Browser-like DuckDuckGo HTML session (`curl_cffi` Chrome impersonation when available; falls back to plain `requests`); bundle `curl_cffi` in frozen Windows builds.
+- **Web discovery:** User-assisted recovery after a DDG bot challenge — open the blocked search in the system browser, then **Resume search** to lift the pause and re-run the turn with live web pinned.
+- **Native inference:** Cap context length on unified GPU memory (APU / Apple-style) when GPU layers are active to reduce OOM risk.
+- **Native inference:** In-app notification when GPU offload was requested but the session loads CPU-only, with reason codes (e.g. no DRI access, missing Vulkan libs, libdrm shadowing).
+- **Linux GPU:** Preload system `libdrm` before PyTorch can shadow AMDGPU/Vulkan discovery; extend llama-cpp runtime `PATH` / `LD_LIBRARY_PATH` without importing `llama_cpp` early.
+- **WinGet:** Desktop privacy policy page and `PrivacyUrl` in locale manifests; render manifests at schema **1.28.0** for current `winget-pkgs` compliance.
+- **Chocolatey:** `chocolatey-submit` workflow, PNG package icon, fail `choco push` on non-zero exit, CUDA moderation recovery docs (`docs/chocolatey_cuda_moderation.md`).
+
+### Changed
+- **Discourse / web routing:** Strip search-venue phrases (“on Wikipedia”, “online”); keep real subjects on “verify that …” prompts; pass composer `@internet` attachment into resolved retrieval queries.
+- **Model Hub:** Defer Editor’s Picks catalog build until after first show; batch hub list layout updates to reduce startup jank.
+- **Linux `.deb`:** Build with `fpm` xz compression and enforce GitHub Releases size limits for large CUDA packages.
+- **WinGet submit:** Sync the `winget-pkgs` fork with upstream before `wingetcreate submit`; document manual `gh api merge-upstream` when the PAT lacks `workflow` scope.
+- **Chocolatey:** Harden CUDA resubmit path and push reliability; fix `chocolatey-submit` workflow PowerShell argument splatting.
+
 ### Fixed
-- **WinGet submit:** Verify the `winget-pkgs` fork is synced with upstream before `wingetcreate submit`, and document manual sync via `gh api merge-upstream` when the PAT lacks the `workflow` scope.
-- **Dependencies:** Bump `anyio` to 4.14.2 (CVE-2026-63374, CVE-2026-64847).
-- **Chocolatey:** Use PNG package icon, fail `choco push` on non-zero exit codes, add `chocolatey-submit` workflow and CUDA moderation recovery docs (`docs/chocolatey_cuda_moderation.md`).
+- **Retrieval Inspector:** Show diagnostic fields when provenance has SERP-only fetches (no page URLs).
+- **arXiv adapter:** Use `https://export.arxiv.org/api/query`.
+- **Embeddings preset:** Fix balanced search preset Hugging Face repo casing for fastembed alignment.
+- **Dependencies:** Bump `anyio` to 4.14.2 (CVE-2026-63374, CVE-2026-64847) and `soupsieve` to 2.9.2 (CVE-2026-85999, CVE-2026-86000); pin `curl_cffi` so release CI and installers ship the DuckDuckGo browser impersonation stack.
 
 ## [1.3.53] - 2026-09-17
 

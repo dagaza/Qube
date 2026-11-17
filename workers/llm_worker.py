@@ -2120,6 +2120,13 @@ class LLMWorker(QThread):
                 health_policy.health_score,
             )
 
+        _primary_attachment = next(iter(getattr(self, "_turn_attachments", None) or []), None)
+        web_tool_attached = bool(
+            _primary_attachment is not None
+            and getattr(_primary_attachment, "kind", "") == "tool"
+            and is_web_composer_tool(str(getattr(_primary_attachment, "id", "") or ""))
+        )
+
         if discourse_enabled:
             prior = (
                 self._discourse_by_session.get(str(self.session_id))
@@ -2183,6 +2190,7 @@ class LLMWorker(QThread):
                 discourse=discourse_state,
                 history=history,
                 resolved_query=resolved_query,
+                web_tool_attached=web_tool_attached,
             )
             routing_query = resolved_retrieval.routing_text
             retrieval_query = resolved_retrieval.retrieval_text
@@ -2209,6 +2217,7 @@ class LLMWorker(QThread):
                 discourse=discourse_state if discourse_enabled else None,
                 history=history,
                 resolved_query=resolved_query,
+                web_tool_attached=web_tool_attached,
             )
             routing_query = resolved_retrieval.routing_text
             retrieval_query = resolved_retrieval.retrieval_text
@@ -3441,6 +3450,17 @@ class LLMWorker(QThread):
                 )
 
             from core.knowledge.discovery.backoff import consume_ddg_backoff_notification
+            from core.knowledge.discovery.challenge_recovery import (
+                outcome_lost_ddg_to_challenge,
+                record_blocked_search,
+            )
+
+            if outcome_lost_ddg_to_challenge(_search_outcome):
+                record_blocked_search(
+                    session_id=str(self.session_id or ""),
+                    persist_content=getattr(self, "_persist_content", "") or self.prompt,
+                    web_query=web_query,
+                )
 
             _should_notify_ddg_backoff, _ddg_backoff_remaining = (
                 consume_ddg_backoff_notification()

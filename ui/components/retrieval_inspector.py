@@ -151,8 +151,8 @@ class RetrievalInspector(QWidget):
                 )
             elif provenance.fetch_url_count <= 0:
                 lines.append("Fetch: SERP snippets only")
+        diag_bits: list[str] = []
         if diag:
-            diag_bits = []
             for key in ("retrieval_profile", "ranking_profile", "preset_id", "scientific_cache_hit"):
                 if key in diag:
                     diag_bits.append(f"{key}={diag[key]}")

@@ -17,18 +17,16 @@ if ! command -v fpm >/dev/null 2>&1; then
   exit 1
 fi
 
-read -r DEB_NAME PKG_NAME PKG_DESC PKG_CONFLICTS PKG_DEPENDS < <(
+read -r DEB_NAME PKG_NAME PKG_DESC < <(
   python3 - "$REPO_ROOT" "$VERSION" "$VARIANT" <<'PY'
 import sys
 
 sys.path.insert(0, sys.argv[1])
 from core.linux_release_variants import (
-    deb_conflicts,
     deb_description,
     deb_filename,
     deb_package_name,
 )
-from core.uninstall_paths import deb_runtime_dependencies
 
 version = sys.argv[2]
 variant = sys.argv[3]
@@ -36,9 +34,39 @@ print(
     deb_filename(version, variant),
     deb_package_name(variant),
     deb_description(variant),
-    deb_conflicts(variant),
-    ", ".join(deb_runtime_dependencies(variant=variant)),
 )
+PY
+)
+
+DEP_FLAGS=()
+while IFS= read -r dep; do
+  DEP_FLAGS+=(--depends "$dep")
+done < <(
+  python3 - "$REPO_ROOT" "$VARIANT" <<'PY'
+import sys
+
+sys.path.insert(0, sys.argv[1])
+from core.uninstall_paths import deb_runtime_dependencies
+
+for dep in deb_runtime_dependencies(variant=sys.argv[2]):
+    print(dep)
+PY
+)
+
+CONFLICT_FLAGS=()
+while IFS= read -r pkg; do
+  [[ -n "$pkg" ]] && CONFLICT_FLAGS+=(--conflicts "$pkg")
+done < <(
+  python3 - "$REPO_ROOT" "$VARIANT" <<'PY'
+import sys
+
+sys.path.insert(0, sys.argv[1])
+from core.linux_release_variants import deb_conflicts
+
+for name in deb_conflicts(sys.argv[2]).split(","):
+    name = name.strip()
+    if name:
+        print(name)
 PY
 )
 
@@ -64,8 +92,8 @@ fpm -s dir -t deb \
   --maintainer "dagaza <https://github.com/dagaza/Qube>" \
   --url "https://github.com/dagaza/Qube" \
   --description "$PKG_DESC" \
-  --depends "$PKG_DEPENDS" \
-  --conflicts "$PKG_CONFLICTS" \
+  "${DEP_FLAGS[@]}" \
+  "${CONFLICT_FLAGS[@]}" \
   --after-install "$REPO_ROOT/packaging/linux/debian/postinst" \
   --before-remove "$REPO_ROOT/packaging/linux/debian/prerm" \
   --after-remove "$REPO_ROOT/packaging/linux/debian/postrm" \

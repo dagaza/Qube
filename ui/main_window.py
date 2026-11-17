@@ -21,7 +21,17 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QSize, QTimer, QEasingCurve, QPropertyAnimation, QRect
 from PyQt6.QtGui import (
-    QAction, QPainter, QColor, QLinearGradient, QPixmap, QIcon, QFontMetrics, QScreen, QPen,
+    QAction,
+    QKeySequence,
+    QPainter,
+    QColor,
+    QLinearGradient,
+    QPixmap,
+    QIcon,
+    QFontMetrics,
+    QScreen,
+    QPen,
+    QShortcut,
 )
 import qtawesome as qta
 from core.paths import install_root, resource_path
@@ -779,6 +789,23 @@ class MainWindow(QMainWindow):
             self._setup_routing_debug_tool_window()
         if self._enable_trace_diff_debug_tool:
             self._setup_trace_diff_debug_window()
+        self._setup_conversations_new_chat_shortcut()
+
+    def _setup_conversations_new_chat_shortcut(self) -> None:
+        """Browser-style new conversation (Ctrl+T / ⌘T) while Conversations is the active page."""
+        sc = QShortcut(QKeySequence(QKeySequence.StandardKey.AddTab), self)
+        sc.setContext(Qt.ShortcutContext.WindowShortcut)
+        sc.setAutoRepeat(False)
+        sc.activated.connect(self._on_new_conversation_shortcut)
+
+    def _on_new_conversation_shortcut(self) -> None:
+        if self._active_main_stage_index() != MAIN_STAGE_CONVERSATIONS:
+            return
+        cv = getattr(self, "conversations_view", None)
+        if cv is None or not hasattr(cv, "_start_new_chat"):
+            return
+        cv._start_new_chat()
+        QTimer.singleShot(0, cv.focus_composer_if_ready)
 
     def _setup_trace_diff_debug_window(self) -> None:
         from ui.canonical_trace_diff import open_canonical_trace_diff_window
@@ -1140,6 +1167,8 @@ class MainWindow(QMainWindow):
         self.ddg_backoff_label.setFixedWidth(88)
         self.ddg_backoff_label.setObjectName("DdgBackoffLabel")
         self.ddg_backoff_label.setToolTip("DuckDuckGo discovery pause")
+        self.ddg_backoff_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.ddg_backoff_label.mousePressEvent = self._on_ddg_backoff_label_clicked
         self.ddg_backoff_label.hide()
         center_layout.addWidget(self.ddg_backoff_label)
 
@@ -1569,7 +1598,8 @@ class MainWindow(QMainWindow):
             "DuckDuckGo is paused after a bot challenge. "
             f"DDG searches resume in {minutes}:{seconds:02d} "
             f"(~{total_minutes} min pause). "
-            "Web searches use Brave or Wikipedia fallbacks meanwhile."
+            "Web searches use Brave or Wikipedia fallbacks meanwhile. "
+            "Click to verify in your browser and resume sooner."
         )
         self.ddg_backoff_label.show()
         if hasattr(self, "_ddg_backoff_timer") and not self._ddg_backoff_timer.isActive():
@@ -1594,6 +1624,67 @@ class MainWindow(QMainWindow):
         self.emit_notification(
             ddg_backoff_event(remaining_seconds=remaining_seconds)
         )
+
+    def _on_ddg_backoff_label_clicked(self, event) -> None:
+        if getattr(self, "_tour_ddg_preview_active", False):
+            return
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._open_ddg_verification_in_browser()
+
+    def _open_ddg_verification_in_browser(self) -> None:
+        """Open the blocked search in the user's browser so they can pass the check."""
+        from PyQt6.QtCore import QUrl
+        from PyQt6.QtGui import QDesktopServices
+
+        from core.knowledge.discovery.challenge_recovery import (
+            ddg_verification_url,
+            get_pending_blocked_search,
+        )
+        from core.notification_types import ddg_resume_ready_event
+
+        pending = get_pending_blocked_search()
+        url = ddg_verification_url(pending.web_query if pending else None)
+        QDesktopServices.openUrl(QUrl(url))
+        self.emit_notification(
+            ddg_resume_ready_event(has_blocked_turn=pending is not None)
+        )
+
+    def _resume_web_search_after_verification(self) -> None:
+        from core.knowledge.discovery.challenge_recovery import (
+            get_pending_blocked_search,
+            lift_ddg_pause_after_user_verification,
+            resume_prompt_text,
+            take_pending_blocked_search,
+        )
+        from core.notification_types import (
+            ddg_resume_busy_event,
+            ddg_search_resumed_event,
+        )
+
+        conv = self.conversations_view
+        pending = get_pending_blocked_search()
+        if pending is not None and (
+            conv._llm_in_progress or (conv.llm is not None and conv.llm.isRunning())
+        ):
+            self.emit_notification(ddg_resume_busy_event())
+            return
+
+        lift_ddg_pause_after_user_verification()
+        self.refresh_ddg_backoff_indicator()
+        self._sync_web_discovery_policy_section()
+
+        pending = take_pending_blocked_search()
+        rerun_started = False
+        if pending is not None:
+            self._restore_workspace_from_tray()
+            if hasattr(self, "nav_chat"):
+                self.nav_chat.setChecked(True)
+                self._route_view(0, self.nav_chat)
+            rerun_started = conv.resubmit_web_search_turn(
+                pending.session_id,
+                resume_prompt_text(pending.persist_content),
+            )
+        self.emit_notification(ddg_search_resumed_event(rerun_started=rerun_started))
 
     def on_discovery_tier_b_suggested(self) -> None:
         """Suggest optional API fallback tier after repeated DDG challenges."""
@@ -3205,10 +3296,9 @@ class MainWindow(QMainWindow):
                 model_name = Path(pending_path).name
             cpu_fallback = False
             if self._native_engine is not None:
-                cpu_fallback = (
+                cpu_fallback = str(
                     getattr(self._native_engine, "_load_fallback_label", "requested")
-                    != "requested"
-                )
+                ).startswith("cpu")
             self.emit_notification(
                 native_model_reloaded_from_settings_event(
                     model_name=model_name,
@@ -3216,6 +3306,22 @@ class MainWindow(QMainWindow):
                 )
             )
             self.update_status("Model reloaded with updated settings", force=True)
+        elif ok and self._native_engine is not None:
+            inactive_reason = getattr(
+                self._native_engine, "_gpu_offload_inactive_reason", None
+            )
+            if inactive_reason:
+                from core.notification_types import native_gpu_offload_inactive_event
+
+                model_name = str(message or "").strip()
+                if not model_name and pending_path:
+                    model_name = Path(pending_path).name
+                self.emit_notification(
+                    native_gpu_offload_inactive_event(
+                        model_name=model_name,
+                        reason=str(inactive_reason),
+                    )
+                )
         self.refresh_toolbar_native_model_dropdown()
         if ok and self._run_scenario_path and not self._scenario_qube_phase_done:
             self.schedule_scenario_replay()
@@ -4479,6 +4585,10 @@ class MainWindow(QMainWindow):
             self._open_settings_section("knowledge", anchor="embedding_mode")
         elif action_id == "open_settings_knowledge_web_discovery":
             self._open_settings_section("knowledge", anchor="web_discovery")
+        elif action_id == "ddg_verify_challenge":
+            self._open_ddg_verification_in_browser()
+        elif action_id == "ddg_resume_search":
+            self._resume_web_search_after_verification()
         elif action_id == "open_settings_knowledge_credentials" or action_id.startswith(
             "open_settings_knowledge_credentials:"
         ):
@@ -4492,6 +4602,9 @@ class MainWindow(QMainWindow):
             )
         elif action_id == "open_settings_ai_cognition":
             self._open_settings_section("ai.models", anchor="cognition")
+        elif action_id.startswith("open_settings_section:"):
+            section = action_id.split(":", 1)[1].strip() or "ai.models"
+            self._open_settings_section(section)
 
     def _open_settings_section(
         self,

@@ -18,9 +18,30 @@ def test_prepare_llama_cpp_runtime_is_idempotent(monkeypatch, tmp_path: Path) ->
     monkeypatch.setattr(mod, "llama_cpp_lib_dir", lambda: lib_dir)
 
     mod.prepare_llama_cpp_runtime()
-    first_path = os.environ.get("PATH", "")
-    mod.prepare_llama_cpp_runtime()
-    assert os.environ.get("PATH", "") == first_path
+    if sys.platform == "win32":
+        first_path = os.environ.get("PATH", "")
+        mod.prepare_llama_cpp_runtime()
+        assert os.environ.get("PATH", "") == first_path
+    elif sys.platform.startswith("linux"):
+        first_ld = os.environ.get("LD_LIBRARY_PATH", "")
+        mod.prepare_llama_cpp_runtime()
+        assert os.environ.get("LD_LIBRARY_PATH", "") == first_ld
+        assert str(lib_dir) in first_ld.split(os.pathsep)
+
+
+def test_llama_cpp_lib_dir_does_not_import_llama_cpp(monkeypatch) -> None:
+    mod.reset_llama_import_state_for_tests()
+    real_import = builtins.__import__
+
+    def guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "llama_cpp" or (fromlist and "llama_cpp" in fromlist):
+            raise AssertionError("llama_cpp must not be imported to resolve lib dir")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    path = mod.llama_cpp_lib_dir()
+    assert path is not None
+    assert path.is_dir()
 
 
 def test_llama_cpp_lib_dir_uses_internal_path_when_frozen(monkeypatch, tmp_path: Path) -> None:
@@ -79,6 +100,25 @@ def test_worker_modules_do_not_eager_load_llama() -> None:
                 assert line[:1] in {" ", "\t"}, (
                     f"{rel} must not call prepare_llama_cpp_runtime() at module scope"
                 )
+
+
+def test_main_pins_system_libdrm_before_workers_import_torch() -> None:
+    text = (Path(__file__).resolve().parents[1] / "main.py").read_text(encoding="utf-8")
+    preload = text.find("preload_system_gpu_driver_libs()")
+    workers = text.find("from workers import")
+    assert preload != -1 and workers != -1
+    assert preload < workers
+
+
+def test_qube_entry_pins_system_libdrm_before_main_import() -> None:
+    text = (Path(__file__).resolve().parents[1] / "qube_entry.py").read_text(
+        encoding="utf-8"
+    )
+    run_body = text.split("def run(", 1)[1]
+    preload = run_body.find("preload_system_gpu_driver_libs()")
+    main_import = run_body.find("import main as main_module")
+    assert preload != -1 and main_import != -1
+    assert preload < main_import
 
 
 def test_sidecar_defers_cognition_load_until_first_command() -> None:

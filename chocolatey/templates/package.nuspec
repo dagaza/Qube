@@ -6,6 +6,7 @@
     <title>{{TITLE}}</title>
     <authors>dagaza</authors>
     <owners>dagaza</owners>
+    <copyright>Copyright (c) 2026 Dan Zadobrischi</copyright>
     <projectUrl>https://github.com/dagaza/Qube</projectUrl>
     <iconUrl>https://cdn.jsdelivr.net/gh/dagaza/Qube@main/assets/logos/qube_logo_256.png</iconUrl>
     <licenseUrl>https://github.com/dagaza/Qube/blob/main/LICENSE</licenseUrl>

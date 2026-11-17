@@ -226,6 +226,8 @@ class DatabaseManager:
                     "ALTER TABLE library_folders ADD COLUMN allows_user_ingest INTEGER NOT NULL DEFAULT 1",
                     "ALTER TABLE sessions ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0",
                     "ALTER TABLE documents ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0",
+                    "ALTER TABLE sessions ADD COLUMN branched_from_session_id TEXT",
+                    "ALTER TABLE sessions ADD COLUMN branched_from_message_id TEXT",
                 ):
                     try:
                         cursor.execute(alter_sql)
@@ -814,7 +816,8 @@ class DatabaseManager:
         with self._get_connection() as conn:
             row = conn.execute(
                 """
-                SELECT id, title, created_at, updated_at, folder_id
+                SELECT id, title, created_at, updated_at, folder_id,
+                       branched_from_session_id, branched_from_message_id
                 FROM sessions WHERE id = ?
                 """,
                 (session_id,),
@@ -887,6 +890,8 @@ class DatabaseManager:
         content: str,
         sources_json: str | None = None,
         evidence_bundle_id: str | None = None,
+        *,
+        timestamp: str | None = None,
     ) -> str:
         """Insert a message and return its generated id.
 
@@ -898,17 +903,148 @@ class DatabaseManager:
         msg_id = str(uuid.uuid4())
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO messages (id, session_id, role, content, sources_json, evidence_bundle_id) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (msg_id, session_id, role, content, sources_json, evidence_bundle_id),
-            )
+            if timestamp is not None:
+                cursor.execute(
+                    "INSERT INTO messages (id, session_id, role, content, sources_json, evidence_bundle_id, timestamp) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        msg_id,
+                        session_id,
+                        role,
+                        content,
+                        sources_json,
+                        evidence_bundle_id,
+                        timestamp,
+                    ),
+                )
+            else:
+                cursor.execute(
+                    "INSERT INTO messages (id, session_id, role, content, sources_json, evidence_bundle_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (msg_id, session_id, role, content, sources_json, evidence_bundle_id),
+                )
             cursor.execute(
                 "UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (session_id,)
             )
             conn.commit()
         return msg_id
+
+    def list_session_messages_raw(self, session_id: str) -> list[dict]:
+        """Ordered message rows for copy/export (preserves raw ``sources_json``)."""
+        sid = str(session_id or "").strip()
+        if not sid:
+            return []
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, role, content, sources_json, evidence_bundle_id, timestamp
+                FROM messages
+                WHERE session_id = ?
+                ORDER BY timestamp ASC, rowid ASC
+                """,
+                (sid,),
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def copy_messages_to_session(
+        self, target_session_id: str, messages: list[dict]
+    ) -> tuple[int, dict[str, str]]:
+        """Insert copied rows into ``target_session_id``.
+
+        Returns ``(count, old_message_id -> new_message_id)``.
+        """
+        tid = str(target_session_id or "").strip()
+        if not tid or not messages:
+            return 0, {}
+        count = 0
+        id_map: dict[str, str] = {}
+        with self._get_connection() as conn:
+            for row in messages:
+                old_id = str(row.get("id") or "").strip()
+                msg_id = str(uuid.uuid4())
+                if old_id:
+                    id_map[old_id] = msg_id
+                conn.execute(
+                    """
+                    INSERT INTO messages (
+                        id, session_id, role, content, sources_json,
+                        evidence_bundle_id, timestamp
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        msg_id,
+                        tid,
+                        row.get("role"),
+                        row.get("content"),
+                        row.get("sources_json"),
+                        row.get("evidence_bundle_id"),
+                        row.get("timestamp"),
+                    ),
+                )
+                count += 1
+            if count:
+                conn.execute(
+                    "UPDATE sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (tid,),
+                )
+            conn.commit()
+        return count, id_map
+
+    def set_session_branch_lineage(
+        self,
+        session_id: str,
+        *,
+        parent_session_id: str,
+        through_message_id: str,
+    ) -> None:
+        sid = str(session_id or "").strip()
+        parent = str(parent_session_id or "").strip()
+        through = str(through_message_id or "").strip()
+        if not sid or not parent or not through:
+            return
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE sessions
+                SET branched_from_session_id = ?,
+                    branched_from_message_id = ?
+                WHERE id = ?
+                """,
+                (parent, through, sid),
+            )
+            conn.commit()
+
+    def get_latest_message_id(
+        self, session_id: str, *, role: str | None = None
+    ) -> str | None:
+        sid = str(session_id or "").strip()
+        if not sid:
+            return None
+        with self._get_connection() as conn:
+            if role:
+                row = conn.execute(
+                    """
+                    SELECT id FROM messages
+                    WHERE session_id = ? AND role = ?
+                    ORDER BY timestamp DESC, rowid DESC
+                    LIMIT 1
+                    """,
+                    (sid, role),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    """
+                    SELECT id FROM messages
+                    WHERE session_id = ?
+                    ORDER BY timestamp DESC, rowid DESC
+                    LIMIT 1
+                    """,
+                    (sid,),
+                ).fetchone()
+        if row is None:
+            return None
+        return str(row["id"])
 
     def get_session_history(self, session_id: str) -> list[dict]:
         with self._get_connection() as conn:

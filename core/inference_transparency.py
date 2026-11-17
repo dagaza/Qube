@@ -88,6 +88,19 @@ def parse_backend_hint(system_info: str) -> str:
     return "cpu"
 
 
+def _gpu_backend_from_lib_dir() -> str:
+    from core.llama_cpp_import import llama_cpp_lib_dir
+
+    lib_dir = llama_cpp_lib_dir()
+    if lib_dir is not None:
+        for name in ("cuda", "vulkan", "hip", "sycl", "metal"):
+            if any(lib_dir.glob(f"*ggml-{name}*")):
+                return name
+    if sys.platform == "darwin":
+        return "metal"
+    return "gpu"
+
+
 def _format_param_count(n_params: int) -> str:
     if n_params <= 0:
         return "unknown"
@@ -113,6 +126,44 @@ def normalize_requested_layers(
     if total_layers and total_layers > 0 and req >= total_layers:
         return int(total_layers), f"all ({total_layers})"
     return req, str(req)
+
+
+def reset_build_snapshot_cache_for_tests() -> None:
+    global _build_snapshot_cache
+    _build_snapshot_cache = None
+
+
+def gpu_offload_inactive_reason(
+    *,
+    requested_n_gpu_layers: int,
+    supports_gpu_offload: bool,
+    load_fallback_label: str = "requested",
+    dri_render_accessible: bool | None = None,
+    package_has_vulkan_libs: bool | None = None,
+    shadowing_libdrm_path: object = ...,
+) -> str | None:
+    """Reason code when settings request GPU layers but the load is CPU-only."""
+    if str(load_fallback_label or "requested").startswith("cpu"):
+        return None
+    if int(requested_n_gpu_layers) <= 0:
+        return None
+    if supports_gpu_offload:
+        return None
+    if dri_render_accessible is False:
+        return "no_dri_access"
+    if package_has_vulkan_libs is None:
+        from core.gpu_offload_diagnostics import llama_cpp_package_has_vulkan_libs
+
+        package_has_vulkan_libs = llama_cpp_package_has_vulkan_libs()
+    if package_has_vulkan_libs:
+        if shadowing_libdrm_path is ...:
+            from core.gpu_driver_preload import shadowing_libdrm_amdgpu_path
+
+            shadowing_libdrm_path = shadowing_libdrm_amdgpu_path()
+        if shadowing_libdrm_path:
+            return "libdrm_shadowed"
+        return "vulkan_runtime_unavailable"
+    return "no_gpu_offload_build"
 
 
 def describe_layer_configuration(
@@ -173,7 +224,12 @@ def get_build_snapshot(*, refresh: bool = False) -> Dict[str, Any]:
     except Exception as e:
         logger.debug("llama_print_system_info failed: %s", e)
     out["system_info"] = system_info.strip()
-    out["backend_hint"] = parse_backend_hint(system_info)
+    hint = parse_backend_hint(system_info)
+    if hint == "cpu" and out["supports_gpu_offload"]:
+        # Dynamically loaded ggml backends (llama-cpp-python 0.3.x) do not appear in
+        # llama_print_system_info(); infer the GPU backend from the bundled libs.
+        hint = _gpu_backend_from_lib_dir()
+    out["backend_hint"] = hint
 
     _build_snapshot_cache = dict(out)
     return dict(out)
@@ -213,7 +269,7 @@ def snapshot_from_loaded_llama(
     role: str = "native",
 ) -> Dict[str, Any]:
     """Model characteristics available immediately after a successful ``Llama`` load."""
-    build = get_build_snapshot()
+    build = get_build_snapshot(refresh=True)
     supports = bool(build.get("supports_gpu_offload"))
 
     model_n_layers: Optional[int] = None

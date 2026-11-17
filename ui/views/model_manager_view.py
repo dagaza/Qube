@@ -533,10 +533,12 @@ class ModelManagerView(QWidget):
         self._pending_download_retry: bool = False
         self._pending_hub_redownload: tuple[str, str] | None = None
         self._tour_load_more_preview_active: bool = False
+        self._initial_catalog_populated: bool = False
+        self._initial_catalog_populate_scheduled: bool = False
+        self._hub_list_layout_batch: int = 0
 
         os.makedirs(get_llm_models_dir(), exist_ok=True)
         self._setup_ui()
-        self._populate_editors_picks()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_hub_muted_labels(is_dark)
         self._apply_hub_metadata_styles(is_dark)
@@ -545,8 +547,33 @@ class ModelManagerView(QWidget):
         self._apply_hub_file_combo_popup_theme(is_dark)
         self._apply_hub_combo_chevron(is_dark)
         self._apply_hub_connectivity_banner(is_dark)
-        self._update_hub_row_colors()
-        QTimer.singleShot(0, self._refresh_hub_row_heights)
+
+    def _schedule_initial_catalog_populate(self) -> None:
+        """Defer verified-catalog build until after the main window can paint (first show)."""
+        if self._initial_catalog_populated or self._initial_catalog_populate_scheduled:
+            return
+        if self.hub_search_edit.text().strip():
+            return
+        self._initial_catalog_populate_scheduled = True
+        QTimer.singleShot(0, self._run_initial_catalog_populate)
+
+    def _run_initial_catalog_populate(self) -> None:
+        self._initial_catalog_populate_scheduled = False
+        if self._initial_catalog_populated or self.hub_search_edit.text().strip():
+            return
+        self._populate_editors_picks()
+
+    def _begin_hub_list_layout_batch(self) -> None:
+        self._hub_list_layout_batch += 1
+        if hasattr(self, "hub_model_list"):
+            self.hub_model_list.setUpdatesEnabled(False)
+
+    def _end_hub_list_layout_batch(self) -> None:
+        if self._hub_list_layout_batch > 0:
+            self._hub_list_layout_batch -= 1
+        if self._hub_list_layout_batch == 0 and hasattr(self, "hub_model_list"):
+            self.hub_model_list.setUpdatesEnabled(True)
+            self.hub_model_list.viewport().update()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -560,17 +587,21 @@ class ModelManagerView(QWidget):
                 self._hardware_suggestions_enabled = enabled
                 if not self.hub_search_edit.text().strip():
                     self._populate_editors_picks()
+            elif not self._initial_catalog_populated and not self.hub_search_edit.text().strip():
+                self._schedule_initial_catalog_populate()
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         self._apply_hub_list_surface(is_dark)
         self._apply_hub_metadata_styles(is_dark)
         self._apply_hub_combo_chevron(is_dark)
         self._apply_hub_connectivity_banner(is_dark)
         self._start_hub_connectivity_probe()
-        QTimer.singleShot(0, self._refresh_hub_row_heights)
+        if self._initial_catalog_populated:
+            QTimer.singleShot(0, self._refresh_hub_row_heights)
 
     def eventFilter(self, obj, event) -> bool:
         if (
-            hasattr(self, "hub_model_list")
+            self._hub_list_layout_batch <= 0
+            and hasattr(self, "hub_model_list")
             and obj is self.hub_model_list.viewport()
             and event.type() == QEvent.Type.Resize
         ):
@@ -2165,7 +2196,8 @@ class ModelManagerView(QWidget):
 
         self.hub_model_list.addItem(item)
         self.hub_model_list.setItemWidget(item, row)
-        self._apply_hub_row_size_hint(item, row)
+        if self._hub_list_layout_batch <= 0:
+            self._apply_hub_row_size_hint(item, row)
 
     def _resolve_hub_brand_logo(self, logo_url: str) -> Path | None:
         return _resolve_hub_brand_logo(logo_url)
@@ -2277,6 +2309,7 @@ class ModelManagerView(QWidget):
         hf_tags: list[str] | None = None,
         readme: str | None = None,
         fallback_caps: list[str] | None = None,
+        force_refresh: bool = False,
     ) -> list[str]:
         model_payload = {
             "id": str(repo_id or "").strip(),
@@ -2293,8 +2326,9 @@ class ModelManagerView(QWidget):
             model_payload["huggingface"]["tags"] = list(model_payload["huggingface"]["tags"]) + [
                 str(c).lower() for c in fallback_caps if str(c).strip()
             ]
-        # Force refresh so new pattern/heuristic updates (e.g., coding) appear immediately in UI.
-        caps = self._capability_service.get_or_detect(model_payload, force_refresh=True)
+        caps = self._capability_service.get_or_detect(
+            model_payload, force_refresh=force_refresh
+        )
         summary = self._capability_service.summarize_for_ui(caps)
         labels: list[str] = []
         label_map = {
@@ -2312,7 +2346,7 @@ class ModelManagerView(QWidget):
                 labels.append(label_map[key])
         return labels[:4]
 
-    def _update_hub_row_colors(self) -> None:
+    def _update_hub_row_colors(self, *, refresh_heights: bool = True) -> None:
         """Re-apply hub title fg for selection + theme, then re-layout row heights."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         for i in range(self.hub_model_list.count()):
@@ -2321,8 +2355,12 @@ class ModelManagerView(QWidget):
             if row is not None:
                 self._apply_hub_row_surface(row)
                 self._apply_hub_official_badge_theme(row, is_dark=is_dark)
+                title_lbl = row.findChild(QLabel, "HubModelRowTitle")
+                if title_lbl is not None and it is not None:
+                    self._style_hub_title_label(title_lbl, it)
         self.hub_model_list.viewport().update()
-        self._refresh_hub_row_heights()
+        if refresh_heights and self._hub_list_layout_batch <= 0:
+            self._refresh_hub_row_heights()
 
     def refresh_button_themes(self, is_dark: bool) -> None:
         """Re-apply the brand style + mode-matched icon for the Download action.
@@ -2392,6 +2430,7 @@ class ModelManagerView(QWidget):
             self._populate_editors_picks()
 
     def _populate_editors_picks(self) -> None:
+        self._initial_catalog_populated = True
         self._search_models_cache = []
         self._search_visible_count = 0
         if hasattr(self, "hub_load_more_btn"):
@@ -2408,47 +2447,54 @@ class ModelManagerView(QWidget):
         else:
             self._catalog_hardware_plan = None
             sorted_models = verified_models
+        self._begin_hub_list_layout_batch()
         self.hub_model_list.blockSignals(True)
-        self.hub_model_list.clear()
-        for entry in sorted_models:
-            download_repo = entry.gguf_repo
-            title = entry.title
-            description = entry.description or download_repo
-            branding = branding_for_entry(entry, resolver=self._branding_resolver)
-            resolved_caps = self._resolve_row_capabilities(
-                repo_id=download_repo,
-                title=title,
-                description=description,
-            )
-            fit_level = fit_by_id.get(entry.catalog_id, CatalogFitLevel.UNKNOWN)
-            self._append_hub_model_row(
-                title,
-                download_repo,
-                description=description,
-                capabilities=resolved_caps,
-                updated_at="",
-                verified=True,
-                branding=branding,
-                catalog_id=entry.catalog_id,
-                gguf_repos=list(entry.gguf_repos),
-                is_catalog=entry.is_catalog_card,
-                catalog_publisher=entry.publisher,
-                hardware_fit=self._hardware_fit_label_for_level(fit_level) if suggestions_enabled else "",
-            )
-        self.hub_model_list.blockSignals(False)
-        if suggestions_enabled and self._catalog_hardware_plan is not None:
-            plan = self._catalog_hardware_plan
-            self.hub_list_hint.setText(plan.banner_text)
-            hint_tip = f"{plan.detail_text}\n\n{format_tier_detail(plan.profile)}"
-            self.hub_list_hint.setToolTip(hint_tip)
-        else:
-            self.hub_list_hint.setText("Qube Verified — curated GGUF models")
-            self.hub_list_hint.setToolTip("")
-        self._start_curated_metadata_refresh()
-        self._apply_hub_muted_labels(getattr(self.window(), "_is_dark_theme", True))
-        self._update_hub_row_colors()
+        try:
+            self.hub_model_list.clear()
+            for entry in sorted_models:
+                download_repo = entry.gguf_repo
+                title = entry.title
+                description = entry.description or download_repo
+                branding = branding_for_entry(entry, resolver=self._branding_resolver)
+                resolved_caps = self._resolve_row_capabilities(
+                    repo_id=download_repo,
+                    title=title,
+                    description=description,
+                    force_refresh=False,
+                )
+                fit_level = fit_by_id.get(entry.catalog_id, CatalogFitLevel.UNKNOWN)
+                self._append_hub_model_row(
+                    title,
+                    download_repo,
+                    description=description,
+                    capabilities=resolved_caps,
+                    updated_at="",
+                    verified=True,
+                    branding=branding,
+                    catalog_id=entry.catalog_id,
+                    gguf_repos=list(entry.gguf_repos),
+                    is_catalog=entry.is_catalog_card,
+                    catalog_publisher=entry.publisher,
+                    hardware_fit=self._hardware_fit_label_for_level(fit_level)
+                    if suggestions_enabled
+                    else "",
+                )
+            self._refresh_hub_row_heights()
+            if suggestions_enabled and self._catalog_hardware_plan is not None:
+                plan = self._catalog_hardware_plan
+                self.hub_list_hint.setText(plan.banner_text)
+                hint_tip = f"{plan.detail_text}\n\n{format_tier_detail(plan.profile)}"
+                self.hub_list_hint.setToolTip(hint_tip)
+            else:
+                self.hub_list_hint.setText("Qube Verified — curated GGUF models")
+                self.hub_list_hint.setToolTip("")
+            self._apply_hub_muted_labels(getattr(self.window(), "_is_dark_theme", True))
+            self._update_hub_row_colors(refresh_heights=False)
+        finally:
+            self.hub_model_list.blockSignals(False)
+            self._end_hub_list_layout_batch()
         self._select_first_hub_item()
-        QTimer.singleShot(0, self._refresh_hub_row_heights)
+        self._start_curated_metadata_refresh()
 
     def _start_curated_metadata_refresh(self) -> None:
         verified = getattr(self, "_verified_models", None) or load_qube_verified_models()
@@ -2502,6 +2548,7 @@ class ModelManagerView(QWidget):
                 title=title,
                 description=desc,
                 fallback_caps=raw_caps,
+                force_refresh=True,
             )
             if updated:
                 item.setData(HUB_ROW_UPDATED_ROLE, updated)
@@ -2846,6 +2893,7 @@ class ModelManagerView(QWidget):
             hf_pipeline_tag=hf_pipeline_tag,
             hf_tags=hf_tags,
             fallback_caps=list((meta or {}).get("capabilities") or []),
+            force_refresh=True,
         )
         meta = dict(meta or {})
         meta["capabilities"] = resolved_caps
@@ -2943,6 +2991,7 @@ class ModelManagerView(QWidget):
             description=desc,
             readme=text,
             fallback_caps=list(current.data(HUB_ROW_CAPS_ROLE) or []),
+            force_refresh=True,
         )
         current.setData(HUB_ROW_CAPS_ROLE, refreshed_caps)
         row = self.hub_model_list.itemWidget(current)

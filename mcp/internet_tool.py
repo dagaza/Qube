@@ -265,35 +265,22 @@ def execute_internet_search(
             inspection=inspection,
         )
 
-    url = "https://html.duckduckgo.com/html/"
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Origin": "https://html.duckduckgo.com",
-        "Referer": "https://html.duckduckgo.com/",
-        "DNT": "1",
-        "Upgrade-Insecure-Requests": "1",
-    }
+    from core.knowledge.discovery.ddg_http import (
+        ddg_html_search,
+        reset_ddg_browser_session,
+    )
 
     scoped_query = query
     if target_site:
         scoped_query = f"site:{target_site} {query}"
 
     try:
-        response = requests.post(
-            url,
-            data={"q": scoped_query},
-            headers=headers,
-            timeout=5,
-        )
+        response = ddg_html_search(scoped_query)
         record_ddg_live_request()
-        response.raise_for_status()
+        if response.status_code >= 400:
+            raise requests.HTTPError(
+                f"{response.status_code} from DuckDuckGo ({response.transport})"
+            )
 
         inspection = inspect_ddg_html_response(
             response.text,
@@ -307,8 +294,11 @@ def execute_internet_search(
         if not results:
             if inspection["response_kind"] == "bot_challenge":
                 logger.warning(
-                    "[DDG] DuckDuckGo returned a bot/anomaly challenge instead of SERP HTML."
+                    "[DDG] DuckDuckGo returned a bot/anomaly challenge instead of "
+                    "SERP HTML (transport=%s).",
+                    response.transport,
                 )
+                reset_ddg_browser_session()
                 rows = [{"title": "", "snippet": DDG_BOT_CHALLENGE_SNIPPET}]
             else:
                 logger.warning(

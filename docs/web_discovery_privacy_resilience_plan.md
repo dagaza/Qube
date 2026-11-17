@@ -118,7 +118,8 @@ The following is **already implemented** and should be treated as the foundation
 | Brave Search API optional fallback | `discovery/brave_search.py`, Settings UI | M10; requires key |
 | DDG 30-min backoff after challenge | `discovery/backoff.py` | `QUBE_DDG_BACKOFF_SECONDS` |
 | 5-min discovery cache (success only) | `discovery/cache.py` | `QUBE_DISCOVERY_CACHE_TTL` |
-| Browser-like DDG headers | `mcp/internet_tool.py` | UA, Referer, Accept-Language |
+| Browser-impersonating DDG session | `discovery/ddg_http.py` | `curl_cffi` Chrome TLS/HTTP2 fingerprint, persistent cookies, one landing visit per session, form POST from that page; session reset on challenge. Falls back to plain `requests` if `curl_cffi` is missing (`QUBE_DDG_IMPERSONATE=0` forces fallback) |
+| User-assisted challenge recovery | `discovery/challenge_recovery.py`, `main_window.py` | Backoff toast / top-bar `⏸ DDG` click opens the blocked search in the user's browser; “Resume search” lifts the pause, resets the session and re-asks the blocked message with `@[tool:internet]` pinned |
 | User notification + top-bar countdown | `notification_types.py`, `main_window.py`, `llm_worker.py` | On new backoff |
 | Settings discovery policy summary | `knowledge_web_discovery.py` | Primary / paused / fallbacks |
 
@@ -669,6 +670,8 @@ Items to evaluate before building:
 | 2026-07-15 | Pacing + budget before new providers | Cheapest anti-block lever; no privacy cost |
 | 2026-07-15 | SearXNG as BYO optional, not hosted by Qube | Ops burden + privacy varies per instance |
 | 2026-07-15 | Retrieval profiles do not multiply DDG calls | Evidence from pipeline code; fetch ≠ SERP |
+| 2026-11-05 | DDG requests go through a Chrome-impersonating `curl_cffi` session | Live probe from a challenged IP: plain `requests` got HTTP 202 challenges on html/lite, GET/POST alike; `curl_cffi` Chrome got SERP HTML on the same endpoints minutes later. Challenges were driven by the TLS fingerprint, not volume (first search of the day was challenged with zero pacing wait) |
+| 2026-11-05 | Users may pass the DDG check in their own browser and resume | Not CAPTCHA solving by Qube: the person completes the check on DDG directly; Qube only lifts its own pause and re-runs the blocked turn |
 
 ---
 

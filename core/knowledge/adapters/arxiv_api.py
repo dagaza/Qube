@@ -14,7 +14,7 @@ logger = logging.getLogger("Qube.Knowledge.arXiv")
 
 ADAPTER_ID = "arxiv"
 RETRIEVAL_METHOD = "atom_abstract"
-ARXIV_API = "http://export.arxiv.org/api/query"
+ARXIV_API = "https://export.arxiv.org/api/query"
 USER_AGENT = "Qube/1.0 (local assistant; external knowledge platform)"
 _ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
 

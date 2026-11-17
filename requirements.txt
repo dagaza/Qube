@@ -13,6 +13,7 @@ colorama==0.4.6
 cryptography==50.0.0
 csvw==3.7.0
 ctranslate2==4.7.1
+curl_cffi==0.17.0
 deprecation==2.1.0
 EbookLib==0.20
 espeakng-loader==0.2.4
