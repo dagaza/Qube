@@ -24,7 +24,7 @@
 - **Retrieval Inspector:** Show diagnostic fields when provenance has SERP-only fetches (no page URLs).
 - **arXiv adapter:** Use `https://export.arxiv.org/api/query`.
 - **Embeddings preset:** Fix balanced search preset Hugging Face repo casing for fastembed alignment.
-- **Dependencies:** Bump `anyio` to 4.14.2 (CVE-2026-63374, CVE-2026-64847) and `soupsieve` to 2.9.2 (CVE-2026-85999, CVE-2026-86000); pin `curl_cffi` for DuckDuckGo browser impersonation and bump `cffi` to 2.1.1 so `pip` resolves alongside `cryptography`.
+- **Dependencies:** Bump `anyio` to 4.14.2 (CVE-2026-63374, CVE-2026-64847); pin `curl_cffi` for DuckDuckGo browser impersonation and bump `cffi` to 2.1.1 so `pip` resolves alongside `cryptography`; bump `soupsieve` to 2.10 for `pip-audit` (CVE-2026-126190–CVE-2026-126193).
 
 ## [1.3.53] - 2026-09-17
 

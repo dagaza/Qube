@@ -86,7 +86,7 @@ setuptools==84.2.1
 shellingham==1.5.4
 six==1.17.0
 soundfile==0.13.1
-soupsieve==2.9.2
+soupsieve==2.10
 termcolor==3.3.0
 threadpoolctl==3.6.0
 tokenizers==0.22.2
