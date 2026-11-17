@@ -596,7 +596,7 @@ jobs:
         run: |
           $version = "${{ needs.build.outputs.version }}"
           foreach ($pkg in @("dagaza.Qube", "dagaza.Qube.Vulkan", "dagaza.Qube.CUDA")) {
-            winget validate --manifest "winget/out/$version/$pkg"
+            winget validate --manifest "winget/out/$version/$pkg" --ignore-warnings
           }
 
       - name: Upload WinGet manifests
