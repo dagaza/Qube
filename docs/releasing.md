@@ -140,7 +140,7 @@ per architecture:
 
 | Runner | Architecture | Artifact |
 |--------|--------------|----------|
-| `macos-14` | Apple Silicon (arm64) | `Qube-<version>-arm64.dmg` |
+| `macos-15` | Apple Silicon (arm64) | `Qube-<version>-arm64.dmg` |
 | `macos-15-intel` | Intel (x86_64) | `Qube-<version>-x86_64.dmg` |
 
 Intel Mac builds pin `lancedb==0.25.3` and `onnxruntime==1.23.2` at packaging time because newer releases no longer ship macOS x86_64 wheels on PyPI. Apple Silicon and other platforms use the main `requirements.txt` pins.

@@ -19,7 +19,7 @@ env:
 
 jobs:
   homebrew:
-    runs-on: macos-14
+    runs-on: macos-15
     if: github.repository == 'dagaza/Qube'
     steps:
       - uses: actions/checkout@v4

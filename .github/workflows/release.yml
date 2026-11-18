@@ -4,6 +4,10 @@ on:
   push:
     tags: ["v*"]
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -271,7 +275,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-14
+          - runner: macos-15
             arch: arm64
           - runner: macos-15-intel
             arch: x86_64
@@ -644,7 +648,7 @@ jobs:
 
   homebrew:
     needs: [macos-build, release]
-    runs-on: macos-14
+    runs-on: macos-15
     if: github.repository == 'dagaza/Qube' && vars.HOMEBREW_AUTO_SUBMIT == 'true'
     steps:
       - uses: actions/checkout@v4
