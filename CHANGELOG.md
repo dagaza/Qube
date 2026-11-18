@@ -20,6 +20,7 @@
 - **WinGet submit:** Sync the `winget-pkgs` fork with upstream before `wingetcreate submit`; document manual `gh api merge-upstream` when the PAT lacks `workflow` scope.
 - **Release CI:** Pass `--ignore-warnings` to `winget validate` so schema-header warnings do not fail the manifest job.
 - **Release CI:** Build arm64 macOS artifacts on `macos-15` (GitHub retired the `macos-14` runner image; cancelled jobs blocked `release`); serialize tag builds so only one release run per tag is active.
+- **Release CI:** Retry Windows `vulkan-sdk` Chocolatey install and fail the job if `VULKAN_SDK` is still missing (avoids silent continuation into the Vulkan wheel build).
 - **Chocolatey:** Harden CUDA resubmit path and push reliability; fix `chocolatey-submit` workflow PowerShell argument splatting.
 
 ### Fixed

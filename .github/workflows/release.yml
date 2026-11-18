@@ -64,7 +64,35 @@ jobs:
 
       - name: Install Vulkan SDK
         if: matrix.variant == 'vulkan'
-        run: choco install vulkan-sdk -y --no-progress
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $maxAttempts = 4
+          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            Write-Host "Vulkan SDK install attempt $attempt of $maxAttempts..."
+            choco install vulkan-sdk -y --no-progress
+            if ($LASTEXITCODE -ne 0) {
+              if ($attempt -eq $maxAttempts) {
+                throw "choco install vulkan-sdk failed with exit code $LASTEXITCODE"
+              }
+              $delay = 30 * $attempt
+              Write-Host "Retrying in ${delay}s..."
+              Start-Sleep -Seconds $delay
+              continue
+            }
+            break
+          }
+          if (-not $env:VULKAN_SDK) {
+            $sdkRoot = Get-ChildItem "C:\VulkanSDK" -Directory -ErrorAction SilentlyContinue |
+              Sort-Object Name -Descending |
+              Select-Object -First 1
+            if ($sdkRoot) { $env:VULKAN_SDK = $sdkRoot.FullName }
+          }
+          if (-not $env:VULKAN_SDK -or -not (Test-Path $env:VULKAN_SDK)) {
+            throw "Vulkan SDK not found under C:\VulkanSDK after choco install"
+          }
+          "VULKAN_SDK=$($env:VULKAN_SDK)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Using VULKAN_SDK=$($env:VULKAN_SDK)"
 
       - name: Build PyInstaller bundle (${{ matrix.variant }})
         shell: pwsh
