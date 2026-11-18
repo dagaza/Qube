@@ -44,7 +44,7 @@ def fork_owner(*, token: str) -> str:
 def fork_sync_status(*, token: str, owner: str) -> str:
     """Compare fork master to upstream master (identical, ahead, behind, diverged)."""
     payload = _github_api_get(
-        f"/repos/{owner}/winget-pkgs/compare/master...{_UPSTREAM}:master",
+        f"/repos/{owner}/winget-pkgs/compare/master...microsoft:master",
         token=token,
     )
     return str(payload.get("status") or "unknown")
