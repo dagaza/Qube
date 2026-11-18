@@ -19,7 +19,7 @@
 - **Linux `.deb`:** Build with `fpm` xz compression and enforce GitHub Releases size limits for large CUDA packages.
 - **WinGet submit:** Sync the `winget-pkgs` fork with upstream before `wingetcreate submit`; document manual `gh api merge-upstream` when the PAT lacks `workflow` scope.
 - **Release CI:** Pass `--ignore-warnings` to `winget validate` so schema-header warnings do not fail the manifest job.
-- **Release CI:** Build arm64 macOS artifacts on `macos-15` (GitHub retired the `macos-14` runner image; cancelled jobs blocked `release`); serialize tag builds so only one release run per tag is active.
+- **Release CI:** Build arm64 macOS artifacts on `macos-15` (GitHub retired the `macos-14` runner image; cancelled jobs blocked `release`); serialize tag builds so only one release run per tag is active; run arm64 and Intel macOS matrix legs one at a time (`max-parallel: 1`) so queued arm64 jobs are not cancelled while Intel holds a macOS runner.
 - **Release CI:** Retry Windows `vulkan-sdk` Chocolatey install and fail the job if `VULKAN_SDK` is still missing (avoids silent continuation into the Vulkan wheel build).
 - **Chocolatey:** Harden CUDA resubmit path and push reliability; fix `chocolatey-submit` workflow PowerShell argument splatting.
 

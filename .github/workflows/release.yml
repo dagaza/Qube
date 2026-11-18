@@ -301,6 +301,7 @@ jobs:
     needs: test
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include:
           - runner: macos-15
