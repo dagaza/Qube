@@ -14,7 +14,7 @@ permissions:
 env:
   PYTHON_VERSION: "3.13"
   PACKAGE_ID: dagaza.Qube
-  WINGETCREATE_URL: https://github.com/microsoft/winget-create/releases/download/v1.12.13.0/wingetcreate.exe
+  WINGETCREATE_URL: https://github.com/microsoft/winget-create/releases/download/v1.28.1.0/wingetcreate.exe
 
 jobs:
   test:
