@@ -938,10 +938,31 @@ class NativeLlamaEngine(QThread):
                     dri_render_accessible=dri_render_node_accessible(),
                 )
                 if self._gpu_offload_inactive_reason:
+                    extra = ""
+                    if self._gpu_offload_inactive_reason in (
+                        "vulkan_runtime_unavailable",
+                        "vulkan_loader_shadowed",
+                        "libdrm_shadowed",
+                    ):
+                        from core.gpu_driver_preload import (
+                            radv_icd_mapped,
+                            shadowing_libdrm_amdgpu_path,
+                            shadowing_libvulkan_loader_path,
+                        )
+
+                        extra = (
+                            " libvulkan_shadow=%s libdrm_shadow=%s radv_icd=%s"
+                            % (
+                                shadowing_libvulkan_loader_path(),
+                                shadowing_libdrm_amdgpu_path(),
+                                radv_icd_mapped(),
+                            )
+                        )
                     logger.warning(
-                        "[Native] GPU offload inactive (reason=%s, requested_n_gpu_layers=%s)",
+                        "[Native] GPU offload inactive (reason=%s, requested_n_gpu_layers=%s)%s",
                         self._gpu_offload_inactive_reason,
                         requested_n_gpu,
+                        extra,
                     )
                 log_inference_transparency(
                     logger,

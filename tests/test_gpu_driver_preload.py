@@ -40,6 +40,37 @@ def test_no_shadowing_when_system_copy_is_mapped(monkeypatch) -> None:
     assert mod.shadowing_libdrm_amdgpu_path() is None
 
 
+def test_shadowing_libvulkan_detects_bundled_loader(monkeypatch) -> None:
+    _fake_maps(
+        monkeypatch,
+        [
+            "/opt/qube/_internal/libvulkan.so.1",
+            "/usr/lib/x86_64-linux-gnu/libvulkan_radeon.so",
+        ],
+    )
+
+    def fake_system_path(soname: str):
+        if soname == "libvulkan.so.1":
+            from pathlib import Path
+
+            return Path("/usr/lib/x86_64-linux-gnu/libvulkan.so.1.3.275.0")
+        return None
+
+    monkeypatch.setattr(mod, "_system_lib_path", fake_system_path)
+    assert (
+        mod.shadowing_libvulkan_loader_path()
+        == "/opt/qube/_internal/libvulkan.so.1"
+    )
+
+
+def test_radv_icd_mapped_when_radeon_driver_present(monkeypatch) -> None:
+    _fake_maps(
+        monkeypatch,
+        ["/usr/lib/x86_64-linux-gnu/libvulkan_radeon.so"],
+    )
+    assert mod.radv_icd_mapped() is True
+
+
 def test_preload_is_noop_off_linux(monkeypatch) -> None:
     mod.reset_preload_state_for_tests()
     monkeypatch.setattr(mod.sys, "platform", "win32")

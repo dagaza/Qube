@@ -3,5 +3,21 @@
 set -euo pipefail
 
 HERE="$(dirname "$(readlink -f "${0}")")"
-export PATH="${HERE}/usr/bin/Qube:${PATH}"
-exec "${HERE}/usr/bin/Qube/Qube" "$@"
+QUBE_DIR="${HERE}/usr/bin/Qube"
+export PATH="${QUBE_DIR}:${PATH}"
+
+VARIANT_FILE="${QUBE_DIR}/.qube_linux_variant"
+if [ -f "$VARIANT_FILE" ] && grep -qi '^vulkan$' "$VARIANT_FILE"; then
+  for _lib in \
+    /usr/lib/x86_64-linux-gnu/libstdc++.so.6 \
+    /usr/lib/aarch64-linux-gnu/libstdc++.so.6 \
+    /usr/lib64/libstdc++.so.6 \
+    /usr/lib/libstdc++.so.6; do
+    if [ -f "$_lib" ]; then
+      export LD_PRELOAD="${_lib}${LD_PRELOAD:+:${LD_PRELOAD}}"
+      break
+    fi
+  done
+fi
+
+exec "${QUBE_DIR}/Qube" "$@"

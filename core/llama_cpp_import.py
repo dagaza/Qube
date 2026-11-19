@@ -77,6 +77,9 @@ def prepare_llama_cpp_runtime() -> None:
         if lib_prefix not in current.split(os.pathsep):
             os.environ["PATH"] = lib_prefix + os.pathsep + current
     elif sys.platform.startswith("linux"):
+        from core.gpu_driver_preload import preload_system_gpu_driver_libs
+
+        preload_system_gpu_driver_libs()
         current = os.environ.get("LD_LIBRARY_PATH", "")
         parts = [p for p in current.split(os.pathsep) if p]
         if lib_prefix not in parts:

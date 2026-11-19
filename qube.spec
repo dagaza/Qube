@@ -49,6 +49,14 @@ for package in ("PyAudio", "onnxruntime", "ctranslate2", "llama_cpp", "espeakng_
     except Exception:
         pass
 
+if _BUILD_VARIANT == "vulkan":
+    # Use the distro Vulkan loader (Mesa RADV ICD); bundled libvulkan breaks AMD/Intel Linux.
+    binaries = [
+        (src, dest)
+        for src, dest in binaries
+        if "libvulkan" not in os.path.basename(src).lower()
+    ]
+
 if _BUILD_VARIANT == "cuda":
     try:
         from core.nvidia_wheel_lib_dirs import CUDA_WHEEL_PACKAGES, iter_nvidia_wheel_libs

@@ -169,6 +169,12 @@ def native_gpu_offload_inactive_event(
             "GPU device was found. Restart Qube; if this persists, report it with "
             "~/.qube/logs/qube.log."
         )
+    elif reason == "vulkan_loader_shadowed":
+        detail = (
+            "Chat still works on CPU. The app loaded a bundled Vulkan loader instead of "
+            "the system libvulkan used by Mesa RADV. Install the next Qube update or restart "
+            "after upgrading; if this persists, report it with ~/.qube/logs/qube.log."
+        )
     elif reason == "vulkan_runtime_unavailable":
         detail = (
             "Chat still works on CPU. A Vulkan-capable llama-cpp build is installed, "

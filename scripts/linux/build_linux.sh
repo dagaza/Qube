@@ -47,5 +47,24 @@ if [[ ! -x "$REPO_ROOT/dist/Qube/Qube" ]]; then
   exit 1
 fi
 
-echo "$VARIANT" > "$REPO_ROOT/dist/Qube/.qube-linux-variant"
+python3 - "$REPO_ROOT" "$VARIANT" <<'PY'
+import shutil
+import stat
+import sys
+from pathlib import Path
+
+sys.path.insert(0, sys.argv[1])
+from core.app_release_update import write_linux_variant_marker
+from scripts.render_linux_packages import linux_packaging_dir
+
+dist = Path(sys.argv[1]) / "dist" / "Qube"
+write_linux_variant_marker(dist, sys.argv[2])
+src = linux_packaging_dir() / "apply_vulkan_bundle_fixup.sh"
+if src.is_file():
+    dst = dist / "lib" / "apply_vulkan_bundle_fixup.sh"
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
+    dst.chmod(dst.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+PY
+
 echo "Built $REPO_ROOT/dist/Qube/ ($VARIANT)"

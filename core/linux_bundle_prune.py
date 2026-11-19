@@ -157,6 +157,11 @@ def prune_pyinstaller_bundle(
     if internal.is_dir():
         _prune_tree(internal, report)
 
+    if variant == "vulkan":
+        from core.linux_vulkan_bundle_fixup import disable_conflicting_bundled_libs
+
+        disable_conflicting_bundled_libs(dist_dir)
+
     if variant == "cuda":
         _prune_extra_cuda_libs(dist_dir, report)
         missing = missing_cuda_wheel_libs(dist_dir)
