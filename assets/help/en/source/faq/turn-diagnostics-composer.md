@@ -2,7 +2,7 @@
 
 ## Common questions
 
-- How do I understand why Qube answered a certain way?
+- How do I debug one reply with **Under the hood**?
 - What is **Under the hood** (`@[tool:diagnostics]`) in the composer?
 - What is `@underhood` or `@under` in the `@` palette?
 - How is this different from **INSPECT RETRIEVAL**?
@@ -10,7 +10,7 @@
 
 ## What it does
 
-`@[tool:diagnostics]` (palette label **Under the hood**) builds a **Turn Diagnostics Bundle** from data Qube already recorded for a reply: routing summary, retrieval metadata, sources summary, citations integrity, optional log excerpts, and generation metadata. Your loaded model then explains what happened in plain language, separating **facts recorded in the bundle** from **hypotheses**.
+`@[tool:diagnostics]` (palette label **Under the hood**) builds a **Turn Diagnostics Bundle** from data Qube already recorded for a reply: routing summary, retrieval metadata, sources summary, optional log excerpts, and generation metadata (including how sources were cited when present). Your loaded model then explains what happened in plain language, separating **facts recorded in the bundle** from **hypotheses**.
 
 **INSPECT RETRIEVAL** is the deterministic, tabbed inspector on **Sources**. **Under the hood** is a composer tool that sends that turn’s forensics to the model for a narrated walkthrough—you can also attach it to a **specific** assistant message, not only the latest reply.
 
@@ -32,7 +32,7 @@ After an explanation, use the message **⋮** menu to **Copy issue snippet** or 
 |---|--------------------------------------------|------------------------|
 | Entry | Composer tool or reply context menu | **Sources** on a reply |
 | Output | Model narrative from a diagnostics bundle | Fixed UI tabs (Summary, Graph, …) |
-| Best for | “Why did it answer this way?” in chat | Exact adapter/graph/trace inspection |
+| Best for | Narrated orchestration walkthrough in chat | Exact adapter/graph/trace inspection |
 
 ## Also called
 

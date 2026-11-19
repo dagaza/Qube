@@ -2226,8 +2226,7 @@
         "diagnostics composer",
         "explain under the hood",
         "how does under the hood work",
-        "turn diagnostics",
-        "why did qube answer this way"
+        "turn diagnostics"
       ],
       "doc_id": "faq.turn_diagnostics_composer",
       "heading": "Under the hood",
