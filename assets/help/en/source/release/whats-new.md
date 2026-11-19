@@ -1,4 +1,4 @@
-# What's new in Qube Help (v1.0.30)
+# What's new in Qube Help (v1.0.32)
 
 ## Common questions
 
@@ -9,6 +9,8 @@
 ## What it is
 
 This page summarizes the **v English help corpus** shipped with Qube. The corpus lives in **Library → Qube** and powers **`@[tool:help]`** in **Conversations**.
+
+**v1.0.32** documents **Under the hood — `@diagnostics` composer** — turn forensics attachments, Turn Diagnostics Bundle exports, Privacy & data technical-detail toggle, and canonical `@help` answers.
 
 **v1.0.30** documents the **Settings sidebar layout** — **Support** and **System** groups, moved cards from the old Advanced page, and **[Backup & restore](../features/settings/backup-restore.md)** under **System**.
 

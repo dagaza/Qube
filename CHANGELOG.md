@@ -1,7 +1,18 @@
 ## [Unreleased]
 
+## [1.3.55] - 2026-11-19
+
+### Added
+- **Conversations:** **Under the hood** turn diagnostics — `@[tool:diagnostics]` / `@[tool:underhood]` composer attachments, Turn Diagnostics Bundle generation, conversation actions, exports, and Library help coverage for narrating orchestration on a specific assistant reply.
+- **Settings (Privacy & data):** Toggle **Technical detail in @diagnostics bundles** (optional `llm_debug` excerpts alongside routing metadata; prompt bodies still omitted).
+
+### Changed
+- **Release CI:** Bump `wingetcreate` to **v1.28.1.0** for WinGet manifest schema **1.28.0**; fix fork `compare` API path so release jobs can verify `winget-pkgs` sync.
+
 ### Fixed
-- **Linux Vulkan GPU offload:** Stop shipping a bundled `libvulkan` on Vulkan builds; preload distro `libstdc++`, `libdrm`, and `libvulkan` before PyTorch/PyInstaller copies load; disable conflicting bundled Vulkan/PyAV libdrm on install and at startup; narrow `LD_PRELOAD` in `.deb` / AppImage launchers when needed so Mesa RADV works on AMD/Intel without manual tweaks.
+- **Linux Vulkan GPU offload:** Stop shipping a bundled `libvulkan` on Vulkan builds; preload distro `libstdc++`, `libdrm`, and `libvulkan` before PyTorch/PyInstaller copies load; disable conflicting bundled Vulkan/PyAV libdrm on install and at startup; narrow `LD_PRELOAD` in `.deb` / AppImage launchers when needed so Mesa RADV works on AMD/Intel without manual tweaks (#64).
+- **Conversations UI:** Fix transcript wallpaper lag when maximizing the window — stale pixmap cache no longer paints at startup size until a debounced rebuild (#65).
+- **Help (`@help`):** Tune golden retrieval and canonical patterns so “without citations” queries rank **Cognitive router** FAQ ahead of turn diagnostics.
 
 ## [1.3.54] - 2026-11-17
 

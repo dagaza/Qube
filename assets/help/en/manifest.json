@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.31",
+  "corpus_version": "1.0.32",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
