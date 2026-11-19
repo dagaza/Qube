@@ -102,9 +102,9 @@ class TranscriptWallpaperHost(QWidget):
         self._schedule_background_cache_build()
 
     def _schedule_background_cache_build(self) -> None:
-        if self._background_cache is not None and not self._background_cache.isNull():
-            return
         if self._cache_build_pending:
+            return
+        if self._background_cache_is_current():
             return
         self._cache_build_pending = True
         QTimer.singleShot(0, self._build_background_cache_deferred)
@@ -121,6 +121,7 @@ class TranscriptWallpaperHost(QWidget):
         if event.size() == event.oldSize():
             return
         self._resize_debounce.start()
+        self.update()
 
     def _on_resize_debounced(self) -> None:
         if self._background_cache_key is not None:
@@ -135,7 +136,12 @@ class TranscriptWallpaperHost(QWidget):
         try:
             pixmap = self._background_cache
             if pixmap is not None and not pixmap.isNull():
-                painter.drawPixmap(0, 0, pixmap)
+                if pixmap.width() == self.width() and pixmap.height() == self.height():
+                    painter.drawPixmap(0, 0, pixmap)
+                    return
+                # Stale cache from a prior size — cover the host immediately, then rebuild.
+                painter.drawPixmap(self.rect(), pixmap)
+                self._schedule_background_cache_build()
                 return
             self._paint_fast_fallback(painter)
             self._schedule_background_cache_build()
@@ -161,6 +167,17 @@ class TranscriptWallpaperHost(QWidget):
         self._background_cache = None
         self._background_cache_key = None
         self._cache_build_pending = False
+
+    def _background_cache_is_current(self) -> bool:
+        pixmap = self._background_cache
+        if pixmap is None or pixmap.isNull():
+            return False
+        if pixmap.width() != self.width() or pixmap.height() != self.height():
+            return False
+        if self._background_cache_key is None:
+            return False
+        cached_w, cached_h = self._background_cache_key[0], self._background_cache_key[1]
+        return cached_w == self.width() and cached_h == self.height()
 
     def _background_pixmap(self) -> QPixmap | None:
         context = self._paint_context()
