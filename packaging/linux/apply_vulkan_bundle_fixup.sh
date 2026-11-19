@@ -12,13 +12,3 @@ if [ -f "${INTERNAL}/libvulkan.so.1" ] && \
    [ ! -f "${INTERNAL}/libvulkan.so.1.bundled.bak" ]; then
   mv "${INTERNAL}/libvulkan.so.1" "${INTERNAL}/libvulkan.so.1.bundled.bak" || true
 fi
-
-if [ -d "${INTERNAL}/av.libs" ]; then
-  for _path in "${INTERNAL}"/av.libs/libdrm*.so*; do
-    [ -e "$_path" ] || continue
-    case "$_path" in *.bundled.bak) continue ;; esac
-    if [ -f "$_path" ] && [ ! -f "${_path}.bundled.bak" ]; then
-      mv "$_path" "${_path}.bundled.bak" || true
-    fi
-  done
-fi

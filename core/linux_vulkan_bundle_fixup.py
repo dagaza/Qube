@@ -1,10 +1,11 @@
 """Disable bundled Linux libs that shadow distro Vulkan/RADV (Vulkan package variant).
 
-PyInstaller one-dir builds can ship ``libvulkan.so.1`` and PyAV ``libdrm`` copies under
-``_internal/``. With ``LD_LIBRARY_PATH`` aimed at that tree, Mesa's ``libvulkan_radeon`` may
-fail to load (older bundled ``libstdc++``). Package postinst renames those files on
-``.deb`` /``.rpm`` installs; this module does the same at startup when the install dir
-is writable (portable tarball) or after upgrades before postinst runs again.
+PyInstaller one-dir builds can ship a bundled ``libvulkan.so.1`` under ``_internal/``. With
+``LD_LIBRARY_PATH`` aimed at that tree, Mesa's ``libvulkan_radeon`` may fail to load (older
+bundled ``libstdc++``). We only disable that loader copy; PyAV keeps hashed ``libdrm`` under
+``av.libs`` (required for ``import av`` / STT) while ``gpu_driver_preload`` pins distro
+``libdrm`` for Vulkan. Package postinst runs the same loader rename on ``.deb`` / ``.rpm``
+installs; this module repeats it at startup when the install dir is writable.
 """
 
 from __future__ import annotations
@@ -51,7 +52,7 @@ def _rename_if_present(source: Path) -> str | None:
 
 
 def disable_conflicting_bundled_libs(install_root: Path) -> list[str]:
-    """Rename bundled Vulkan loader / PyAV libdrm when possible. Returns new paths."""
+    """Rename bundled ``libvulkan.so.1`` when possible. Returns new backup paths."""
     disabled: list[str] = []
     internal = install_root / "_internal"
     if not internal.is_dir():
@@ -62,14 +63,6 @@ def disable_conflicting_bundled_libs(install_root: Path) -> list[str]:
     if moved:
         disabled.append(moved)
 
-    av_libs = internal / "av.libs"
-    if av_libs.is_dir():
-        for candidate in sorted(av_libs.glob("libdrm*.so*")):
-            if candidate.name.endswith(_BUNDLED_SUFFIX):
-                continue
-            moved = _rename_if_present(candidate)
-            if moved:
-                disabled.append(moved)
     return disabled
 
 

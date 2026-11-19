@@ -9,7 +9,7 @@ from pathlib import Path
 from core import linux_vulkan_bundle_fixup as mod
 
 
-def test_disable_conflicting_bundled_libs_renames_vulkan_and_drm(
+def test_disable_conflicting_bundled_libs_renames_vulkan_loader_only(
     tmp_path: Path,
 ) -> None:
     internal = tmp_path / "_internal"
@@ -17,16 +17,15 @@ def test_disable_conflicting_bundled_libs_renames_vulkan_and_drm(
     av.mkdir(parents=True)
     loader = internal / "libvulkan.so.1"
     loader.write_bytes(b"vulkan")
-    drm = av / "libdrm.so.2.4.0"
+    drm = av / "libdrm-b0291a67.so.2.4.0"
     drm.write_bytes(b"drm")
 
     moved = mod.disable_conflicting_bundled_libs(tmp_path)
 
     assert not loader.is_file()
     assert (internal / "libvulkan.so.1.bundled.bak").is_file()
-    assert not drm.is_file()
-    assert (av / "libdrm.so.2.4.0.bundled.bak").is_file()
-    assert len(moved) == 2
+    assert drm.is_file()
+    assert len(moved) == 1
 
 
 def test_apply_fixup_skips_non_vulkan_variant(

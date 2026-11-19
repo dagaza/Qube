@@ -10,7 +10,7 @@
 - **Release CI:** Bump `wingetcreate` to **v1.28.1.0** for WinGet manifest schema **1.28.0**; fix fork `compare` API path so release jobs can verify `winget-pkgs` sync.
 
 ### Fixed
-- **Linux Vulkan GPU offload:** Stop shipping a bundled `libvulkan` on Vulkan builds; preload distro `libstdc++`, `libdrm`, and `libvulkan` before PyTorch/PyInstaller copies load; disable conflicting bundled Vulkan/PyAV libdrm on install and at startup; narrow `LD_PRELOAD` in `.deb` / AppImage launchers when needed so Mesa RADV works on AMD/Intel without manual tweaks (#64).
+- **Linux Vulkan GPU offload:** Stop shipping a bundled `libvulkan` on Vulkan builds; preload distro `libstdc++`, `libdrm`, and `libvulkan` before PyTorch/PyInstaller copies load; disable only the bundled Vulkan loader (keep PyAV `av.libs` `libdrm` so `faster_whisper` / STT can import); narrow `LD_PRELOAD` in `.deb` / AppImage launchers when needed so Mesa RADV works on AMD/Intel without manual tweaks (#64).
 - **Conversations UI:** Fix transcript wallpaper lag when maximizing the window — stale pixmap cache no longer paints at startup size until a debounced rebuild (#65).
 - **Help (`@help`):** Tune golden retrieval and canonical patterns so “without citations” queries rank **Cognitive router** FAQ ahead of turn diagnostics.
 
