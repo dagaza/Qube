@@ -267,6 +267,8 @@ class KnowledgeHandlersMixin:
         self._sync_discovery_privacy_tier_selector()
         if hasattr(self, "_sync_privacy_data_internet_hybrid_toggle"):
             self._sync_privacy_data_internet_hybrid_toggle()
+        if hasattr(self, "_sync_privacy_data_diagnostics_technical_toggle"):
+            self._sync_privacy_data_diagnostics_technical_toggle()
         if hasattr(self, "_sync_all_diagnostic_log_recording_toggles"):
             self._sync_all_diagnostic_log_recording_toggles()
         if hasattr(self, "_sync_all_diagnostic_log_redaction_toggles"):

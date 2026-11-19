@@ -20,6 +20,27 @@ _TOKEN_RE = re.compile(
 
 CONVERSATION_REF_BUDGET = 7000
 
+# Single-token shorthands for tools whose palette label contains spaces.
+COMPOSER_TOOL_ID_ALIASES: dict[str, str] = {
+    "underhood": "diagnostics",
+    "underthehood": "diagnostics",
+}
+
+
+def canonical_composer_tool_id(tool_id: str) -> str:
+    """Map alias ids (e.g. ``underhood``) to canonical tool ids; preserve ``::`` suffixes."""
+    raw = (tool_id or "").strip()
+    if not raw:
+        return raw
+    if "::" in raw:
+        base, rest = raw.split("::", 1)
+        canon = COMPOSER_TOOL_ID_ALIASES.get(base.lower())
+        if canon:
+            return f"{canon}::{rest}"
+        return raw
+    return COMPOSER_TOOL_ID_ALIASES.get(raw.lower(), raw)
+
+
 COMPOSER_TOOLS: list[dict[str, str | bool]] = [
     {
         "id": "trusted",
@@ -69,6 +90,11 @@ COMPOSER_TOOLS: list[dict[str, str | bool]] = [
         "id": "help",
         "label": "Help",
         "description": "Search Qube's built-in documentation",
+    },
+    {
+        "id": "diagnostics",
+        "label": "Under the hood",
+        "description": "Explain orchestration for a chat turn using recorded diagnostics",
     },
     {"id": "memory", "label": "Memory", "description": "Search stored memories"},
     {
@@ -167,6 +193,10 @@ _TOOL_USAGE_HINTS: dict[str, str] = {
     "recipe": "Use for structured recipe ingredients and steps from recipe sites.",
     "library": "Use to search only your uploaded documents.",
     "help": "Use for how-to questions, settings locations, and troubleshooting.",
+    "diagnostics": (
+        "Use to investigate routing, retrieval, and generation for a prior reply. "
+        "Shorthand: @[tool:underhood] (the label is multi-word; spaces cannot follow @)."
+    ),
     "memory": "Use to recall facts saved from past chats.",
     "science": "Same routing as @evidence; prefer @evidence in the palette.",
     "wikipedia": "Use for quick encyclopedia summaries only.",
@@ -205,6 +235,10 @@ def composer_tools_for_palette(query: str = "") -> list[dict[str, str | bool]]:
 
 
 def composer_tool_by_id(tool_id: str) -> dict[str, str | bool] | None:
+    canon_id = canonical_composer_tool_id(tool_id)
+    for tool in COMPOSER_TOOLS:
+        if tool["id"] == canon_id:
+            return tool
     for tool in COMPOSER_TOOLS:
         if tool["id"] == tool_id:
             return tool
@@ -215,7 +249,11 @@ def composer_tool_by_id(tool_id: str) -> dict[str, str | bool] | None:
 
 
 _BARE_MENTION_TOOL_IDS: tuple[str, ...] = tuple(
-    sorted((str(tool["id"]) for tool in COMPOSER_TOOLS), key=len, reverse=True)
+    sorted(
+        {str(tool["id"]) for tool in COMPOSER_TOOLS} | set(COMPOSER_TOOL_ID_ALIASES),
+        key=len,
+        reverse=True,
+    )
 )
 
 
@@ -227,6 +265,17 @@ def lift_bare_tool_mentions(text: str) -> tuple[str, list[ComposerAttachment]]:
     if not stripped.startswith("@"):
         return raw, []
 
+    import re
+
+    phrase = re.match(r"(?i)@under\s+the\s+hood(?=\s|$)", stripped)
+    if phrase:
+        body = stripped[phrase.end() :].lstrip()
+        tool = composer_tool_by_id("diagnostics")
+        label = str(tool["label"]) if tool else "Under the hood"
+        attachment = ComposerAttachment(kind="tool", id="diagnostics", label=label)
+        clean = f"{raw[:leading]}{body}".strip()
+        return clean, [attachment]
+
     lower = stripped.lower()
     for tool_id in _BARE_MENTION_TOOL_IDS:
         prefix = f"@{tool_id}"
@@ -236,9 +285,10 @@ def lift_bare_tool_mentions(text: str) -> tuple[str, list[ComposerAttachment]]:
         if suffix and not suffix[0].isspace():
             continue
         body = suffix.lstrip()
-        tool = composer_tool_by_id(tool_id)
+        canon_id = canonical_composer_tool_id(tool_id)
+        tool = composer_tool_by_id(canon_id)
         label = str(tool["label"]) if tool else tool_id
-        attachment = ComposerAttachment(kind="tool", id=tool_id, label=label)
+        attachment = ComposerAttachment(kind="tool", id=canon_id, label=label)
         clean = f"{raw[:leading]}{body}".strip()
         return clean, [attachment]
     return raw, []
@@ -325,10 +375,16 @@ def parse_attachments(text: str) -> tuple[str, list[ComposerAttachment]]:
             label = f"{parsed.namespace}/{parsed.action}"
         else:
             kind = "tool"
-            tool = composer_tool_by_id(att_id)
-            if tool is None:
-                tool = next((t for t in COMPOSER_TOOLS if t["id"] == att_id), None)
-            label = tool["label"] if tool else att_id
+            att_id = canonical_composer_tool_id(att_id)
+            from core.turn_forensics import is_diagnostics_tool_id
+
+            if is_diagnostics_tool_id(att_id):
+                label = "Under the hood"
+            else:
+                tool = composer_tool_by_id(att_id)
+                if tool is None:
+                    tool = next((t for t in COMPOSER_TOOLS if t["id"] == att_id), None)
+                label = tool["label"] if tool else att_id
         key = (kind, att_id)
         if key not in seen:
             seen.add(key)
@@ -448,6 +504,18 @@ def resolve_attachment_routing(
             "route": "memory",
             "strategy": "attachment_tool_memory",
             "attachment_tool": tool_id,
+            "composer_attachments": _attachments_telemetry(attachments),
+        }
+    from core.turn_forensics import is_diagnostics_tool_id, parse_diagnostics_tool_id
+
+    if is_diagnostics_tool_id(tool_id):
+        target_msg, thread_depth = parse_diagnostics_tool_id(tool_id)
+        return {
+            "route": "none",
+            "strategy": "attachment_tool_diagnostics",
+            "attachment_tool": "diagnostics",
+            "diagnostics_target_message_id": target_msg,
+            "diagnostics_thread_depth": thread_depth,
             "composer_attachments": _attachments_telemetry(attachments),
         }
     return None

@@ -82,6 +82,12 @@ Search Qube's built-in documentation
 
 Use for how-to questions, settings locations, and troubleshooting.
 
+### Under the hood — `@[tool:diagnostics]`
+
+Explain orchestration for a chat turn using recorded diagnostics
+
+Use to investigate routing, retrieval, and generation for a prior reply.
+
 ### Memory — `@[tool:memory]`
 
 Search stored memories

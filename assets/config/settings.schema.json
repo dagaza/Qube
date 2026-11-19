@@ -285,6 +285,11 @@
     "default": false,
     "description": "When true, hash user query text in routing_debug.log JSONL entries."
   },
+  "qube.diagnostics.technical_detail_enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "When true, @[tool:diagnostics] bundles may include llm_debug log excerpts (prompts still omitted)."
+  },
   "qube.knowledge.retrieval_profile": {
     "type": "string",
     "default": "balanced",

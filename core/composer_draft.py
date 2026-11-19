@@ -35,6 +35,12 @@ class ComposerDraft:
         """True when tool/file chips are present but the composer body is empty."""
         if (self.body or "").strip():
             return False
+        for att in self.routing:
+            if att.kind == "tool":
+                from core.turn_forensics import is_diagnostics_tool_id
+
+                if is_diagnostics_tool_id(att.id):
+                    return False
         return any(att.kind in ("tool", "file") for att in self.routing)
 
     def clone(self) -> ComposerDraft:

@@ -5,14 +5,17 @@ from __future__ import annotations
 import logging
 
 from core.app_settings import (
+    KEY_DIAGNOSTICS_TECHNICAL_DETAIL,
     KEY_DISCOVERY_API_FALLBACK_ENABLED,
     KEY_DISCOVERY_PRIVACY_TIER,
     KEY_MCP_INTERNET_HYBRID,
     KEY_ROUTING_DEBUG_REDACT_QUERY_ENABLED,
     KEY_WEB_SEARCH_AUDIT_REDACT_ENABLED,
+    get_diagnostics_technical_detail_enabled,
     get_mcp_internet_hybrid_enabled,
     get_routing_debug_redact_query_enabled,
     get_web_search_audit_redact_enabled,
+    set_diagnostics_technical_detail_enabled,
     set_mcp_internet_hybrid_enabled,
     set_routing_debug_redact_query_enabled,
     set_web_search_audit_redact_enabled,
@@ -128,6 +131,7 @@ class PrivacyDataHandlersMixin:
             KEY_MCP_INTERNET_HYBRID,
             KEY_WEB_SEARCH_AUDIT_REDACT_ENABLED,
             KEY_ROUTING_DEBUG_REDACT_QUERY_ENABLED,
+            KEY_DIAGNOSTICS_TECHNICAL_DETAIL,
         }
         if not (privacy_keys & changed):
             return
@@ -140,6 +144,49 @@ class PrivacyDataHandlersMixin:
 
             sync_web_discovery_policy_section(self)
         self._sync_privacy_data_section_ui()
+
+    def _sync_privacy_data_diagnostics_technical_toggle(self) -> None:
+        toggle = getattr(self, "privacy_data_diagnostics_technical_toggle", None)
+        if toggle is None:
+            return
+        enabled = get_diagnostics_technical_detail_enabled()
+        if toggle.isChecked() != enabled:
+            toggle.blockSignals(True)
+            toggle.setChecked(enabled)
+            toggle.blockSignals(False)
+
+    def _on_privacy_data_diagnostics_technical_toggled(self, enabled: bool) -> None:
+        if get_diagnostics_technical_detail_enabled() == bool(enabled):
+            return
+        if enabled:
+            from ui.components.prestige_dialog import PrestigeDialog
+
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            dlg = PrestigeDialog(
+                self,
+                "Technical diagnostics detail",
+                (
+                    "When enabled, @diagnostics turns may include excerpts from "
+                    "llm_debug logs on your device. Full chat prompts are still "
+                    "omitted; review before sharing exports."
+                ),
+                is_dark=is_dark,
+                confirm_text="OK",
+                show_cancel=False,
+            )
+            dlg.exec()
+        set_diagnostics_technical_detail_enabled(enabled)
+        self._sync_privacy_data_diagnostics_technical_toggle()
+        if hasattr(self, "_emit_external_settings_changed"):
+            self._emit_external_settings_changed(KEY_DIAGNOSTICS_TECHNICAL_DETAIL)
+        if hasattr(self, "_show_settings_file_status"):
+            message = (
+                "Technical detail for @diagnostics is on — bundles may include "
+                "llm_debug excerpts."
+                if enabled
+                else "Technical detail for @diagnostics is off."
+            )
+            self._show_settings_file_status(message, persistent=True)
 
     def _sync_privacy_data_internet_hybrid_toggle(self) -> None:
         toggle = getattr(self, "privacy_data_internet_hybrid_toggle", None)

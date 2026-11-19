@@ -56,6 +56,7 @@ KEY_LLM_DEBUG_LOG_FILE_ENABLED = "qube.diagnostics.llm_debug_log_file_enabled"
 KEY_WEB_SEARCH_AUDIT_LOG_ENABLED = "qube.diagnostics.web_search_audit_log_enabled"
 KEY_WEB_SEARCH_AUDIT_REDACT_ENABLED = "qube.diagnostics.web_search_audit_redact_enabled"
 KEY_ROUTING_DEBUG_REDACT_QUERY_ENABLED = "qube.diagnostics.routing_debug_redact_query_enabled"
+KEY_DIAGNOSTICS_TECHNICAL_DETAIL = "qube.diagnostics.technical_detail_enabled"
 KEY_INTERNAL_CORPUS_KNOWLEDGE_ENABLED = "qube.knowledge.internal_corpus_enabled"  # legacy; ignored
 KEY_RESEARCH_MAP_ENABLED = "qube.knowledge.research_map_enabled"  # legacy; ignored
 KEY_RETRIEVAL_PROFILE = "qube.knowledge.retrieval_profile"
@@ -380,6 +381,15 @@ def get_routing_debug_redact_query_enabled() -> bool:
 
 def set_routing_debug_redact_query_enabled(enabled: bool) -> None:
     _store().set(KEY_ROUTING_DEBUG_REDACT_QUERY_ENABLED, enabled)
+
+
+def get_diagnostics_technical_detail_enabled() -> bool:
+    """When True, @diagnostics bundles may include llm_debug log excerpts."""
+    return bool(_store().get(KEY_DIAGNOSTICS_TECHNICAL_DETAIL, False))
+
+
+def set_diagnostics_technical_detail_enabled(enabled: bool) -> None:
+    _store().set(KEY_DIAGNOSTICS_TECHNICAL_DETAIL, enabled)
 
 
 # Internal corpus, research map, and deep research are always enabled (Settings

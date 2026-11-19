@@ -163,6 +163,8 @@ def build_prompt_blocks(
     composer_help_attached: bool = False,
     help_sources_empty: bool = False,
     help_canonical_hint: str = "",
+    composer_diagnostics_attached: bool = False,
+    diagnostics_system_hint: str = "",
     strict_isolation_enabled: bool = False,
     preference_context: str = "",
     apply_preference_suffix: bool = False,
@@ -188,7 +190,16 @@ def build_prompt_blocks(
     persona = _BASE_PERSONA
     no_sources = False
 
-    if explicit_remember_active:
+    if composer_diagnostics_attached:
+        persona = (
+            "You explain how Qube orchestrated a prior chat turn using only the "
+            "diagnostics bundle provided in context. Teach clearly; distinguish "
+            "FACT from HYPOTHESIS."
+        )
+        hint = (diagnostics_system_hint or "").strip()
+        if hint:
+            suffixes.append(hint)
+    elif explicit_remember_active:
         quoted = (explicit_remember_body or "").strip()
         persona = (
             "The user has just asked you to remember a fact for future reference. "

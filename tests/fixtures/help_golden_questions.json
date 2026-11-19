@@ -461,6 +461,25 @@
   },
   {
     "category": "faq",
+    "question": "How does Under the hood diagnostics work in Qube",
+    "expected_doc_ids": ["faq.turn_diagnostics_composer"],
+    "must_mention": ["Under the hood", "diagnostics"],
+    "expected_canonical_id": "faq.turn_diagnostics_composer.how"
+  },
+  {
+    "category": "faq",
+    "question": "What is @underhood in the composer",
+    "expected_doc_ids": ["faq.turn_diagnostics_composer", "reference.composer_tools"],
+    "must_mention": ["underhood", "diagnostics"]
+  },
+  {
+    "category": "faq",
+    "question": "Explain under the hood vs inspect retrieval",
+    "expected_doc_ids": ["faq.turn_diagnostics_composer", "faq.inspect_retrieval"],
+    "must_mention": ["INSPECT", "diagnostics"]
+  },
+  {
+    "category": "faq",
     "question": "How does the cognitive router work in Qube",
     "expected_doc_ids": ["faq.cognitive_router"],
     "must_mention": ["route", "MEMORY"]

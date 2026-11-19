@@ -36,6 +36,7 @@ at mentions, composer attachments, @ tools, @ skills, @ commands, tool tokens
 - [Composer attachments reference](../reference/composer-attachments.md) — `@[file:…]`, `@[chat:…]`, routing order
 - [Cognitive Router — how routing works](cognitive-router-how-routing-works.md) — pre/post overrides and route vocabulary
 - [Composer tools reference](../reference/composer-tools.md) — every `@[tool:…]` token
+- [Under the hood — @diagnostics composer](turn-diagnostics-composer.md) — explain a reply's orchestration in chat
 - [Composer skills reference](../reference/composer-skills.md) — `@[skill:…]` tokens
 - [Composer commands reference](../reference/composer-commands.md) — immediate actions
 - [Help settings](../features/settings/help.md) — composer guide entry point

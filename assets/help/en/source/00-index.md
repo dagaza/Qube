@@ -20,6 +20,7 @@ Welcome to the Qube in-app help corpus. Browse these documents in **Library → 
 | Download a local model | [Model Manager](features/model-manager.md) |
 | Monitor performance | [Advanced Telemetry](features/telemetry.md) · [Interpreting telemetry](faq/advanced-telemetry-interpreting.md) |
 | Inspect one reply's retrieval | [INSPECT RETRIEVAL](faq/inspect-retrieval.md) |
+| Explain why a reply was routed or answered a certain way | [Under the hood — @diagnostics](faq/turn-diagnostics-composer.md) |
 | View or share diagnostic logs | [Diagnostic logs](faq/diagnostic-logs-advanced-settings.md) |
 | Choose web search privacy tier | [Web discovery privacy tiers](faq/web-discovery-privacy-tiers.md) · [Privacy & data settings](features/settings/privacy-data.md) |
 | Delete something Qube remembered | [Delete memory entries](faq/delete-memory-entries.md) |
@@ -111,6 +112,7 @@ The sidebar groups related pages. Expand a group label to see its sections.
 | GPU layers & hardware tuning | [Hardware tuning (Internal Engine)](faq/hardware-tuning-internal-engine.md) |
 | Interpreting Telemetry / TTFT | [Advanced Telemetry — interpreting](faq/advanced-telemetry-interpreting.md) |
 | INSPECT RETRIEVAL (per-reply) | [INSPECT RETRIEVAL](faq/inspect-retrieval.md) |
+| Under the hood / turn diagnostics (`@[tool:diagnostics]`) | [Under the hood — @diagnostics](faq/turn-diagnostics-composer.md) |
 | Diagnostic logs | [Diagnostic logs](faq/diagnostic-logs-advanced-settings.md) |
 | Cognitive Router / chat routing | [Cognitive Router — how routing works](faq/cognitive-router-how-routing-works.md) |
 | Web discovery privacy tiers | [Web discovery privacy tiers](faq/web-discovery-privacy-tiers.md) |
