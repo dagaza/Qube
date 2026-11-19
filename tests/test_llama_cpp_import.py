@@ -23,10 +23,11 @@ def test_prepare_llama_cpp_runtime_is_idempotent(monkeypatch, tmp_path: Path) ->
         mod.prepare_llama_cpp_runtime()
         assert os.environ.get("PATH", "") == first_path
     elif sys.platform.startswith("linux"):
-        first_ld = os.environ.get("LD_LIBRARY_PATH", "")
         mod.prepare_llama_cpp_runtime()
-        assert os.environ.get("LD_LIBRARY_PATH", "") == first_ld
-        assert str(lib_dir) in first_ld.split(os.pathsep)
+        ld = os.environ.get("LD_LIBRARY_PATH", "")
+        assert str(lib_dir) in ld.split(os.pathsep)
+        mod.prepare_llama_cpp_runtime()
+        assert os.environ.get("LD_LIBRARY_PATH", "") == ld
 
 
 def test_llama_cpp_lib_dir_does_not_import_llama_cpp(monkeypatch) -> None:
@@ -115,10 +116,11 @@ def test_qube_entry_pins_system_libdrm_before_main_import() -> None:
         encoding="utf-8"
     )
     run_body = text.split("def run(", 1)[1]
+    fixup = run_body.find("apply_vulkan_bundle_fixup_if_needed()")
     preload = run_body.find("preload_system_gpu_driver_libs()")
     main_import = run_body.find("import main as main_module")
-    assert preload != -1 and main_import != -1
-    assert preload < main_import
+    assert fixup != -1 and preload != -1 and main_import != -1
+    assert fixup < preload < main_import
 
 
 def test_sidecar_defers_cognition_load_until_first_command() -> None:

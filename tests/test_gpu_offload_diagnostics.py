@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from core.inference_transparency import gpu_offload_inactive_reason
 from core.notification_types import native_gpu_offload_inactive_event
 
@@ -31,6 +33,24 @@ def test_gpu_offload_inactive_reason_when_vulkan_libs_present() -> None:
         )
         == "vulkan_runtime_unavailable"
     )
+
+
+def test_gpu_offload_inactive_reason_when_vulkan_loader_shadowed() -> None:
+    with patch(
+        "core.gpu_driver_preload.shadowing_libvulkan_loader_path",
+        return_value="/opt/qube/_internal/libvulkan.so.1",
+    ):
+        assert (
+            gpu_offload_inactive_reason(
+                requested_n_gpu_layers=54,
+                supports_gpu_offload=False,
+                load_fallback_label="requested",
+                dri_render_accessible=True,
+                package_has_vulkan_libs=True,
+                shadowing_libdrm_path=None,
+            )
+            == "vulkan_loader_shadowed"
+        )
 
 
 def test_gpu_offload_inactive_reason_when_libdrm_shadowed() -> None:

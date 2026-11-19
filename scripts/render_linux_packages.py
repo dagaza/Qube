@@ -26,6 +26,16 @@ def linux_packaging_dir() -> Path:
     return _REPO / "packaging" / "linux"
 
 
+def _stage_vulkan_fixup_script(install_root: Path) -> None:
+    src = linux_packaging_dir() / "apply_vulkan_bundle_fixup.sh"
+    if not src.is_file():
+        return
+    dst = install_root / "lib" / "apply_vulkan_bundle_fixup.sh"
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
+    dst.chmod(dst.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
 def pyinstaller_dist_dir() -> Path:
     return _REPO / "dist" / "Qube"
 
@@ -49,9 +59,11 @@ def copy_pyinstaller_tree(target: Path) -> None:
 
 def stage_deb_tree(staging: Path, *, version: str | None = None, variant: str = "cpu") -> None:
     """Populate ``staging/`` with the .deb filesystem layout."""
-    copy_pyinstaller_tree(staging / "opt" / "qube")
-    write_linux_variant_marker(staging / "opt" / "qube", variant)
-    write_uninstall_script(staging / "opt" / "qube" / "uninstall" / "uninstall.sh", version=version)
+    install_root = staging / "opt" / "qube"
+    copy_pyinstaller_tree(install_root)
+    write_linux_variant_marker(install_root, variant)
+    write_uninstall_script(install_root / "uninstall" / "uninstall.sh", version=version)
+    _stage_vulkan_fixup_script(install_root)
 
     wrapper_src = linux_packaging_dir() / "qube.sh"
     wrapper_dst = staging / "usr" / "bin" / "qube"
@@ -88,8 +100,10 @@ def stage_appdir(appdir: Path, *, variant: str = "cpu") -> None:
 
     shutil.copy2(linux_packaging_dir() / "qube.appimage.desktop", appdir / "qube.desktop")
     shutil.copy2(icon_source_path(), appdir / "qube.png")
-    copy_pyinstaller_tree(appdir / "usr" / "bin" / "Qube")
-    write_linux_variant_marker(appdir / "usr" / "bin" / "Qube", variant)
+    bundle_root = appdir / "usr" / "bin" / "Qube"
+    copy_pyinstaller_tree(bundle_root)
+    write_linux_variant_marker(bundle_root, variant)
+    _stage_vulkan_fixup_script(bundle_root)
 
 
 def main() -> int:

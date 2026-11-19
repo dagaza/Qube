@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- **Linux Vulkan GPU offload:** Stop shipping a bundled `libvulkan` on Vulkan builds; preload distro `libstdc++`, `libdrm`, and `libvulkan` before PyTorch/PyInstaller copies load; disable conflicting bundled Vulkan/PyAV libdrm on install and at startup; narrow `LD_PRELOAD` in `.deb` / AppImage launchers when needed so Mesa RADV works on AMD/Intel without manual tweaks.
+
 ## [1.3.54] - 2026-11-17
 
 ### Added

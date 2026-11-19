@@ -1637,6 +1637,9 @@ def run_application(
         "[GPUDriverPreload] system libs pinned: %s",
         preload_system_gpu_driver_libs() or "none",
     )
+    from core.gpu_offload_diagnostics import log_startup_gpu_offload_probe
+
+    log_startup_gpu_offload_probe(logger)
 
     from core.bootstrap_trace import configure_bootstrap_trace, record_startup_progress
 

@@ -162,6 +162,10 @@ def gpu_offload_inactive_reason(
             shadowing_libdrm_path = shadowing_libdrm_amdgpu_path()
         if shadowing_libdrm_path:
             return "libdrm_shadowed"
+        from core.gpu_driver_preload import shadowing_libvulkan_loader_path
+
+        if shadowing_libvulkan_loader_path():
+            return "vulkan_loader_shadowed"
         return "vulkan_runtime_unavailable"
     return "no_gpu_offload_build"
 

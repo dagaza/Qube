@@ -13,8 +13,10 @@ def run() -> int:
 
     record_validation_entry()
 
+    from core.linux_vulkan_bundle_fixup import apply_vulkan_bundle_fixup_if_needed
     from core.gpu_driver_preload import preload_system_gpu_driver_libs
 
+    apply_vulkan_bundle_fixup_if_needed()
     preload_system_gpu_driver_libs()
 
     from PyQt6.QtCore import Qt

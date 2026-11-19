@@ -3,3 +3,6 @@ set -e
 if command -v update-desktop-database >/dev/null 2>&1; then
   update-desktop-database /usr/share/applications || true
 fi
+if [ -x /opt/qube/lib/apply_vulkan_bundle_fixup.sh ]; then
+  /opt/qube/lib/apply_vulkan_bundle_fixup.sh /opt/qube || true
+fi

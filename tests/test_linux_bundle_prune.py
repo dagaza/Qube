@@ -38,6 +38,17 @@ def test_prune_removes_packaging_bloat_but_keeps_runtime_files(tmp_path: Path) -
     assert report.bytes_removed > 0
 
 
+def test_vulkan_prune_disables_bundled_vulkan_loader(tmp_path: Path) -> None:
+    dist = tmp_path / "Qube"
+    loader = dist / "_internal" / "libvulkan.so.1"
+    _touch(loader, content=b"vulkan")
+
+    prune_pyinstaller_bundle(dist, variant="vulkan", strip_binaries=False)
+
+    assert not loader.is_file()
+    assert (dist / "_internal" / "libvulkan.so.1.bundled.bak").is_file()
+
+
 def test_cuda_prune_drops_extra_wheel_libs_but_keeps_required(tmp_path: Path) -> None:
     dist = tmp_path / "Qube"
     lib_dir = dist / "_internal" / "llama_cpp" / "lib"
