@@ -125,17 +125,19 @@ def test_transcript_wallpaper_host_scales_stale_cache_during_resize(_qube_app):
             is_dark=True
         ),
     )
-    host.resize(80, 60)
+    host.resize(100, 80)
     host.show()
     _qube_app.processEvents()
 
     host._background_pixmap()
+    w0, h0 = host.width(), host.height()
+    assert w0 > 0 and h0 > 0
     first = host._background_cache
     assert first is not None
-    assert first.width() == 80 and first.height() == 60
+    assert first.width() == w0 and first.height() == h0
 
-    host.resize(200, 120)
-    _qube_app.processEvents()
+    host.resize(w0 + 120, h0 + 80)
+    # Avoid processEvents() here — debounced rebuild should not have run yet.
 
     assert host._background_cache_is_current() is False
     host._schedule_background_cache_build()
