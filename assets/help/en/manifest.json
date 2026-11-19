@@ -1501,9 +1501,43 @@
         "faq.advanced_telemetry_interpreting",
         "faq.diagnostic_logs_advanced",
         "faq.inspect_retrieval",
+        "faq.turn_diagnostics_composer",
         "faq.memory_vs_library",
         "faq.at_mentions",
         "faq.inspect_retrieval",
+        "reference.composer_attachments"
+      ]
+    },
+    {
+      "id": "faq.turn_diagnostics_composer",
+      "path": "faq/turn-diagnostics-composer.md",
+      "title": "Under the hood — @diagnostics composer",
+      "type": "faq",
+      "tags": [
+        "diagnostics",
+        "composer",
+        "routing",
+        "under the hood",
+        "orchestration"
+      ],
+      "synonyms": [
+        "explain turn",
+        "diagnostics composer",
+        "under the hood",
+        "underhood",
+        "@diagnostics",
+        "@[tool:diagnostics]",
+        "explain under the hood",
+        "turn diagnostics",
+        "turn forensics",
+        "attachment tool diagnostics"
+      ],
+      "related": [
+        "index",
+        "features.conversations",
+        "faq.inspect_retrieval",
+        "faq.diagnostic_logs_advanced",
+        "reference.composer_tools",
         "reference.composer_attachments"
       ]
     },
@@ -1533,6 +1567,7 @@
         "faq.cognitive_router",
         "faq.advanced_telemetry_interpreting",
         "faq.diagnostic_logs_advanced",
+        "faq.turn_diagnostics_composer",
         "faq.retrieval_profile_vs_search_quality"
       ]
     },
@@ -1704,7 +1739,8 @@
         "index",
         "reference.composer_attachments",
         "reference.composer_tools",
-        "reference.composer_skills"
+        "reference.composer_skills",
+        "faq.turn_diagnostics_composer"
       ]
     },
     {
@@ -2180,6 +2216,21 @@
       "doc_id": "faq.inspect_retrieval",
       "heading": "INSPECT RETRIEVAL",
       "answer": "On an assistant reply, open **Sources**, then **INSPECT RETRIEVAL** when shown. The inspector shows Summary, Graph, Compare, and Explain tabs for that turn's retrieval and routing."
+    },
+    {
+      "id": "faq.turn_diagnostics_composer.how",
+      "question_patterns": [
+        "under the hood",
+        "underhood",
+        "@diagnostics",
+        "diagnostics composer",
+        "explain under the hood",
+        "how does under the hood work",
+        "turn diagnostics"
+      ],
+      "doc_id": "faq.turn_diagnostics_composer",
+      "heading": "Under the hood",
+      "answer": "Attach **`@[tool:diagnostics]`** (alias **`@[tool:underhood]`**, palette **Under the hood**) to ask the model to explain a reply's routing and retrieval from recorded forensics, or right\u2011click a reply \u2192 **Explain under the hood\u2026**. For tabbed traces use **Sources \u2192 INSPECT RETRIEVAL**. Ask **`@[tool:help]`** for this guide in Library \u2192 Qube."
     },
     {
       "id": "faq.log_redaction_sharing.redact",

@@ -1164,6 +1164,24 @@ class LLMWorker(QThread):
                 phase="persist",
             )
 
+        forensics = None
+        try:
+            from core.turn_forensics import build_turn_forensics_snapshot
+
+            latest_routing = self.routing_debug_buffer.latest()
+            forensics = build_turn_forensics_snapshot(
+                routing_turn_id=int(getattr(self, "_routing_debug_turn_seq", 0) or 0),
+                routing_record=latest_routing,
+                turn_context=getattr(self, "_turn_context", None),
+                degeneration=getattr(self, "_turn_history_degeneration", None),
+                composer_attachments=list(getattr(self, "_turn_attachments", []) or []),
+                conversation_health=getattr(self, "_turn_conversation_health", None),
+                effective_route=str(getattr(self, "_turn_execution_route", "") or ""),
+                strategy=str(getattr(latest_routing, "strategy", "") if latest_routing else ""),
+            )
+        except Exception:
+            logger.debug("[TurnForensics] snapshot build failed", exc_info=True)
+
         src_payload = json.dumps(all_ui_sources) if all_ui_sources else None
         bundle_id = None
         evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
@@ -1188,9 +1206,19 @@ class LLMWorker(QThread):
             src_payload = encode_sources_payload(
                 list(all_ui_sources or []),
                 transparency=transparency,
+                forensics=forensics,
             )
         elif all_ui_sources:
-            src_payload = json.dumps(all_ui_sources)
+            from core.knowledge.ui_sources_payload import encode_sources_payload
+
+            src_payload = encode_sources_payload(
+                list(all_ui_sources),
+                forensics=forensics,
+            )
+        elif forensics:
+            from core.knowledge.ui_sources_payload import encode_sources_payload
+
+            src_payload = encode_sources_payload([], forensics=forensics)
         self._turn_last_assistant_msg_id = self.db.add_message(
             self.session_id,
             "assistant",
@@ -1458,6 +1486,8 @@ class LLMWorker(QThread):
         self._turn_conversation_health: ConversationHealthState | None = None
         self._turn_stream_degeneration_cancelled = False
         self._turn_capability_trace_ctx = None
+        self._turn_diagnostics_system_hint = ""
+        self._composer_diagnostics_active = False
 
     def _remember_turn_engine_request(self, request: dict) -> None:
         self._turn_engine_request = copy.deepcopy(request or {})
@@ -2313,6 +2343,8 @@ class LLMWorker(QThread):
         self._help_canonical_system_hint = ""
         self._composer_internet_requested = False
         self._composer_trusted_requested = False
+        self._turn_diagnostics_system_hint = ""
+        self._composer_diagnostics_active = False
 
         if attachment_patch:
             if attachment_patch.get("attachment_file"):
@@ -2339,9 +2371,60 @@ class LLMWorker(QThread):
                             len(self._turn_attachment_context),
                         )
                     self._mark_skip_enrichment("composer_conversation_ref")
+            if attachment_patch.get("attachment_tool") == "diagnostics":
+                from core.turn_diagnostics_bundle import build_turn_diagnostics_bundle
+                from core.turn_diagnostics_prompts import (
+                    DIAGNOSTICS_DEFAULT_USER_QUESTION,
+                    diagnostics_system_addendum,
+                    format_turn_diagnostics_context,
+                )
+
+                self._composer_diagnostics_active = True
+                target_mid = attachment_patch.get("diagnostics_target_message_id")
+                thread_depth = int(
+                    attachment_patch.get("diagnostics_thread_depth") or 0
+                )
+                if not (self.prompt or "").strip():
+                    self.prompt = DIAGNOSTICS_DEFAULT_USER_QUESTION
+                try:
+                    from core.app_settings import get_diagnostics_technical_detail_enabled
+
+                    bundle = build_turn_diagnostics_bundle(
+                        self.db,
+                        session_id=str(self.session_id or ""),
+                        target_assistant_message_id=target_mid,
+                        thread_depth=thread_depth,
+                        routing_debug_buffer=self.routing_debug_buffer,
+                        native_engine=self._native_engine,
+                        embedder=self.embedder,
+                        technical_detail=get_diagnostics_technical_detail_enabled(),
+                    )
+                    self._turn_attachment_context = format_turn_diagnostics_context(
+                        bundle
+                    )
+                    self._turn_diagnostics_system_hint = diagnostics_system_addendum()
+                except Exception:
+                    logger.exception(
+                        "[LLM Worker] Turn diagnostics bundle build failed"
+                    )
+                    self._turn_attachment_context = format_turn_diagnostics_context(
+                        {"error": "bundle_build_failed"}
+                    )
+                    self._turn_diagnostics_system_hint = diagnostics_system_addendum()
+                self._mark_skip_enrichment("composer_diagnostics")
+                logger.info(
+                    "[LLM Worker] Composer @diagnostics: injected bundle "
+                    "target=%s depth=%s",
+                    target_mid or "(latest)",
+                    thread_depth,
+                )
             composer_tool = attachment_patch.get("attachment_tool")
-            library_knowledge_active = composer_tool == "library"
-            help_knowledge_active = composer_tool == "help"
+            library_knowledge_active = composer_tool == "library" and not getattr(
+                self, "_composer_diagnostics_active", False
+            )
+            help_knowledge_active = composer_tool == "help" and not getattr(
+                self, "_composer_diagnostics_active", False
+            )
             if library_knowledge_active:
                 self._composer_knowledge_tool = "library"
                 force_web = True
@@ -2365,7 +2448,11 @@ class LLMWorker(QThread):
                     "(prefix=%s)",
                     HELP_DOC_SOURCE_PREFIX,
                 )
-            elif composer_tool and is_web_composer_tool(composer_tool):
+            elif (
+                composer_tool
+                and is_web_composer_tool(composer_tool)
+                and not getattr(self, "_composer_diagnostics_active", False)
+            ):
                 self._composer_knowledge_tool = composer_tool
                 self._composer_internet_requested = composer_tool == "internet"
                 self._composer_trusted_requested = composer_tool == "trusted"
@@ -4405,6 +4492,10 @@ class LLMWorker(QThread):
             composer_help_attached=composer_help_attached,
             help_sources_empty=help_sources_empty,
             help_canonical_hint=getattr(self, "_help_canonical_system_hint", ""),
+            composer_diagnostics_attached=getattr(
+                self, "_composer_diagnostics_active", False
+            ),
+            diagnostics_system_hint=getattr(self, "_turn_diagnostics_system_hint", ""),
             rag_capability_blocked=rag_capability_blocked,
             strict_isolation_enabled=self.mcp_strict_enabled,
             preference_context=preference_policy.compact_prompt_context(

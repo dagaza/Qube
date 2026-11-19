@@ -91,6 +91,37 @@ class TestComposerAttachments(unittest.TestCase):
         self.assertEqual(patch["strategy"], "attachment_tool_help")
         self.assertEqual(patch["attachment_tool"], "help")
 
+    def test_resolve_tool_diagnostics(self):
+        att = ComposerAttachment(kind="tool", id="diagnostics", label="Under the hood")
+        patch = resolve_attachment_routing([att])
+        assert patch is not None
+        self.assertEqual(patch["route"], "none")
+        self.assertEqual(patch["strategy"], "attachment_tool_diagnostics")
+        self.assertEqual(patch["attachment_tool"], "diagnostics")
+
+    def test_parse_diagnostics_message_token(self):
+        text = "@[tool:diagnostics::msg-uuid-1] why?"
+        clean, attachments = parse_attachments(text)
+        self.assertEqual(clean, "why?")
+        self.assertEqual(len(attachments), 1)
+        self.assertEqual(attachments[0].id, "diagnostics::msg-uuid-1")
+        self.assertEqual(attachments[0].label, "Under the hood")
+
+    def test_resolve_tool_underhood_alias(self):
+        att = ComposerAttachment(kind="tool", id="underhood", label="Under the hood")
+        patch = resolve_attachment_routing([att])
+        assert patch is not None
+        self.assertEqual(patch["attachment_tool"], "diagnostics")
+        self.assertEqual(patch["strategy"], "attachment_tool_diagnostics")
+
+    def test_lift_under_the_hood_phrase(self):
+        from core.composer_attachments import lift_bare_tool_mentions
+
+        text, atts = lift_bare_tool_mentions("@under the hood explain this")
+        self.assertEqual(len(atts), 1)
+        self.assertEqual(atts[0].id, "diagnostics")
+        self.assertEqual(text, "explain this")
+
     def test_resolve_tool_research(self):
         att = ComposerAttachment(kind="tool", id="research", label="Deep research")
         patch = resolve_attachment_routing([att])

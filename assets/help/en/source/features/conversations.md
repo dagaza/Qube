@@ -41,7 +41,8 @@ chat, chat screen, main chat, threads, conversation list, composer, new chat, me
 7. **Ground on your Library** — Attach `@[tool:library]`, enable **Local Knowledge Base** in the tools panel, and/or rely on **NLP Auto-Activator** or Knowledge settings triggers (see [Knowledge settings](settings/knowledge.md)).
 8. **Dictate one message** — Click **Speak your message (push-to-talk)** beside the input (this is push-to-talk, not the wakeword). Always-on listening is controlled under **Enable Voice Input** in the tools panel.
 9. **Export the thread** — Use **Download conversation as Markdown** or **Copy conversation to clipboard** in the reading toolbar, or **Export** from a chat's **⋮** menu.
-10. **Inspect citations** — On an assistant reply, click **Sources** (when citations exist) or click numbered citation links in the text.
+10. **Inspect citations** — On an assistant reply, click **Sources** (when citations exist) or click numbered citation links in the text. Use **INSPECT RETRIEVAL** there for the tabbed trace, or right‑click the reply → **Explain under the hood…** to preload `@[tool:diagnostics]` (see [Under the hood FAQ](../faq/turn-diagnostics-composer.md)).
+11. **Ask how something works** — Attach **`@[tool:help]`** in the composer for settings locations and features such as routing, Library, or **Under the hood**.
 
 **Not supported in v1:** drag-and-drop reorder of chats, editing or regenerating individual messages after send.
 

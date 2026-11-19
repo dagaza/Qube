@@ -67,6 +67,7 @@ See [Cognitive Router — how routing works](cognitive-router-how-routing-works.
 
 ## Related
 
+- [Under the hood — @diagnostics composer](turn-diagnostics-composer.md) — plain-language orchestration explanation in chat
 - [Cognitive Router — how routing works](cognitive-router-how-routing-works.md) — NONE / MEMORY / RAG / WEB / HYBRID
 - [Advanced Telemetry — interpreting](advanced-telemetry-interpreting.md) — session router card vs per-reply INSPECT
 - [Retrieval profile vs search quality](retrieval-profile-vs-search-quality.md) — profile names in traces

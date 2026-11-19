@@ -12,7 +12,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from core.app_settings import get_mcp_internet_hybrid_enabled
+from core.app_settings import (
+    get_diagnostics_technical_detail_enabled,
+    get_mcp_internet_hybrid_enabled,
+)
 from ui.components.brand_buttons import apply_brand_primary
 from core.diagnostic_logs import iter_diagnostic_logs_by_category
 from core.paths import logs_dir
@@ -147,6 +150,34 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     hybrid_layout.addWidget(hybrid_lbl, stretch=1)
     add_settings_full_width_row(web_form, hybrid_row)
+
+    diag_row = QWidget()
+    diag_layout = QHBoxLayout(diag_row)
+    diag_layout.setContentsMargins(0, 0, 0, 0)
+    diag_layout.setSpacing(10)
+    host.privacy_data_diagnostics_technical_toggle = PrestigeToggle()
+    host.privacy_data_diagnostics_technical_toggle.setToolTip(
+        "When enabled, @[tool:diagnostics] may include llm_debug log excerpts "
+        "alongside routing metadata. Prompt bodies are still omitted."
+    )
+    host.privacy_data_diagnostics_technical_toggle.blockSignals(True)
+    host.privacy_data_diagnostics_technical_toggle.setChecked(
+        get_diagnostics_technical_detail_enabled()
+    )
+    host.privacy_data_diagnostics_technical_toggle.blockSignals(False)
+    host.privacy_data_diagnostics_technical_toggle.toggled.connect(
+        host._on_privacy_data_diagnostics_technical_toggled
+    )
+    diag_lbl = QLabel("Technical detail in @diagnostics bundles")
+    diag_lbl.setWordWrap(True)
+    diag_lbl.setObjectName("SettingsLogDescription")
+    diag_lbl.setToolTip(host.privacy_data_diagnostics_technical_toggle.toolTip())
+    diag_layout.addWidget(
+        host.privacy_data_diagnostics_technical_toggle,
+        alignment=Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+    )
+    diag_layout.addWidget(diag_lbl, stretch=1)
+    add_settings_full_width_row(web_form, diag_row)
 
     host.privacy_data_what_leaves_card = build_what_leaves_device_info_card(
         is_dark=is_dark,

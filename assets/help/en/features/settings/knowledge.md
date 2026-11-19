@@ -162,8 +162,6 @@ Controls listed top-to-bottom for **Settings → Knowledge**.
 - **Slow down live DuckDuckGo searches slightly (recommended)**
 - **Live DDG usage**
 - **Show advanced discovery limits**
-- **Session limit override**
-- **SearXNG base URL**
 - **Reset discovery health**
 - **Open Privacy & data**
 

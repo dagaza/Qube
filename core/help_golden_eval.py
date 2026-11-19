@@ -349,9 +349,20 @@ def _doc_intent_boost(doc: dict[str, Any], signals: _QuerySignals, query: str) -
             boost -= 0.8
     if ("web toggle" in norm or "hybrid internet mode" in norm) and doc_id == "faq.cognitive_router":
         boost += 2.2
-    if ("no citation" in norm or "without sources" in norm or "empty retrieval" in norm):
+    citation_downgrade_query = any(
+        phrase in norm
+        for phrase in (
+            "no citation",
+            "without citation",
+            "without sources",
+            "empty retrieval",
+        )
+    )
+    if citation_downgrade_query:
         if doc_id == "faq.cognitive_router":
             boost += 2.0
+        if doc_id == "faq.turn_diagnostics_composer":
+            boost -= 1.5
     if signals.faq and doc_id == "faq.internal_vs_external":
         boost += 1.6
     if signals.faq and doc_id == "faq.live_sources_vs_library":

@@ -51,6 +51,10 @@ _TOOL_ALIASES: dict[str, str] = {
     "lib": "library",
     "mem": "memory",
     "scientific": "evidence",
+    "under": "diagnostics",
+    "underhood": "diagnostics",
+    "underthehood": "diagnostics",
+    "hood": "diagnostics",
 }
 
 

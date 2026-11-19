@@ -118,7 +118,12 @@ from core.composer_discoverability import (
     record_recent_skill,
     resolve_recent_mention,
 )
-from core.composer_attachments import resolve_attachment_routing, validate_file_token
+from core.composer_attachments import (
+    ComposerAttachment,
+    resolve_attachment_routing,
+    validate_file_token,
+)
+from core.turn_forensics import format_diagnostics_tool_token
 from core.composer_draft import (
     ComposerDraft,
     ROUTING_REJECT_ONE_SOURCE,
@@ -1043,6 +1048,15 @@ class AgentMessageLabel(QTextBrowser):
         sel_act = QAction("Select All", self)
         sel_act.triggered.connect(self.selectAll)
         menu.addAction(sel_act)
+
+        mid = getattr(self, "_db_message_id", None)
+        if view is not None and mid:
+            menu.addSeparator()
+            diag_act = QAction("Explain under the hood…", self)
+            diag_act.triggered.connect(
+                lambda *, m=mid, v=view: v.start_diagnostics_for_message(m)
+            )
+            menu.addAction(diag_act)
 
         menu.exec(event.globalPos())
 
@@ -2350,6 +2364,27 @@ class ConversationsView(QWidget):
                 lbl, as_markdown=True
             )
         )
+        mid = getattr(agent, "_db_message_id", None)
+        if mid:
+            menu.addSeparator()
+            report_act = menu.addAction("Copy issue report snippet")
+            report_act.triggered.connect(
+                lambda _checked=False, lbl=agent, m=mid: self._copy_diagnostics_issue_report(
+                    lbl, m
+                )
+            )
+            json_act = menu.addAction("Copy diagnostics bundle (JSON)")
+            json_act.triggered.connect(
+                lambda _checked=False, lbl=agent, m=mid: self._copy_diagnostics_bundle_json(
+                    lbl, m
+                )
+            )
+            export_act = menu.addAction("Export diagnostics bundle…")
+            export_act.triggered.connect(
+                lambda _checked=False, lbl=agent, m=mid: self._export_diagnostics_bundle(
+                    lbl, m
+                )
+            )
         return menu
 
     def _create_agent_telemetry_label(self, text: str, is_dark: bool) -> QLabel:
@@ -3755,6 +3790,122 @@ class ConversationsView(QWidget):
             if hasattr(self.text_input, "_schedule_height_sync"):
                 self.text_input._schedule_height_sync()
         self._refresh_composer_chip_strip()
+
+    def _native_engine_for_diagnostics(self):
+        win = self.window()
+        return getattr(win, "native_llama_engine", None) if win is not None else None
+
+    def _embedder_for_diagnostics(self):
+        win = self.window()
+        llm = getattr(win, "_llm_worker", None) if win is not None else None
+        return getattr(llm, "embedder", None) if llm is not None else None
+
+    def _routing_buffer_for_diagnostics(self):
+        llm = getattr(self, "llm", None)
+        return getattr(llm, "routing_debug_buffer", None) if llm is not None else None
+
+    def _build_diagnostics_bundle_for_message(self, assistant_message_id: str) -> dict | None:
+        from core.app_settings import get_diagnostics_technical_detail_enabled
+        from core.turn_diagnostics_bundle import build_turn_diagnostics_bundle
+
+        sid = str(getattr(self, "current_session_id", "") or "").strip()
+        mid = str(assistant_message_id or "").strip()
+        if not sid or not mid or self.db is None:
+            return None
+        try:
+            return build_turn_diagnostics_bundle(
+                self.db,
+                session_id=sid,
+                target_assistant_message_id=mid,
+                thread_depth=0,
+                routing_debug_buffer=self._routing_buffer_for_diagnostics(),
+                native_engine=self._native_engine_for_diagnostics(),
+                embedder=self._embedder_for_diagnostics(),
+                technical_detail=get_diagnostics_technical_detail_enabled(),
+            )
+        except Exception:
+            logger.exception("Failed to build diagnostics bundle for message %s", mid)
+            return None
+
+    def _copy_diagnostics_issue_report(
+        self, agent: AgentMessageLabel, message_id: str
+    ) -> None:
+        from core.turn_diagnostics_export import build_issue_report_snippet
+
+        bundle = self._build_diagnostics_bundle_for_message(message_id)
+        if bundle is None:
+            from core.app_notification_types import AppNotificationRequest
+
+            self._notify_composer_toast(
+                AppNotificationRequest(
+                    title="Diagnostics",
+                    body="Could not build diagnostics bundle for this message.",
+                    severity="warning",
+                )
+            )
+            return
+        QApplication.clipboard().setText(build_issue_report_snippet(bundle))
+
+    def _copy_diagnostics_bundle_json(
+        self, agent: AgentMessageLabel, message_id: str
+    ) -> None:
+        from core.turn_diagnostics_export import bundle_json_text
+
+        bundle = self._build_diagnostics_bundle_for_message(message_id)
+        if bundle is None:
+            return
+        QApplication.clipboard().setText(bundle_json_text(bundle))
+
+    def _export_diagnostics_bundle(
+        self, agent: AgentMessageLabel, message_id: str
+    ) -> None:
+        from core.turn_diagnostics_export import export_bundle_json
+
+        bundle = self._build_diagnostics_bundle_for_message(message_id)
+        if bundle is None:
+            return
+        path = export_bundle_json(bundle, message_id=message_id)
+        from ui.components.prestige_dialog import PrestigeDialog
+
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        dlg = PrestigeDialog(
+            self,
+            "Diagnostics exported",
+            f"Saved bundle to:\n{path}",
+            is_dark=is_dark,
+            confirm_text="OK",
+            show_cancel=False,
+        )
+        dlg.exec()
+
+    def start_diagnostics_for_message(self, assistant_message_id: str) -> None:
+        """Preload composer with @diagnostics bound to an assistant message."""
+        mid = str(assistant_message_id or "").strip()
+        if not mid:
+            return
+        token_id = format_diagnostics_tool_token(message_id=mid)
+        att = ComposerAttachment(
+            kind="tool",
+            id=token_id,
+            label="Under the hood",
+        )
+        self._composer_draft = ComposerDraft()
+        updated, _added, reject_reason = add_routing_attachment(
+            self._composer_draft, att
+        )
+        if reject_reason == ROUTING_REJECT_ONE_SOURCE:
+            self._notify_composer_one_source_limit()
+            return
+        self._composer_draft = updated
+        if hasattr(self, "text_input"):
+            self.text_input.blockSignals(True)
+            self.text_input.setPlainText(self._composer_draft.body)
+            self.text_input.blockSignals(False)
+            if hasattr(self.text_input, "_schedule_height_sync"):
+                self.text_input._schedule_height_sync()
+        self._refresh_composer_chip_strip()
+        if hasattr(self, "text_input"):
+            self.text_input.setFocus()
 
     def add_composer_attachment(self, attachment) -> None:
         if attachment.kind == "file" and not validate_file_token(attachment.id):

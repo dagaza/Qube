@@ -60,19 +60,12 @@ AI models settings, native engine, local LLM, external server, GPU offload, LM S
 Controls listed top-to-bottom for **Settings → AI & Models**.
 
 
-### Engine & routing
-
-- **AI Engine**
-- **External Provider**
-
 ### Local models
 
 - **Use selected**
 - **Refresh**
 - **Delete**
-- **Model storage**
 - **On this device**
-- **Active model**
 
 ### Startup
 

@@ -170,6 +170,10 @@ class RetrievalInspector(QWidget):
         routing_text = format_routing_inspect_text(routing_record)
         if routing_text:
             lines.append(routing_text)
+        lines.append(
+            "Composer: use @[tool:diagnostics] (Under the hood) for a plain-language "
+            "explanation of this turn."
+        )
         return "\n".join(lines)
 
     def _format_explain(
