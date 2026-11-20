@@ -425,6 +425,9 @@ jobs:
       - name: Smoke test dist binary
         run: bash scripts/release/smoke_linux_dist.sh
 
+      - name: Llama GGUF inference smoke (${{ matrix.variant }})
+        run: bash scripts/release/smoke_linux_llama_inference.sh
+
       - name: Build AppImage (${{ matrix.variant }})
         run: bash scripts/linux/build_appimage.sh ${{ steps.version.outputs.version }} ${{ matrix.variant }}
 

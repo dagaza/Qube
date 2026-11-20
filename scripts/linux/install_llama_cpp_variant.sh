@@ -12,6 +12,17 @@
 #   LLAMA_CPP_FORCE_CUDA_SOURCE=1  skip CUDA prebuilt wheel
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+linux_llama_cmake_args() {
+  PYTHONPATH="${REPO_ROOT}${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY' "$1"
+import sys
+from core.llama_cpp_build import linux_llama_cpp_cmake_args
+
+print(linux_llama_cpp_cmake_args(sys.argv[1]))
+PY
+}
+
 VARIANT="${1:-cpu}"
 VERSION="${LLAMA_CPP_VERSION:-0.3.29}"
 JOBS="${LLAMA_BUILD_JOBS:-1}"
@@ -65,16 +76,43 @@ if not expect_gpu and llama_cpp.llama_supports_gpu_offload():
 PY
 }
 
+verify_linux_libggml_release() {
+  [[ "$(uname -s)" == "Linux" ]] || return 0
+  PYTHONPATH="${REPO_ROOT}${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY'
+import importlib.util
+from pathlib import Path
+
+from core.linux_ggml_release_verify import verify_release_libggml_cpu
+
+spec = importlib.util.find_spec("llama_cpp")
+if spec is None or not spec.origin:
+    raise SystemExit("llama_cpp not importable for libggml verify")
+root = Path(spec.origin).resolve().parent
+lib = root / "lib" / "libggml-cpu.so.0"
+verify_release_libggml_cpu(lib)
+print("libggml-cpu release verify OK:", lib)
+PY
+}
+
 install_cpu() {
   echo "==> Installing CPU llama-cpp-python (${VERSION})..."
-  pip_install "llama-cpp-python==${VERSION}" --force-reinstall --no-cache-dir
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    export CMAKE_ARGS="$(linux_llama_cmake_args cpu)"
+    echo "==> Linux CPU: source build (CMAKE_ARGS=${CMAKE_ARGS})..."
+    pip_install "llama-cpp-python==${VERSION}" \
+      --force-reinstall --no-cache-dir --no-binary=llama-cpp-python
+    verify_linux_libggml_release
+  else
+    pip_install "llama-cpp-python==${VERSION}" --force-reinstall --no-cache-dir
+  fi
   verify_install 0
 }
 
 install_vulkan() {
-  export CMAKE_ARGS="-DGGML_VULKAN=on"
-  echo "==> Building llama-cpp-python with Vulkan (${VERSION}, jobs=${JOBS})..."
+  export CMAKE_ARGS="$(linux_llama_cmake_args vulkan)"
+  echo "==> Building llama-cpp-python with Vulkan (${VERSION}, jobs=${JOBS}, CMAKE_ARGS=${CMAKE_ARGS})..."
   pip_install "llama-cpp-python==${VERSION}" --force-reinstall --no-cache-dir --no-binary=llama-cpp-python
+  verify_linux_libggml_release
   verify_install 1
 }
 
@@ -82,15 +120,25 @@ install_cuda() {
   local cu="${CUDA_WHEEL_TAG:-cu124}"
   echo "==> Installing CUDA llama-cpp-python (${VERSION}, wheel ${cu})..."
   if [[ "${LLAMA_CPP_FORCE_CUDA_SOURCE:-}" == 1 ]]; then
-    export CMAKE_ARGS="-DGGML_CUDA=on"
+    export CMAKE_ARGS="$(linux_llama_cmake_args cuda)"
     pip_install "llama-cpp-python==${VERSION}" --force-reinstall --no-cache-dir --no-binary=llama-cpp-python
+    verify_linux_libggml_release
   else
-    if ! pip_install "llama-cpp-python==${VERSION}" \
+    if pip_install "llama-cpp-python==${VERSION}" \
       --force-reinstall --no-cache-dir \
       --extra-index-url "https://abetlen.github.io/llama-cpp-python/whl/${cu}"; then
+      if ! verify_linux_libggml_release; then
+        echo "==> CUDA wheel libggml failed release verify; rebuilding from source..."
+        export CMAKE_ARGS="$(linux_llama_cmake_args cuda)"
+        pip_install "llama-cpp-python==${VERSION}" \
+          --force-reinstall --no-cache-dir --no-binary=llama-cpp-python
+        verify_linux_libggml_release
+      fi
+    else
       echo "==> CUDA wheel install failed; falling back to source build..."
-      export CMAKE_ARGS="-DGGML_CUDA=on"
+      export CMAKE_ARGS="$(linux_llama_cmake_args cuda)"
       pip_install "llama-cpp-python==${VERSION}" --force-reinstall --no-cache-dir --no-binary=llama-cpp-python
+      verify_linux_libggml_release
     fi
   fi
   verify_install 1

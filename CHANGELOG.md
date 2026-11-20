@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+## [1.3.56] - 2026-11-20
+
+### Fixed
+- **Linux native inference (1.3.55 regression):** Packaged `libggml-cpu` built on CI with `GGML_AVX_VNNI` enabled could emit VEX `vpdpbusd` (classic AVX-VNNI). On AMD Zen 4 / 7840HS-class CPUs (AVX512-VNNI only) that opcode SIGILLs during Q8 matmul, so chat could exit with no error dialog. **1.3.55 Vulkan packaging was not the cause** — the failure was the bundled ggml CPU backend.
+- **Linux CPU / Vulkan / CUDA:** Build Linux `llama-cpp-python` with `-DGGML_AVX_VNNI=OFF` (CUDA falls back to source when a wheel fails lib checks). EVEX AVX512-VNNI kernels and other `GGML_NATIVE` paths stay enabled.
+
+### Changed
+- **Release CI:** After PyInstaller, `scripts/release/smoke_linux_llama_inference.sh` objdump-verifies bundled `libggml-cpu`, requires EVEX `vpdpbusd` in the binary, and runs GGUF decode via **bundled** `_internal` libs (`n_gpu_layers=0`, plus `n_gpu_layers=8` on Vulkan builds).
+
 ## [1.3.55] - 2026-11-19
 
 ### Added
