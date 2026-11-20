@@ -43,5 +43,8 @@ fi
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 git commit -m "qube ${VERSION}"
-git push origin HEAD
+# Re-apply the token URL before push: git http redirects can strip credentials from origin.
+AUTH_ORIGIN="https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${TAP_REPO}.git"
+git remote set-url origin "$AUTH_ORIGIN"
+git push "$AUTH_ORIGIN" HEAD:main
 echo "Pushed qube $VERSION to $TAP_REPO"

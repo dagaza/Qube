@@ -69,6 +69,10 @@ Set repository **variable** and **secret** on `dagaza/Qube`:
 | Variable `HOMEBREW_AUTO_SUBMIT` | `true` |
 | Secret `HOMEBREW_TAP_TOKEN` | Fine-grained PAT with **contents: write** on `dagaza/homebrew-qube` only |
 
+If clone succeeds but push fails with *Invalid username or token*, the PAT may be read-only — or git
+stripped credentials after an HTTP redirect (see `scripts/macos/bump_tap.sh`, which re-applies the
+token URL before `git push`).
+
 After each tagged release, the workflow renders the cask, runs `brew style`, and
 pushes the bump to the tap via `scripts/macos/bump_tap.sh`.
 
