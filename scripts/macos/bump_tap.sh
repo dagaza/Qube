@@ -23,28 +23,4 @@ if [[ ! -f "$CASK_SRC" ]]; then
   exit 1
 fi
 
-WORKDIR="$(mktemp -d)"
-trap 'rm -rf "$WORKDIR"' EXIT
-
-git clone --depth 1 \
-  "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${TAP_REPO}.git" \
-  "$WORKDIR/tap"
-
-mkdir -p "$WORKDIR/tap/Casks"
-cp "$CASK_SRC" "$WORKDIR/tap/Casks/qube.rb"
-
-cd "$WORKDIR/tap"
-git add Casks/qube.rb
-if git diff --cached --quiet -- Casks/qube.rb; then
-  echo "Cask already at $VERSION; nothing to commit."
-  exit 0
-fi
-
-git config user.name "github-actions[bot]"
-git config user.email "github-actions[bot]@users.noreply.github.com"
-git commit -m "qube ${VERSION}"
-# Re-apply the token URL before push: git http redirects can strip credentials from origin.
-AUTH_ORIGIN="https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${TAP_REPO}.git"
-git remote set-url origin "$AUTH_ORIGIN"
-git push "$AUTH_ORIGIN" HEAD:main
-echo "Pushed qube $VERSION to $TAP_REPO"
+exec python3 "$SCRIPT_DIR/push_tap_cask.py" "$VERSION" "$CASK_SRC" --repo "$TAP_REPO"
