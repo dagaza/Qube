@@ -30,6 +30,7 @@ def _venv_lib() -> Path | None:
 def test_cmake_policy_disables_avx_vnni_not_avx512() -> None:
     for variant in ("cpu", "vulkan", "cuda"):
         args = linux_llama_cpp_cmake_args(variant)
+        assert "-DGGML_NATIVE=OFF" in args
         assert "-DGGML_AVX_VNNI=OFF" in args
         assert "GGML_AVX512_VNNI=ON" in args
 

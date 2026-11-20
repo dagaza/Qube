@@ -425,7 +425,15 @@ jobs:
       - name: Smoke test dist binary
         run: bash scripts/release/smoke_linux_dist.sh
 
+      - name: Cache CI smoke GGUF
+        uses: actions/cache@v4
+        with:
+          path: .cache/smoke_gguf
+          key: smoke-gguf-v1-${{ runner.os }}-qwen-q4_0
+
       - name: Llama GGUF inference smoke (${{ matrix.variant }})
+        env:
+          HF_HUB_DISABLE_IMPLICIT_TOKEN: "1"
         run: bash scripts/release/smoke_linux_llama_inference.sh
 
       - name: Build AppImage (${{ matrix.variant }})

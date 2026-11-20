@@ -12,7 +12,7 @@ _VEX_VP_DP_BUSD = re.compile(
     re.IGNORECASE,
 )
 _EVEX_VP_DP_BUSD = re.compile(
-    r"\b62\s+[0-9a-f]{2}\s+[0-9a-f]{2}\s+2[08]\s+50\b",
+    r"\b62\s+[0-9a-f]{2}\s+[0-9a-f]{2}\s+[0-9a-f]{2}\s+50\b",
     re.IGNORECASE,
 )
 _TRUE_STUB = re.compile(
@@ -91,18 +91,18 @@ def verify_q8_0_dot_avoids_vex_avx_vnni(lib: Path) -> None:
 
 
 def verify_avx512_vnni_kernels_present(lib: Path) -> None:
-    """Ensure AVX512-VNNI was not stripped alongside AVX-VNNI."""
-    proc = subprocess.run(
-        ["objdump", "-d", str(lib)],
-        capture_output=True,
-        text=True,
-        check=True,
+    """Q8 dot must use EVEX ``vpdpbusd`` when AVX512-VNNI is enabled for release."""
+    blob = _symbol_range_disasm(lib, "ggml_vec_dot_q8_0_q8_0")
+    if not blob.strip():
+        raise ValueError(f"{lib}: missing ggml_vec_dot_q8_0_q8_0")
+    if _EVEX_VP_DP_BUSD.search(blob):
+        return
+    if re.search(r"\bvpdpbusd\b.*%z", blob, re.IGNORECASE):
+        return
+    raise ValueError(
+        f"{lib}: ggml_vec_dot_q8_0_q8_0 has no EVEX vpdpbusd; "
+        "expected GGML_NATIVE=OFF and GGML_AVX512_VNNI=ON at build time."
     )
-    if not _EVEX_VP_DP_BUSD.search(proc.stdout or ""):
-        raise ValueError(
-            f"{lib}: no EVEX vpdpbusd opcodes found; "
-            "AVX512-VNNI kernels may have been disabled unintentionally."
-        )
 
 
 def verify_release_libggml_cpu(lib: Path) -> None:

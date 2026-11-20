@@ -7,9 +7,17 @@ import argparse
 import os
 import subprocess
 import sys
+import urllib.request
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Public GGUF for CI (no Hugging Face Hub token; SmolLM2 repo began returning 401).
+_CI_SMOKE_GGUF_URL = (
+    "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/"
+    "resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf"
+)
+_CI_SMOKE_GGUF_NAME = "qwen2.5-0.5b-instruct-q4_0.gguf"
 
 
 def _default_gguf() -> Path:
@@ -27,14 +35,24 @@ def _download_ci_smoke_gguf() -> Path:
         )
     )
     cache.mkdir(parents=True, exist_ok=True)
-    from huggingface_hub import hf_hub_download
+    dest = cache / _CI_SMOKE_GGUF_NAME
+    if dest.is_file() and dest.stat().st_size > 1_000_000:
+        return dest
 
-    fetched = hf_hub_download(
-        repo_id="HuggingFaceTB/SmolLM2-135M-Instruct-GGUF",
-        filename="SmolLM2-135M-Instruct-Q8_0.gguf",
-        local_dir=cache,
-    )
-    return Path(fetched)
+    url = os.environ.get("QUBE_SMOKE_GGUF_URL", _CI_SMOKE_GGUF_URL).strip()
+    print(f"Downloading CI smoke GGUF from {url} ...", flush=True)
+    tmp = dest.with_suffix(dest.suffix + ".part")
+    # Plain HTTPS fetch — avoids Hugging Face Hub implicit tokens (gated repos 401).
+    request = urllib.request.Request(url, headers={"User-Agent": "Qube-release-smoke/1.0"})
+    with urllib.request.urlopen(request, timeout=600) as response:
+        with tmp.open("wb") as out:
+            while True:
+                chunk = response.read(1 << 20)
+                if not chunk:
+                    break
+                out.write(chunk)
+    tmp.replace(dest)
+    return dest
 
 
 def _resolve_gguf(path: Path | None) -> Path:

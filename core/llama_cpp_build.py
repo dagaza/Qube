@@ -9,15 +9,17 @@ def linux_llama_cpp_cmake_args(variant: str) -> str:
 
     All Linux release variants (cpu, vulkan, cuda source builds) compile ggml from
     source in CI, except CUDA when a vetted prebuilt wheel passes post-install lib
-    checks. GitHub-hosted
-    runners are often Intel parts with AVX-VNNI, so a default ``GGML_NATIVE`` build
-    can bake in VEX-encoded ``vpdpbusd`` paths and a compile-time
-    ``ggml_cpu_has_avx_vnni()`` stub that always returns true.
+    checks.
+
+    GitHub-hosted runners default ``GGML_NATIVE=ON``, which applies ``-march=native``
+    and can define ``__AVXVNNI__`` on the build host. That yields compile-time
+    ``ggml_cpu_has_avx_vnni()`` stubs and VEX ``vpdpbusd`` in Q8 dots even when
+    ``GGML_AVX_VNNI=OFF``.
 
     AMD Zen 4 / 4c (e.g. Ryzen 7840HS) expose ``avx512_vnni`` but not Linux's
     ``avx_vnni`` flag; VEX AVX-VNNI opcodes can SIGILL while EVEX AVX512-VNNI
-    kernels still work. We disable ``GGML_AVX_VNNI`` and explicitly enable
-    ``GGML_AVX512_VNNI`` so EVEX paths ship even when CI runners lack AVX-VNNI.
+    kernels still work. Turn off native tuning and enable AVX512-VNNI explicitly
+    so release binaries match Zen 4-capable hosts.
     """
     key = (variant or "cpu").strip().lower()
     parts: list[str] = []
@@ -25,6 +27,8 @@ def linux_llama_cpp_cmake_args(variant: str) -> str:
         parts.append("-DGGML_VULKAN=on")
     elif key == "cuda":
         parts.append("-DGGML_CUDA=on")
+    parts.append("-DGGML_NATIVE=OFF")
     parts.append("-DGGML_AVX_VNNI=OFF")
+    parts.append("-DGGML_AVX512=ON")
     parts.append("-DGGML_AVX512_VNNI=ON")
     return " ".join(parts)
