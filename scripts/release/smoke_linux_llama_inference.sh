@@ -8,4 +8,4 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DIST="${1:-$REPO_ROOT/dist/Qube}"
 
-exec python3 "$SCRIPT_DIR/smoke_linux_llama_inference.py" --dist-dir "$DIST" --n-gpu-layers 0
+exec python3 "$SCRIPT_DIR/smoke_linux_llama_inference.py" --dist-dir "$DIST"

@@ -16,8 +16,8 @@ def linux_llama_cpp_cmake_args(variant: str) -> str:
 
     AMD Zen 4 / 4c (e.g. Ryzen 7840HS) expose ``avx512_vnni`` but not Linux's
     ``avx_vnni`` flag; VEX AVX-VNNI opcodes can SIGILL while EVEX AVX512-VNNI
-    kernels still work. Disabling ``GGML_AVX_VNNI`` keeps AVX512-VNNI and other
-    CPU optimizations via ``GGML_NATIVE``.
+    kernels still work. We disable ``GGML_AVX_VNNI`` and explicitly enable
+    ``GGML_AVX512_VNNI`` so EVEX paths ship even when CI runners lack AVX-VNNI.
     """
     key = (variant or "cpu").strip().lower()
     parts: list[str] = []
@@ -26,4 +26,5 @@ def linux_llama_cpp_cmake_args(variant: str) -> str:
     elif key == "cuda":
         parts.append("-DGGML_CUDA=on")
     parts.append("-DGGML_AVX_VNNI=OFF")
+    parts.append("-DGGML_AVX512_VNNI=ON")
     return " ".join(parts)

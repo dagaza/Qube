@@ -15,5 +15,7 @@ def test_cuda_source_cmake_disables_avx_vnni() -> None:
     assert "-DGGML_AVX_VNNI=OFF" in args
 
 
-def test_cpu_variant_returns_only_avx_vnni_off() -> None:
-    assert linux_llama_cpp_cmake_args("cpu") == "-DGGML_AVX_VNNI=OFF"
+def test_cpu_variant_enables_avx512_vnni_only() -> None:
+    assert linux_llama_cpp_cmake_args("cpu") == (
+        "-DGGML_AVX_VNNI=OFF -DGGML_AVX512_VNNI=ON"
+    )
