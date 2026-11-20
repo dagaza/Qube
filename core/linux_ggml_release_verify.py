@@ -128,13 +128,15 @@ def configure_bundled_llama_import(dist_dir: Path) -> Path:
     if not internal.is_dir():
         raise FileNotFoundError(f"dist internal dir missing: {internal}")
     internal_str = str(internal)
+    # Drop PYTHONPATH/repo entries so a stray ``llama_cpp`` cannot shadow the bundle.
     sys.path = [
         p
         for p in sys.path
-        if "site-packages" not in p and "dist-packages" not in p
+        if p
+        and "site-packages" not in p
+        and "dist-packages" not in p
     ]
-    if internal_str not in sys.path:
-        sys.path.insert(0, internal_str)
+    sys.path.insert(0, internal_str)
     lib_dirs = [
         internal_str,
         str(internal / "llama_cpp" / "lib"),

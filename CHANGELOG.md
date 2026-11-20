@@ -7,7 +7,7 @@
 - **Linux CPU / Vulkan / CUDA:** Build Linux `llama-cpp-python` with `-DGGML_NATIVE=OFF`, `-DGGML_AVX_VNNI=OFF`, and `-DGGML_AVX512_VNNI=ON` (CUDA falls back to source when a wheel fails lib checks) so CI does not bake in host `__AVXVNNI__` / VEX paths and release binaries include EVEX Q8 kernels for AMD Zen 4.
 
 ### Changed
-- **Release CI:** After PyInstaller, `scripts/release/smoke_linux_llama_inference.sh` objdump-verifies bundled `libggml-cpu`, requires EVEX `vpdpbusd` in the binary, and runs GGUF decode via **bundled** `_internal` libs (`n_gpu_layers=0`, plus `n_gpu_layers=8` on Vulkan builds).
+- **Release CI:** After PyInstaller, `scripts/release/smoke_linux_llama_inference.sh` objdump-verifies bundled `libggml-cpu`, requires EVEX `vpdpbusd` in Q8 dot, and runs GGUF decode via **bundled** `_internal` libs only (`python -I`, no `PYTHONPATH` shadowing).
 
 ## [1.3.55] - 2026-11-19
 

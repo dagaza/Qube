@@ -18,6 +18,8 @@ _CI_SMOKE_GGUF_URL = (
     "resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf"
 )
 _CI_SMOKE_GGUF_NAME = "qwen2.5-0.5b-instruct-q4_0.gguf"
+# Q4_0 0.5B is ~350 MiB; reject truncated CI downloads.
+_CI_SMOKE_GGUF_MIN_BYTES = 300_000_000
 
 
 def _default_gguf() -> Path:
@@ -36,7 +38,7 @@ def _download_ci_smoke_gguf() -> Path:
     )
     cache.mkdir(parents=True, exist_ok=True)
     dest = cache / _CI_SMOKE_GGUF_NAME
-    if dest.is_file() and dest.stat().st_size > 1_000_000:
+    if dest.is_file() and dest.stat().st_size >= _CI_SMOKE_GGUF_MIN_BYTES:
         return dest
 
     url = os.environ.get("QUBE_SMOKE_GGUF_URL", _CI_SMOKE_GGUF_URL).strip()
@@ -52,6 +54,13 @@ def _download_ci_smoke_gguf() -> Path:
                     break
                 out.write(chunk)
     tmp.replace(dest)
+    size = dest.stat().st_size
+    if size < _CI_SMOKE_GGUF_MIN_BYTES:
+        dest.unlink(missing_ok=True)
+        raise SystemExit(
+            f"CI smoke GGUF download too small ({size} bytes); expected "
+            f">= {_CI_SMOKE_GGUF_MIN_BYTES}"
+        )
     return dest
 
 
@@ -82,11 +91,13 @@ def _decode_child_env(dist: Path, gguf: Path, n_gpu_layers: int, max_tokens: int
     env = os.environ.copy()
     prev = env.get("LD_LIBRARY_PATH", "")
     env["LD_LIBRARY_PATH"] = ":".join(lib_dirs + ([prev] if prev else []))
-    env["PYTHONPATH"] = f"{_REPO_ROOT}:{internal}"
+    env.pop("PYTHONPATH", None)
+    env["PYTHONNOUSERSITE"] = "1"
+    env["QUBE_SMOKE_REPO_ROOT"] = str(_REPO_ROOT)
+    env["QUBE_SMOKE_DIST_DIR"] = str(dist.resolve())
     env["QUBE_SMOKE_GGUF_PATH"] = str(gguf)
     env["QUBE_SMOKE_N_GPU"] = str(n_gpu_layers)
     env["QUBE_SMOKE_MAX_TOKENS"] = str(max_tokens)
-    env["QUBE_SMOKE_DIST_INTERNAL"] = str(internal)
     return env
 
 
@@ -95,12 +106,15 @@ import os
 import sys
 from pathlib import Path
 
-internal = Path(os.environ["QUBE_SMOKE_DIST_INTERNAL"])
-sys.path = [p for p in sys.path if "site-packages" not in p and "dist-packages" not in p]
-sys.path.insert(0, str(internal))
+repo = Path(os.environ["QUBE_SMOKE_REPO_ROOT"])
+dist = Path(os.environ["QUBE_SMOKE_DIST_DIR"])
+sys.path = [str(repo)]
+from core.linux_ggml_release_verify import (
+    assert_libggml_loaded_from_dist,
+    configure_bundled_llama_import,
+)
 
-from core.linux_ggml_release_verify import assert_libggml_loaded_from_dist
-
+internal = configure_bundled_llama_import(dist)
 from llama_cpp import Llama
 
 gguf = os.environ["QUBE_SMOKE_GGUF_PATH"]
@@ -137,7 +151,7 @@ def _run_bundled_decode(
 ) -> str:
     env = _decode_child_env(dist, gguf, n_gpu_layers, max_tokens)
     proc = subprocess.run(
-        [sys.executable, "-c", _DECODE_CHILD],
+        [sys.executable, "-I", "-c", _DECODE_CHILD],
         env=env,
         cwd=str(dist),
         capture_output=True,
@@ -172,7 +186,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Skip objdump checks on bundled libggml-cpu",
     )
-    parser.add_argument("--timeout", type=int, default=180)
+    default_timeout = 600 if os.environ.get("GITHUB_ACTIONS") == "true" else 180
+    parser.add_argument("--timeout", type=int, default=default_timeout)
     args = parser.parse_args(argv)
 
     sys.path.insert(0, str(_REPO_ROOT))
