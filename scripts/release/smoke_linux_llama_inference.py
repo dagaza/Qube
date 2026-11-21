@@ -108,7 +108,9 @@ from pathlib import Path
 
 repo = Path(os.environ["QUBE_SMOKE_REPO_ROOT"])
 dist = Path(os.environ["QUBE_SMOKE_DIST_DIR"])
-sys.path = [str(repo)]
+repo_root = str(repo)
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
 from core.linux_ggml_release_verify import (
     assert_libggml_loaded_from_dist,
     configure_bundled_llama_import,
