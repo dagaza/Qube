@@ -11,6 +11,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# shellcheck source=scripts/release/smoke_linux_common.sh
+source "$SCRIPT_DIR/smoke_linux_common.sh"
 DIST="${1:-$REPO_ROOT/dist/Qube}"
 BINARY="$DIST/Qube"
 LIB_DIR="$DIST/_internal/llama_cpp/lib"
@@ -20,8 +22,9 @@ if [[ ! -x "$BINARY" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$DIST/.qube-linux-variant" ]] || [[ "$(<"$DIST/.qube-linux-variant")" != "cuda" ]]; then
-  echo "Expected CUDA variant marker at $DIST/.qube-linux-variant" >&2
+variant="$(smoke_linux_dist_variant "$DIST" || true)"
+if [[ "$variant" != "cuda" ]]; then
+  echo "Expected CUDA variant marker under $DIST (.qube_linux_variant or .qube-linux-variant)" >&2
   exit 1
 fi
 

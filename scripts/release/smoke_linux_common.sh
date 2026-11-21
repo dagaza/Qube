@@ -4,6 +4,19 @@
 #
 # shellcheck shell=bash
 
+# PyInstaller dist may use .qube_linux_variant (packaging) or legacy .qube-linux-variant.
+smoke_linux_dist_variant() {
+  local dist="${1:?dist dir required}"
+  local name
+  for name in .qube_linux_variant .qube-linux-variant; do
+    if [[ -f "$dist/$name" ]]; then
+      tr -d '[:space:]' <"$dist/$name"
+      return 0
+    fi
+  done
+  return 1
+}
+
 smoke_linux_stop_stale_qube() {
   if pgrep -x Qube >/dev/null 2>&1; then
     echo "Stopping stale Qube process(es) from a prior smoke test ..."
