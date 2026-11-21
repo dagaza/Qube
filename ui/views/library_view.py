@@ -57,6 +57,7 @@ from ui.components.pro_gem_badge import (
     apply_pro_gem_badge_theme,
     make_pro_gem_badge,
 )
+from core.library_folder_policy import is_protected_library_document
 from core.library_ingest_modes import is_precision_ingest_mode
 from core.app_settings import get_ui_library_transcript_background
 from core.theme.view_theme import view_resolved_theme
@@ -1124,12 +1125,7 @@ class LibraryView(QWidget):
         if self._folder_controller:
             self._folder_controller.register_menu(menu)
 
-        rename_action = menu.addAction(
-            themed_fa_icon("fa5s.edit", theme.color(LINK_ICON), 16), "Rename Document"
-        )
-        rename_action.triggered.connect(
-            lambda _, fname=doc["filename"]: self._trigger_rename_document(fname)
-        )
+        protected = is_protected_library_document(str(doc.get("filename") or ""))
 
         is_pinned = bool(doc.get("is_pinned"))
         if is_pinned:
@@ -1147,24 +1143,41 @@ class LibraryView(QWidget):
                 lambda _, fname=doc["filename"]: self._toggle_document_pin(fname, True)
             )
 
-        if self._folder_controller:
-            doc_folder_id = doc.get("folder_id") or self.db.get_main_library_folder_id()
-            self._folder_controller.build_move_submenu_for_item(
-                menu,
-                doc_folder_id,
-                lambda folder_id, fname=doc["filename"]: self._move_document_to_folder(
-                    fname, folder_id
-                ),
+        if protected:
+            read_only = menu.addAction("Built-in Qube content (read-only)")
+            read_only.setEnabled(False)
+            read_only.setToolTip(
+                "Help and other app-managed documents cannot be renamed, moved, or deleted."
+            )
+        else:
+            rename_action = menu.addAction(
+                themed_fa_icon("fa5s.edit", theme.color(LINK_ICON), 16), "Rename Document"
+            )
+            rename_action.triggered.connect(
+                lambda _, fname=doc["filename"]: self._trigger_rename_document(fname)
             )
 
-        menu.addSeparator()
+            if self._folder_controller:
+                doc_folder_id = (
+                    doc.get("folder_id") or self.db.get_main_library_folder_id()
+                )
+                self._folder_controller.build_move_submenu_for_item(
+                    menu,
+                    doc_folder_id,
+                    lambda folder_id, fname=doc["filename"]: self._move_document_to_folder(
+                        fname, folder_id
+                    ),
+                )
 
-        delete_action = menu.addAction(
-            themed_fa_icon("fa5s.trash-alt", theme.color(DANGER_ICON), 16), "Delete Document"
-        )
-        delete_action.triggered.connect(
-            lambda _, fname=doc["filename"]: self._trigger_delete_document(fname)
-        )
+            menu.addSeparator()
+
+            delete_action = menu.addAction(
+                themed_fa_icon("fa5s.trash-alt", theme.color(DANGER_ICON), 16),
+                "Delete Document",
+            )
+            delete_action.triggered.connect(
+                lambda _, fname=doc["filename"]: self._trigger_delete_document(fname)
+            )
 
         store_sidebar_options_menu(btn, menu)
         btn.setMenu(menu)
@@ -1180,6 +1193,16 @@ class LibraryView(QWidget):
         register_sidebar_entry_row(self.doc_list, item, row, self._update_row_colors)
 
     def _move_document_to_folder(self, filename: str, folder_id: str) -> None:
+        if is_protected_library_document(filename):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self,
+                "Cannot Move",
+                "This document is managed by Qube (help or internal knowledge) and "
+                "must stay in the Qube folder.",
+                is_dark,
+            ).exec()
+            return
         if self.db.move_document_to_folder(filename, folder_id):
             self.refresh_library_list()
 
@@ -1207,6 +1230,16 @@ class LibraryView(QWidget):
                     apply_pro_gem_badge_theme(badge, parent=target_list)
 
     def _trigger_rename_document(self, old_filename):
+        if is_protected_library_document(old_filename):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self,
+                "Cannot Rename",
+                "This document is managed by Qube (help or internal knowledge) and "
+                "cannot be renamed.",
+                is_dark,
+            ).exec()
+            return
         is_dark = getattr(self.window(), '_is_dark_theme', True)
         dlg = PrestigeDialog(self, "Rename Document", f"Enter a new name for '{old_filename}':", is_dark, is_input=True, default_text=old_filename)
         
@@ -1231,6 +1264,17 @@ class LibraryView(QWidget):
 
     def _trigger_delete_document(self, filename):
         """Spawns the Prestige dialog and coordinates deletion from both DBs."""
+        if is_protected_library_document(filename):
+            is_dark = getattr(self.window(), "_is_dark_theme", True)
+            PrestigeDialog(
+                self,
+                "Cannot Delete",
+                "This document is managed by Qube (help or internal knowledge) and "
+                "cannot be deleted. Built-in help is restored automatically when Qube "
+                "updates.",
+                is_dark,
+            ).exec()
+            return
         is_dark = getattr(self.window(), '_is_dark_theme', True)
         dlg = PrestigeDialog(self, "Delete Document", f"Are you sure you want to permanently delete and un-index '{filename}'?", is_dark)
         

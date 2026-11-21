@@ -206,6 +206,22 @@ class HelpCorpusSeedTests(unittest.TestCase):
             self.assertEqual(saved["corpus_version"], expected_version)
             self.assertGreater(summary["chunks"], 0)
 
+    def test_should_seed_when_indexed_help_missing_from_store(self) -> None:
+        manifest = load_manifest()
+        rel = str(manifest["documents"][0]["path"])
+        source = help_doc_source(rel)
+        store = _FakeStore()
+
+        with mock.patch(
+            "core.help_corpus_seed.user_help_corpus_state_path",
+            return_value=Path("/nonexistent/help_corpus_state.json"),
+        ):
+            need, reason = should_seed_help_corpus(manifest, store=store)
+
+        self.assertFalse(store.source_exists(source))
+        self.assertTrue(need)
+        self.assertIn("missing indexed help doc", reason)
+
 
 if __name__ == "__main__":
     unittest.main()

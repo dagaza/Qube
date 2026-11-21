@@ -69,7 +69,6 @@ from core.citation_integrity import (
     CITATION_TOKEN_RE,
     analyze_citations,
     normalize_citation_id as _normalize_citation_id,
-    source_citation_match_keys as _source_citation_match_keys,
     valid_source_ids,
 )
 from core.citation_integrity_telemetry import log_citation_integrity
@@ -141,6 +140,7 @@ from core.composer_draft import (
     serialize_draft,
 )
 from core.composer_skills import ComposerSkillMention, parse_composer_input, strip_all_composer_tokens_for_display
+from core.composer_sticky_tools import composer_sticky_knowledge_switched_request
 from core.help_action_blocks import HelpActionChip, parse_help_action_blocks
 from core.app_notification_types import AppNotificationRequest
 from core.conversation_branch import BranchError, branch_session
@@ -1835,6 +1835,7 @@ class ConversationsView(QWidget):
         self._transcript_timeline_refresh_timer.timeout.connect(
             self._refresh_transcript_timeline_rail
         )
+        self._deferred_host_resize_layout = False
         self._transcript_timeline_scroll_anim: QPropertyAnimation | None = None
         self._transcript_timeline_prev_sc: QShortcut | None = None
         self._transcript_timeline_next_sc: QShortcut | None = None
@@ -1932,6 +1933,22 @@ class ConversationsView(QWidget):
         self.scroll_area.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
         )
+
+    def _host_defers_resize_layout(self) -> bool:
+        win = self.window()
+        if win is None or not hasattr(win, "tools_pane_layout_animating"):
+            return False
+        try:
+            return bool(win.tools_pane_layout_animating())
+        except RuntimeError:
+            return False
+
+    def flush_deferred_host_resize_layout(self) -> None:
+        """Run transcript relayout deferred during MainWindow tools-pane width animation."""
+        if getattr(self, "_deferred_host_resize_layout", False):
+            self._deferred_host_resize_layout = False
+        self._sync_transcript_column_width_cap()
+        self._schedule_transcript_timeline_refresh()
 
     def _sync_transcript_column_width_cap(self) -> None:
         if not hasattr(self, "transcript_container") or not hasattr(self, "scroll_area"):
@@ -3257,6 +3274,9 @@ class ConversationsView(QWidget):
         action_layout.setSpacing(8)
         action_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
+        self._knowledge_toggle_buttons: dict[str, QPushButton] = {}
+        self._sticky_deep_research = False
+
         self.web_btn = QPushButton("Web")
         self.web_btn.setCheckable(True)
         self.web_btn.setProperty("class", "ThinkToggleButton")
@@ -3265,7 +3285,50 @@ class ConversationsView(QWidget):
         self.web_btn.setToolTip(
             "Search the web for every message in this chat until you turn it off"
         )
-        self.web_btn.toggled.connect(self._on_web_toggled)
+        self.web_btn.toggled.connect(
+            lambda checked: self._on_knowledge_toggle_toggled("internet", checked)
+        )
+        self._knowledge_toggle_buttons["internet"] = self.web_btn
+
+        self.evidence_btn = QPushButton("Evidence")
+        self.evidence_btn.setCheckable(True)
+        self.evidence_btn.setProperty("class", "ThinkToggleButton")
+        self.evidence_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.evidence_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.evidence_btn.setToolTip(
+            "Use scientific literature (peer-reviewed papers and preprints) "
+            "for every message in this chat until you turn it off"
+        )
+        self.evidence_btn.toggled.connect(
+            lambda checked: self._on_knowledge_toggle_toggled("evidence", checked)
+        )
+        self._knowledge_toggle_buttons["evidence"] = self.evidence_btn
+
+        self.trusted_btn = QPushButton("Trusted")
+        self.trusted_btn.setCheckable(True)
+        self.trusted_btn.setProperty("class", "ThinkToggleButton")
+        self.trusted_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.trusted_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.trusted_btn.setToolTip(
+            "Use Wikipedia and allowlisted sources for every message in this "
+            "chat until you turn it off"
+        )
+        self.trusted_btn.toggled.connect(
+            lambda checked: self._on_knowledge_toggle_toggled("trusted", checked)
+        )
+        self._knowledge_toggle_buttons["trusted"] = self.trusted_btn
+
+        self.research_btn = QPushButton("Deep Research")
+        self.research_btn.setCheckable(True)
+        self.research_btn.setProperty("class", "ThinkToggleButton")
+        self.research_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.research_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.research_btn.setToolTip(
+            "Run multi-step deep research for every message in this chat "
+            "until you turn it off (async, non-blocking)"
+        )
+        self.research_btn.toggled.connect(self._on_deep_research_toggle_toggled)
+        self._knowledge_toggle_buttons["research"] = self.research_btn
 
         self.think_btn = QPushButton("Think")
         self.think_btn.setCheckable(True)
@@ -3277,8 +3340,14 @@ class ConversationsView(QWidget):
         )
         self.think_btn.toggled.connect(self._on_think_toggled)
 
-        action_layout.addWidget(self.web_btn)
-        action_layout.addWidget(self.think_btn)
+        for btn in (
+            self.web_btn,
+            self.evidence_btn,
+            self.trusted_btn,
+            self.research_btn,
+            self.think_btn,
+        ):
+            action_layout.addWidget(btn)
         bottom_stack_layout.addLayout(action_layout)
 
         self.composer_chip_strip = ComposerContextChipStrip()
@@ -3709,6 +3778,22 @@ class ConversationsView(QWidget):
     def _web_toggle_active(self) -> bool:
         return bool(getattr(self, "web_btn", None) and self.web_btn.isChecked())
 
+    def _sticky_knowledge_route_active(self) -> bool:
+        return bool(self._active_sticky_knowledge_tool_id())
+
+    def _active_sticky_knowledge_tool_id(self) -> str | None:
+        for tool_id, btn in getattr(self, "_knowledge_toggle_buttons", {}).items():
+            if tool_id == "research":
+                if getattr(self, "_sticky_deep_research", False) and btn.isChecked():
+                    return "research"
+                continue
+            if btn.isChecked():
+                return tool_id
+        return None
+
+    def _composer_skip_redundant_knowledge_chips(self) -> bool:
+        return self._sticky_knowledge_route_active()
+
     def _composer_action_icon_color(self, is_dark: bool) -> str:
         return self._theme(is_dark).color(ACCENT_ICON)
 
@@ -3913,7 +3998,7 @@ class ConversationsView(QWidget):
         updated, _added, reject_reason = add_routing_attachment(
             self._composer_draft,
             attachment,
-            skip_internet_when_web_active=self._web_toggle_active(),
+            skip_redundant_tools_when_sticky_knowledge=self._composer_skip_redundant_knowledge_chips(),
         )
         if reject_reason == ROUTING_REJECT_ONE_SOURCE:
             self._notify_composer_one_source_limit()
@@ -3970,7 +4055,7 @@ class ConversationsView(QWidget):
         merged, reject_reason = merge_drafts(
             self._composer_draft,
             lifted,
-            skip_internet_when_web_active=self._web_toggle_active(),
+            skip_redundant_tools_when_sticky_knowledge=self._composer_skip_redundant_knowledge_chips(),
         )
         self._composer_draft = merged
         if reject_reason == ROUTING_REJECT_ONE_SOURCE:
@@ -4078,6 +4163,19 @@ class ConversationsView(QWidget):
                 query=clean,
                 enforced_skills=enforced_skills,
                 routing=routing,
+            )
+            return
+        if (
+            not routing
+            and getattr(self, "_sticky_deep_research", False)
+            and (clean or "").strip()
+        ):
+            self._reset_composer_draft()
+            self._submit_deep_research(
+                raw=clean,
+                query=clean,
+                enforced_skills=enforced_skills,
+                routing={"route": "deep_research", "attachment_tool": "research"},
             )
             return
         self._reset_composer_draft()
@@ -4899,25 +4997,116 @@ class ConversationsView(QWidget):
             self.think_btn.blockSignals(False)
         self._apply_action_toggle_styles()
 
-    def _on_web_toggled(self, checked: bool) -> None:
-        if self.llm and hasattr(self.llm, "set_force_web_enabled"):
-            self.llm.set_force_web_enabled(checked)
+    def _sync_sticky_knowledge_tool_to_worker(self) -> None:
+        if not self.llm:
+            return
+        active = self._active_sticky_knowledge_tool_id()
+        if active == "research":
+            if hasattr(self.llm, "set_sticky_knowledge_tool"):
+                self.llm.set_sticky_knowledge_tool(None)
+            elif hasattr(self.llm, "set_force_web_enabled"):
+                self.llm.set_force_web_enabled(False)
+            return
+        if hasattr(self.llm, "set_sticky_knowledge_tool"):
+            self.llm.set_sticky_knowledge_tool(active)
+        elif active == "internet" and hasattr(self.llm, "set_force_web_enabled"):
+            self.llm.set_force_web_enabled(True)
+        elif hasattr(self.llm, "set_force_web_enabled"):
+            self.llm.set_force_web_enabled(False)
+
+    def _notify_sticky_knowledge_switch(
+        self, *, previous_id: str, new_id: str
+    ) -> None:
+        if not previous_id or previous_id == new_id:
+            return
+        self._notify_composer_toast(
+            composer_sticky_knowledge_switched_request(
+                previous_id=previous_id,
+                new_id=new_id,
+            )
+        )
+
+    def _prior_checked_sticky_knowledge_ids(self, *, except_id: str) -> list[str]:
+        return [
+            tid
+            for tid, btn in getattr(self, "_knowledge_toggle_buttons", {}).items()
+            if tid != except_id and btn.isChecked()
+        ]
+
+    def _on_knowledge_toggle_toggled(self, tool_id: str, checked: bool) -> None:
+        btn = getattr(self, "_knowledge_toggle_buttons", {}).get(tool_id)
+        if btn is None:
+            return
+        if checked:
+            prior_ids = self._prior_checked_sticky_knowledge_ids(except_id=tool_id)
+            if prior_ids:
+                self._notify_sticky_knowledge_switch(
+                    previous_id=prior_ids[0],
+                    new_id=tool_id,
+                )
+            self._sticky_deep_research = False
+            for other_id, other_btn in self._knowledge_toggle_buttons.items():
+                if other_id == tool_id:
+                    continue
+                other_btn.blockSignals(True)
+                try:
+                    other_btn.setChecked(False)
+                finally:
+                    other_btn.blockSignals(False)
+        else:
+            if not any(
+                b.isChecked()
+                for tid, b in self._knowledge_toggle_buttons.items()
+                if tid != "research"
+            ):
+                self._sticky_deep_research = False
+        self._sync_sticky_knowledge_tool_to_worker()
+        self._apply_action_toggle_styles()
+        win = self.window()
+        if win is not None and hasattr(win, "refresh_web_indicator"):
+            win.refresh_web_indicator()
+
+    def _on_deep_research_toggle_toggled(self, checked: bool) -> None:
+        self._sticky_deep_research = bool(checked)
+        if checked:
+            prior_ids = self._prior_checked_sticky_knowledge_ids(except_id="research")
+            if prior_ids:
+                self._notify_sticky_knowledge_switch(
+                    previous_id=prior_ids[0],
+                    new_id="research",
+                )
+            for other_id, other_btn in self._knowledge_toggle_buttons.items():
+                if other_id == "research":
+                    continue
+                other_btn.blockSignals(True)
+                try:
+                    other_btn.setChecked(False)
+                finally:
+                    other_btn.blockSignals(False)
+            if self.llm and hasattr(self.llm, "set_sticky_knowledge_tool"):
+                self.llm.set_sticky_knowledge_tool(None)
+            elif self.llm and hasattr(self.llm, "set_force_web_enabled"):
+                self.llm.set_force_web_enabled(False)
+        else:
+            self._sticky_deep_research = False
         self._apply_action_toggle_styles()
         win = self.window()
         if win is not None and hasattr(win, "refresh_web_indicator"):
             win.refresh_web_indicator()
 
     def _reset_web_toggle(self) -> None:
-        """Turn off sticky web search when starting a fresh chat session."""
-        if not hasattr(self, "web_btn"):
-            return
-        self.web_btn.blockSignals(True)
-        try:
-            self.web_btn.setChecked(False)
-        finally:
-            self.web_btn.blockSignals(False)
-        if self.llm and hasattr(self.llm, "set_force_web_enabled"):
-            self.llm.set_force_web_enabled(False)
+        """Turn off sticky knowledge routes when starting a fresh chat session."""
+        self._reset_sticky_knowledge_toggles()
+
+    def _reset_sticky_knowledge_toggles(self) -> None:
+        self._sticky_deep_research = False
+        for btn in getattr(self, "_knowledge_toggle_buttons", {}).values():
+            btn.blockSignals(True)
+            try:
+                btn.setChecked(False)
+            finally:
+                btn.blockSignals(False)
+        self._sync_sticky_knowledge_tool_to_worker()
         self._apply_action_toggle_styles()
         win = self.window()
         if win is not None and hasattr(win, "refresh_web_indicator"):
@@ -4927,10 +5116,26 @@ class ConversationsView(QWidget):
         """Render Web/Think toggle buttons with active/inactive styles."""
         is_dark = getattr(self.window(), "_is_dark_theme", True)
         theme = self._theme(is_dark)
+        accent = getattr(theme, "accent", theme.link)
         self._apply_toggle_button_style(
             self.web_btn if hasattr(self, "web_btn") else None,
             theme=theme,
             active_bg=theme.link,
+        )
+        self._apply_toggle_button_style(
+            self.evidence_btn if hasattr(self, "evidence_btn") else None,
+            theme=theme,
+            active_bg=accent,
+        )
+        self._apply_toggle_button_style(
+            self.trusted_btn if hasattr(self, "trusted_btn") else None,
+            theme=theme,
+            active_bg=theme.link,
+        )
+        self._apply_toggle_button_style(
+            self.research_btn if hasattr(self, "research_btn") else None,
+            theme=theme,
+            active_bg=getattr(theme, "warning", accent),
         )
         self._apply_toggle_button_style(
             self.think_btn if hasattr(self, "think_btn") else None,
@@ -5042,6 +5247,9 @@ class ConversationsView(QWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        if self._host_defers_resize_layout():
+            self._deferred_host_resize_layout = True
+            return
         self._sync_transcript_column_width_cap()
         self._schedule_transcript_timeline_refresh()
 
@@ -5049,8 +5257,11 @@ class ConversationsView(QWidget):
         """Native resize handling without fighting Qt's geometry engine."""
         if hasattr(self, "scroll_area") and event.type() == QEvent.Type.Resize:
             if obj is self.scroll_area or obj is self.scroll_area.viewport():
-                self._sync_transcript_column_width_cap()
-                self._schedule_transcript_timeline_refresh()
+                if self._host_defers_resize_layout():
+                    self._deferred_host_resize_layout = True
+                else:
+                    self._sync_transcript_column_width_cap()
+                    self._schedule_transcript_timeline_refresh()
         if self._focus_mode_enabled and isinstance(obj, MessageWrapper):
             et = event.type()
             if et == QEvent.Type.HoverEnter:
@@ -5377,43 +5588,15 @@ class ConversationsView(QWidget):
             self._pending_evidence_transparency = snapshot
 
     def _resolve_citation_link_for_label(self, label: AgentMessageLabel, link_text: str):
-        """Resolve href from this bubble's isolated _citation_sources (label-bound, not sender())."""
+        """In-text citation anchors open the same Sources modal as the toolbar button."""
         raw = unquote((link_text or "").strip())
-        sources = getattr(label, "_citation_sources", None) or []
 
-        def _resolve_and_open(source_id: str) -> bool:
-            wanted = _normalize_citation_id((source_id or "").strip())
-            if not wanted:
-                return True
-            for src in sources:
-                if wanted in _source_citation_match_keys(src):
-                    self.open_source_preview(src)
-                    return True
-            ids_debug = [
-                sorted(_source_citation_match_keys(s)) if isinstance(s, dict) else repr(type(s))
-                for s in sources[:5]
-            ]
-            logger.warning(
-                "Citation id %r (normalized %r) not found on this message (%d sources); sample ids %s",
-                source_id,
-                wanted,
-                len(sources),
-                ids_debug,
-            )
-            return True
-
-        if raw.startswith(CITATION_HREF_PREFIX):
-            tail = raw[len(CITATION_HREF_PREFIX) :].split("?")[0].split("#")[0].rstrip("/").strip()
-            _resolve_and_open(tail)
-            return
-
-        if raw.startswith("qube://cite/"):
-            tid = raw[len("qube://cite/") :].split("?")[0].split("#")[0].strip()
-            _resolve_and_open(tid)
-            return
-
-        if raw.startswith("source_"):
-            _resolve_and_open(raw.replace("source_", "", 1))
+        if (
+            raw.startswith(CITATION_HREF_PREFIX)
+            or raw.startswith("qube://cite/")
+            or raw.startswith("source_")
+        ):
+            self._show_agent_citation_sources(label)
             return
 
         if raw.startswith("http://") or raw.startswith("https://"):

@@ -44,7 +44,7 @@ from ui.companion.companion_theme import (
     companion_caption_stylesheet,
     companion_dock_strip_background,
 )
-from ui.shell_theme import apply_prestige_menu_theme
+from ui.shell_theme import apply_prestige_action_menu_theme
 
 _CAPTION_MAX_CHARS = 42
 _BANTER_MAX_CHARS = 72
@@ -637,7 +637,7 @@ class CompanionWindow(QWidget):
     def _show_context_menu(self, global_pos: QPoint) -> None:
         menu = QMenu(self)
         theme = theme_for(is_dark=self._is_dark)
-        apply_prestige_menu_theme(menu, theme)
+        apply_prestige_action_menu_theme(menu, theme)
 
         open_act = menu.addAction("Open Qube")
         open_act.triggered.connect(self.open_requested.emit)
@@ -649,7 +649,7 @@ class CompanionWindow(QWidget):
         menu.addSeparator()
 
         load_menu = menu.addMenu("Load Model")
-        apply_prestige_menu_theme(load_menu, theme)
+        apply_prestige_action_menu_theme(load_menu, theme)
         self._populate_load_model_menu(load_menu)
         model_mgr_act = menu.addAction("Model Manager…")
         model_mgr_act.triggered.connect(self.open_model_manager_requested.emit)

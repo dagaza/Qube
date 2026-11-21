@@ -392,6 +392,27 @@
   },
   {
     "category": "faq",
+    "question": "Why doesn't the GPU layers slider fill up when I use all layers",
+    "expected_doc_ids": ["faq.hardware_tuning_internal"],
+    "must_mention": ["cap", "model"],
+    "expected_canonical_id": "faq.hardware_tuning_internal.slider_thumb"
+  },
+  {
+    "category": "faq",
+    "question": "What happens if I set GPU layers higher than my model has",
+    "expected_doc_ids": ["faq.hardware_tuning_internal"],
+    "must_mention": ["layers"],
+    "expected_canonical_id": "faq.hardware_tuning_internal.above_model_layers"
+  },
+  {
+    "category": "faq",
+    "question": "How does Qube pick the GPU layers slider maximum",
+    "expected_doc_ids": ["faq.hardware_tuning_internal"],
+    "must_mention": ["memory", "VRAM"],
+    "expected_canonical_id": "faq.hardware_tuning_internal.slider_max"
+  },
+  {
+    "category": "faq",
     "question": "External server context limit LM Studio",
     "expected_doc_ids": ["faq.internal_vs_external"],
     "must_mention": ["External", "context"]

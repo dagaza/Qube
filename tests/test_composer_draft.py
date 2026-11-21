@@ -87,7 +87,7 @@ class TestComposerDraft(unittest.TestCase):
         updated, added, reason = add_routing_attachment(
             draft,
             internet,
-            skip_internet_when_web_active=True,
+            skip_redundant_tools_when_sticky_knowledge=True,
         )
         self.assertFalse(added)
         self.assertIsNone(reason)

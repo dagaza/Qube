@@ -207,6 +207,11 @@ MAIN_LLM_PREFERENCE: tuple[BootstrapModelId, ...] = (
     BootstrapModelId.LLM_NEMOTRON_NANO,
 )
 
+MAIN_LLM_CONSENT_HINT = (
+    "Only one main chat model is included in this download set. "
+    "Pick Qwen, Gemma, or Nemotron — you can add the others later in Model Manager."
+)
+
 RECOMMENDED_ORDER: tuple[BootstrapModelId, ...] = (
     BootstrapModelId.SIDECAR_QWEN17,
     BootstrapModelId.SEARCH_PRESET_BALANCED,
@@ -300,8 +305,17 @@ def bootstrap_model_tier(model_id: BootstrapModelId) -> BootstrapModelTier:
     return BootstrapModelTier.OPTIONAL
 
 
+def is_alternative_main_llm(model_id: BootstrapModelId) -> bool:
+    """True for non-default main chat models (mutually exclusive with other main LLMs)."""
+    if model_id not in MAIN_LLM_GROUP:
+        return False
+    return not BOOTSTRAP_MODELS[model_id].default_recommended
+
+
 def bootstrap_tier_tag(model_id: BootstrapModelId) -> tuple[str, str]:
     """Return (chip label, Qt objectName) for the tier chip on a model row."""
+    if is_alternative_main_llm(model_id):
+        return "Alternative", "BootstrapTierTagAlternative"
     tier = bootstrap_model_tier(model_id)
     labels = {
         BootstrapModelTier.REQUIRED: "Required",
@@ -337,6 +351,14 @@ def format_bootstrap_tier_tag_tooltip(model_id: BootstrapModelId) -> str:
             "Technical: catalogue tier locked_in_recommended — needed for stable core features."
         )
     if tier is BootstrapModelTier.RECOMMENDED:
+        if model_id in MAIN_LLM_GROUP:
+            return (
+                "Recommended — default main chat model\n"
+                f"{label} is pre-selected as your main conversational model. "
+                "Only one main chat model is downloaded during setup — uncheck this "
+                "to pick Gemma or Nemotron instead, or add others later in Model Manager.\n\n"
+                "Technical: default_recommended main LLM in MAIN_LLM_GROUP."
+            )
         return (
             "Recommended — included by default\n"
             f"{label} is pre-selected in the Recommended preset for the best "
@@ -344,6 +366,14 @@ def format_bootstrap_tier_tag_tooltip(model_id: BootstrapModelId) -> str:
             "do not need it.\n\n"
             "Technical: default_recommended catalogue entry; part of the "
             "Recommended preset download set."
+        )
+    if is_alternative_main_llm(model_id):
+        return (
+            "Alternative — main chat model\n"
+            f"{label} replaces the default main model (Qwen 3.5 9B) if disk or "
+            "memory is tight. Only one main chat model is downloaded during setup — "
+            "select this instead of Qwen, not in addition to it.\n\n"
+            "Add other chat models later from Model Manager."
         )
     return (
         "Optional — add if you want it\n"

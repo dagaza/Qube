@@ -515,6 +515,7 @@ class StartupSplashController(QObject):
         view = self._view
         view.setUpdatesEnabled(False)
         try:
+            view.set_download_detail("")
             if step_index > 0:
                 view.complete_step(step_index - 1)
             view.set_active_step(step_index)
@@ -957,6 +958,7 @@ class StartupSplashController(QObject):
             self._bootstrap_running = False
             return
         self._view.complete_step(0)
+        self._view.set_download_detail("")
         self._view.set_progress_percent(_EMBEDDER_DONE_PERCENT)
         app = QApplication.instance()
         if app is not None:

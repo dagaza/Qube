@@ -1,4 +1,4 @@
-# What's new in Qube Help (v1.0.32)
+# What's new in Qube Help (v1.0.34)
 
 ## Common questions
 
@@ -9,6 +9,10 @@
 ## What it is
 
 This page summarizes the **v English help corpus** shipped with Qube. The corpus lives in **Library → Qube** and powers **`@[tool:help]`** in **Conversations**.
+
+**v1.0.34** documents **read-only** built-in **Library → Qube** help (no delete/rename/move) and automatic help re-index when articles are missing.
+
+**v1.0.33** clarifies **GPU offload layers** — slider maximum vs loaded model layer count, thumb position on the bar, values above model depth, and **`@[tool:help]`** canonical answers — in [Hardware tuning (Internal Engine)](../faq/hardware-tuning-internal-engine.md).
 
 **v1.0.32** documents **Under the hood — `@diagnostics` composer** — turn forensics attachments, Turn Diagnostics Bundle exports, Privacy & data technical-detail toggle, and canonical `@help` answers.
 

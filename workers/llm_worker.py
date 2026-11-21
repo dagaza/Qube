@@ -412,6 +412,8 @@ class LLMWorker(QThread):
         self.mcp_strict_enabled = get_mcp_rag_strict_enabled()
         self.mcp_internet_enabled = _internet_hybrid
         self._force_web_enabled = False
+        self._sticky_knowledge_tool: str | None = None
+        self._force_composer_tool: str | None = None
 
         # Local llama.cpp / LM Studio: align server-side prompt/KV reuse with UI session switches
         self._last_completed_llm_session_id = None
@@ -2453,18 +2455,25 @@ class LLMWorker(QThread):
                 and is_web_composer_tool(composer_tool)
                 and not getattr(self, "_composer_diagnostics_active", False)
             ):
-                self._composer_knowledge_tool = composer_tool
-                self._composer_internet_requested = composer_tool == "internet"
-                self._composer_trusted_requested = composer_tool == "trusted"
-                force_web = True
-                if attachment_patch.get("route") != "web":
-                    attachment_patch = dict(attachment_patch)
-                    attachment_patch["route"] = "web"
-                    attachment_patch["strategy"] = f"attachment_tool_{composer_tool}"
-                logger.info(
-                    "[LLM Worker] Composer @%s: forcing WEB search for this turn",
+                force_web = self._bind_composer_web_knowledge_tool(
                     composer_tool,
+                    attachment_patch=attachment_patch,
+                    force_web=force_web,
                 )
+
+        sticky_tool = getattr(self, "_force_composer_tool", None)
+        if (
+            sticky_tool
+            and is_web_composer_tool(sticky_tool)
+            and not getattr(self, "_composer_knowledge_tool", None)
+            and not getattr(self, "_composer_diagnostics_active", False)
+        ):
+            force_web = self._bind_composer_web_knowledge_tool(
+                sticky_tool,
+                attachment_patch=attachment_patch,
+                force_web=force_web,
+                log_prefix="Sticky",
+            )
 
         if getattr(self, "_composer_knowledge_tool", None) == "help":
             help_entry = match_canonical_answer(self.prompt)
@@ -5412,13 +5421,57 @@ class LLMWorker(QThread):
         self.USE_COGNITIVE_ROUTER_INTERNET = enabled
         set_mcp_internet_hybrid_enabled(enabled)
 
+    def set_sticky_knowledge_tool(self, tool_id: str | None) -> None:
+        """Sticky UI override: force a knowledge path on every turn until cleared."""
+        from core.composer_sticky_tools import (
+            normalize_sticky_knowledge_tool,
+            sticky_knowledge_worker_flags,
+        )
+
+        tid = normalize_sticky_knowledge_tool(tool_id)
+        flags = sticky_knowledge_worker_flags(tid)
+        self._sticky_knowledge_tool = flags.sticky_knowledge_tool
+        self._force_composer_tool = flags.force_composer_tool
+        self._force_web_enabled = flags.force_web_enabled
+
+    def get_sticky_knowledge_tool(self) -> str | None:
+        return getattr(self, "_sticky_knowledge_tool", None)
+
     def set_force_web_enabled(self, enabled: bool) -> None:
         """Sticky UI override: force web search on every turn until disabled."""
-        self._force_web_enabled = bool(enabled)
+        if enabled:
+            self.set_sticky_knowledge_tool("internet")
+        elif getattr(self, "_sticky_knowledge_tool", None) == "internet":
+            self.set_sticky_knowledge_tool(None)
+        else:
+            self._force_web_enabled = bool(enabled)
 
     def set_force_web_next_turn(self, enabled: bool) -> None:
         """Alias for :meth:`set_force_web_enabled` (legacy call sites)."""
         self.set_force_web_enabled(enabled)
+
+    def _bind_composer_web_knowledge_tool(
+        self,
+        composer_tool: str,
+        *,
+        attachment_patch: dict | None,
+        force_web: bool,
+        log_prefix: str = "Composer",
+    ) -> bool:
+        """Apply WEB routing for a composer or sticky web-family knowledge tool."""
+        self._composer_knowledge_tool = composer_tool
+        self._composer_internet_requested = composer_tool == "internet"
+        self._composer_trusted_requested = composer_tool == "trusted"
+        force_web = True
+        if attachment_patch is not None and attachment_patch.get("route") != "web":
+            attachment_patch["route"] = "web"
+            attachment_patch["strategy"] = f"attachment_tool_{composer_tool}"
+        logger.info(
+            "[LLM Worker] %s @%s: forcing WEB search for this turn",
+            log_prefix,
+            composer_tool,
+        )
+        return force_web
 
     def _close_active_stream(self):
         r = getattr(self, "_active_stream_response", None)

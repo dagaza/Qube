@@ -18,7 +18,7 @@ from core.assistant_activity import (
     tray_tooltip_for_activity,
 )
 from core.theme.view_theme import view_resolved_theme
-from ui.shell_theme import apply_prestige_menu_theme, resolve_shell_theme
+from ui.shell_theme import apply_prestige_action_menu_theme, resolve_shell_theme
 
 _TRAY_LOGO_NAME = "qube_logo_256.png"
 _TRAY_ICON_SIZES_PX = (16, 22, 24, 32)
@@ -118,7 +118,7 @@ class TrayController(QWidget):
         if self._tray_icon is not None:
             menu = self._tray_icon.contextMenu()
             if menu is not None:
-                apply_prestige_menu_theme(menu, theme)
+                apply_prestige_action_menu_theme(menu, theme)
 
     def set_activity(
         self,
@@ -212,7 +212,8 @@ class TrayController(QWidget):
 
         self._tray_icon.setContextMenu(menu)
         self._tray_icon.activated.connect(self._on_activated)
-        self.apply_theme(self._is_dark)
+        theme = resolve_shell_theme(self.parent(), is_dark=self._is_dark)
+        apply_prestige_action_menu_theme(menu, theme)
         self._refresh_presence()
         self._tray_icon.show()
 

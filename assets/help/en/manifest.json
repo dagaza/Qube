@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.32",
+  "corpus_version": "1.0.34",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
@@ -1434,7 +1434,10 @@
         "gpu layers",
         "n_gpu_layers",
         "cpu thread pool",
-        "vram tuning"
+        "vram tuning",
+        "gpu slider maximum",
+        "slider not full",
+        "inference stack layer cap"
       ],
       "related": [
         "index",
@@ -2045,6 +2048,46 @@
       "doc_id": "faq.hardware_tuning_internal",
       "heading": "GPU offload layers",
       "answer": "**GPU offload layers** move transformer blocks onto your GPU for faster Internal Engine inference. Qube caps the slider from detected VRAM/unified memory and reloads the `.gguf` when you change it. Lower layers if loads crash.",
+      "action_id": "open_settings_ai_models"
+    },
+    {
+      "id": "faq.hardware_tuning_internal.slider_max",
+      "question_patterns": [
+        "gpu layers slider maximum",
+        "how does qube pick gpu slider max",
+        "why is gpu slider max 72",
+        "safe layer cap slider"
+      ],
+      "doc_id": "faq.hardware_tuning_internal",
+      "heading": "GPU layers slider maximum",
+      "answer": "The **GPU offload layers** slider runs from **0** to a **safe memory cap** Qube computes at startup (`max_safe_n_gpu_layers`) from VRAM or unified system RAM — not from how many layers your current `.gguf` has. The numeric cap appears in **Settings → AI & Models → Inference stack** and **Telemetry → Inference stack**. See **Hardware tuning (Internal Engine)** in Library → Qube.",
+      "action_id": "open_settings_ai_models"
+    },
+    {
+      "id": "faq.hardware_tuning_internal.slider_thumb",
+      "question_patterns": [
+        "gpu slider not full",
+        "slider only half",
+        "why doesnt gpu layers fill the bar",
+        "32 layers slider position",
+        "thumb not at end gpu"
+      ],
+      "doc_id": "faq.hardware_tuning_internal",
+      "heading": "GPU slider thumb position",
+      "answer": "The slider thumb shows **your setting ÷ the safe cap**, not **your setting ÷ layers in the loaded model**. Example: **32** on a cap of **72** looks less than half full even when you offload **all 32 layers** of that model. Use **Inference stack** to see the cap and **layer configuration** (requested vs model total). See **Hardware tuning (Internal Engine)**.",
+      "action_id": "open_settings_ai_models"
+    },
+    {
+      "id": "faq.hardware_tuning_internal.above_model_layers",
+      "question_patterns": [
+        "gpu layers higher than model",
+        "set gpu layers to 72",
+        "more layers than model has",
+        "maximum slider larger than model"
+      ],
+      "doc_id": "faq.hardware_tuning_internal",
+      "heading": "GPU layers above model depth",
+      "answer": "If you set **GPU offload layers** **at or above** the layer count in your `.gguf`, llama.cpp offloads **every block that model has** — extra slider range is for **larger models**, not extra speed on a smaller file. Values above the model depth behave like **full offload** for that model. See **Hardware tuning (Internal Engine)**.",
       "action_id": "open_settings_ai_models"
     },
     {

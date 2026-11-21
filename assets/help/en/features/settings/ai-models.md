@@ -32,7 +32,7 @@ These settings apply to **main chat completions** in Conversations (not sidecar/
 
 ## Hardware tuning (Internal Engine only)
 
-**GPU offload layers** and **CPU thread pool** live under **Show advanced hardware settings**. They apply only when **Internal Engine (native)** is selected — External Server hosts manage their own GPU/CPU. Changing layers or threads **reloads the active `.gguf`**. See [Hardware tuning FAQ](../../faq/hardware-tuning-internal-engine.md).
+**GPU offload layers** and **CPU thread pool** live under **Show advanced hardware settings**. They apply only when **Internal Engine (native)** is selected — External Server hosts manage their own GPU/CPU. Changing layers or threads **reloads the active `.gguf`**. The slider’s **maximum** is a **memory safe cap** for your hardware (not the layer count of the loaded model); the **Inference stack** table summarizes cap, requested layers, and loaded configuration. See [Hardware tuning FAQ](../../faq/hardware-tuning-internal-engine.md).
 
 ## Where to find it
 

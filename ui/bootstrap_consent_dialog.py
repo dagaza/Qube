@@ -38,6 +38,7 @@ from core.bootstrap_manifest import (
     BOOTSTRAP_MODELS,
     BootstrapHintLevel,
     BootstrapModelId,
+    MAIN_LLM_CONSENT_HINT,
     MAIN_LLM_GROUP,
     SIDECAR_GROUP,
     bootstrap_tier_tag,
@@ -351,6 +352,11 @@ class BootstrapConsentPanel(QWidget):
         self._intro.setWordWrap(True)
         self._intro.setObjectName("BootstrapIntro")
         root.addWidget(self._intro)
+
+        self._main_llm_hint = QLabel(MAIN_LLM_CONSENT_HINT)
+        self._main_llm_hint.setWordWrap(True)
+        self._main_llm_hint.setObjectName("BootstrapMainLlmHint")
+        root.addWidget(self._main_llm_hint)
 
         self._legend = QLabel()
         self._legend.setWordWrap(True)

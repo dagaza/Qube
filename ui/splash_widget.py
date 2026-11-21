@@ -41,6 +41,7 @@ from ui.branded_theme import (
     splash_compact_card_qss,
     splash_split_card_qss,
     splash_step_list_qss,
+    splash_step_row_qss,
 )
 
 # Startup steps shown beside the spinner (index must match splash_overlay phase order).
@@ -228,29 +229,27 @@ class SplashStepList(QWidget):
         self._active_index = index
         for i, row in enumerate(self._rows):
             if i < index:
-                row.setProperty("step_state", "done")
+                self._paint_row(row, "done")
             elif i == index:
-                row.setProperty("step_state", "active")
+                self._paint_row(row, "active")
             else:
-                row.setProperty("step_state", "pending")
-            row.style().unpolish(row)
-            row.style().polish(row)
+                self._paint_row(row, "pending")
 
     def mark_done_through(self, index: int) -> None:
         for i, row in enumerate(self._rows):
             if i <= index:
-                row.setProperty("step_state", "done")
+                self._paint_row(row, "done")
             else:
-                row.setProperty("step_state", "pending")
-            row.style().unpolish(row)
-            row.style().polish(row)
+                self._paint_row(row, "pending")
         self._active_index = -1
+
+    def _paint_row(self, row: QLabel, state: str) -> None:
+        row.setProperty("step_state", state)
+        row.setStyleSheet(splash_step_row_qss(state))
 
     def _apply_row_styles(self) -> None:
         for row in self._rows:
-            row.setProperty("step_state", "pending")
-            row.style().unpolish(row)
-            row.style().polish(row)
+            self._paint_row(row, "pending")
 
 
 # Tutorial uses glRotatef(1, 3, 1, 1) with ~10ms waits (~0.1 deg/ms). Splash is slower.

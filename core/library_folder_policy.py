@@ -43,3 +43,8 @@ def is_qube_managed_document_filename(filename: str) -> bool:
     if "qube_memory" in lower or "qube-memory" in lower:
         return True
     return False
+
+
+def is_protected_library_document(filename: str) -> bool:
+    """True when the user must not delete, rename, or move this library entry."""
+    return is_qube_managed_document_filename(filename)

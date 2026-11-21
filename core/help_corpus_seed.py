@@ -70,6 +70,7 @@ def should_seed_help_corpus(
     *,
     locale: str = "en",
     app_version: str | None = None,
+    store: Any | None = None,
 ) -> tuple[bool, str]:
     try:
         data = manifest or load_manifest(locale=locale)
@@ -107,6 +108,13 @@ def should_seed_help_corpus(
     if stale_sources:
         return True, f"removed docs: {', '.join(sorted(stale_sources))}"
 
+    if store is not None and hasattr(store, "source_exists"):
+        missing = [
+            source for source in declared if not store.source_exists(source)
+        ]
+        if missing:
+            return True, f"missing indexed help doc: {missing[0]}"
+
     return False, "help corpus up to date"
 
 
@@ -130,7 +138,9 @@ def seed_help_corpus(
 
     manifest = load_manifest(manifest_path)
     if not force:
-        need_seed, reason = should_seed_help_corpus(manifest, locale=locale)
+        need_seed, reason = should_seed_help_corpus(
+            manifest, locale=locale, store=store
+        )
         if not need_seed:
             logger.info("Help corpus seed skipped: %s", reason)
             return {"skipped": True, "reason": reason}
@@ -177,7 +187,7 @@ def seed_help_corpus(
             store.delete_document(source)
             reindexed += 1
         try:
-            db_manager.delete_document_metadata(source)
+            db_manager.delete_document_metadata(source, force=True)
         except Exception as exc:
             logger.debug("No prior SQLite metadata for %s: %s", source, exc)
 
@@ -229,7 +239,7 @@ def seed_help_corpus(
         if store.source_exists(source):
             store.delete_document(source)
         try:
-            db_manager.delete_document_metadata(source)
+            db_manager.delete_document_metadata(source, force=True)
         except Exception as exc:
             logger.debug("Failed deleting stale help metadata %s: %s", source, exc)
         removed += 1
