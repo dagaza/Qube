@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -141,9 +142,9 @@ def configure_bundled_llama_import(dist_dir: Path) -> Path:
         internal_str,
         str(internal / "llama_cpp" / "lib"),
     ]
-    prev = sys.environ.get("LD_LIBRARY_PATH", "")
+    prev = os.environ.get("LD_LIBRARY_PATH", "")
     joined = ":".join(lib_dirs + ([prev] if prev else []))
-    sys.environ["LD_LIBRARY_PATH"] = joined
+    os.environ["LD_LIBRARY_PATH"] = joined
     return internal
 
 
