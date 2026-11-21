@@ -47,7 +47,9 @@ def bootstrap_panel(qtbot):
     return panel
 
 
-def test_main_llm_hint_visible(bootstrap_panel):
+def test_main_llm_hint_visible(bootstrap_panel, qtbot):
+    bootstrap_panel.show()
+    qtbot.waitExposed(bootstrap_panel)
     assert bootstrap_panel._main_llm_hint.text() == MAIN_LLM_CONSENT_HINT
     assert bootstrap_panel._main_llm_hint.isVisible()
 

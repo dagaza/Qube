@@ -207,16 +207,40 @@ class HelpCorpusSeedTests(unittest.TestCase):
             self.assertGreater(summary["chunks"], 0)
 
     def test_should_seed_when_indexed_help_missing_from_store(self) -> None:
+        import hashlib
+
+        from core.help_corpus_manifest import bundled_help_locale_dir
+
         manifest = load_manifest()
+        root = bundled_help_locale_dir("en")
+        doc_hashes: dict[str, str] = {}
+        for doc in manifest["documents"]:
+            rel = str(doc["path"])
+            source = help_doc_source(rel)
+            composed = root / rel
+            doc_hashes[source] = hashlib.sha256(composed.read_bytes()).hexdigest()
+
         rel = str(manifest["documents"][0]["path"])
         source = help_doc_source(rel)
         store = _FakeStore()
 
-        with mock.patch(
-            "core.help_corpus_seed.user_help_corpus_state_path",
-            return_value=Path("/nonexistent/help_corpus_state.json"),
-        ):
-            need, reason = should_seed_help_corpus(manifest, store=store)
+        with tempfile.TemporaryDirectory(dir=ROOT) as td:
+            state_path = Path(td) / "help_corpus_state.json"
+            state_path.write_text(
+                json.dumps(
+                    {
+                        "schema": "qube.help_corpus_state.v1",
+                        "corpus_version": manifest["corpus_version"],
+                        "doc_hashes": doc_hashes,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch(
+                "core.help_corpus_seed.user_help_corpus_state_path",
+                return_value=state_path,
+            ):
+                need, reason = should_seed_help_corpus(manifest, store=store)
 
         self.assertFalse(store.source_exists(source))
         self.assertTrue(need)
