@@ -123,29 +123,32 @@ def bundled_libggml_cpu_paths(dist_dir: Path) -> list[Path]:
     return [p for p in candidates if p.is_file()]
 
 
-def configure_bundled_llama_import(dist_dir: Path) -> Path:
-    """Point imports and dynamic loader at the PyInstaller ``_internal`` tree only."""
+def apply_bundled_llama_runtime_env(dist_dir: Path) -> Path:
+    """
+    Point ``llama-cpp-python`` at the PyInstaller bundle's native libs.
+
+    The frozen ``_internal`` tree does not expose an importable ``llama_cpp``
+    package to a normal interpreter (modules live in the PYZ). Release smoke
+    uses the build venv's ``llama_cpp`` package with ``LLAMA_CPP_LIB_PATH`` and
+    ``LD_LIBRARY_PATH`` so ``libllama`` / ``libggml-cpu`` load from
+    ``dist/Qube/_internal``.
+    """
     internal = dist_dir.resolve() / "_internal"
     if not internal.is_dir():
         raise FileNotFoundError(f"dist internal dir missing: {internal}")
-    internal_str = str(internal)
-    # Drop PYTHONPATH/repo entries so a stray ``llama_cpp`` cannot shadow the bundle.
-    sys.path = [
-        p
-        for p in sys.path
-        if p
-        and "site-packages" not in p
-        and "dist-packages" not in p
-    ]
-    sys.path.insert(0, internal_str)
-    lib_dirs = [
-        internal_str,
-        str(internal / "llama_cpp" / "lib"),
-    ]
+    lib_dir = internal / "llama_cpp" / "lib"
+    if not lib_dir.is_dir():
+        raise FileNotFoundError(f"missing bundled llama lib dir: {lib_dir}")
+    lib_dirs = [str(internal), str(lib_dir)]
+    os.environ["LLAMA_CPP_LIB_PATH"] = str(lib_dir)
     prev = os.environ.get("LD_LIBRARY_PATH", "")
-    joined = ":".join(lib_dirs + ([prev] if prev else []))
-    os.environ["LD_LIBRARY_PATH"] = joined
+    os.environ["LD_LIBRARY_PATH"] = ":".join(lib_dirs + ([prev] if prev else []))
     return internal
+
+
+def configure_bundled_llama_import(dist_dir: Path) -> Path:
+    """Alias for :func:`apply_bundled_llama_runtime_env` (legacy name)."""
+    return apply_bundled_llama_runtime_env(dist_dir)
 
 
 def mapped_libggml_cpu_paths() -> set[str]:

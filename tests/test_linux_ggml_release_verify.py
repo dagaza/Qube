@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from core.linux_ggml_release_verify import (
+    apply_bundled_llama_runtime_env,
     verify_avx512_vnni_kernels_present,
     verify_no_avx_vnni_true_stub,
     verify_q8_0_dot_avoids_vex_avx_vnni,
@@ -65,3 +66,15 @@ def test_venv_lib_still_has_evex_vnni_kernels() -> None:
     lib = _venv_lib()
     assert lib is not None
     verify_avx512_vnni_kernels_present(lib)
+
+
+def test_apply_bundled_llama_runtime_env_sets_lib_path(tmp_path: Path) -> None:
+    dist = tmp_path / "Qube"
+    lib_dir = dist / "_internal" / "llama_cpp" / "lib"
+    lib_dir.mkdir(parents=True)
+    internal = apply_bundled_llama_runtime_env(dist)
+    assert internal == dist / "_internal"
+    import os
+
+    assert os.environ["LLAMA_CPP_LIB_PATH"] == str(lib_dir)
+    assert str(lib_dir) in os.environ["LD_LIBRARY_PATH"]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Decode smoke against PyInstaller ``dist/Qube`` bundled llama-cpp (Zen4 AVX-VNNI)."""
+"""Decode smoke against PyInstaller ``dist/Qube`` bundled llama-cpp natives (Zen4)."""
 
 from __future__ import annotations
 
@@ -87,12 +87,13 @@ def _read_linux_variant(dist: Path) -> str:
 
 def _decode_child_env(dist: Path, gguf: Path, n_gpu_layers: int, max_tokens: int) -> dict[str, str]:
     internal = dist.resolve() / "_internal"
-    lib_dirs = [str(internal), str(internal / "llama_cpp" / "lib")]
+    lib_dir = internal / "llama_cpp" / "lib"
+    lib_dirs = [str(internal), str(lib_dir)]
     env = os.environ.copy()
     prev = env.get("LD_LIBRARY_PATH", "")
+    env["LLAMA_CPP_LIB_PATH"] = str(lib_dir)
     env["LD_LIBRARY_PATH"] = ":".join(lib_dirs + ([prev] if prev else []))
     env.pop("PYTHONPATH", None)
-    env["PYTHONNOUSERSITE"] = "1"
     env["QUBE_SMOKE_REPO_ROOT"] = str(_REPO_ROOT)
     env["QUBE_SMOKE_DIST_DIR"] = str(dist.resolve())
     env["QUBE_SMOKE_GGUF_PATH"] = str(gguf)
@@ -112,11 +113,11 @@ repo_root = str(repo)
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 from core.linux_ggml_release_verify import (
+    apply_bundled_llama_runtime_env,
     assert_libggml_loaded_from_dist,
-    configure_bundled_llama_import,
 )
 
-internal = configure_bundled_llama_import(dist)
+internal = apply_bundled_llama_runtime_env(dist)
 from llama_cpp import Llama
 
 gguf = os.environ["QUBE_SMOKE_GGUF_PATH"]
@@ -153,7 +154,7 @@ def _run_bundled_decode(
 ) -> str:
     env = _decode_child_env(dist, gguf, n_gpu_layers, max_tokens)
     proc = subprocess.run(
-        [sys.executable, "-I", "-c", _DECODE_CHILD],
+        [sys.executable, "-c", _DECODE_CHILD],
         env=env,
         cwd=str(dist),
         capture_output=True,
