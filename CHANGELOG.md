@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+## [1.3.57] - 2026-11-21
+
+### Added
+- **Conversations:** Per-chat sticky **Web**, **Evidence**, **Trusted**, and **Deep Research** toggles (mutually exclusive with in-app toast when switching); composer skips redundant `@tool` chips when a sticky knowledge route is active.
+- **First-run bootstrap:** **Alternative** tier chips and copy for Gemma / Nemotron as main chat model choices vs default Qwen; main-LLM selection hint on the consent screen.
+
+### Changed
+- **Library:** Built-in **Qube** help corpus documents are **read-only** (pin only — no rename, move, or delete); help seed re-indexes when manifest articles are missing from the vector store.
+- **Help corpus (v1.0.34):** GPU offload slider FAQ (safe cap vs model layer count, thumb position, settings above model depth); Library read-only Qube docs; golden `@help` fixtures.
+- **Conversations UI:** Defer transcript relayout while the tools pane width animates to reduce jank.
+- **Shell / splash:** Splash boot step colors via per-row QLabel styling; system tray and Desktop Companion context menus use prestige action-menu theming.
+- **Settings (AI & Models):** Tour copy clarifies GPU slider maximum vs loaded model layers.
+
+### Fixed
+- **Release CI (Linux):** Harden bundled `llama_cpp` release smoke imports and CUDA bundle verify via `.qube_linux_variant` marker; skip GGUF decode on runners without AVX512-VNNI while keeping libggml objdump checks.
+
 ## [1.3.56] - 2026-11-20
 
 ### Fixed
