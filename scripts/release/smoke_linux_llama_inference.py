@@ -10,6 +10,8 @@ import sys
 import urllib.request
 from pathlib import Path
 
+_SCRIPTS_RELEASE = Path(__file__).resolve().parent
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Public GGUF for CI (no Hugging Face Hub token; SmolLM2 repo began returning 401).
@@ -47,12 +49,26 @@ def _download_ci_smoke_gguf() -> Path:
     # Plain HTTPS fetch — avoids Hugging Face Hub implicit tokens (gated repos 401).
     request = urllib.request.Request(url, headers={"User-Agent": "Qube-release-smoke/1.0"})
     with urllib.request.urlopen(request, timeout=600) as response:
+        content_length = response.headers.get("Content-Length")
+        if content_length is not None:
+            expected = int(content_length)
+            if expected < _CI_SMOKE_GGUF_MIN_BYTES:
+                raise SystemExit(
+                    f"CI smoke GGUF Content-Length too small ({expected} bytes)"
+                )
         with tmp.open("wb") as out:
+            nbytes = 0
             while True:
                 chunk = response.read(1 << 20)
                 if not chunk:
                     break
                 out.write(chunk)
+                nbytes += len(chunk)
+            if content_length is not None and nbytes != int(content_length):
+                tmp.unlink(missing_ok=True)
+                raise SystemExit(
+                    f"CI smoke GGUF download incomplete ({nbytes} of {content_length} bytes)"
+                )
     tmp.replace(dest)
     size = dest.stat().st_size
     if size < _CI_SMOKE_GGUF_MIN_BYTES:
@@ -198,6 +214,10 @@ def main(argv: list[str] | None = None) -> int:
         bundled_libggml_cpu_paths,
         verify_release_libggml_cpu,
     )
+    from core.linux_release_smoke import (
+        bundled_decode_skip_reason,
+        vulkan_gpu_layers_skip_reason,
+    )
 
     dist = args.dist_dir.resolve()
     if not (dist / "Qube").is_file() and not (dist / "_internal").is_dir():
@@ -212,8 +232,17 @@ def main(argv: list[str] | None = None) -> int:
         for lib in libs:
             verify_release_libggml_cpu(lib)
 
-    gguf = _resolve_gguf(args.gguf)
     variant = _read_linux_variant(dist)
+    decode_skip = bundled_decode_skip_reason(variant)
+    if decode_skip:
+        print(f"smoke_decode_skipped variant={variant} reason={decode_skip}")
+        print(f"smoke_libggml_ok variant={variant} lib={primary} (objdump verify only)")
+        if variant == "cuda":
+            verify_sh = _SCRIPTS_RELEASE / "verify_linux_cuda_bundle.sh"
+            subprocess.run(["bash", str(verify_sh), str(dist)], check=True)
+        return 0
+
+    gguf = _resolve_gguf(args.gguf)
 
     cpu_text = _run_bundled_decode(
         dist, gguf, n_gpu_layers=0, max_tokens=8, timeout_s=args.timeout
@@ -221,12 +250,16 @@ def main(argv: list[str] | None = None) -> int:
     print(f"smoke_cpu_ok variant={variant} lib={primary} text={cpu_text[:80]!r}")
 
     if variant == "vulkan":
-        vulkan_text = _run_bundled_decode(
-            dist, gguf, n_gpu_layers=8, max_tokens=8, timeout_s=args.timeout
-        )
-        print(
-            f"smoke_vulkan_ok n_gpu_layers=8 text={vulkan_text[:80]!r}"
-        )
+        gpu_skip = vulkan_gpu_layers_skip_reason()
+        if gpu_skip:
+            print(f"smoke_decode_skipped variant=vulkan reason={gpu_skip}")
+        else:
+            vulkan_text = _run_bundled_decode(
+                dist, gguf, n_gpu_layers=8, max_tokens=8, timeout_s=args.timeout
+            )
+            print(
+                f"smoke_vulkan_ok n_gpu_layers=8 text={vulkan_text[:80]!r}"
+            )
 
     return 0
 

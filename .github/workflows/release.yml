@@ -429,7 +429,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache/smoke_gguf
-          key: smoke-gguf-v1-${{ runner.os }}-qwen-q4_0
+          key: smoke-gguf-v1-${{ runner.os }}-qwen-q4_0-${{ hashFiles('scripts/release/smoke_linux_llama_inference.py') }}
+          restore-keys: |
+            smoke-gguf-v1-${{ runner.os }}-qwen-q4_0-
 
       - name: Llama GGUF inference smoke (${{ matrix.variant }})
         env:
