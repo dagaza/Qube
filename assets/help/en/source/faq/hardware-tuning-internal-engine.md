@@ -6,6 +6,8 @@
 - Why did Qube crash when I raised GPU layers?
 - What is the **CPU thread pool** setting?
 - How does Qube pick the GPU layers slider maximum?
+- Why doesn't the GPU layers slider fill up when I use the maximum for my model?
+- What happens if I set GPU layers higher than my model has?
 - Should I use more layers on Apple Silicon or AMD integrated graphics?
 
 ## What it is
@@ -47,6 +49,21 @@ Qube probes GPU-accessible memory at startup and computes a **safe upper bound**
 - **Unknown GPU** — allows a conservative range so CPU-only (0 layers) still works.
 
 The slider runs from **0** to that detected cap (hard ceiling 200). On first run, Qube’s default is roughly **75% of the safe maximum** to leave headroom for the OS and display.
+
+The number shown on the right is your **requested** layer count — it is **not** a percentage. The thumb position is **your setting divided by that safe cap** (for example **32 ÷ 72** looks like the bar is less than half full even when you are offloading every layer your model has).
+
+### Reading the slider vs your loaded model
+
+Each `.gguf` has a fixed number of transformer blocks (layer count). That count is **model-specific** — it is **smaller than** the slider maximum on many systems.
+
+| What you see | What it means |
+|--------------|----------------|
+| **Thumb not at the far right** | Normal when your setting is below the **memory cap**, not below “all layers in this model”. |
+| **Setting ≥ model’s layer count** | **Full GPU offload** for that file — llama.cpp cannot place more blocks on the GPU than the model contains. |
+| **Setting above the model (e.g. 72 on a 32-layer model)** | Same effect as setting **all layers** for that model; extra slider range is for **larger** GGUFs, not extra speed on a smaller one. |
+| **Partial offload (e.g. 12 of 32)** | Some blocks on GPU, rest on CPU — hybrid mode; generation is often slower than full offload. |
+
+Use the read-only **Inference stack** panel (below Hardware tuning, and on **Telemetry → Inference stack**) to see the **safe layer cap**, GPU memory kind, and the **loaded model’s layer configuration** (requested vs model total).
 
 Layer memory use is **model-dependent** (size, quantisation, architecture). A **Q4** quant needs less memory than **Q8** at the same layer count — if loads fail, lower layers **and/or** pick a smaller quant in **Model Manager**.
 

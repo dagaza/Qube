@@ -496,14 +496,17 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
     )
     _gpu_tip = (
-        "The number of AI 'brain layers' loaded into your graphics card (GPU). "
-        "More layers make the AI generate text much faster, but setting this too high "
-        "may use up all your video memory and cause crashes."
+        "How many transformer blocks llama.cpp offloads to the GPU (0 = CPU only). "
+        "More layers usually speed up generation but use more memory; too high can crash. "
+        "The slider maximum is a safe cap from detected GPU/unified memory — not the "
+        "layer count of your current .gguf — so the thumb may look 'short' when you "
+        "already offload every layer that model has."
     )
     if is_unified_gpu_memory():
         _gpu_tip += (
             " On unified-memory systems (Apple Silicon or AMD APUs), layers draw from "
-            "shared system RAM — raise this toward the maximum for much better speed."
+            "shared system RAM — raise toward the cap when loads succeed; check "
+            "Inference stack for the numeric cap and loaded configuration."
         )
     host.gpu_layers_slider.setToolTip(_gpu_tip)
     host.gpu_layers_value_lbl.setToolTip(_gpu_tip)

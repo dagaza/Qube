@@ -958,6 +958,7 @@ def test_resolved_theme_style_helpers():
         splash_card_surface_qss,
         splash_overlay_chrome_button_qss,
         splash_step_list_qss,
+        splash_step_row_qss,
     )
 
     splash_theme = branded_theme(is_dark=True)
@@ -968,7 +969,10 @@ def test_resolved_theme_style_helpers():
     chrome_qss = splash_overlay_chrome_button_qss("QubeSplashCloseButton")
     assert SPLASH_CHROME_BUTTON_BG in chrome_qss
     assert SPLASH_CHROME_BUTTON_BORDER in chrome_qss
-    assert "#c4b5fd" in splash_step_list_qss()
+    assert "transparent" in splash_step_list_qss()
+    assert "#c4b5fd" in splash_step_row_qss("active")
+    assert "important" in splash_step_row_qss("done")
+    assert "#86efac" in splash_step_row_qss("done")
     early_qss = early_splash_card_qss()
     assert "QubeEarlySplashCard" in early_qss
     assert SPLASH_SURFACE_BG in early_qss

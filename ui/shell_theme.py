@@ -92,10 +92,9 @@ def sidebar_row_action_icon_color(
     return accent_icon_color(theme)
 
 
-def apply_prestige_menu_theme(menu, theme: ResolvedTheme) -> None:
+def _apply_prestige_menu_palette(menu, theme: ResolvedTheme, colors: dict[str, str]) -> None:
     from PyQt6.QtGui import QPalette
 
-    colors = settings_prestige_menu_palette(theme)
     bg = theme.qcolor(colors["bg"])
     fg = theme.qcolor(colors["fg"])
     sel_bg = theme.qcolor(colors["sel_bg"])
@@ -109,7 +108,71 @@ def apply_prestige_menu_theme(menu, theme: ResolvedTheme) -> None:
     palette.setColor(QPalette.ColorRole.Highlight, sel_bg)
     palette.setColor(QPalette.ColorRole.HighlightedText, sel_fg)
     menu.setPalette(palette)
+
+
+def apply_prestige_menu_theme(menu, theme: ResolvedTheme) -> None:
+    """Theme for Prestige dropdowns that embed a ``QListWidget`` (``PrestigeMenuList``)."""
+    colors = settings_prestige_menu_palette(theme)
+    _apply_prestige_menu_palette(menu, theme, colors)
     menu.setStyleSheet(theme.style(SETTINGS_PRESTIGE_MENU))
+
+
+def prestige_action_menu_qss(theme: ResolvedTheme) -> str:
+    """QSS for ``QAction``-based ``QMenu`` popups (tray, companion context menu, …)."""
+    colors = settings_prestige_menu_palette(theme)
+    bg = colors["bg"]
+    fg = colors["fg"]
+    hover = colors["hover"]
+    sel_fg = colors["sel_fg"]
+    border = colors["border"]
+    disabled = theme.text_muted
+
+    return f"""
+        QMenu {{
+            background-color: {bg};
+            color: {fg};
+            border: 1px solid {border};
+            border-radius: 6px;
+            padding: 4px;
+        }}
+        QMenu::item {{
+            background-color: transparent;
+            color: {fg};
+            padding: 8px 24px;
+            border-radius: 4px;
+        }}
+        QMenu::item:selected {{
+            background-color: {hover};
+            color: {sel_fg};
+        }}
+        QMenu::item:disabled {{
+            color: {disabled};
+        }}
+        QMenu::separator {{
+            height: 1px;
+            background: {border};
+            margin: 4px 8px;
+        }}
+        QMenu::indicator {{
+            width: 16px;
+            height: 16px;
+            margin-left: 8px;
+        }}
+        QMenu::right-arrow {{
+            margin-right: 8px;
+        }}
+    """
+
+
+def apply_prestige_action_menu_theme(menu, theme: ResolvedTheme) -> None:
+    """Apply :func:`prestige_action_menu_qss` to a menu and its submenus."""
+    colors = settings_prestige_menu_palette(theme)
+    _apply_prestige_menu_palette(menu, theme, colors)
+    menu.setStyleSheet(prestige_action_menu_qss(theme))
+    for action in menu.actions():
+        sub = action.menu()
+        if sub is not None:
+            apply_prestige_action_menu_theme(sub, theme)
 
 
 def vu_meter_palette(theme: ResolvedTheme) -> dict[str, str]:

@@ -12,6 +12,7 @@ from core.library_folder_policy import (
     MAIN_FOLDER_DISPLAY_NAME,
     QUBE_FOLDER_DISPLAY_NAME,
     RESERVED_LIBRARY_FOLDER_NAMES,
+    is_protected_library_document,
     is_qube_managed_document_filename,
 )
 from core.paths import default_db_path
@@ -724,6 +725,11 @@ class DatabaseManager:
             return False
 
     def move_document_to_folder(self, filename: str, folder_id: str) -> bool:
+        if is_protected_library_document(filename):
+            logger.warning(
+                "Refused to move protected library document: %s", filename
+            )
+            return False
         if not self.library_folder_allows_user_ingest(folder_id):
             return False
         try:
@@ -1350,12 +1356,23 @@ class DatabaseManager:
                 break
         return filtered
 
-    def delete_document_metadata(self, filename: str):
+    def delete_document_metadata(self, filename: str, *, force: bool = False) -> bool:
+        if not force and is_protected_library_document(filename):
+            logger.warning(
+                "Refused to delete protected library document: %s", filename
+            )
+            return False
         with self._get_connection() as conn:
             conn.execute("DELETE FROM documents WHERE filename = ?", (filename,))
             conn.commit()
+        return True
 
     def rename_document_metadata(self, old_filename: str, new_filename: str) -> bool:
+        if is_protected_library_document(old_filename):
+            logger.warning(
+                "Refused to rename protected library document: %s", old_filename
+            )
+            return False
         try:
             with self._get_connection() as conn:
                 conn.execute(

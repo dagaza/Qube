@@ -134,8 +134,10 @@ def build_settings_ai_models_tour(host) -> OnboardingTour:
             step_id="gpu_layers",
             title="GPU offload layers",
             body=(
-                "Slide to split model layers between VRAM and system RAM. Too many layers "
-                "can exhaust video memory and crash the app."
+                "Choose how many transformer blocks run on the GPU (0 = CPU only). "
+                "The slider maximum is a memory safe cap for your hardware — not the "
+                "layer count of the loaded model — so the thumb may sit left of the end "
+                "even when you offload every layer. See Inference stack below for details."
             ),
             target_getter=lambda h: _sv(h).gpu_layers_slider,
             on_enter=_open_hardware,
@@ -154,8 +156,8 @@ def build_settings_ai_models_tour(host) -> OnboardingTour:
             step_id="inference_stack",
             title="Inference stack",
             body=(
-                "Read-only summary of the llama.cpp backend, detected hardware profile, "
-                "requested GPU layers, and embedder/sidecar compute paths."
+                "Read-only summary: llama.cpp backend, GPU memory kind, safe layer cap, "
+                "requested vs loaded GPU layers, and embedder/sidecar compute paths."
             ),
             target_getter=lambda h: _sv(h).inference_transparency_table,
             on_enter=_open_hardware,

@@ -42,6 +42,9 @@ SPLASH_CHROME_BUTTON_BORDER_HOVER = qss_color(255, 255, 255, 0.2)
 SPLASH_STEP_PENDING = qss_color(148, 163, 184, 0.55)
 SPLASH_STEP_ACTIVE = "#c4b5fd"
 SPLASH_STEP_DONE = qss_color(134, 239, 172, 0.85)
+# Opaque row colors for per-QLabel QSS (alpha in ``color:`` loses to app-wide Prestige QSS).
+SPLASH_STEP_PENDING_OPAQUE = "#7d8fa3"
+SPLASH_STEP_DONE_OPAQUE = "#86efac"
 SPLASH_PROGRESS_TRACK_RGBA = (255, 255, 255, 20)
 SPLASH_PROGRESS_CHUNK_HEX = "#8b5cf6"
 SPLASH_PROGRESS_TEXT_RGBA = (148, 163, 184, 230)
@@ -106,22 +109,26 @@ def splash_card_surface_qss(_theme: ResolvedTheme | None = None) -> str:
     )
 
 
+def splash_step_row_qss(state: str) -> str:
+    """Widget-level QSS for one splash step row (beats application ``* {{ color }}`` rules)."""
+    if state == "active":
+        color = SPLASH_STEP_ACTIVE
+        weight = "600"
+    elif state == "done":
+        color = SPLASH_STEP_DONE_OPAQUE
+        weight = "400"
+    else:
+        color = SPLASH_STEP_PENDING_OPAQUE
+        weight = "400"
+    return (
+        f"color: {color} !important; background-color: transparent;"
+        f" font-size: 11px; font-weight: {weight};"
+    )
+
+
 def splash_step_list_qss(_theme: ResolvedTheme | None = None) -> str:
-    return f"""
-            QLabel[step_state="pending"] {{
-                color: {SPLASH_STEP_PENDING};
-                font-size: 11px;
-            }}
-            QLabel[step_state="active"] {{
-                color: {SPLASH_STEP_ACTIVE};
-                font-size: 11px;
-                font-weight: 600;
-            }}
-            QLabel[step_state="done"] {{
-                color: {SPLASH_STEP_DONE};
-                font-size: 11px;
-            }}
-            """
+    del _theme
+    return "background-color: transparent;"
 
 
 def splash_split_card_qss(_theme: ResolvedTheme | None = None) -> str:
@@ -272,9 +279,18 @@ def bootstrap_consent_stylesheet(
                 font-weight: 700;
             }}
             QLabel#BootstrapIntro,
-            QLabel#BootstrapLegend {{
+            QLabel#BootstrapLegend,
+            QLabel#BootstrapMainLlmHint {{
                 color: {t.text_muted};
                 font-size: 13px;
+            }}
+            QLabel#BootstrapMainLlmHint {{
+                color: {t.text_on_accent};
+                font-size: 12px;
+                padding: 6px 10px;
+                background: {with_alpha(accent, 0.1)};
+                border: 1px solid {with_alpha(accent, 0.22)};
+                border-radius: 8px;
             }}
             QFrame#BootstrapCollapsiblePanel {{
                 background: {with_alpha(t.text_on_accent, 0.03)};
@@ -371,6 +387,15 @@ def bootstrap_consent_stylesheet(
                 background: {with_alpha(t.text_muted, 0.08)};
                 color: {t.text_muted};
                 border: 1px solid {with_alpha(t.text_muted, 0.18)};
+                border-radius: 8px;
+                padding: 2px 8px;
+                font-size: 10px;
+                font-weight: 700;
+            }}
+            QLabel#BootstrapTierTagAlternative {{
+                background: {with_alpha(accent, 0.12)};
+                color: {t.accent_hover};
+                border: 1px solid {with_alpha(accent, 0.3)};
                 border-radius: 8px;
                 padding: 2px 8px;
                 font-size: 10px;

@@ -9,6 +9,7 @@ from core.composer_attachments import (
     ComposerAttachment,
     format_token,
 )
+from core.composer_sticky_tools import STICKY_COVERED_COMPOSER_TOOL_IDS
 from core.composer_skills import (
     ComposerSkillMention,
     format_skill_token,
@@ -81,7 +82,7 @@ def merge_drafts(
     base: ComposerDraft,
     lifted: ComposerDraft,
     *,
-    skip_internet_when_web_active: bool = False,
+    skip_redundant_tools_when_sticky_knowledge: bool = False,
 ) -> tuple[ComposerDraft, str | None]:
     """Merge token-lift results into an existing draft (dedupe, one routing source)."""
     routing = list(base.routing)
@@ -95,7 +96,7 @@ def merge_drafts(
         updated, added, reason = add_routing_attachment(
             candidate,
             att,
-            skip_internet_when_web_active=skip_internet_when_web_active,
+            skip_redundant_tools_when_sticky_knowledge=skip_redundant_tools_when_sticky_knowledge,
         )
         if reason == ROUTING_REJECT_ONE_SOURCE:
             reject_reason = reason
@@ -112,18 +113,24 @@ def add_routing_attachment(
     draft: ComposerDraft,
     attachment: ComposerAttachment,
     *,
-    skip_internet_when_web_active: bool = False,
+    skip_redundant_tools_when_sticky_knowledge: bool = False,
+    skip_internet_when_web_active: bool | None = None,
 ) -> tuple[ComposerDraft, bool, str | None]:
     """
     Return updated draft, whether the attachment was added, and optional reject reason.
 
-    When ``skip_internet_when_web_active`` is True, Internet tool chips are
-    skipped because session Web search already covers routing.
+    When ``skip_redundant_tools_when_sticky_knowledge`` is True, tool chips that
+  duplicate an active sticky knowledge route are skipped.
     """
+    sticky_skip = (
+        skip_redundant_tools_when_sticky_knowledge
+        if skip_internet_when_web_active is None
+        else skip_internet_when_web_active
+    )
     if (
-        skip_internet_when_web_active
+        sticky_skip
         and attachment.kind == "tool"
-        and attachment.id in {"internet", "trusted", "evidence", "research", "wikipedia", "pubmed", "arxiv"}
+        and attachment.id in STICKY_COVERED_COMPOSER_TOOL_IDS
     ):
         return draft, False, None
     key = (attachment.kind, attachment.id)

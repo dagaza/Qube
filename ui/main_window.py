@@ -19,7 +19,15 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox, QProgressBar, QWIDGETSIZE_MAX,
     QGraphicsDropShadowEffect,
 )
-from PyQt6.QtCore import Qt, QSize, QTimer, QEasingCurve, QPropertyAnimation, QRect
+from PyQt6.QtCore import (
+    QAbstractAnimation,
+    Qt,
+    QSize,
+    QTimer,
+    QEasingCurve,
+    QPropertyAnimation,
+    QRect,
+)
 from PyQt6.QtGui import (
     QAction,
     QKeySequence,
@@ -1447,6 +1455,10 @@ class MainWindow(QMainWindow):
 
     def _resolve_web_force_enabled(self) -> bool:
         cv = getattr(self, "conversations_view", None)
+        if cv is not None and hasattr(cv, "_active_sticky_knowledge_tool_id"):
+            sticky = cv._active_sticky_knowledge_tool_id()
+            if sticky in ("internet", "trusted", "evidence"):
+                return True
         if cv is not None and hasattr(cv, "web_btn"):
             return cv.web_btn.isChecked()
         worker = getattr(self, "_llm_worker", None)
@@ -2632,7 +2644,26 @@ class MainWindow(QMainWindow):
         # 🔑 FIX: This now matches the definition above
         outer_layout.addWidget(self.tools_content)
 
+        self._tools_pane_animating = False
+        self._tools_content_anim = QPropertyAnimation(self.tools_content, b"maximumWidth", self)
+        self._tools_content_anim.setDuration(350)
+        self._tools_content_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
+        self._tools_content_anim.finished.connect(self._on_tools_pane_animation_finished)
+        self._tools_frame_anim = QPropertyAnimation(self.tools_frame, b"maximumWidth", self)
+        self._tools_frame_anim.setDuration(350)
+        self._tools_frame_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
+
         return self.tools_frame
+
+    def tools_pane_layout_animating(self) -> bool:
+        """True while the right tools column is animating width (Conversations defers heavy relayout)."""
+        return bool(getattr(self, "_tools_pane_animating", False))
+
+    def _on_tools_pane_animation_finished(self) -> None:
+        self._tools_pane_animating = False
+        cv = getattr(self, "conversations_view", None)
+        if cv is not None and hasattr(cv, "flush_deferred_host_resize_layout"):
+            cv.flush_deferred_host_resize_layout()
 
     def _generation_spin_values(self) -> tuple[float, int, int]:
         """Resolved temperature / context / history for toolbar display."""
@@ -2822,19 +2853,21 @@ class MainWindow(QMainWindow):
             tooltip = "Show tools panel"
 
         if animate:
-            self.content_anim = QPropertyAnimation(self.tools_content, b"maximumWidth")
-            self.content_anim.setDuration(350)
-            self.content_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
-            self.content_anim.setEndValue(end_content)
-
-            self.frame_anim = QPropertyAnimation(self.tools_frame, b"maximumWidth")
-            self.frame_anim.setDuration(350)
-            self.frame_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
-            self.frame_anim.setEndValue(end_frame)
-
-            self.content_anim.start()
-            self.frame_anim.start()
+            self._tools_pane_animating = True
+            for anim in (self._tools_content_anim, self._tools_frame_anim):
+                if anim.state() == QAbstractAnimation.State.Running:
+                    anim.stop()
+            self._tools_content_anim.setStartValue(self.tools_content.maximumWidth())
+            self._tools_content_anim.setEndValue(end_content)
+            self._tools_frame_anim.setStartValue(self.tools_frame.maximumWidth())
+            self._tools_frame_anim.setEndValue(end_frame)
+            self._tools_content_anim.start()
+            self._tools_frame_anim.start()
         else:
+            self._tools_pane_animating = False
+            for anim in (self._tools_content_anim, self._tools_frame_anim):
+                if anim.state() == QAbstractAnimation.State.Running:
+                    anim.stop()
             self.tools_content.setMaximumWidth(end_content)
             self.tools_frame.setMaximumWidth(end_frame)
 

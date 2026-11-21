@@ -71,6 +71,14 @@ def test_bootstrap_tier_tag_labels():
         "BootstrapTierTagRecommended",
     )
     assert bootstrap_tier_tag(BootstrapModelId.LLM_NEMOTRON_NANO) == (
+        "Alternative",
+        "BootstrapTierTagAlternative",
+    )
+    assert bootstrap_tier_tag(BootstrapModelId.LLM_GEMMA4_E4B) == (
+        "Alternative",
+        "BootstrapTierTagAlternative",
+    )
+    assert bootstrap_tier_tag(BootstrapModelId.SIDECAR_QWEN05) == (
         "Optional",
         "BootstrapTierTagOptional",
     )
@@ -85,6 +93,11 @@ def test_bootstrap_tier_tag_tooltips():
     optional = format_bootstrap_tier_tag_tooltip(BootstrapModelId.SIDECAR_QWEN05)
     assert "Optional" in optional
     assert "alternative" in optional.lower()
+    alt_main = format_bootstrap_tier_tag_tooltip(BootstrapModelId.LLM_NEMOTRON_NANO)
+    assert "Alternative" in alt_main
+    assert "instead of Qwen" in alt_main
+    qwen_main = format_bootstrap_tier_tag_tooltip(BootstrapModelId.LLM_QWEN35_9B)
+    assert "main chat model" in qwen_main.lower()
 
 
 def test_advanced_defaults_include_core_and_balanced_search():

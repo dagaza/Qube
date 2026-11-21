@@ -42,7 +42,7 @@ document library, knowledge base files, uploaded documents, file manager, ingest
 4. **Preview a document** — Single-click a row. The header shows size and **Chunks Indexed**; body text is reconstructed from the vector index. Use the preview toolbar for font, spacing, and layout.
 5. **Chat with a file** — With a document open, click the floating **Chat with document** button (confirm in the dialog). Qube opens **Conversations**, starts a new thread, and prefills an `@[file:…]` attachment—not double-click (double-click on a **folder** row expands or collapses that folder).
 6. **Organize folders** — **New folder** in the header; sort with the sort icon (**Sort folders and items** → **By Name** or **By Date**). Folder **⋮**: **Rename Folder** or **Delete Folder** on user folders only (**Main** and **Qube** are system folders).
-7. **Manage one document** — Document **⋮** (**Document actions**): **Rename Document**, **Move to folder**, **Delete Document** (removes metadata and index entries).
+7. **Manage one document** — Document **⋮** (**Document actions**): **Rename Document**, **Move to folder**, **Delete Document** (removes metadata and index entries) for your uploads. **Built-in Qube content** (help corpus and app-managed knowledge) is **read-only** — pin only; no rename, move, or delete.
 8. **Browse help** — Open **Qube** for built-in documentation (`reference/`, feature pages, workflows). **Qube** starts **collapsed** so **Main** stays front and center; expand it when you need help articles.
 
 **Not supported in v1:** drag-and-drop reorder of documents; folder ZIP export (that exists in Conversations, not Library).
@@ -64,9 +64,9 @@ Grouped like the Library layout. Preview readability settings apply to the **cur
 | Folder row | Click to set active ingest folder; chevron or double-click toggles expand/collapse |
 | Folder **⋮** | **Rename Folder**, **Delete Folder** (user folders only) |
 | Document row | Single-click to preview; **gem badge** before filename when indexed with precision ingest (Pro); filename and size; summary blurb in tooltip when available |
-| Document **⋮** | **Rename Document**, **Move to folder**, **Delete Document** |
+| Document **⋮** | **Rename Document**, **Move to folder**, **Delete Document** (user uploads only) |
 | **Main** | Default user upload folder |
-| **Qube** | App-managed docs; ingest blocked; collapsed by default |
+| **Qube** | App-managed docs (read-only); ingest blocked; collapsed by default |
 
 ### Preview toolbar (above document body)
 

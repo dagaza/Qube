@@ -9,6 +9,7 @@ from core.bootstrap_feasibility import build_session_assessment
 from core.bootstrap_hf_metadata import BootstrapSizeSource, ResolvedBootstrapSize
 from core.bootstrap_manifest import (
     BOOTSTRAP_MODELS,
+    MAIN_LLM_CONSENT_HINT,
     BootstrapModelId,
     consent_model_order,
     consent_tier_tag,
@@ -44,6 +45,21 @@ def bootstrap_panel(qtbot):
     panel = BootstrapConsentPanel()
     qtbot.addWidget(panel)
     return panel
+
+
+def test_main_llm_hint_visible(bootstrap_panel):
+    assert bootstrap_panel._main_llm_hint.text() == MAIN_LLM_CONSENT_HINT
+    assert bootstrap_panel._main_llm_hint.isVisible()
+
+
+def test_alternative_main_models_show_alternative_chip(bootstrap_panel):
+    for model_id in (BootstrapModelId.LLM_GEMMA4_E4B, BootstrapModelId.LLM_NEMOTRON_NANO):
+        label, style = consent_tier_tag(model_id, advanced=False)
+        assert label == "Alternative"
+        assert style == "BootstrapTierTagAlternative"
+        tag = bootstrap_panel._tier_tags[model_id]
+        assert tag.text() == "Alternative"
+        assert tag.objectName() == "BootstrapTierTagAlternative"
 
 
 def test_advanced_allows_memory_blocked_main_llm_selection(bootstrap_panel, qtbot, monkeypatch):
