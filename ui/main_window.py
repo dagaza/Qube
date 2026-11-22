@@ -2885,6 +2885,8 @@ class MainWindow(QMainWindow):
                 self._end_tools_workspace_geometry_change()
 
         finish_tools_pane_toggle()
+        self.main_container.updateGeometry()
+        self.updateGeometry()
 
     def _toggle_tools_pane(self):
         """Toggle tools content visibility; handle lane stays visible."""
