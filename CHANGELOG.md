@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+## [1.3.58] - 2026-11-22
+
+### Added
+- **Conversations:** Add documents while chatting — composer upload, **@ → Files → Upload new document…**, and drag-and-drop into the transcript; shared Library indexing pipeline; sticky `@[file:…]` routing chip after send for follow-up turns scoped to that document.
+- **Help corpus:** Workflow article **Add a document from Conversations**; what's-new entry for composer/library ingest paths.
+- **Linux build:** Vulkan / SPIR-V CMake prefix helpers for `llama-cpp-python` GPU variant installs.
+
+### Changed
+- **Composer / theme:** Recent-mention chip styling; composer palette upload action; splash minimize/close button chrome (opaque QSS for translucent shells).
+- **Shell:** Tools pane show/hide is single-step geometry (no width animation); defer expensive transcript wallpaper work during tools-pane toggles; optional `QUBE_UI_PERF` logging.
+- **TTS:** Kokoro ONNX compatibility shim for voice synthesis on varied package versions.
+
+### Fixed
+- **CI / help seed:** Bootstrap hint exposure and help seed state test fixture.
+- **CI / themes:** Theme preview width tests on wide windows after tools-pane geometry change; prune stale `TranscriptWallpaperHost` surface-refresh callbacks after preview tests show the session window.
+- **Linux tray:** Minimum context-menu width for readability.
+
 ## [1.3.57] - 2026-11-21
 
 ### Added
