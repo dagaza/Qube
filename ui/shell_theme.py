@@ -134,6 +134,7 @@ def prestige_action_menu_qss(theme: ResolvedTheme) -> str:
             border: 1px solid {border};
             border-radius: 6px;
             padding: 4px;
+            min-width: 220px;
         }}
         QMenu::item {{
             background-color: transparent;

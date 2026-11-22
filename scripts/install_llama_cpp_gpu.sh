@@ -10,9 +10,9 @@
 # Override parallelism (default 1 to avoid OOM on 16 GB machines):
 #   LLAMA_BUILD_JOBS=2 ./scripts/install_llama_cpp_gpu.sh
 #
-# Requires build deps — on Ubuntu/Mint:
-#   sudo apt install -y spirv-headers glslang-dev glslang-tools libvulkan-dev \
-#       cmake build-essential python3-dev
+# Requires Vulkan build deps — on Ubuntu/Mint run once:
+#   bash scripts/linux/install_build_deps.sh vulkan
+# or: bash scripts/linux/ensure_vulkan_llama_build_deps.sh --install
 
 set -euo pipefail
 

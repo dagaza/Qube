@@ -97,6 +97,9 @@ class KokoroAdapter:
             raise FileNotFoundError(f"Kokoro voices file not found at {voices_path}")
         
         self.engine = Kokoro(model_path, voices_path)
+        from core.tts_kokoro_compat import patch_kokoro_engine_session_run
+
+        patch_kokoro_engine_session_run(self.engine)
         self.sample_rate = 24000
         
         voices_data = np.load(voices_path, allow_pickle=False)

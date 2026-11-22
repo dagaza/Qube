@@ -39,6 +39,12 @@ SPLASH_CHROME_BUTTON_BG = qss_color(18, 21, 31, 0.72)
 SPLASH_CHROME_BUTTON_BG_HOVER = qss_color(30, 34, 48, 0.9)
 SPLASH_CHROME_BUTTON_BORDER = qss_color(255, 255, 255, 0.12)
 SPLASH_CHROME_BUTTON_BORDER_HOVER = qss_color(255, 255, 255, 0.2)
+# Opaque chrome for splash minimize/close — semi-transparent QSS bleeds the desktop on
+# ``WA_TranslucentBackground`` shells and reads as yellow/colored halos on some Linux WMs.
+SPLASH_CHROME_BUTTON_BG_OPAQUE = "#1a1e2b"
+SPLASH_CHROME_BUTTON_BG_HOVER_OPAQUE = "#262b3d"
+SPLASH_CHROME_BUTTON_BORDER_OPAQUE = "#343946"
+SPLASH_CHROME_BUTTON_BORDER_HOVER_OPAQUE = "#454c5c"
 SPLASH_STEP_PENDING = qss_color(148, 163, 184, 0.55)
 SPLASH_STEP_ACTIVE = "#c4b5fd"
 SPLASH_STEP_DONE = qss_color(134, 239, 172, 0.85)
@@ -202,20 +208,32 @@ def early_splash_card_qss(_theme: ResolvedTheme | None = None) -> str:
 
 
 def splash_overlay_chrome_button_qss(object_name: str) -> str:
+    """Widget-level QSS for frameless splash Minimize/Close (beats app ``QPushButton`` rules)."""
+    bg = SPLASH_CHROME_BUTTON_BG
+    border = SPLASH_CHROME_BUTTON_BORDER
+    hover_bg = SPLASH_CHROME_BUTTON_BG_HOVER
+    hover_border = SPLASH_CHROME_BUTTON_BORDER_HOVER
+    selector = f"QPushButton#{object_name}"
     return f"""
-            QPushButton#{object_name} {{
-                background: {SPLASH_CHROME_BUTTON_BG};
-                border: 1px solid {SPLASH_CHROME_BUTTON_BORDER};
+            {selector} {{
+                background-color: {bg} !important;
+                border: 1px solid {border} !important;
                 border-radius: 6px;
+                padding: 0;
+                margin: 0;
                 outline: none;
             }}
-            QPushButton#{object_name}:hover {{
-                background: {SPLASH_CHROME_BUTTON_BG_HOVER};
-                border-color: {SPLASH_CHROME_BUTTON_BORDER_HOVER};
+            {selector}:hover {{
+                background-color: {hover_bg} !important;
+                border-color: {hover_border} !important;
             }}
-            QPushButton#{object_name}:focus {{
-                background: {SPLASH_CHROME_BUTTON_BG};
-                border: 1px solid {SPLASH_CHROME_BUTTON_BORDER};
+            {selector}:pressed {{
+                background-color: {hover_bg} !important;
+                border-color: {hover_border} !important;
+            }}
+            {selector}:focus, {selector}:focus-visible, {selector}:default, {selector}:flat {{
+                background-color: {bg} !important;
+                border: 1px solid {border} !important;
                 outline: none;
             }}
             """

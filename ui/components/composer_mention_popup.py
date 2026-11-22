@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from core.composer_palette_actions import ComposerPaletteAction
 from core.composer_attachments import (
     ComposerAttachment,
     composer_tool_by_id,
@@ -385,6 +386,7 @@ class ComposerMentionPopup(QWidget):
     item_selected = pyqtSignal(object)  # ComposerAttachment
     skill_selected = pyqtSignal(object)  # ComposerSkillMention
     command_selected = pyqtSignal(object)  # ComposerCommand
+    palette_action_selected = pyqtSignal(object)  # ComposerPaletteAction
     dismissed = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None):
@@ -990,6 +992,14 @@ class ComposerMentionPopup(QWidget):
         if not self._db:
             self._add_empty_row("Database unavailable")
             return
+        upload_action = ComposerPaletteAction.upload_library_document()
+        upload_row = QListWidgetItem(upload_action.label)
+        upload_row.setData(Qt.ItemDataRole.UserRole, upload_action)
+        self._apply_row_tooltip(
+            upload_row,
+            upload_action.description or upload_action.label,
+        )
+        self._list.addItem(upload_row)
         q = self._search_query()
         try:
             docs = self._db.get_user_library_documents_for_composer(q, limit=200)
@@ -1136,6 +1146,10 @@ class ComposerMentionPopup(QWidget):
                     anchor = parent._mention_global_pos()
                 self.enter_scoped_browse(kind, anchor)
                 return
+        if isinstance(data, ComposerPaletteAction):
+            self.palette_action_selected.emit(data)
+            self.hide()
+            return
         if isinstance(data, ComposerCommand):
             self.command_selected.emit(data)
             self.hide()

@@ -10,6 +10,7 @@ from core.composer_draft import (
     add_skill,
     composer_one_source_limit_request,
     composer_prompt_required_request,
+    draft_after_send_preserving_sticky_file,
     routing_chip_unavailable_message,
     routing_chip_tooltip,
     draft_from_text,
@@ -151,6 +152,35 @@ class TestComposerDraft(unittest.TestCase):
         )
         updated = remove_routing_at(draft, 0)
         self.assertEqual(len(updated.routing), 0)
+
+    def test_draft_after_send_preserves_file_routing_only(self) -> None:
+        draft = ComposerDraft(
+            body="What does section 3 say?",
+            routing=[
+                ComposerAttachment(kind="file", id="contract.pdf", label="contract.pdf"),
+                ComposerAttachment(kind="tool", id="internet", label="Internet"),
+            ],
+            skills=[
+                ComposerSkillMention(id="research_synthesis", label="Research Synthesis"),
+            ],
+        )
+        after = draft_after_send_preserving_sticky_file(draft)
+        self.assertEqual(after.body, "")
+        self.assertEqual(len(after.skills), 0)
+        self.assertEqual(len(after.routing), 1)
+        self.assertEqual(after.routing[0].kind, "file")
+        self.assertEqual(after.routing[0].id, "contract.pdf")
+
+    def test_draft_after_send_clears_when_no_file(self) -> None:
+        draft = ComposerDraft(
+            body="Hi",
+            routing=[
+                ComposerAttachment(kind="tool", id="library", label="Library"),
+            ],
+        )
+        after = draft_after_send_preserving_sticky_file(draft)
+        self.assertEqual(after.body, "")
+        self.assertEqual(after.routing, [])
 
     def test_routing_requires_body_for_tool_without_text(self) -> None:
         draft = ComposerDraft(

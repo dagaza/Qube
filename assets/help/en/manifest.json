@@ -1015,6 +1015,27 @@
       ]
     },
     {
+      "id": "workflows.add_document_from_conversations",
+      "path": "workflows/add-document-from-conversations.md",
+      "title": "Add a document from Conversations",
+      "type": "workflow",
+      "tags": [
+        "conversations",
+        "library",
+        "import",
+        "upload"
+      ],
+      "synonyms": [
+        "upload while chatting",
+        "drag drop document chat"
+      ],
+      "related": [
+        "index",
+        "workflows.import_documents",
+        "workflows.chat_with_document"
+      ]
+    },
+    {
       "id": "workflows.chat_with_document",
       "path": "workflows/chat-with-a-library-document.md",
       "title": "Chat with a library document",

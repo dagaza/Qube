@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Callable
 
 import qtawesome as qta
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QAction, QIcon, QPixmap
-from PyQt6.QtWidgets import QMenu, QSystemTrayIcon, QWidget
+from PyQt6.QtCore import QObject, Qt, pyqtSignal
+from PyQt6.QtGui import QAction, QCursor, QIcon, QPixmap
+from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 
 from core import app_settings
 from core.paths import resource_path
@@ -17,11 +18,11 @@ from core.assistant_activity import (
     menu_status_line,
     tray_tooltip_for_activity,
 )
-from core.theme.view_theme import view_resolved_theme
 from ui.shell_theme import apply_prestige_action_menu_theme, resolve_shell_theme
 
 _TRAY_LOGO_NAME = "qube_logo_256.png"
 _TRAY_ICON_SIZES_PX = (16, 22, 24, 32)
+_LINUX_MANUAL_TRAY_CONTEXT_MENU = sys.platform.startswith("linux")
 
 
 def resolve_qube_logo_path() -> Path | None:
@@ -65,7 +66,29 @@ def build_tray_logo_icon(
     return icon
 
 
-class TrayController(QWidget):
+def _tray_menu_min_width_px(menu: QMenu, *, floor_px: int = 220) -> int:
+    """Compute a sane minimum width so tray popups do not collapse on Linux."""
+    fm = menu.fontMetrics()
+    horizontal_extra = 72
+    width = floor_px
+
+    def walk(actions) -> None:
+        nonlocal width
+        for action in actions:
+            if action.isSeparator():
+                continue
+            text = action.text()
+            if text:
+                width = max(width, fm.horizontalAdvance(text) + horizontal_extra)
+            sub = action.menu()
+            if sub is not None:
+                walk(sub.actions())
+
+    walk(menu.actions())
+    return width
+
+
+class TrayController(QObject):
     """Owns QSystemTrayIcon state, menu, and activity tooltip."""
 
     open_requested = pyqtSignal()
@@ -79,7 +102,7 @@ class TrayController(QWidget):
 
     def __init__(
         self,
-        parent: QWidget | None = None,
+        parent: QObject | None = None,
         *,
         voice_input_enabled: Callable[[], bool] | None = None,
         voice_output_enabled: Callable[[], bool] | None = None,
@@ -92,6 +115,7 @@ class TrayController(QWidget):
         self._tray_logo_icon = build_tray_logo_icon(tray_logo_path)
         self._tray_available = QSystemTrayIcon.isSystemTrayAvailable()
         self._tray_icon: QSystemTrayIcon | None = None
+        self._tray_menu: QMenu | None = None
         self._status_action: QAction | None = None
         self._voice_in_action: QAction | None = None
         self._voice_out_action: QAction | None = None
@@ -114,11 +138,10 @@ class TrayController(QWidget):
 
     def apply_theme(self, is_dark: bool) -> None:
         self._is_dark = is_dark
-        theme = resolve_shell_theme(self.parent(), is_dark=is_dark)
-        if self._tray_icon is not None:
-            menu = self._tray_icon.contextMenu()
-            if menu is not None:
-                apply_prestige_action_menu_theme(menu, theme)
+        if self._tray_menu is not None:
+            theme = resolve_shell_theme(self._theme_host(), is_dark=is_dark)
+            apply_prestige_action_menu_theme(self._tray_menu, theme)
+            self._ensure_tray_menu_width()
 
     def set_activity(
         self,
@@ -142,13 +165,23 @@ class TrayController(QWidget):
             label = title if not body else f"{title} — {body[:60]}"
             action = self._recent_menu.addAction(label)
             action.setEnabled(False)
+        if self._tray_menu is not None:
+            theme = resolve_shell_theme(self._theme_host(), is_dark=self._is_dark)
+            apply_prestige_action_menu_theme(self._tray_menu, theme)
+
+    def _theme_host(self) -> QObject | None:
+        return self.parent() if isinstance(self.parent(), QObject) else None
 
     def _build_tray(self) -> None:
         self._tray_icon = QSystemTrayIcon(self)
         self._tray_icon.setIcon(self._tray_logo_icon)
         self._tray_icon.setToolTip("Qube")
 
+        # Top-level menu (not parented to MainWindow widgets) so hide-to-tray does not
+        # collapse popup geometry on Linux panel/status-notifier integrations.
         menu = QMenu()
+        menu.setObjectName("QubeTrayMenu")
+        self._tray_menu = menu
         self._status_action = QAction("Idle", self)
         self._status_action.setEnabled(False)
         menu.addAction(self._status_action)
@@ -210,14 +243,44 @@ class TrayController(QWidget):
         quit_action.triggered.connect(self.exit_requested.emit)
         menu.addAction(quit_action)
 
-        self._tray_icon.setContextMenu(menu)
+        menu.aboutToShow.connect(self._on_tray_menu_about_to_show)
+
+        if _LINUX_MANUAL_TRAY_CONTEXT_MENU:
+            # StatusNotifier/AppIndicator on Linux mishandles setContextMenu() when the
+            # main window was hidden; popup() on right-click is reliable on Mint/Cinnamon.
+            pass
+        else:
+            self._tray_icon.setContextMenu(menu)
+
         self._tray_icon.activated.connect(self._on_activated)
-        theme = resolve_shell_theme(self.parent(), is_dark=self._is_dark)
-        apply_prestige_action_menu_theme(menu, theme)
-        self._refresh_presence()
+        self._on_tray_menu_about_to_show()
         self._tray_icon.show()
 
+    def _on_tray_menu_about_to_show(self) -> None:
+        if self._tray_menu is None:
+            return
+        theme = resolve_shell_theme(self._theme_host(), is_dark=self._is_dark)
+        apply_prestige_action_menu_theme(self._tray_menu, theme)
+        self.sync_voice_toggles(
+            voice_in=self._voice_input_enabled(),
+            voice_out=self._voice_output_enabled(),
+        )
+        self.sync_dnd_toggle()
+        self.sync_companion_toggle()
+        self._refresh_presence()
+        self._ensure_tray_menu_width()
+
+    def _ensure_tray_menu_width(self) -> None:
+        if self._tray_menu is None:
+            return
+        self._tray_menu.setMinimumWidth(_tray_menu_min_width_px(self._tray_menu))
+
     def _on_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason == QSystemTrayIcon.ActivationReason.Context:
+            if _LINUX_MANUAL_TRAY_CONTEXT_MENU and self._tray_menu is not None:
+                self._on_tray_menu_about_to_show()
+                self._tray_menu.popup(QCursor.pos())
+            return
         if reason in (
             QSystemTrayIcon.ActivationReason.Trigger,
             QSystemTrayIcon.ActivationReason.DoubleClick,

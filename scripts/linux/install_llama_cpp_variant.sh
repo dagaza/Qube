@@ -12,7 +12,22 @@
 #   LLAMA_CPP_FORCE_CUDA_SOURCE=1  skip CUDA prebuilt wheel
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+vulkan_cmake_extras() {
+  [[ "$(uname -s)" == "Linux" ]] || return 0
+  bash "$SCRIPT_DIR/ensure_vulkan_llama_build_deps.sh"
+  local spirv_dir prefix extras=""
+  if spirv_dir="$(bash "$SCRIPT_DIR/spirv_headers_cmake_dir.sh" 2>/dev/null)"; then
+    extras+=" -DSPIRV-Headers_DIR=${spirv_dir}"
+  fi
+  prefix="$(bash "$SCRIPT_DIR/vulkan_cmake_prefix.sh" 2>/dev/null || true)"
+  if [[ -n "$prefix" ]]; then
+    extras+=" -DCMAKE_PREFIX_PATH=${prefix}"
+  fi
+  printf '%s' "$extras"
+}
 
 linux_llama_cmake_args() {
   PYTHONPATH="${REPO_ROOT}${PYTHONPATH:+:$PYTHONPATH}" python3 - <<'PY' "$1"
@@ -109,7 +124,9 @@ install_cpu() {
 }
 
 install_vulkan() {
-  export CMAKE_ARGS="$(linux_llama_cmake_args vulkan)"
+  local extras
+  extras="$(vulkan_cmake_extras)"
+  export CMAKE_ARGS="$(linux_llama_cmake_args vulkan)${extras}"
   echo "==> Building llama-cpp-python with Vulkan (${VERSION}, jobs=${JOBS}, CMAKE_ARGS=${CMAKE_ARGS})..."
   pip_install "llama-cpp-python==${VERSION}" --force-reinstall --no-cache-dir --no-binary=llama-cpp-python
   verify_linux_libggml_release

@@ -157,6 +157,13 @@ def add_skill(draft: ComposerDraft, mention: ComposerSkillMention) -> tuple[Comp
     return ComposerDraft(body=draft.body, routing=list(draft.routing), skills=skills), True
 
 
+def draft_after_send_preserving_sticky_file(draft: ComposerDraft) -> ComposerDraft:
+    """Post-send composer state: clear body and skills; keep a single file routing chip."""
+    file_routing = [att for att in draft.routing if att.kind == "file"]
+    sticky_file = file_routing[:1]
+    return ComposerDraft(body="", routing=sticky_file, skills=[])
+
+
 def remove_routing_at(draft: ComposerDraft, index: int) -> ComposerDraft:
     routing = list(draft.routing)
     if 0 <= index < len(routing):
@@ -229,7 +236,9 @@ def routing_chip_tooltip(attachment: ComposerAttachment, *, is_primary: bool) ->
     if unavailable:
         return unavailable
     if attachment.kind == "file":
-        return f"Search scoped to {attachment.label} for this message."
+        return (
+            f"Search scoped to {attachment.label} for this chat until you remove the chip."
+        )
     if attachment.kind == "conversation":
         return (
             f"Inject transcript from “{attachment.label}” for this turn only."

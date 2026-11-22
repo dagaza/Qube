@@ -7,8 +7,10 @@ from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSizePolicy, QWidg
 
 from core.composer_discoverability import RecentMention
 from core.composer_attachments import composer_tool_tooltip, composer_tool_by_id
-from core.theme.color_utils import theme_qcolor
-from core.theme.widget_styles import PLACEHOLDER_MUTED
+from core.theme.widget_styles import (
+    COMPOSER_RECENT_MENTION_CHIP,
+    COMPOSER_RECENT_MENTIONS_LABEL,
+)
 from ui.views.settings.settings_theme import resolve_settings_theme
 
 
@@ -41,6 +43,10 @@ class ComposerRecentMentionsRow(QWidget):
         for mention in entries:
             button = QPushButton(f"@{mention.label}")
             button.setObjectName("ComposerRecentMentionChip")
+            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            button.setAutoDefault(False)
+            button.setDefault(False)
+            button.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             button.setToolTip(self._tooltip_for(mention))
@@ -53,25 +59,21 @@ class ComposerRecentMentionsRow(QWidget):
 
         self.setVisible(bool(entries))
 
+    @staticmethod
+    def _repolish_chip(button: QPushButton) -> None:
+        style = button.style()
+        if style is not None:
+            style.unpolish(button)
+            style.polish(button)
+        button.update()
+
     def apply_theme(self, is_dark: bool) -> None:
         theme = resolve_settings_theme(self, is_dark=is_dark)
-        muted = theme_qcolor(theme.color(PLACEHOLDER_MUTED))
-        self._label.setStyleSheet(f"color: {muted.name()}; font-size: 11px;")
-        chip_style = (
-            "QPushButton#ComposerRecentMentionChip {"
-            f"color: {muted.name()};"
-            "background: transparent;"
-            "border: 1px solid rgba(128,128,128,0.35);"
-            "border-radius: 10px;"
-            "padding: 2px 10px;"
-            "font-size: 11px;"
-            "}"
-            "QPushButton#ComposerRecentMentionChip:hover {"
-            "background: rgba(128,128,128,0.12);"
-            "}"
-        )
+        self._label.setStyleSheet(theme.style(COMPOSER_RECENT_MENTIONS_LABEL))
+        chip_style = theme.style(COMPOSER_RECENT_MENTION_CHIP)
         for button in self._buttons:
             button.setStyleSheet(chip_style)
+            self._repolish_chip(button)
 
     @staticmethod
     def _tooltip_for(mention: RecentMention) -> str:
