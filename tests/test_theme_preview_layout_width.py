@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from ui.components.theme_preview_panel import (
     _PREVIEW_LAYOUT_MIN_WIDTH,
     _design_preview_width_at_min_window,
@@ -32,6 +34,21 @@ def _ensure_window_shown(main_window, qtbot) -> None:
     if not main_window.isVisible():
         main_window.show()
         qtbot.waitExposed(main_window)
+
+
+def _hide_window_if_shown(main_window) -> None:
+    if main_window.isVisible():
+        main_window.hide()
+
+
+@pytest.fixture(autouse=True)
+def _reset_main_window_visibility_after_preview(main_window, request):
+    """Avoid leaving the session MainWindow visible for later UI tests."""
+    if "main_window" not in request.fixturenames:
+        yield
+        return
+    yield
+    _hide_window_if_shown(main_window)
 
 
 def _open_themes_preview(main_window, qtbot):

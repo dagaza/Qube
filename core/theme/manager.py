@@ -148,6 +148,12 @@ class ThemeManager:
         """Register a host/widget refresh hook (Phase 1+ compositor)."""
         self._surface_refresh_callbacks.append(callback)
 
+    def unregister_surface_refresh(self, callback: Callable[[], None]) -> None:
+        try:
+            self._surface_refresh_callbacks.remove(callback)
+        except ValueError:
+            pass
+
     @property
     def surface_profiles_active(self) -> SurfaceProfileSet:
         return self._surface_profiles_active
@@ -537,5 +543,11 @@ class ThemeManager:
             self.unsubscribe(callback)
 
     def _notify_surface_refresh(self) -> None:
+        stale: list[Callable[[], None]] = []
         for callback in list(self._surface_refresh_callbacks):
-            callback()
+            try:
+                callback()
+            except RuntimeError:
+                stale.append(callback)
+        for callback in stale:
+            self.unregister_surface_refresh(callback)

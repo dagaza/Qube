@@ -38,6 +38,8 @@ class TranscriptWallpaperHost(QWidget):
         self._preview_resolved_wallpaper = None
         self._preview_theme: ResolvedTheme | None = None
         self._refresh_registered = False
+        self._surface_refresh_callback = None
+        self._surface_refresh_manager = None
         self._background_cache: QPixmap | None = None
         self._background_cache_key: tuple[Any, ...] | None = None
         self._cache_build_pending = False
@@ -314,8 +316,30 @@ class TranscriptWallpaperHost(QWidget):
         manager = self._theme_manager()
         if manager is None:
             return
-        manager.register_surface_refresh(self.refresh_surface_fill)
+        callback = self.refresh_surface_fill
+        manager.register_surface_refresh(callback)
+        self._surface_refresh_callback = callback
+        self._surface_refresh_manager = manager
         self._refresh_registered = True
+        self.destroyed.connect(self._on_destroyed_unregister_surface_refresh)
+
+    def _unregister_theme_refresh(self) -> None:
+        if not self._refresh_registered:
+            return
+        manager = self._surface_refresh_manager
+        callback = self._surface_refresh_callback
+        if manager is not None and callback is not None:
+            manager.unregister_surface_refresh(callback)
+        self._refresh_registered = False
+        self._surface_refresh_callback = None
+        self._surface_refresh_manager = None
+
+    def _on_destroyed_unregister_surface_refresh(self, *_args) -> None:
+        self._unregister_theme_refresh()
+
+    def closeEvent(self, event) -> None:
+        self._unregister_theme_refresh()
+        super().closeEvent(event)
 
     def _theme_manager(self):
         window = self.window()
