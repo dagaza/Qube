@@ -386,6 +386,26 @@ def test_theme_manager_surface_refresh_callback_on_apply():
     assert calls == ["surface"]
 
 
+def test_theme_manager_surface_refresh_prunes_deleted_hosts():
+    theme_store = _MemoryStore()
+    surface_store = _MemoryStore()
+    manager = ThemeManager(
+        storage=ThemeStorage(settings_get=theme_store.get, settings_set=theme_store.set),
+        surface_storage=SurfaceFillStorage(
+            settings_get=surface_store.get,
+            settings_set=surface_store.set,
+        ),
+        applicator=_NoopApplicator(),  # type: ignore[arg-type]
+    )
+
+    def _stale_refresh() -> None:
+        raise RuntimeError("wrapped C/C++ object of type TranscriptWallpaperHost has been deleted")
+
+    manager.register_surface_refresh(_stale_refresh)
+    manager.apply(persist=False)
+    manager.apply(persist=False)
+
+
 def test_preset_catalog_includes_documented_ids():
     for preset_id in (
         "builtin.paper",
