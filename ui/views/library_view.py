@@ -52,7 +52,6 @@ from ui.components.sidebar_folder_list import (
     create_sidebar_header_actions_row,
 )
 from ui.components.ingest_progress_row import IngestProgressRow
-from ui.components.library_ingest_mode_dialog import LibraryIngestModeDialog
 from ui.components.pro_gem_badge import (
     apply_pro_gem_badge_theme,
     make_pro_gem_badge,
@@ -1343,88 +1342,38 @@ class LibraryView(QWidget):
 
     def _browse_for_document(self):
         """Choose indexing mode, open file dialog, check duplicates, and ingest."""
+        from core.library_ingest_ui_flow import pick_library_documents, run_ingest_preflight
+
         folder_id = self._active_folder_id or self.db.get_main_library_folder_id()
-        if not self.db.library_folder_allows_user_ingest(folder_id):
-            is_dark = getattr(self.window(), "_is_dark_theme", True)
-            PrestigeDialog(
-                self,
-                "Cannot Add Here",
-                "The Qube folder is reserved for knowledge Qube creates automatically. "
-                "Select the Main folder or another folder to add your own documents.",
-                is_dark,
-            ).exec()
+        paths = pick_library_documents(self)
+        if not paths:
             return
 
-        from ui.bootstrap_feature_prompts import ensure_search_models_for_feature
-
-        if not ensure_search_models_for_feature(
-            self.window(),
-            feature_label="Library document upload",
-        ):
-            return
-
-        is_dark = getattr(self.window(), "_is_dark_theme", True)
-        mode_dialog = LibraryIngestModeDialog(
+        preflight = run_ingest_preflight(
             self,
-            is_dark=is_dark,
+            window=self.window(),
+            db=self.db,
+            store=self.store,
+            paths=paths,
+            folder_id=folder_id,
         )
-        if not mode_dialog.exec():
-            logger.info("Ingestion cancelled at indexing mode chooser.")
-            return
-        ingest_mode = mode_dialog.selected_mode()
-        if not ingest_mode:
+        if preflight is None:
             return
 
-        files, _ = QFileDialog.getOpenFileNames(
-            self, "Select Documents to Ingest", "", "Documents (*.txt *.md *.pdf *.epub)"
-        )
-        if not files:
-            return
-
-        paths = [Path(f) for f in files]
-        
-        # 1. Check if any selected files already exist in our SQLite registry
-        existing_files = []
-        current_docs = self.db.get_all_library_document_filenames()
-
-        for p in paths:
-            if p.name in current_docs:
-                existing_files.append(p.name)
-
-        # 2. Prompt the user if duplicates are found
-        if existing_files:
-            msg = (f"The following {len(existing_files)} file(s) already exist in your Knowledge Base:\n\n"
-                   f"{', '.join(existing_files[:5])}" + ("..." if len(existing_files) > 5 else "") +
-                   "\n\nDo you want to overwrite them?")
-            
-            # 🔑 Use PrestigeDialog for the Yes/No check
-            is_dark = getattr(self.window(), '_is_dark_theme', True)
-            dialog = PrestigeDialog(self, "Overwrite Files?", msg, is_dark)
-
-            # .exec() returns truthy if they clicked the primary confirmation button
-            if dialog.exec():
-                logger.info("User chose to overwrite existing files. Purging old data...")
-                for name in existing_files:
-                    if self.store: self.store.delete_document(name)
-                    self.db.delete_document_metadata(name)
-            else:
-                paths = [p for p in paths if p.name not in existing_files]
-                if not paths:
-                    logger.info("Ingestion cancelled; all selected files were duplicates and user declined overwrite.")
-                    return
-
-        # 3. Proceed with the standard ingestion UI updates
         self.begin_ingest_progress_ui()
         self.add_btn.setEnabled(False)
-        
+
         logger.info(
             "Emitting %d files to main pipeline for ingestion (mode=%s).",
-            len(paths),
-            ingest_mode,
+            len(preflight.paths),
+            preflight.ingest_mode,
         )
         self._had_ingestion_error = False
-        folder_id = self._active_folder_id or self.db.get_main_library_folder_id()
-        self.ingest_requested.emit(paths, folder_id, ingest_mode)
+        self.ingest_requested.emit(
+            preflight.paths,
+            preflight.folder_id,
+            preflight.ingest_mode,
+        )
 
     # --- UI Receivers for Worker Progress ---
     def begin_ingest_progress_ui(self, *, detail: str = "") -> None:

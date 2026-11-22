@@ -26,6 +26,8 @@ COMPOSER_SIDE_DIVIDER = "composer_side_divider"
 MUTED_LABEL = "muted_label"
 TELEMETRY_LABEL = "telemetry_label"
 HELP_ACTION_CHIP = "help_action_chip"
+COMPOSER_RECENT_MENTIONS_LABEL = "composer_recent_mentions_label"
+COMPOSER_RECENT_MENTION_CHIP = "composer_recent_mention_chip"
 USER_BUBBLE_FRAME = "user_bubble_frame"
 USER_BUBBLE_LABEL = "user_bubble_label"
 AGENT_MESSAGE_SHELL = "agent_message_shell"
@@ -387,6 +389,7 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
     if role == COMPOSER_SIDE_BUTTON:
         return f"""
             QPushButton#ComposerAttachButton,
+            QPushButton#ComposerUploadButton,
             QPushButton#ComposerVoiceButton {{
                 background: transparent;
                 border: none;
@@ -394,10 +397,12 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
                 padding: 4px;
             }}
             QPushButton#ComposerAttachButton:hover,
+            QPushButton#ComposerUploadButton:hover,
             QPushButton#ComposerVoiceButton:hover {{
                 background-color: {resolved.surface_hover};
             }}
             QPushButton#ComposerAttachButton:disabled,
+            QPushButton#ComposerUploadButton:disabled,
             QPushButton#ComposerVoiceButton:disabled {{
                 opacity: 0.45;
             }}
@@ -425,6 +430,43 @@ def theme_style(resolved: ResolvedTheme, role: str, **kwargs) -> str:
             }}
             QPushButton:hover {{
                 background-color: {resolved.accent_muted_bg};
+            }}
+        """
+    if role == COMPOSER_RECENT_MENTIONS_LABEL:
+        fg = resolved.text_muted if resolved.is_dark else resolved.text_secondary
+        return (
+            f"QLabel#ComposerRecentMentionsLabel {{"
+            f" color: {fg} !important; font-size: 11px;"
+            f" background: transparent; border: none; }}"
+        )
+    if role == COMPOSER_RECENT_MENTION_CHIP:
+        selector = "QPushButton#ComposerRecentMentionChip"
+        if resolved.is_dark:
+            fg = resolved.text_secondary
+            bg = "transparent"
+            border = with_alpha(resolved.text_muted, 0.42)
+            hover_bg = with_alpha(resolved.text_muted, 0.14)
+            hover_border = with_alpha(resolved.text_muted, 0.52)
+        else:
+            fg = adjust_lightness(resolved.link or resolved.accent, -0.12)
+            bg = with_alpha(resolved.accent, 0.14)
+            border = with_alpha(resolved.accent, 0.58)
+            hover_bg = with_alpha(resolved.accent, 0.22)
+            hover_border = with_alpha(resolved.accent, 0.72)
+        return f"""
+            {selector} {{
+                color: {fg} !important;
+                background-color: {bg} !important;
+                border: 1px solid {border} !important;
+                border-radius: 10px;
+                padding: 2px 10px;
+                font-size: 11px;
+                font-weight: 600;
+            }}
+            {selector}:hover, {selector}:pressed {{
+                color: {fg} !important;
+                background-color: {hover_bg} !important;
+                border-color: {hover_border} !important;
             }}
         """
     if role == USER_BUBBLE_FRAME:

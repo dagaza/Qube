@@ -289,6 +289,30 @@ def test_agent_message_frame_style_light_scheme_uses_light_surface():
     assert theme.text_primary in md
 
 
+def test_composer_recent_mention_chip_light_uses_accent_not_placeholder_muted():
+    from core.theme.color_utils import adjust_lightness
+    from core.theme.widget_styles import (
+        COMPOSER_RECENT_MENTION_CHIP,
+        COMPOSER_RECENT_MENTIONS_LABEL,
+        theme_style,
+    )
+
+    resolver = ThemeResolver(BUILTIN_SCHEMES)
+    light = resolver.resolve(mode=ThemeMode.LIGHT, scheme_id=DEFAULT_SCHEME_ID_LIGHT)
+    dark = resolver.resolve(mode=ThemeMode.DARK, scheme_id=DEFAULT_SCHEME_ID_DARK)
+
+    light_chip = theme_style(light, COMPOSER_RECENT_MENTION_CHIP)
+    light_label = theme_style(light, COMPOSER_RECENT_MENTIONS_LABEL)
+    dark_chip = theme_style(dark, COMPOSER_RECENT_MENTION_CHIP)
+
+    accent_fg = adjust_lightness(light.link or light.accent, -0.12)
+    assert accent_fg in light_chip
+    assert "!important" in light_chip
+    assert light.text_muted not in light_chip
+    assert light.text_secondary in light_label
+    assert dark.text_secondary in dark_chip
+
+
 def test_render_stylesheet_editable_fields_use_surface_elevated():
     from core.theme.stylesheet import render_stylesheet
 
@@ -949,7 +973,9 @@ def test_resolved_theme_style_helpers():
 
     from ui.branded_theme import (
         SPLASH_CHROME_BUTTON_BG,
+        SPLASH_CHROME_BUTTON_BG_OPAQUE,
         SPLASH_CHROME_BUTTON_BORDER,
+        SPLASH_CHROME_BUTTON_BORDER_OPAQUE,
         SPLASH_CHROME_ICON,
         SPLASH_SURFACE_BG,
         bootstrap_consent_stylesheet,
@@ -969,6 +995,11 @@ def test_resolved_theme_style_helpers():
     chrome_qss = splash_overlay_chrome_button_qss("QubeSplashCloseButton")
     assert SPLASH_CHROME_BUTTON_BG in chrome_qss
     assert SPLASH_CHROME_BUTTON_BORDER in chrome_qss
+    assert "QPushButton#QubeSplashCloseButton" in chrome_qss
+    assert "!important" in chrome_qss
+    assert ":focus-visible" in chrome_qss
+    assert SPLASH_CHROME_BUTTON_BG_OPAQUE.startswith("#")
+    assert SPLASH_CHROME_BUTTON_BORDER_OPAQUE.startswith("#")
     assert "transparent" in splash_step_list_qss()
     assert "#c4b5fd" in splash_step_row_qss("active")
     assert "important" in splash_step_row_qss("done")

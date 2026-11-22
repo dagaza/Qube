@@ -19,15 +19,7 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox, QProgressBar, QWIDGETSIZE_MAX,
     QGraphicsDropShadowEffect,
 )
-from PyQt6.QtCore import (
-    QAbstractAnimation,
-    Qt,
-    QSize,
-    QTimer,
-    QEasingCurve,
-    QPropertyAnimation,
-    QRect,
-)
+from PyQt6.QtCore import Qt, QSize, QTimer, QRect
 from PyQt6.QtGui import (
     QAction,
     QKeySequence,
@@ -159,6 +151,9 @@ _RESTORE_WIDTH_RATIO = 0.90
 _RESTORE_HEIGHT_RATIO = 0.82
 _ABSOLUTE_MIN_WIDTH = 640
 _ABSOLUTE_MIN_HEIGHT = 480
+_TOOLS_PANE_FRAME_EXPANDED_PX = 300
+_TOOLS_PANE_FRAME_COLLAPSED_PX = 40
+_TOOLS_PANE_CONTENT_WIDTH_PX = 260
 
 class VUMeter(QWidget):
     """A sleek, custom-painted VU meter with a Green-Yellow-Red gradient."""
@@ -1049,6 +1044,9 @@ class MainWindow(QMainWindow):
                     self._geometry_update_depth -= 1
                 return
         super().resizeEvent(event)
+        from core.ui_perf_probe import ui_perf_count
+
+        ui_perf_count("main_window.resize")
         if hasattr(self, 'grip'):
             # Position it at the absolute bottom-right of the container
             self.grip.move(
@@ -2137,15 +2135,14 @@ class MainWindow(QMainWindow):
         return sidebar
     
     def _build_tools_pane(self) -> QFrame:
-        """Global Right Sidebar: Restored 'Card' look with animated content."""
+        """Global right sidebar: fixed handle lane + show/hide tools content (no layout-width animation)."""
         _TOOLS_MAIN_V_SPACING = 23
         _TOOLS_INNER_V_SPACING = 8
 
         # 1. THE MAIN BAR (The container with the background/border)
         self.tools_frame = QFrame()
-        self.tools_frame.setObjectName("ToolsPane") 
-        self.tools_frame.setFixedWidth(300) 
-        self.tools_frame.setMinimumWidth(40) 
+        self.tools_frame.setObjectName("ToolsPane")
+        self.tools_frame.setFixedWidth(_TOOLS_PANE_FRAME_EXPANDED_PX)
         self.tools_frame.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         
         outer_layout = QHBoxLayout(self.tools_frame)
@@ -2176,8 +2173,7 @@ class MainWindow(QMainWindow):
         # 3. THE CONTENT AREA (The part that slides)
         # 🔑 Standardized Name: self.tools_content
         self.tools_content = QWidget()
-        self.tools_content.setFixedWidth(260)
-        self.tools_content.setMinimumWidth(0)
+        self.tools_content.setFixedWidth(_TOOLS_PANE_CONTENT_WIDTH_PX)
         
         # 🔑 FIX: Named this 'main_layout' so your section code works
         main_layout = QVBoxLayout(self.tools_content)
@@ -2644,26 +2640,35 @@ class MainWindow(QMainWindow):
         # 🔑 FIX: This now matches the definition above
         outer_layout.addWidget(self.tools_content)
 
-        self._tools_pane_animating = False
-        self._tools_content_anim = QPropertyAnimation(self.tools_content, b"maximumWidth", self)
-        self._tools_content_anim.setDuration(350)
-        self._tools_content_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
-        self._tools_content_anim.finished.connect(self._on_tools_pane_animation_finished)
-        self._tools_frame_anim = QPropertyAnimation(self.tools_frame, b"maximumWidth", self)
-        self._tools_frame_anim.setDuration(350)
-        self._tools_frame_anim.setEasingCurve(QEasingCurve.Type.InOutQuart)
+        self._tools_pane_geometry_busy = False
 
         return self.tools_frame
 
-    def tools_pane_layout_animating(self) -> bool:
-        """True while the right tools column is animating width (Conversations defers heavy relayout)."""
-        return bool(getattr(self, "_tools_pane_animating", False))
+    def _transcript_wallpaper_host(self):
+        cv = getattr(self, "conversations_view", None)
+        if cv is None:
+            return None
+        return getattr(cv, "_chat_transcript_wallpaper_host", None)
 
-    def _on_tools_pane_animation_finished(self) -> None:
-        self._tools_pane_animating = False
+    def _begin_tools_workspace_geometry_change(self) -> None:
+        self._tools_pane_geometry_busy = True
+        host = self._transcript_wallpaper_host()
+        if host is not None:
+            host.set_expensive_resize_paused(True)
+
+    def _end_tools_workspace_geometry_change(self) -> None:
+        self._tools_pane_geometry_busy = False
+        host = self._transcript_wallpaper_host()
+        if host is not None:
+            host.set_expensive_resize_paused(False)
+            host.flush_pending_resize_work()
         cv = getattr(self, "conversations_view", None)
         if cv is not None and hasattr(cv, "flush_deferred_host_resize_layout"):
             cv.flush_deferred_host_resize_layout()
+
+    def tools_pane_layout_animating(self) -> bool:
+        """True while the tools pane applies a single-step geometry change (defers heavy relayout)."""
+        return bool(getattr(self, "_tools_pane_geometry_busy", False))
 
     def _generation_spin_values(self) -> tuple[float, int, int]:
         """Resolved temperature / context / history for toolbar display."""
@@ -2835,15 +2840,20 @@ class MainWindow(QMainWindow):
             self._modal_backdrop.hide_animated()
 
     def _is_tools_pane_collapsed(self) -> bool:
-        return self.tools_content.maximumWidth() == 0
+        return not self.tools_content.isVisible()
 
     def _set_tools_pane_expanded(self, expanded: bool, *, animate: bool = True) -> None:
-        """Show or hide the global tools panel content area."""
+        """Show or hide the global tools panel content area (single-step frame width)."""
+        from core.ui_perf_probe import (
+            begin_tools_pane_toggle,
+            finish_tools_pane_toggle,
+            ui_perf_measure,
+        )
+
+        _ = animate  # retained for call-site compatibility; layout-width animation removed in Phase B
+
         if self._is_tools_pane_collapsed() == (not expanded):
             return
-
-        end_content = 260 if expanded else 0
-        end_frame = 300 if expanded else 40
 
         if expanded:
             icon = qta.icon("fa5s.chevron-right", color=self._theme_manager.current.link)
@@ -2852,31 +2862,33 @@ class MainWindow(QMainWindow):
             icon = qta.icon("fa5s.chevron-left", color=self._theme_manager.current.link)
             tooltip = "Show tools panel"
 
-        if animate:
-            self._tools_pane_animating = True
-            for anim in (self._tools_content_anim, self._tools_frame_anim):
-                if anim.state() == QAbstractAnimation.State.Running:
-                    anim.stop()
-            self._tools_content_anim.setStartValue(self.tools_content.maximumWidth())
-            self._tools_content_anim.setEndValue(end_content)
-            self._tools_frame_anim.setStartValue(self.tools_frame.maximumWidth())
-            self._tools_frame_anim.setEndValue(end_frame)
-            self._tools_content_anim.start()
-            self._tools_frame_anim.start()
-        else:
-            self._tools_pane_animating = False
-            for anim in (self._tools_content_anim, self._tools_frame_anim):
-                if anim.state() == QAbstractAnimation.State.Running:
-                    anim.stop()
-            self.tools_content.setMaximumWidth(end_content)
-            self.tools_frame.setMaximumWidth(end_frame)
+        begin_tools_pane_toggle(
+            target_expanded=expanded,
+            animated=False,
+            nominal_anim_ms=0,
+        )
 
         self.toggle_tools_btn.setIcon(icon)
         self.toggle_tools_btn.setToolTip(tooltip)
 
+        self._begin_tools_workspace_geometry_change()
+        try:
+            with ui_perf_measure("toggle.apply_tools_pane_geometry"):
+                self.tools_content.setVisible(expanded)
+                self.tools_frame.setFixedWidth(
+                    _TOOLS_PANE_FRAME_EXPANDED_PX
+                    if expanded
+                    else _TOOLS_PANE_FRAME_COLLAPSED_PX
+                )
+        finally:
+            with ui_perf_measure("post_toggle.finalize_workspace_geometry"):
+                self._end_tools_workspace_geometry_change()
+
+        finish_tools_pane_toggle()
+
     def _toggle_tools_pane(self):
-        """Animates the collapse of the content while keeping the handle visible."""
-        self._set_tools_pane_expanded(self._is_tools_pane_collapsed(), animate=True)
+        """Toggle tools content visibility; handle lane stays visible."""
+        self._set_tools_pane_expanded(self._is_tools_pane_collapsed())
 
     def _open_model_manager_page(self) -> None:
         self._restore_workspace_from_tray()
@@ -2930,7 +2942,7 @@ class MainWindow(QMainWindow):
 
         need_expand = self._is_tools_pane_collapsed()
         if need_expand:
-            self._set_tools_pane_expanded(True, animate=True)
+            self._set_tools_pane_expanded(True)
 
         def _popup_menu() -> None:
             btn = getattr(self, "toolbar_native_model_selector", None)
@@ -2946,7 +2958,7 @@ class MainWindow(QMainWindow):
             btn.setFocus(Qt.FocusReason.OtherFocusReason)
             btn.showMenu()
 
-        QTimer.singleShot(380 if need_expand else 0, _popup_menu)
+        QTimer.singleShot(0, _popup_menu)
 
     def _refresh_toolbar_native_model_from_settings_signal(self, mode: str) -> None:
         """Uses the value from Settings' Inference engine menu (authoritative for this UI tick)."""

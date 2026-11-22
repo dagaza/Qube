@@ -208,22 +208,16 @@ class _StartupSplashShell(QWidget):
         tooltip: str,
         on_click: Callable[[], None],
     ) -> QPushButton:
-        import qtawesome as qta
+        from ui.components.splash_chrome_button import SplashChromeButton
 
-        from ui.branded_theme import SPLASH_CHROME_ICON, splash_overlay_chrome_button_qss
-
-        btn = QPushButton(self)
-        btn.setObjectName(object_name)
-        btn.setProperty("class", "WindowControlButton")
-        btn.setFlat(True)
-        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        btn = SplashChromeButton(
+            object_name=object_name,
+            icon_name=icon_name,
+            tooltip=tooltip,
+            parent=self,
+            on_click=on_click,
+        )
         btn.setFixedSize(_SPLASH_MINIMIZE_BTN_SIZE, _SPLASH_MINIMIZE_BTN_SIZE)
-        btn.setIcon(qta.icon(icon_name, color=SPLASH_CHROME_ICON))
-        btn.setIconSize(QSize(12, 12))
-        btn.setToolTip(tooltip)
-        btn.setCursor(Qt.CursorShape.ArrowCursor)
-        btn.clicked.connect(on_click)
-        btn.setStyleSheet(splash_overlay_chrome_button_qss(object_name))
         return btn
 
     def _position_chrome_buttons(self) -> None:

@@ -119,6 +119,9 @@ init_web_search_audit_logging()
 init_app_logging()
 sync_diagnostic_file_sinks_from_settings()
 
+if os.environ.get("QUBE_UI_PERF", "").strip().lower() in ("1", "true", "yes", "on"):
+    logging.getLogger("Qube.UiPerf").setLevel(logging.INFO)
+
 # Create the main app logger
 logger = logging.getLogger("Qube.Core")
 logger.info("Terminal logging initialized. Booting sequence started.")
@@ -173,6 +176,7 @@ class Qube:
         self.store = DocumentStore(expected_vector_dim=expected_dim)
         self.db_manager = DatabaseManager()
         self.reindex_worker = None
+        self._conversation_ingest_attach_plan = None
         self._reindex_revert_embedding_mode: str | None = None
         self._reindex_target_mode: str | None = None
         self._startup_autoload_outcome = None
@@ -679,6 +683,9 @@ class Qube:
         w.conversations_view.set_stop_requested_callback(self.stop_active_response)
         w.conversations_view.set_before_send_callback(self._before_chat_send)
         w.conversations_view.set_manual_voice_callback(self._start_manual_voice_capture)
+        w.conversations_view.conversation_ingest_requested.connect(
+            self._start_conversation_ingest
+        )
 
         # Background Data Pipeline
         self.audio_worker.audio_captured.connect(self._on_audio_captured)
@@ -1254,12 +1261,50 @@ class Qube:
         except Exception as exc:
             logger.warning("Help corpus seed failed: %s", exc, exc_info=True)
 
+    def _show_ingest_blocked(self, message: str) -> None:
+        from ui.components.prestige_dialog import PrestigeDialog
+
+        is_dark = getattr(self.window, "_is_dark_theme", True)
+        parent = getattr(self.window, "conversations_view", None) or self.window
+        PrestigeDialog(parent, "Ingestion Failed", message, is_dark).exec()
+
+    def _start_conversation_ingest(
+        self,
+        file_paths: list,
+        folder_id: str,
+        ingest_mode: str,
+        plan,
+    ) -> None:
+        self._conversation_ingest_attach_plan = plan
+        self._start_ingestion(file_paths, folder_id, ingest_mode)
+
+    def _on_ingestion_file_done(self, detail: str) -> None:
+        plan = self._conversation_ingest_attach_plan
+        if plan is None:
+            return
+        from core.library_ingest_ui_flow import ingestion_file_done_triggers_attach
+
+        if not ingestion_file_done_triggers_attach(detail, plan):
+            return
+        cv = getattr(self.window, "conversations_view", None)
+        if cv is not None and hasattr(cv, "apply_conversation_ingest_attach"):
+            cv.apply_conversation_ingest_attach(plan)
+
+    def _clear_conversation_ingest_plan(self) -> None:
+        self._conversation_ingest_attach_plan = None
+        cv = getattr(self.window, "conversations_view", None)
+        if cv is not None:
+            cv._conversation_ingest_plan = None
+
     def _start_ingestion(self, file_paths: list, folder_id: str, ingest_mode: str = "standard"):
         """Spawns a background thread to safely embed documents without freezing the UI."""
         if is_reindex_in_progress():
-            self.window.ensure_library_view().show_error(
-                "Reprocessing is still running. Please wait until it finishes."
-            )
+            msg = "Reprocessing is still running. Please wait until it finishes."
+            lv = self.window.peek_library_view()
+            if lv is not None:
+                lv.show_error(msg)
+            else:
+                self._show_ingest_blocked(msg)
             return
         self.window.update_status("Ingesting Documents...")
         self.window._activity_reducer.set_background_busy(True)
@@ -1279,6 +1324,7 @@ class Qube:
         # Wire the worker's progress signals back to the Library UI
         self.ingestion_worker.progress_update.connect(self._update_embedding_job_progress)
         self.ingestion_worker.file_done.connect(self._set_embedding_job_detail)
+        self.ingestion_worker.file_done.connect(self._on_ingestion_file_done)
         self.ingestion_worker.ingestion_complete.connect(
             self.window.ensure_library_view().complete_ingestion
         )
@@ -1287,6 +1333,9 @@ class Qube:
         # Route backend errors directly to the UI popup
         self.ingestion_worker.error_occurred.connect(
             self.window.ensure_library_view().show_error
+        )
+        self.ingestion_worker.error_occurred.connect(
+            lambda _err: self._clear_conversation_ingest_plan()
         )
         self.ingestion_worker.error_occurred.connect(lambda _err: self._finish_embedding_job_ui())
 
@@ -1302,6 +1351,21 @@ class Qube:
                 self.window._library_view.refresh_library_list()
 
     def _on_ingestion_complete(self, chunk_count: int) -> None:
+        plan = self._conversation_ingest_attach_plan
+        if plan is not None:
+            cv = getattr(self.window, "conversations_view", None)
+            if (
+                cv is not None
+                and hasattr(cv, "notify_extra_ingested_files")
+                and plan.also_ingested
+            ):
+                cv.notify_extra_ingested_files(plan.attach_basename, plan.also_ingested)
+            if not plan.attach_applied and cv is not None and hasattr(
+                cv, "apply_conversation_ingest_attach"
+            ):
+                cv.apply_conversation_ingest_attach(plan)
+            self._clear_conversation_ingest_plan()
+
         file_count = len(getattr(self.ingestion_worker, "file_paths", []) or [])
         if file_count <= 0 and chunk_count > 0:
             file_count = 1

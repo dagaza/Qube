@@ -133,6 +133,7 @@ from core.composer_draft import (
     composer_prompt_required_request,
     deep_research_unavailable_request,
     deep_research_pro_downgrade_request,
+    draft_after_send_preserving_sticky_file,
     draft_from_text,
     merge_drafts,
     remove_routing_at,
@@ -1312,6 +1313,9 @@ class ChatComposerEdit(QPlainTextEdit):
             self._mention_popup.item_selected.connect(self._insert_mention_token)
             self._mention_popup.skill_selected.connect(self._insert_skill_token)
             self._mention_popup.command_selected.connect(self._run_composer_command)
+            self._mention_popup.palette_action_selected.connect(
+                self._on_composer_palette_action
+            )
             self._mention_popup.dismissed.connect(self._on_mention_dismissed)
         self._sync_mention_context()
         win = self.window()
@@ -1554,6 +1558,16 @@ class ChatComposerEdit(QPlainTextEdit):
         if self._mention_popup:
             self._mention_popup.hide()
 
+    def _on_composer_palette_action(self, action) -> None:
+        self._clear_mention_trigger()
+        host = self._mention_host
+        if host is None or getattr(action, "id", None) != "upload_library_document":
+            self.setFocus()
+            return
+        if hasattr(host, "request_library_upload"):
+            host.request_library_upload()
+        self.setFocus()
+
     def _run_composer_command(self, command) -> None:
         self._clear_mention_trigger()
         win = self.window()
@@ -1791,6 +1805,8 @@ class ChatComposerEdit(QPlainTextEdit):
 
 
 class ConversationsView(QWidget):
+    conversation_ingest_requested = pyqtSignal(list, str, str, object)
+
     def __init__(self, workers: dict, db_manager):
         super().__init__()
         self.workers = workers
@@ -1810,6 +1826,7 @@ class ConversationsView(QWidget):
         self._stop_requested_callback = None
         self._before_send_callback = None
         self._manual_voice_callback = None
+        self._conversation_ingest_plan = None
         self._llm_in_progress = False
         self._awaiting_tts_end = False
         self._tts_playing = False
@@ -1945,24 +1962,35 @@ class ConversationsView(QWidget):
 
     def flush_deferred_host_resize_layout(self) -> None:
         """Run transcript relayout deferred during MainWindow tools-pane width animation."""
+        from core.ui_perf_probe import ui_perf_count, ui_perf_measure
+
+        ui_perf_count("conversations.flush_deferred_transcript")
         if getattr(self, "_deferred_host_resize_layout", False):
             self._deferred_host_resize_layout = False
-        self._sync_transcript_column_width_cap()
-        self._schedule_transcript_timeline_refresh()
+        with ui_perf_measure("conversations.sync_transcript_column_width_cap"):
+            self._sync_transcript_column_width_cap()
+        with ui_perf_measure("conversations.schedule_transcript_timeline_refresh"):
+            self._schedule_transcript_timeline_refresh()
 
     def _sync_transcript_column_width_cap(self) -> None:
+        from core.ui_perf_probe import ui_perf_count, ui_perf_measure
+
         if not hasattr(self, "transcript_container") or not hasattr(self, "scroll_area"):
             return
-        self._sync_transcript_scroll_alignment()
+        ui_perf_count("conversations.sync_transcript_column_width_cap")
+        with ui_perf_measure("conversations.sync_transcript_scroll_alignment"):
+            self._sync_transcript_scroll_alignment()
         column_host = getattr(self, "_transcript_column_host", None)
         if column_host is not None:
-            column_host.sync_geometry()
+            with ui_perf_measure("conversations.transcript_column_host.sync_geometry"):
+                column_host.sync_geometry()
         cap = self.transcript_column_max_width()
         if self.transcript_container.maximumWidth() != cap:
             self.transcript_container.setMaximumWidth(cap)
         self.transcript_layout.invalidate()
         self.transcript_container.updateGeometry()
-        self._sync_agent_actions_bar_widths()
+        with ui_perf_measure("conversations.sync_agent_actions_bar_widths"):
+            self._sync_agent_actions_bar_widths()
 
     def _theme(self, is_dark: bool | None = None):
         return view_resolved_theme(self, is_dark=is_dark)
@@ -3081,6 +3109,7 @@ class ConversationsView(QWidget):
 
         mainstage_content = QWidget()
         mainstage_content.setObjectName("ChatMainstageContent")
+        self._chat_mainstage_content = mainstage_content
         layout = QVBoxLayout(mainstage_content)
         layout.setContentsMargins(30, 20, 30, 20)
         layout.setSpacing(15)
@@ -3378,6 +3407,14 @@ class ConversationsView(QWidget):
             "Add file, tool, skill, or conversation (@)"
         )
 
+        self.composer_upload_btn = QPushButton()
+        self.composer_upload_btn.setObjectName("ComposerUploadButton")
+        self.composer_upload_btn.setFixedSize(32, 32)
+        self.composer_upload_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.composer_upload_btn.setToolTip(
+            "Add document to Library and attach to this chat"
+        )
+
         self.composer_voice_btn = QPushButton()
         self.composer_voice_btn.setObjectName("ComposerVoiceButton")
         self.composer_voice_btn.setFixedSize(32, 32)
@@ -3386,10 +3423,15 @@ class ConversationsView(QWidget):
             "Speak your message (push-to-talk)"
         )
 
-        self.composer_side_divider = QFrame()
-        self.composer_side_divider.setObjectName("ComposerSideDivider")
-        self.composer_side_divider.setFrameShape(QFrame.Shape.NoFrame)
-        self.composer_side_divider.setFixedSize(16, 1)
+        self.composer_side_divider_after_attach = QFrame()
+        self.composer_side_divider_after_attach.setObjectName("ComposerSideDivider")
+        self.composer_side_divider_after_attach.setFrameShape(QFrame.Shape.NoFrame)
+        self.composer_side_divider_after_attach.setFixedSize(16, 1)
+
+        self.composer_side_divider_after_upload = QFrame()
+        self.composer_side_divider_after_upload.setObjectName("ComposerSideDivider")
+        self.composer_side_divider_after_upload.setFrameShape(QFrame.Shape.NoFrame)
+        self.composer_side_divider_after_upload.setFixedSize(16, 1)
 
         composer_side_col = QWidget()
         composer_side_layout = QVBoxLayout(composer_side_col)
@@ -3397,7 +3439,11 @@ class ConversationsView(QWidget):
         composer_side_layout.setSpacing(2)
         composer_side_layout.addWidget(self.composer_attach_btn, 0, Qt.AlignmentFlag.AlignLeft)
         composer_side_layout.addWidget(
-            self.composer_side_divider, 0, Qt.AlignmentFlag.AlignHCenter
+            self.composer_side_divider_after_attach, 0, Qt.AlignmentFlag.AlignHCenter
+        )
+        composer_side_layout.addWidget(self.composer_upload_btn, 0, Qt.AlignmentFlag.AlignLeft)
+        composer_side_layout.addWidget(
+            self.composer_side_divider_after_upload, 0, Qt.AlignmentFlag.AlignHCenter
         )
         composer_side_layout.addWidget(self.composer_voice_btn, 0, Qt.AlignmentFlag.AlignLeft)
         composer_side_layout.addStretch(1)
@@ -3437,6 +3483,9 @@ class ConversationsView(QWidget):
         layout.addWidget(self._composer_row_host)
 
         self.composer_attach_btn.clicked.connect(self._open_composer_palette_from_button)
+        self.composer_upload_btn.clicked.connect(
+            lambda: self.request_library_upload()
+        )
         self.composer_voice_btn.clicked.connect(self._handle_manual_voice_input)
         self.send_btn.clicked.connect(self._handle_send_or_stop)
         self.text_input.submit_requested.connect(self._handle_text_submit)
@@ -3445,6 +3494,29 @@ class ConversationsView(QWidget):
         _composer_is_dark = self._theme().is_dark
         self._style_composer_side_buttons(_composer_is_dark)
         self._refresh_composer_chip_strip()
+
+        from ui.components.conversation_document_drop import (
+            ConversationDocumentDropOverlay,
+            install_conversation_document_drop,
+        )
+
+        self._document_drop_overlay = ConversationDocumentDropOverlay(mainstage_content)
+        self._document_drop_overlay.apply_theme(_composer_is_dark)
+        self._document_drop_overlay.raise_()
+        self._sync_document_drop_overlay_geometry()
+
+        install_conversation_document_drop(
+            input_container,
+            on_files=lambda paths: self.request_library_upload(paths=paths),
+            on_drag_active=self._show_document_drop_overlay,
+            on_drag_end=self._hide_document_drop_overlay,
+        )
+        install_conversation_document_drop(
+            self.scroll_area.viewport(),
+            on_files=lambda paths: self.request_library_upload(paths=paths),
+            on_drag_active=self._show_document_drop_overlay,
+            on_drag_end=self._hide_document_drop_overlay,
+        )
 
         self._chat_transcript_wallpaper_host = TranscriptWallpaperHost(
             SURFACE_CHAT_TRANSCRIPT,
@@ -3812,14 +3884,25 @@ class ConversationsView(QWidget):
             self.composer_attach_btn.setIcon(themed_fa_icon("fa5s.at", icon_color, 16))
             self.composer_attach_btn.setIconSize(QSize(16, 16))
             self.composer_attach_btn.setStyleSheet(button_qss)
+        if hasattr(self, "composer_upload_btn"):
+            self.composer_upload_btn.setIcon(
+                themed_fa_icon("fa5s.file-upload", icon_color, 16)
+            )
+            self.composer_upload_btn.setIconSize(QSize(16, 16))
+            self.composer_upload_btn.setStyleSheet(button_qss)
         if hasattr(self, "composer_voice_btn"):
             self.composer_voice_btn.setIcon(
                 themed_fa_icon("fa5s.microphone", icon_color, 16)
             )
             self.composer_voice_btn.setIconSize(QSize(16, 16))
             self.composer_voice_btn.setStyleSheet(button_qss)
-        if hasattr(self, "composer_side_divider"):
-            self.composer_side_divider.setStyleSheet(theme.style(COMPOSER_SIDE_DIVIDER))
+        divider_qss = theme.style(COMPOSER_SIDE_DIVIDER)
+        for divider in (
+            getattr(self, "composer_side_divider_after_attach", None),
+            getattr(self, "composer_side_divider_after_upload", None),
+        ):
+            if divider is not None:
+                divider.setStyleSheet(divider_qss)
 
     def _style_composer_attach_button(self, is_dark: bool) -> None:
         self._style_composer_side_buttons(is_dark)
@@ -3844,6 +3927,17 @@ class ConversationsView(QWidget):
 
     def _reset_composer_draft(self) -> None:
         self._composer_draft = ComposerDraft()
+        if hasattr(self, "text_input"):
+            self.text_input.blockSignals(True)
+            self.text_input.clear()
+            self.text_input.blockSignals(False)
+            if hasattr(self.text_input, "_schedule_height_sync"):
+                self.text_input._schedule_height_sync()
+        self._refresh_composer_chip_strip()
+
+    def _reset_composer_after_send(self) -> None:
+        """Clear message body after send; keep file attachment chip for follow-up turns."""
+        self._composer_draft = draft_after_send_preserving_sticky_file(self._composer_draft)
         if hasattr(self, "text_input"):
             self.text_input.blockSignals(True)
             self.text_input.clear()
@@ -4082,6 +4176,172 @@ class ConversationsView(QWidget):
         self.text_input.open_mention_palette(pos)
         self.text_input.setFocus()
 
+    def _sync_document_drop_overlay_geometry(self) -> None:
+        overlay = getattr(self, "_document_drop_overlay", None)
+        host = getattr(self, "_chat_mainstage_content", None)
+        if overlay is None or host is None:
+            return
+        overlay.setGeometry(0, 0, host.width(), host.height())
+        overlay.raise_()
+
+    def _show_document_drop_overlay(self) -> None:
+        self._sync_document_drop_overlay_geometry()
+        overlay = getattr(self, "_document_drop_overlay", None)
+        if overlay is not None:
+            overlay.show()
+            overlay.raise_()
+
+    def _hide_document_drop_overlay(self) -> None:
+        overlay = getattr(self, "_document_drop_overlay", None)
+        if overlay is not None:
+            overlay.hide()
+
+    def _ensure_active_session_for_upload(self) -> str:
+        sid = str(getattr(self, "active_session_id", "") or "").strip()
+        if sid:
+            return sid
+        folder_id = self._active_folder_id or self.db.get_main_conversation_folder_id()
+        sid = self.db.create_session("New Conversation", folder_id=folder_id)
+        self.active_session_id = sid
+        self._notify_llm_active_session_changed()
+        return sid
+
+    def request_library_upload(self, *, paths: list | None = None) -> None:
+        from pathlib import Path
+
+        from core.library_ingest_ui_flow import (
+            build_conversation_ingest_attach_plan,
+            pick_library_documents,
+            run_ingest_preflight,
+        )
+
+        win = self.window()
+        if win is None:
+            return
+        raw_paths = [Path(p) for p in paths] if paths else pick_library_documents(self)
+        if not raw_paths:
+            return
+        store = self.workers.get("store") if isinstance(self.workers, dict) else None
+        preflight = run_ingest_preflight(
+            self,
+            window=win,
+            db=self.db,
+            store=store,
+            paths=raw_paths,
+            folder_id=None,
+        )
+        if preflight is None:
+            return
+        session_id = self._ensure_active_session_for_upload()
+        plan = build_conversation_ingest_attach_plan(session_id, preflight.paths)
+        if plan is None:
+            return
+        self._conversation_ingest_plan = plan
+        self.conversation_ingest_requested.emit(
+            preflight.paths,
+            preflight.folder_id,
+            preflight.ingest_mode,
+            plan,
+        )
+
+    def apply_conversation_ingest_attach(self, plan) -> None:
+        if plan is None or getattr(plan, "attach_applied", False):
+            return
+        if str(getattr(self, "active_session_id", "") or "") != str(plan.session_id):
+            from core.app_notification_types import AppNotificationRequest
+
+            self._notify_composer_toast(
+                AppNotificationRequest(
+                    title="Document added",
+                    body="Your document was added to Library.",
+                    severity="info",
+                )
+            )
+            plan.attach_applied = True
+            if self._conversation_ingest_plan is plan:
+                self._conversation_ingest_plan = None
+            return
+        self.attach_or_replace_file_routing(plan.attach_basename)
+        plan.attach_applied = True
+        if self._conversation_ingest_plan is plan:
+            self._conversation_ingest_plan = None
+
+    def attach_or_replace_file_routing(self, filename: str) -> None:
+        from core.composer_attachments import ComposerAttachment, validate_file_token
+        from core.conversation_ingest_attach import replace_primary_routing_with_file
+
+        filename = (filename or "").strip()
+        if not validate_file_token(filename):
+            return
+        if self._composer_draft.routing:
+            existing = self._composer_draft.routing[0]
+            if existing.kind == "file" and existing.id == filename:
+                return
+            win = self.window()
+            is_dark = getattr(win, "_is_dark_theme", True)
+            msg = (
+                f"Only one routing source is allowed per message.\n\n"
+                f"Replace «{existing.label}» with «{filename}»?"
+            )
+            confirmed = PrestigeDialog(
+                win,
+                "Replace attachment?",
+                msg,
+                is_dark=is_dark,
+                confirm_text="Replace",
+                cancel_text="Keep current",
+            ).exec()
+            if not confirmed:
+                return
+            self._composer_draft, _added = replace_primary_routing_with_file(
+                self._composer_draft,
+                filename,
+            )
+        else:
+            self.add_composer_attachment(
+                ComposerAttachment(kind="file", id=filename, label=filename)
+            )
+            return
+        self._refresh_composer_chip_strip()
+        if hasattr(self, "text_input"):
+            self.text_input.setFocus()
+
+    def notify_extra_ingested_files(self, attach_name: str, also_ingested: list[str]) -> None:
+        if not also_ingested:
+            return
+        from core.app_notification_types import AppNotificationRequest
+
+        extra = len(also_ingested)
+        body = (
+            f"{extra + 1} documents added to Library. Attached «{attach_name}». "
+            f"Use @ Files to attach the others."
+        )
+        self._notify_composer_toast(
+            AppNotificationRequest(
+                title="Documents indexed",
+                body=body,
+                severity="info",
+            )
+        )
+
+    def conversation_ingest_blocks_send(self) -> bool:
+        plan = self._conversation_ingest_plan
+        if plan is None or plan.attach_applied:
+            return False
+        from core.app_notification_types import AppNotificationRequest
+
+        self._notify_composer_toast(
+            AppNotificationRequest(
+                title="Still indexing",
+                body=(
+                    f"«{plan.attach_basename}» is still being indexed. "
+                    "Wait for the progress banner to finish."
+                ),
+                severity="warning",
+            )
+        )
+        return True
+
     def _sync_telemetry_session_egress(self, session_id: str | None) -> None:
         win = self.window()
         if win is None or not hasattr(win, "peek_telemetry_view"):
@@ -4099,6 +4359,8 @@ class ConversationsView(QWidget):
             return
         if self._composer_draft.routing_requires_body():
             self._notify_composer_toast(composer_prompt_required_request())
+            return
+        if self.conversation_ingest_blocks_send():
             return
         before_send = self._before_send_callback
         if callable(before_send) and not before_send():
@@ -4178,7 +4440,7 @@ class ConversationsView(QWidget):
                 routing={"route": "deep_research", "attachment_tool": "research"},
             )
             return
-        self._reset_composer_draft()
+        self._reset_composer_after_send()
         self._llm_in_progress = True
         self._awaiting_tts_end = False
         self._tts_playing = False
@@ -5165,6 +5427,8 @@ class ConversationsView(QWidget):
         if hasattr(self, "deep_research_progress_row"):
             self.deep_research_progress_row.apply_theme(is_dark)
         self._style_composer_side_buttons(is_dark)
+        if hasattr(self, "_document_drop_overlay"):
+            self._document_drop_overlay.apply_theme(is_dark)
         base_icon_color = accent_icon_color(theme)
 
         if hasattr(self, "new_chat_btn"):
@@ -5246,18 +5510,28 @@ class ConversationsView(QWidget):
         QTimer.singleShot(0, self.focus_composer_if_ready)
 
     def resizeEvent(self, event):
+        from core.ui_perf_probe import ui_perf_count
+
         super().resizeEvent(event)
+        ui_perf_count("conversations_view.resize")
         if self._host_defers_resize_layout():
+            ui_perf_count("conversations_view.resize_deferred_during_tools_anim")
             self._deferred_host_resize_layout = True
             return
+        ui_perf_count("conversations_view.resize_ran_transcript_sync")
         self._sync_transcript_column_width_cap()
+        self._sync_document_drop_overlay_geometry()
         self._schedule_transcript_timeline_refresh()
 
     def eventFilter(self, obj, event):
         """Native resize handling without fighting Qt's geometry engine."""
         if hasattr(self, "scroll_area") and event.type() == QEvent.Type.Resize:
             if obj is self.scroll_area or obj is self.scroll_area.viewport():
+                from core.ui_perf_probe import ui_perf_count
+
+                ui_perf_count("conversations.scroll_area.resize")
                 if self._host_defers_resize_layout():
+                    ui_perf_count("conversations.scroll_resize_deferred_during_tools_anim")
                     self._deferred_host_resize_layout = True
                 else:
                     self._sync_transcript_column_width_cap()
