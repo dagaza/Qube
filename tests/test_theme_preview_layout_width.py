@@ -27,9 +27,17 @@ def _wait_for_preview_card_layout(qtbot, panel) -> int:
     return card_inner
 
 
+def _ensure_window_shown(main_window, qtbot) -> None:
+    """Frameless MainWindow ignores pre-show resize; show before measuring layout."""
+    if not main_window.isVisible():
+        main_window.show()
+        qtbot.waitExposed(main_window)
+
+
 def _open_themes_preview(main_window, qtbot):
     win = main_window
     win._set_tools_pane_expanded(False, animate=False)
+    qtbot.wait(50)
     settings = win.ensure_settings_view()
     settings.select_settings_section("appearance.themes")
     settings._ensure_themes_preview_initialized()
@@ -42,6 +50,7 @@ def _open_themes_preview(main_window, qtbot):
 def _open_themes_library_preview(main_window, qtbot):
     win = main_window
     win._set_tools_pane_expanded(False, animate=False)
+    qtbot.wait(50)
     settings = win.ensure_settings_view()
     settings.select_settings_section("appearance.themes")
     settings._ensure_themes_library_preview_initialized()
@@ -53,6 +62,7 @@ def _open_themes_library_preview(main_window, qtbot):
 
 def test_theme_preview_fits_settings_card_at_min_window(main_window, qtbot):
     win = main_window
+    _ensure_window_shown(win, qtbot)
     win.resize(1200, 950)
     qtbot.wait(50)
     settings = _open_themes_preview(win, qtbot)
@@ -78,20 +88,28 @@ def test_theme_preview_fits_settings_card_at_min_window(main_window, qtbot):
 
 def test_theme_preview_stays_capped_on_wide_window(main_window, qtbot):
     win = main_window
+    _ensure_window_shown(win, qtbot)
     win.resize(1600, 950)
     qtbot.wait(50)
     settings = _open_themes_preview(win, qtbot)
 
     panel = settings.themes_preview_panel
-    pixmap = panel._conversations_view.grab()
     design = _design_preview_width_at_min_window()
+    card_inner = _wait_for_preview_card_layout(qtbot, panel)
+    pixmap = panel._conversations_view.grab()
 
+    assert pixmap.width() == panel.width()
+    assert panel.width() <= design + 2
+    assert card_inner >= design - 2, (
+        f"wide window should afford design cap: card_inner={card_inner} design={design}"
+    )
     assert pixmap.width() == design
     assert panel.width() == design
 
 
 def test_library_preview_fits_settings_card_at_min_window(main_window, qtbot):
     win = main_window
+    _ensure_window_shown(win, qtbot)
     win.resize(1200, 950)
     qtbot.wait(50)
     settings = _open_themes_library_preview(win, qtbot)
@@ -112,13 +130,20 @@ def test_library_preview_fits_settings_card_at_min_window(main_window, qtbot):
 
 def test_library_preview_stays_capped_on_wide_window(main_window, qtbot):
     win = main_window
+    _ensure_window_shown(win, qtbot)
     win.resize(1600, 950)
     qtbot.wait(50)
     settings = _open_themes_library_preview(win, qtbot)
 
     panel = settings.themes_library_preview_panel
-    pixmap = panel._view.grab()
     design = _design_preview_width_at_min_window()
+    card_inner = _wait_for_preview_card_layout(qtbot, panel)
+    pixmap = panel._view.grab()
 
+    assert pixmap.width() == panel.width()
+    assert panel.width() <= design + 2
+    assert card_inner >= design - 2, (
+        f"wide window should afford design cap: card_inner={card_inner} design={design}"
+    )
     assert pixmap.width() == design
     assert panel.width() == design
