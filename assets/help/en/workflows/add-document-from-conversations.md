@@ -24,7 +24,7 @@ You can ingest documents **without leaving Conversations**. Files are indexed in
 2. Upload via the button, **@** palette, or drag-and-drop (`.txt`, `.md`, `.pdf`, `.epub`).
 3. Choose **Normal** or **Precision** indexing when prompted (same as Library).
 4. Wait for the progress banner; a file chip appears on the composer when indexing finishes.
-5. Type your question and send (file attachments need a message body). The **file chip stays** in the composer for follow-up questions in the same chat until you remove it.
+5. Type your question and send (file attachments need a message body). The **file chip stays** for follow-up questions in the same chat until you remove it; Qube remembers it for that conversation when you switch chats and come back.
 
 ## Related
 

@@ -144,6 +144,91 @@ def test_transcript_wallpaper_host_scales_stale_cache_during_resize(_qube_app):
     assert host._cache_build_pending is True
 
 
+def test_transcript_wallpaper_rebuild_keeps_stale_pixmap(_qube_app):
+    from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT
+    from core.surface_fill.models import SurfaceProfile, WallpaperSolid
+    from PyQt6.QtWidgets import QLabel
+
+    from ui.surface_fill.transcript_host import TranscriptWallpaperHost
+
+    host = TranscriptWallpaperHost(
+        SURFACE_CHAT_TRANSCRIPT,
+        QLabel("hello"),
+    )
+    host.set_preview_profile(
+        SurfaceProfile(wallpaper=WallpaperSolid(color="#336699")),
+        theme=__import__("core.theme.accessors", fromlist=["theme_for"]).theme_for(
+            is_dark=True
+        ),
+    )
+    host.resize(100, 80)
+    host.show()
+    _qube_app.processEvents()
+
+    host._background_pixmap()
+    stale = host._background_cache
+    assert stale is not None
+    host.resize(180, 120)
+    host._rebuild_background_cache_for_size_change()
+    assert host._background_cache is stale
+
+
+def test_transcript_wallpaper_no_build_while_resize_paused(_qube_app):
+    from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT
+    from core.surface_fill.models import SurfaceProfile, WallpaperSolid
+    from PyQt6.QtWidgets import QLabel
+
+    from ui.surface_fill.transcript_host import TranscriptWallpaperHost
+
+    host = TranscriptWallpaperHost(
+        SURFACE_CHAT_TRANSCRIPT,
+        QLabel("hello"),
+    )
+    host.set_preview_profile(
+        SurfaceProfile(wallpaper=WallpaperSolid(color="#336699")),
+        theme=__import__("core.theme.accessors", fromlist=["theme_for"]).theme_for(
+            is_dark=True
+        ),
+    )
+    host.resize(120, 80)
+    host.show()
+    _qube_app.processEvents()
+
+    host._background_pixmap()
+    host.resize(200, 120)
+    host.set_expensive_resize_paused(True)
+    host._schedule_background_cache_build()
+    assert host._cache_build_pending is False
+    assert host._pending_resize_work is True
+
+
+def test_transcript_wallpaper_async_build_applies_cache(_qube_app):
+    from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT
+    from core.surface_fill.models import SurfaceProfile, WallpaperSolid
+    from PyQt6.QtWidgets import QLabel
+
+    from ui.surface_fill.transcript_host import TranscriptWallpaperHost
+
+    host = TranscriptWallpaperHost(
+        SURFACE_CHAT_TRANSCRIPT,
+        QLabel("hello"),
+    )
+    host.set_preview_profile(
+        SurfaceProfile(wallpaper=WallpaperSolid(color="#336699")),
+        theme=__import__("core.theme.accessors", fromlist=["theme_for"]).theme_for(
+            is_dark=True
+        ),
+    )
+    host.resize(96, 64)
+    host.show()
+    _qube_app.processEvents()
+
+    host._schedule_background_cache_build()
+    for _ in range(30):
+        _qube_app.processEvents()
+    assert host._background_cache_is_current()
+
+
 def test_transcript_wallpaper_host_reuses_background_cache(_qube_app):
     from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT
     from core.surface_fill.models import SurfaceProfile, WallpaperSolid

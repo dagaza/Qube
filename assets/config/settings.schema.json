@@ -568,6 +568,16 @@
     "default": false,
     "description": "When true, typed @tool shorthands at the start of a composer message (e.g. @research) route like palette chips."
   },
+  "qube.composer.keepDocumentAttachedForChat": {
+    "type": "boolean",
+    "default": true,
+    "description": "When enabled, a library file chip stays on for the current conversation across sends, session switches, and voice follow-ups until removed."
+  },
+  "qube.composer.showStickyDocumentScopeHint": {
+    "type": "boolean",
+    "default": true,
+    "description": "When enabled, show a subtle scoped-to-document label above composer chips while a file is attached for this chat."
+  },
   "qube.wakeword.activeId": {
     "type": "string",
     "default": "",

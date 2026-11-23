@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox, QSpinBox, QCheckBox, QComboBox, QProgressBar, QWIDGETSIZE_MAX,
     QGraphicsDropShadowEffect,
 )
-from PyQt6.QtCore import Qt, QSize, QTimer, QRect
+from PyQt6.QtCore import Qt, QSize, QTimer, QRect, QEvent
 from PyQt6.QtGui import (
     QAction,
     QKeySequence,
@@ -154,6 +154,7 @@ _ABSOLUTE_MIN_HEIGHT = 480
 _TOOLS_PANE_FRAME_EXPANDED_PX = 300
 _TOOLS_PANE_FRAME_COLLAPSED_PX = 40
 _TOOLS_PANE_CONTENT_WIDTH_PX = 260
+_WORKSPACE_RESIZE_COALESCE_MS = 120
 
 class VUMeter(QWidget):
     """A sleek, custom-painted VU meter with a Green-Yellow-Red gradient."""
@@ -757,6 +758,17 @@ class MainWindow(QMainWindow):
         # Resize Grip
         self.grip = QSizeGrip(self.main_container) 
         self.grip.setFixedSize(16, 16)
+        self._workspace_grip_drag_active = False
+        self.grip.installEventFilter(self)
+
+        self._workspace_geometry_busy_depth = 0
+        self._workspace_resize_coalesce_pending = False
+        self._workspace_resize_coalesce_timer = QTimer(self)
+        self._workspace_resize_coalesce_timer.setSingleShot(True)
+        self._workspace_resize_coalesce_timer.setInterval(_WORKSPACE_RESIZE_COALESCE_MS)
+        self._workspace_resize_coalesce_timer.timeout.connect(
+            self._on_workspace_resize_coalesce_timeout
+        )
 
         # --- THE SYNC WIRING (Updated for new names) ---
         # Settings ↔ toolbar sync is wired when Settings is first opened (_wire_settings_view).
@@ -1032,6 +1044,21 @@ class MainWindow(QMainWindow):
         screen = QApplication.primaryScreen() or self._screen_for_window()
         return self._default_window_geometry(screen).size()
 
+    def eventFilter(self, watched, event) -> bool:
+        grip = getattr(self, "grip", None)
+        if grip is not None and watched is grip:
+            if event.type() == QEvent.Type.MouseButtonPress:
+                if event.button() == Qt.MouseButton.LeftButton:
+                    self._workspace_grip_drag_active = True
+            elif event.type() == QEvent.Type.MouseButtonRelease:
+                if event.button() == Qt.MouseButton.LeftButton:
+                    self._workspace_grip_drag_active = False
+                    if getattr(self, "_workspace_resize_coalesce_pending", False):
+                        self._workspace_resize_coalesce_timer.start(
+                            _WORKSPACE_RESIZE_COALESCE_MS
+                        )
+        return super().eventFilter(watched, event)
+
     def resizeEvent(self, event):
         """Ensures the floating resize grip stays in the bottom-right corner."""
         if not self._geometry_update_depth and not self._workspace_maximized:
@@ -1043,10 +1070,17 @@ class MainWindow(QMainWindow):
                 finally:
                     self._geometry_update_depth -= 1
                 return
+        if self._geometry_update_depth == 0 and not self._workspace_maximized:
+            self._schedule_workspace_resize_coalesce()
         super().resizeEvent(event)
-        from core.ui_perf_probe import ui_perf_count
+        from core.ui_perf_probe import record_window_resize_frame, ui_perf_count
 
         ui_perf_count("main_window.resize")
+        if self._geometry_update_depth == 0 and not self._workspace_maximized:
+            record_window_resize_frame(
+                width=event.size().width(),
+                height=event.size().height(),
+            )
         if hasattr(self, 'grip'):
             # Position it at the absolute bottom-right of the container
             self.grip.move(
@@ -2144,6 +2178,9 @@ class MainWindow(QMainWindow):
         self.tools_frame.setObjectName("ToolsPane")
         self.tools_frame.setFixedWidth(_TOOLS_PANE_FRAME_EXPANDED_PX)
         self.tools_frame.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        # Explicit state: QWidget::isVisible() is false before the window is shown, so
+        # theme refresh must not infer expanded/collapsed from visibility alone.
+        self._tools_pane_expanded = True
         
         outer_layout = QHBoxLayout(self.tools_frame)
         outer_layout.setContentsMargins(0, 0, 0, 0)
@@ -2640,35 +2677,88 @@ class MainWindow(QMainWindow):
         # 🔑 FIX: This now matches the definition above
         outer_layout.addWidget(self.tools_content)
 
-        self._tools_pane_geometry_busy = False
-
         return self.tools_frame
 
-    def _transcript_wallpaper_host(self):
+    def _iter_transcript_wallpaper_hosts(self):
         cv = getattr(self, "conversations_view", None)
-        if cv is None:
-            return None
-        return getattr(cv, "_chat_transcript_wallpaper_host", None)
+        if cv is not None:
+            host = getattr(cv, "_chat_transcript_wallpaper_host", None)
+            if host is not None:
+                yield host
+        library = getattr(self, "_library_view", None)
+        if library is not None:
+            host = getattr(library, "_library_transcript_wallpaper_host", None)
+            if host is not None:
+                yield host
 
-    def _begin_tools_workspace_geometry_change(self) -> None:
-        self._tools_pane_geometry_busy = True
-        host = self._transcript_wallpaper_host()
-        if host is not None:
-            host.set_expensive_resize_paused(True)
+    def _begin_workspace_geometry_change(self) -> None:
+        depth = int(getattr(self, "_workspace_geometry_busy_depth", 0))
+        self._workspace_geometry_busy_depth = depth + 1
+        if depth == 0:
+            for host in self._iter_transcript_wallpaper_hosts():
+                host.set_expensive_resize_paused(True)
 
-    def _end_tools_workspace_geometry_change(self) -> None:
-        self._tools_pane_geometry_busy = False
-        host = self._transcript_wallpaper_host()
-        if host is not None:
+    def _end_workspace_geometry_change(self) -> None:
+        depth = int(getattr(self, "_workspace_geometry_busy_depth", 0))
+        if depth <= 0:
+            return
+        self._workspace_geometry_busy_depth = depth - 1
+        if self._workspace_geometry_busy_depth > 0:
+            return
+        for host in self._iter_transcript_wallpaper_hosts():
             host.set_expensive_resize_paused(False)
             host.flush_pending_resize_work()
         cv = getattr(self, "conversations_view", None)
         if cv is not None and hasattr(cv, "flush_deferred_host_resize_layout"):
             cv.flush_deferred_host_resize_layout()
 
+    def _schedule_workspace_resize_coalesce(self) -> None:
+        from core.ui_perf_probe import (
+            begin_window_resize_session,
+            record_window_resize_coalesce_rearm,
+        )
+
+        was_pending = self._workspace_resize_coalesce_pending
+        if not was_pending:
+            begin_window_resize_session(coalesce_interval_ms=_WORKSPACE_RESIZE_COALESCE_MS)
+            self._workspace_resize_coalesce_pending = True
+            self._begin_workspace_geometry_change()
+        else:
+            record_window_resize_coalesce_rearm()
+        self._workspace_resize_coalesce_timer.start(_WORKSPACE_RESIZE_COALESCE_MS)
+
+    def _workspace_resize_still_active(self) -> bool:
+        if getattr(self, "_workspace_grip_drag_active", False):
+            return True
+        app = QApplication.instance()
+        if app is not None and app.mouseButtons() & Qt.MouseButton.LeftButton:
+            return True
+        return False
+
+    def _on_workspace_resize_coalesce_timeout(self) -> None:
+        from core.ui_perf_probe import (
+            finish_window_resize_session,
+            record_window_resize_coalesce_rearm,
+            ui_perf_measure,
+        )
+
+        if not self._workspace_resize_coalesce_pending:
+            return
+        if self._workspace_resize_still_active():
+            record_window_resize_coalesce_rearm()
+            self._workspace_resize_coalesce_timer.start(_WORKSPACE_RESIZE_COALESCE_MS)
+            return
+        self._workspace_resize_coalesce_pending = False
+        with ui_perf_measure("workspace.settle_total"):
+            self._end_workspace_geometry_change()
+        finish_window_resize_session()
+
+    def workspace_geometry_busy(self) -> bool:
+        """True while tools-pane or live window resize defers heavy relayout."""
+        return int(getattr(self, "_workspace_geometry_busy_depth", 0)) > 0
+
     def tools_pane_layout_animating(self) -> bool:
-        """True while the tools pane applies a single-step geometry change (defers heavy relayout)."""
-        return bool(getattr(self, "_tools_pane_geometry_busy", False))
+        return self.workspace_geometry_busy()
 
     def _generation_spin_values(self) -> tuple[float, int, int]:
         """Resolved temperature / context / history for toolbar display."""
@@ -2840,7 +2930,7 @@ class MainWindow(QMainWindow):
             self._modal_backdrop.hide_animated()
 
     def _is_tools_pane_collapsed(self) -> bool:
-        return not self.tools_content.isVisible()
+        return not bool(getattr(self, "_tools_pane_expanded", True))
 
     def _set_tools_pane_expanded(self, expanded: bool, *, animate: bool = True) -> None:
         """Show or hide the global tools panel content area (single-step frame width)."""
@@ -2854,6 +2944,8 @@ class MainWindow(QMainWindow):
 
         if self._is_tools_pane_collapsed() == (not expanded):
             return
+
+        self._tools_pane_expanded = expanded
 
         if expanded:
             icon = qta.icon("fa5s.chevron-right", color=self._theme_manager.current.link)
@@ -2871,7 +2963,7 @@ class MainWindow(QMainWindow):
         self.toggle_tools_btn.setIcon(icon)
         self.toggle_tools_btn.setToolTip(tooltip)
 
-        self._begin_tools_workspace_geometry_change()
+        self._begin_workspace_geometry_change()
         try:
             with ui_perf_measure("toggle.apply_tools_pane_geometry"):
                 self.tools_content.setVisible(expanded)
@@ -2882,7 +2974,7 @@ class MainWindow(QMainWindow):
                 )
         finally:
             with ui_perf_measure("post_toggle.finalize_workspace_geometry"):
-                self._end_tools_workspace_geometry_change()
+                self._end_workspace_geometry_change()
 
         finish_tools_pane_toggle()
         self.main_container.updateGeometry()

@@ -346,6 +346,12 @@ class ComposerContextChipStrip(QWidget):
         self._skills_flow = _FlowLayout(self._skills_host, spacing=6)
         self._skills_host.setLayout(self._skills_flow)
 
+        self._scope_hint = QLabel()
+        self._scope_hint.setObjectName("ComposerStickyDocumentScopeHint")
+        self._scope_hint.setWordWrap(True)
+        self._sticky_scope_hint: str | None = None
+
+        root.addWidget(self._scope_hint)
         root.addWidget(self._routing_host)
         root.addWidget(self._skills_host)
         self.setVisible(False)
@@ -356,11 +362,13 @@ class ComposerContextChipStrip(QWidget):
         *,
         editable: bool | None = None,
         compact: bool | None = None,
+        sticky_scope_hint: str | None = None,
     ) -> None:
         if editable is not None:
             self._editable = editable
         if compact is not None:
             self._compact = compact
+        self._sticky_scope_hint = (sticky_scope_hint or "").strip() or None
         self._draft = draft.clone()
         self._rebuild()
 
@@ -423,9 +431,18 @@ class ComposerContextChipStrip(QWidget):
 
         has_routing = bool(self._draft.routing)
         has_skills = bool(self._draft.skills)
+        show_scope_hint = bool(self._sticky_scope_hint) and has_routing
+        if show_scope_hint:
+            self._scope_hint.setText(self._sticky_scope_hint or "")
+        self._scope_hint.setVisible(show_scope_hint)
+        theme = view_resolved_theme(self, is_dark=self._is_dark)
+        muted = theme.text_muted
+        self._scope_hint.setStyleSheet(
+            f"color: {muted}; font-size: {10 if self._compact else 11}pt; padding: 0 2px;"
+        )
         self._routing_host.setVisible(has_routing)
         self._skills_host.setVisible(has_skills)
-        self.setVisible(has_routing or has_skills)
+        self.setVisible(show_scope_hint or has_routing or has_skills)
         self.updateGeometry()
 
     def resizeEvent(self, event):

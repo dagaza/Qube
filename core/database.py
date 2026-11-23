@@ -229,6 +229,7 @@ class DatabaseManager:
                     "ALTER TABLE documents ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0",
                     "ALTER TABLE sessions ADD COLUMN branched_from_session_id TEXT",
                     "ALTER TABLE sessions ADD COLUMN branched_from_message_id TEXT",
+                    "ALTER TABLE sessions ADD COLUMN sticky_library_filename TEXT",
                 ):
                     try:
                         cursor.execute(alter_sql)
@@ -875,6 +876,39 @@ class DatabaseManager:
                 return conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
         except Exception:
             return 0
+
+    def get_session_sticky_library_filename(self, session_id: str) -> str | None:
+        sid = str(session_id or "").strip()
+        if not sid:
+            return None
+        try:
+            with self._get_connection() as conn:
+                row = conn.execute(
+                    "SELECT sticky_library_filename FROM sessions WHERE id = ?",
+                    (sid,),
+                ).fetchone()
+        except Exception:
+            return None
+        if not row:
+            return None
+        name = (row["sticky_library_filename"] or "").strip()
+        return name or None
+
+    def set_session_sticky_library_filename(
+        self,
+        session_id: str,
+        filename: str | None,
+    ) -> None:
+        sid = str(session_id or "").strip()
+        if not sid:
+            return
+        name = (filename or "").strip() or None
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE sessions SET sticky_library_filename = ? WHERE id = ?",
+                (name, sid),
+            )
+            conn.commit()
 
     def create_session(
         self, title: str = "New Chat", folder_id: str | None = None
