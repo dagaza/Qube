@@ -14,3 +14,6 @@ qt_api = "pyqt6"
 # (e.g. a modal dialog's exec()).
 timeout = 300
 timeout_method = "thread"
+markers = [
+    "real_reranker: test uses the installed relevance reranker model (hidden from other tests)",
+]

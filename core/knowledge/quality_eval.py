@@ -521,36 +521,51 @@ def _build_embed_ranker() -> RankerFn:
 
 
 def _build_ce_ranker() -> RankerFn:
-    """Cross-encoder gate ranker (S3 ``ce``): what S4/S7 selection would do.
+    """Cross-encoder relevance gate (``ce``), S4.
 
-    Path-agnostic: score the pool (first 40 rows, adapter order), keep rows above
-    ``rerank.SHADOW_KEEP_THRESHOLD`` in descending score order up to the budget;
-    state from the kept count (≥ 2 sufficient, 1 partial, 0 insufficient →
-    abstain). Raises ``RankerUnavailable`` when the model is not on disk. Never
-    touches production state; the ``token`` / ``embed`` rankers keep measuring
-    the legacy path.
+    * ``scientific_evidence``: the shipped S4 path,
+      ``pipeline_scientific._rank_candidates_gated`` (CE order, ``keep`` gate,
+      MMR among survivors, reliability), state from its ``SufficiencyResult``.
+    * other paths: a preview of the S7/S8 gates with the same thresholds — score
+      the pool, keep rows ``>= keep`` best-first up to the budget, state from
+      ``assess_sufficiency``. Not production behaviour yet.
+
+    Content-free / non-English questions fall back to the legacy ranking, as in
+    production. Raises ``RankerUnavailable`` when the model is not on disk.
+    ``token`` / ``embed`` keep measuring the legacy, reranker-free path.
     """
     from core.knowledge.ranking import rerank
+    from core.knowledge.ranking.sufficiency import SCIENTIFIC_THRESHOLDS, assess_sufficiency
 
     reason = rerank.unavailable_reason()
     if reason is not None:
         raise RankerUnavailable(f"cross-encoder reranker unavailable ({reason})")
 
     def rank(query: str, rows: list[dict[str, Any]], budget: int, path: str = PATH_SCIENTIFIC) -> RankerOutput:
+        key = _normalize_path(path)
+        if key == PATH_SCIENTIFIC:
+            from core.knowledge.pipeline_scientific import _rank_candidates_gated
+            from core.knowledge.types import RetrievalBudget, RetrievalContext
+
+            ctx = RetrievalContext(
+                query=query,
+                semantic_query=query,
+                knowledge_service=PATH_SCIENTIFIC,
+                budget=RetrievalBudget(max_results=budget),
+            )
+            ranking = _rank_candidates_gated(rows, ctx=ctx, max_results=budget, question=query)
+            state = ranking.sufficiency.state.value
+            return RankerOutput(kept=list(ranking.kept), rejected=list(ranking.rejected), state=state)
         pool = list(rows)
         result = rerank.rerank_rows(query, pool)
         if result is None:
-            # Non-English / empty question or scoring failure: production keeps the
-            # legacy scorer (D4), so the eval does too.
             return _token_ranker(query, rows, budget, path)
-        scored = list(zip(pool, result.scores))
-        for row, score in scored:
+        for row, score in zip(pool, result.scores):
             row["_rerank_score"] = float(score)
-        ordered = sorted(scored, key=lambda item: item[1], reverse=True)
-        kept = [r for r, s in ordered if s > rerank.SHADOW_KEEP_THRESHOLD][: max(0, budget)]
-        kept_ids = {id(r) for r in kept}
-        rejected = [r for r in pool if id(r) not in kept_ids]
-        return RankerOutput(kept=kept, rejected=rejected, state=rerank.shadow_state(len(kept)))
+        suff = assess_sufficiency(result.scores, SCIENTIFIC_THRESHOLDS)
+        kept = [pool[i] for i in suff.kept_indices][: max(0, budget)]
+        kept_suff = assess_sufficiency([r["_rerank_score"] for r in kept], SCIENTIFIC_THRESHOLDS) if kept else suff
+        return RankerOutput(kept=kept, rejected=_rest(pool, kept), state=kept_suff.state.value)
 
     return rank
 

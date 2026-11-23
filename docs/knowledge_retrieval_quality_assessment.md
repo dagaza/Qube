@@ -695,6 +695,39 @@ flowchart LR
   - added p95 latency ≤ 1.0 s
   - the full test suite is green
 - **Dependencies:** S3; S2 for thresholds.
+- **As built (2026-11-23):**
+  - **Calibration** (21 scientific fixtures, production pools, real model; script in the session scratchpad, not the repo):
+    - Labelled relevant rows score median +7.2; irrelevant rows score median −7.9, but p90 is +4.2.
+    - The irrelevant rows that score high are on-subject but wrong-facet: Keyword Transformer for self-attention (7.06), OAuth plus blockchain (7.06), exercise with hypoxia for fasting (6.8). No threshold separates them from relevant rows.
+    - The sweep chose **`keep = 0.0`, `strong = 2.0`, 2 strong rows for `sufficient`** (`core/knowledge/ranking/sufficiency.SCIENTIFIC_THRESHOLDS`). `keep = 0` is the only value with abstain precision = recall = 1.00 in both query modes: `keep = 2` makes `kq_no_good_sources` (a `partial` case) abstain, and `keep ≤ −1` keeps a row on the fictional drug.
+    - `strong = 2` matched the labelled sufficient/partial split better than 3 or 4. The cross-encoder cannot separate `partial` from `relevant` (partial rows reach +8), so 4–5 partial cases are reported as `sufficient`. That error does no harm, since both states answer.
+    - Title-only rows got **no** separate thresholds: there are 5 useful title-only rows and 1 irrelevant one in the corpus.
+  - **Gate** `pipeline_scientific._rank_candidates_gated`:
+    1. Pre-order the pool with the legacy scorer, so a row cap keeps the most promising rows and `_token_relevance` stays available for diagnostics.
+    2. Score up to 40 rows, or 24 when the machine has fewer than 4 reranker threads.
+    3. Drop rows below `keep`.
+    4. Set `_scientific_relevance = sigmoid(logit)`, one meaning everywhere (MMR, bundle, slots, UI).
+    5. Run MMR among the survivors on those probabilities **without min-max scaling** (`mmr_select_rows(..., normalize=False)`), then apply reliability. Eval on scientific/production: recall 0.83 with min-max → 0.86 without (0.84 → 0.91 standalone), at equal precision. Min-max stretched near-equal probabilities to 0 versus 1, so diversity could never win between close rows.
+    - If the reranker cannot run, the gate is exactly `_rank_candidates`, labelled `UNSCORED`. A pipeline test asserts identical kept and rejected rows. `_rank_candidates` itself stays reranker-free, and it is what the `token` / `embed` eval rankers measure.
+    - A cold model loads synchronously: 370 ms once on the dev laptop. The S3 shadow pass and its "cold" skip were removed.
+  - **Slots:** the PubChem, RePEc and arXiv slots reserve only from `ranking.slot_pool`, the survivors; when `UNSCORED`, the whole pool as before.
+  - **Bundle:**
+    - `EvidenceBundle.sufficiency` and `EvidenceBundleSummary.sufficiency` are new trailing fields, default `"unscored"`. They are encoded and decoded by `bundle_codec`, with a default for old snapshots, and recorded in the retrieval trace (`RetrievalTrace.sufficiency`).
+    - `_bundle_with_conflicts` and `deep_research.apply_merged_relevance_gate` now copy with `dataclasses.replace`.
+    - Scored coverage: `sufficient` → `excellent` (≥ 3 sources, ≥ 2 abstracts, ≥ 2 indexes) or `adequate`; `partial` → `poor` with confidence ≤ 0.55; `insufficient` → `none`, confidence 0.
+    - An empty insufficient bundle keeps `stop_reason="relevance_filtered"`; the legacy empty bundle still says `no_evidence`.
+  - **D2:** `rel_diag["rerank_dropped"]` holds up to 40 `{title, url, adapter, score}` entries. `retrieval_trace_reader.format_relevance_gate_lines` renders a "Relevance gate: …" line and "Considered, not used (N)" in the trace summary, which the Retrieval Inspector and the Settings → Knowledge → Diagnostics trace panel both use.
+    - Traces exist only when the web-search audit log is on (existing behaviour).
+    - The inspector button sits in the sources dialog, so on a turn with **zero** sources the dropped list is reachable only through the diagnostics panel. S12 should add an entry point.
+  - **Prompt / worker:**
+    - `RETRIEVAL_INSUFFICIENT_SUFFIX` and `RETRIEVAL_PARTIAL_NOTE` (`core/memory_filters.py`) are added, along with `build_prompt_blocks(retrieval_insufficient=…)`. The insufficient branch takes precedence over the web-empty wording.
+    - The worker derives `retrieval_insufficient` / `retrieval_partial` from the bundle **before** the route downgrade. It suppresses the composer "[WEB SEARCH: No live results…]" line and `explicit_web_empty_results`, emits "Sources found, none relevant enough" through `web_search_outcome_hint`, and prefixes the partial note to the evidence pack.
+    - `search_outcome.py` needed no change: the scientific path sets no `search_outcome`, and `RELEVANCE_FILTERED` stays for the web gate.
+  - **Deep research:** `merge_evidence_bundles` already skips empty sub-bundles, so a gated-empty sub-question cannot abort the merge. The merged bundle stays `unscored`, and its own gate is unchanged.
+  - **Pre-existing bug fixed: MMR used the wrong relevance** (`core/knowledge/ranking/diversity.mmr_select_rows`). Relevance was indexed by position in the shrinking `remaining` list, so after the first pick every candidate used another row's score: a 0.10 row could displace a 0.95 one (`tests/test_evidence_mmr.py`). This affects the legacy path too; see the progress log for its effect.
+    - The legacy path keeps min-max scaling (`normalize=True`, the default). Its token/embedding scores are compressed (0.2–0.4); without scaling, diversity overrode relevance and scientific P@3 fell 0.62 → 0.59 (embed/standalone 0.67 → 0.60).
+    - `tests/test_ranking.py::test_mmr_prefers_adapter_diversity` passed before only **because of the bug**. Its intent, that near-equal rows from a different index beat a near-duplicate, now holds in calibrated mode (`normalize=False`). A new test documents the legacy-scaled behaviour, where the higher row wins.
+  - **Tests are now environment-independent:** an autouse `tests/conftest.py` fixture hides an installed reranker unless a test is marked `real_reranker` (registered in `pyproject.toml`). Without it, scientific pipeline tests would run the gate on a developer machine and the legacy ranker on CI.
 
 #### S5 — Deterministic query cleanup: filler + acronym expansion
 
@@ -964,7 +997,7 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 ## Implementation progress log
 
 > **Do not edit sections 1–11 above.** Record shipped work here only.  
-> **Last reviewed:** 2026-11-23, S3 complete (§12.4 S3, shadow only); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
+> **Last reviewed:** 2026-11-23, S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
 
 ### Summary
 
@@ -1018,6 +1051,16 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 | 2026-11-23 | S3 | Kept-identical check | Done | `token` / `embed` × production / standalone vs `kq_s2_*` baselines: kept titles identical on all 48 fixtures, aggregates byte-equal, 0 regressions. Pipeline test `ScientificPipelineShadowTests`: identical source ids with shadow on and off. | — |
 | 2026-11-23 | S3 | Latency (dev laptop, 40 × ~794-char docs, 20 runs) | Done | 4 threads: load 159 ms, p50 629 ms, **p95 670 ms** (≤ 1.0 s ✓). 2 threads: p50 1042 ms, p95 1119 ms. | 2-thread hardware exceeds 1 s; S4 may cap at 24–30 rows on low-core machines |
 | 2026-11-23 | S3 | Packaging | Partial | `qube.spec` hidden import `fastembed.rerank.cross_encoder` | **Frozen-build smoke test not run** (no build env here) — do before release |
+| 2026-11-23 | S4 | Calibration | Done | Sweep of `keep` ∈ {−2…2} and `strong` ∈ {2, 3, 4} on 21 scientific fixtures (both query modes) → `keep = 0`, `strong = 2`, `min_strong = 2`. Full reasoning in §12.4 S4 "As built". | No title-only split (too few rows) |
+| 2026-11-23 | S4 | Sufficiency module | Done | `core/knowledge/ranking/sufficiency.py` (`Sufficiency`, `SufficiencyThresholds`, `SufficiencyResult`, `assess_sufficiency`, `relevance_probability`) | Thresholds for web/trusted/finance come with S7/S8 |
+| 2026-11-23 | S4 | Scientific gate | Done | `pipeline_scientific._rank_candidates_gated` + `ScientificRanking`; slots reserve from survivors; `UNSCORED` fallback identical to `_rank_candidates` | — |
+| 2026-11-23 | S4 | Bundle / codec / trace | Done | `EvidenceBundle.sufficiency`, `EvidenceBundleSummary.sufficiency`, `bundle_codec`, `RetrievalTrace.sufficiency`; scored coverage/confidence mapping in `bundle_builder._scored_scientific_coverage`; field-by-field copies replaced with `dataclasses.replace` | — |
+| 2026-11-23 | S4 | Honest "found but not relevant" | Done | `RETRIEVAL_INSUFFICIENT_SUFFIX`, `RETRIEVAL_PARTIAL_NOTE`, `build_prompt_blocks(retrieval_insufficient=…)`, worker wiring and the "Sources found, none relevant enough" hint | — |
+| 2026-11-23 | S4 | D2 "Considered, not used" | Done | `rel_diag["rerank_dropped"]` → `retrieval_trace_reader.format_relevance_gate_lines` (trace summary, Retrieval Inspector, diagnostics panel) | Needs audit log on; no inspector entry point on zero-source turns (S12) |
+| 2026-11-23 | S4 | MMR relevance-alignment bug | Done | `diversity.mmr_select_rows` now carries relevance with each row, and gains `normalize` (legacy min-max; the gate uses calibrated probabilities). Legacy effect (scientific, production): nDCG 0.66 → 0.70, relevant recall 0.64 → 0.76 (token); embed 0.65 → 0.71, 0.61 → 0.82; precision unchanged; 0 regressions vs S2 except token/standalone `social_science` recall 1.00 → 0.67 (P@3 1.00 → 0.78), where correct MMR lets diversity override small token-score gaps. `test_mmr_prefers_adapter_diversity` moved to calibrated mode (it only passed because of the bug). | Legacy path only matters when the reranker is absent |
+| 2026-11-23 | S4 | Acceptance (S2 corpus, CE on) | **Partial** | abstain precision **1.00** / recall **1.00** (both modes) ✓; relevant recall on `sufficient` cases **1.33× / 1.49×** the S2 token baseline (1.20× / 1.27× vs MMR-fixed token) ✓; real ANT pool → `insufficient`, suffix, 0 sources ✓ (`RealAntPoolAcceptanceTests`); added p95 latency **345 ms** (max 705 ms, 42 pools) ✓. **`irrelevant_kept_rate` 0.09 / 0.10 vs target ≤ 0.05 ✗**: the remaining rows score +6.8 to +7.1 and cannot be separated by any threshold. | Needs a stronger model or query facets (S5/S6) |
+| 2026-11-23 | S4 | Baselines | Done | `eval/retrieval_corpus/baselines/kq_s4_{token,embed,ce}_{production,standalone}.json` (S2 files kept as the record) | — |
+| 2026-11-23 | S4 | Tests | Done | `tests/test_knowledge_sufficiency.py` (26: thresholds and boundaries, pipeline gate with pinned adapters and no network, `UNSCORED` ≡ legacy, slot reservation, codec, conflict copy, insufficient prompt, dropped rows absent from UI sources / prompt / citation ids, inspector "Considered, not used", real-model ANT acceptance); `tests/test_evidence_mmr.py` (3); `tests/test_ranking.py`: diversity test moved to calibrated mode, plus 1 legacy-scaling test; autouse `conftest.py` fixture hiding an installed reranker (opt in with `@pytest.mark.real_reranker`). The S3 shadow tests were removed with the shadow pass. | — |
 | 2026-11-23 | S3 | Tests | Done | `tests/test_knowledge_rerank.py` (28 tests: row text, scoring contract, availability, back-off, thread cap, language and content guards, shadow diag, `ce` ranker, pipeline on/off identity plus trace persistence, download spec, real-model integration, skipped when absent); `tests/test_bootstrap_search_download.py` +6 (bundled download, disabled → no download, failure non-fatal, needing-download detection, 24 h failure back-off). | — |
 | 2026-11-23 | — | **R4** sufficiency gate / drop weak sources before prompt | Not done | — | **S4** |
 | 2026-11-23 | — | **R3** cross-encoder reranker (fastembed `TextCrossEncoder`) | Not done | Feasibility validated (§12.1 V1, V2, V5, V12) | **S3** (shadow) → S4 / S7 |
@@ -1174,6 +1217,26 @@ What S3 shows (input to S4/S7, nothing is enforced yet):
 2. **Query resolution still matters (S5/S6).** CE plus the production query fixes only part of multi_turn (P@3 0.27 → 0.50). CE plus standalone reaches 1.00. Content-free follow-ups need the `no_content` guard, and before it the eval kept dictionary pages for "Yes, please.".
 3. **Threshold 0 almost solves abstention.** With the standalone question, all 5 abstain cases are correct. With the production query, the web fictional toaster still keeps one wrong-product page ("Manually Update Firmware on Toast Flex"), which scores above 0. S4/S7 should tune the threshold on S2, and S5 should keep the product name in the query. A kept `partial` case (`kq_no_good_sources`) is correct by the rubric, but its kept SCALAR paper is off-topic, so precision there stays low (0.50 in the standalone column).
 4. **General web has no regression but some trade-offs.** P@3 is equal or better, nDCG dips slightly on recency (CE keeps 2 instead of 3 on CPI / Python release), and relevant_recall goes 1.00 → 0.96. S7 must keep the "≥ 2 kept" floor for sufficient web answers.
+
+**S4 results** (48 fixtures, production pool, budget 3). Cells: P@3 · nDCG@5 · irrelevant_kept · relevant_recall · abstain_correct. `token S4` = legacy ranking with the MMR fix; `ce S4` = the shipped scientific gate (other paths: gate preview, not production).
+
+| Group | n | token S2 / prod | token S4 / prod | **ce S4 / prod** | token S2 / stand | token S4 / stand | **ce S4 / stand** |
+|-------|---|-----------------|-----------------|------------------|------------------|------------------|-------------------|
+| all | 48 | 0.71 · 0.75 · 0.29 · 0.80 · 0.83 | 0.71 · 0.77 · 0.29 · 0.84 · 0.83 | 0.88 · 0.84 · 0.12 · 0.93 · 0.94 | 0.77 · 0.76 · 0.23 · 0.80 · 0.90 | 0.77 · 0.77 · 0.23 · 0.83 · 0.90 | 0.95 · 0.84 · 0.05 · 0.95 · 1.00 |
+| **scientific_evidence** | 21 | 0.62 · 0.66 · 0.38 · 0.64 · 0.76 | 0.62 · 0.70 · 0.38 · 0.76 · 0.76 | **0.91 · 0.77 · 0.09 · 0.86 · 1.00** | 0.65 · 0.64 · 0.35 · 0.66 · 0.86 | 0.65 · 0.66 · 0.35 · 0.72 · 0.86 | **0.90 · 0.78 · 0.10 · 0.91 · 1.00** |
+| abstain | 5 | 0.08 · 0.17 · 0.92 · — · 0.40 | 0.08 · 0.17 · 0.92 · — · 0.40 | 0.25 · 0.21 · 0.75 · — · 0.80 | 0.08 · 0.17 · 0.92 · — · 0.40 | 0.08 · 0.17 · 0.92 · — · 0.40 | 0.50 · 0.21 · 0.50 · — · 1.00 |
+| multi_turn | 6 | 0.27 · 0.58 · 0.73 · 0.67 · 0.50 | 0.27 · 0.58 · 0.73 · 0.67 · 0.50 | 0.50 · 0.86 · 0.50 · 1.00 · 0.67 | 0.94 · 0.85 · 0.06 · 0.86 · 1.00 | 0.94 · 0.85 · 0.06 · 0.86 · 1.00 | 1.00 · 0.94 · 0.00 · 1.00 · 1.00 |
+| biomedical | 3 | 0.67 · 0.58 · 0.33 · 0.50 · 1.00 | 0.78 · 0.72 · 0.22 · 0.67 · 1.00 | 0.89 · 0.81 · 0.11 · 0.78 · 1.00 | 0.44 · 0.45 · 0.56 · 0.42 · 1.00 | 0.67 · 0.66 · 0.33 · 0.83 · 1.00 | 0.78 · 0.75 · 0.22 · 0.83 · 1.00 |
+| cs_engineering | 3 | 0.78 · 0.48 · 0.22 · 0.25 · 1.00 | 0.78 · 0.54 · 0.22 · 0.50 · 1.00 | 0.89 · 0.64 · 0.11 · 0.75 · 1.00 | 0.78 · 0.48 · 0.22 · 0.25 · 1.00 | 0.78 · 0.54 · 0.22 · 0.50 · 1.00 | 0.89 · 0.64 · 0.11 · 0.75 · 1.00 |
+| social_science | 3 | 1.00 · 1.00 · 0.00 · 1.00 · 1.00 | 0.89 · 0.97 · 0.11 · 1.00 · 1.00 | 1.00 · 1.00 · 0.00 · 1.00 · 1.00 | 1.00 · 0.94 · 0.00 · 1.00 · 1.00 | 0.78 · 0.76 · 0.22 · 0.67 · 1.00 | 0.89 · 0.95 · 0.11 · 1.00 · 1.00 |
+| sts_humanities | 4 | 0.33 · 0.53 · 0.67 · 0.50 · 0.50 | 0.42 · 0.71 · 0.58 · 1.00 · 0.50 | 1.00 · 0.82 · 0.00 · 1.00 · 1.00 | 0.58 · 0.68 · 0.42 · 0.67 · 0.75 | 0.67 · 0.81 · 0.33 · 1.00 · 0.75 | 1.00 · 0.85 · 0.00 · 1.00 · 1.00 |
+| physical_econ | 3 | 1.00 · 0.71 · 0.00 · 0.67 · 1.00 | 0.89 · 0.65 · 0.11 · 0.56 · 1.00 | 0.89 · 0.70 · 0.11 · 0.72 · 1.00 | 1.00 · 0.68 · 0.00 · 0.67 · 1.00 | 0.89 · 0.63 · 0.11 · 0.56 · 1.00 | 1.00 · 0.74 · 0.00 · 0.83 · 1.00 |
+
+What S4 shows:
+1. **Abstention is solved on the corpus:** the scientific path abstains exactly when it should (precision and recall 1.00), and the real ANT pool now yields the "found but not relevant" answer instead of off-topic citations.
+2. **Off-topic citations drop from 38 % to 9–10 % of kept rows.** The rest are cross-encoder errors on on-subject, wrong-facet papers. Reaching ≤ 5 % needs better question facets (S5/S6) or a stronger model, not threshold tuning.
+3. **The remaining errors are wrong-facet papers that score high.** cs_engineering improves (P@3 0.78 → 0.89, recall 0.25 → 0.75) but still keeps the OAuth-plus-blockchain row; the self-attention and fasting cases keep one wrong-facet row each.
+4. **Diversity trades a little precision for recall.** Against S3's plain top-by-score preview on scientific/production, the gate scores P@3 0.91 vs 0.93 and irrelevant_kept 0.09 vs 0.07, but recall 0.86 vs 0.83. MMR prefers distinct sources over near-duplicate titles (S3 kept "The underlying structures of self-attention" twice), and in 2 cases the more diverse pick is a wrong-facet paper. This follows the spec ("MMR only for diversity among survivors"); dropping MMR on the gated path would be a one-line change if precision should win.
 
 ### Git reference
 

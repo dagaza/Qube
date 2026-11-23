@@ -34,6 +34,24 @@ def pytest_sessionfinish(session, exitstatus):
         os._exit(0)
 
 
+@pytest.fixture(autouse=True)
+def _hide_installed_reranker(request):
+    """Keep tests independent of whether the ~90 MB relevance reranker is installed.
+
+    Scientific retrieval gates on the cross-encoder when its model is on disk
+    (plan S4). Without this, the same test would run the CE gate on a developer
+    machine and the legacy ranker on CI. Tests opt in to the real model with
+    ``@pytest.mark.real_reranker``; injected fake scorers are unaffected.
+    """
+    if request.node.get_closest_marker("real_reranker"):
+        yield
+        return
+    from unittest.mock import patch
+
+    with patch("core.knowledge.ranking.rerank._model_path", return_value=None):
+        yield
+
+
 @pytest.fixture
 def grant_pro_share_themes():
     """Enable Share themes manager methods in tests (Pro license gate)."""

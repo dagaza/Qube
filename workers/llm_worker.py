@@ -3565,6 +3565,12 @@ class LLMWorker(QThread):
                         f"Web search failed — {_search_outcome.label.lower()}"
                     )
             elif (
+                _web_outcome.bundle is not None
+                and getattr(_web_outcome.bundle, "sufficiency", "") == "insufficient"
+            ):
+                self.status_update.emit("🔎 Sources found, none relevant enough")
+                self.web_search_outcome_hint.emit("Sources found, none relevant enough")
+            elif (
                 _search_outcome is not None
                 and _search_outcome.fallback_from
                 and not _web_outcome.skip_enrichment
@@ -3987,6 +3993,19 @@ class LLMWorker(QThread):
         # ============================================================
         execution_route_pre_downgrade = execution_route
         tier3_success_flag: bool | None = None
+        # S4: the relevance gate found sources but kept none. This is not a failed
+        # or empty search, so the web-empty wording must not be used.
+        _gate_bundle = getattr(self, "_turn_evidence_bundle", None)
+        retrieval_insufficient = bool(
+            _gate_bundle is not None
+            and str(getattr(_gate_bundle, "sufficiency", "") or "") == "insufficient"
+            and not all_ui_sources
+        )
+        retrieval_partial = bool(
+            _gate_bundle is not None
+            and str(getattr(_gate_bundle, "sufficiency", "") or "") == "partial"
+            and all_ui_sources
+        )
 
         if (
             execution_route in ("MEMORY", "RAG", "HYBRID", "WEB", "INTERNET")
@@ -4050,7 +4069,7 @@ class LLMWorker(QThread):
                     canonical_id=canonical_id,
                     session_id=self.session_id,
                 )
-            else:
+            elif not retrieval_insufficient:
                 tool_context += (
                     "\n[WEB SEARCH: No live results were returned for this query. "
                     "Your first sentence must state that the web search did not return "
@@ -4060,6 +4079,7 @@ class LLMWorker(QThread):
 
         explicit_web_empty_results = bool(
             web_search_attempted
+            and not retrieval_insufficient
             and not all_ui_sources
             and self.mcp_internet_enabled
             and execution_route in ("NONE", "WEB", "INTERNET")
@@ -4289,6 +4309,10 @@ class LLMWorker(QThread):
                 else "grounded"
             ),
         )
+        if retrieval_partial and retrieval_prompt_body:
+            from core.memory_filters import RETRIEVAL_PARTIAL_NOTE
+
+            retrieval_prompt_body = f"{RETRIEVAL_PARTIAL_NOTE}\n\n{retrieval_prompt_body}"
         attachment_ctx = getattr(self, "_turn_attachment_context", "").strip()
         if attachment_ctx:
             if retrieval_prompt_body:
@@ -4525,6 +4549,7 @@ class LLMWorker(QThread):
             web_capability_blocked=web_capability_blocked,
             explicit_web_empty_results=explicit_web_empty_results,
             composer_web_empty=composer_web_empty,
+            retrieval_insufficient=retrieval_insufficient,
             prior_web_empty_follow_up=prior_web_empty_follow_up,
             scientific_medical_disclaimer=scientific_medical_disclaimer,
             financial_disclaimer=financial_disclaimer,

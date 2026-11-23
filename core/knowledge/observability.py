@@ -45,6 +45,7 @@ class RetrievalTrace:
     context_fingerprint: Mapping[str, Any] | None = None
     pipeline_stages: tuple[Mapping[str, Any], ...] = ()
     capability_steps: tuple[Mapping[str, Any], ...] = ()
+    sufficiency: str = "unscored"
 
 
 def _serialize_evidence(obj: EvidenceObject) -> dict[str, Any]:
@@ -110,6 +111,7 @@ def build_retrieval_trace(
         context_fingerprint=context_fingerprint,
         pipeline_stages=tuple(pipeline_stages or ()),
         capability_steps=tuple(capability_steps or ()),
+        sufficiency=str(getattr(bundle, "sufficiency", "unscored") or "unscored"),
     )
 
 
@@ -138,6 +140,7 @@ def serialize_retrieval_trace(
         "coverage": trace.coverage,
         "coverage_rationale": trace.coverage_rationale,
         "stop_reason": trace.stop_reason,
+        "sufficiency": trace.sufficiency,
         "latency_ms": trace.latency_ms,
         "warnings": list(trace.warnings),
         "sources": [_serialize_evidence(s) for s in sources],

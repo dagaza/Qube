@@ -37,6 +37,9 @@ STRATEGY_LEGAL_COURTLISTENER = "courtlistener_search"
 STRATEGY_GENERIC_PARALLEL = "generic_parallel_ranked"
 
 
+# Plan S4: EvidenceBundle.sufficiency when the relevance reranker did not run.
+_SUFFICIENCY_UNSCORED = "unscored"
+
 def _legacy_row_to_evidence(
     row: dict[str, Any],
     *,
@@ -285,8 +288,14 @@ def build_empty_bundle(
     rejected_count: int = 0,
     stop_reason: str = "no_evidence",
     knowledge_service: str = SERVICE_GENERAL_WEB,
+    sufficiency: str = _SUFFICIENCY_UNSCORED,
+    sufficiency_rationale: str = "",
 ) -> EvidenceBundle:
-    """Empty bundle after sentinel drop, gate failure, or no results."""
+    """Empty bundle after sentinel drop, gate failure, or no results.
+
+    ``sufficiency`` is honoured by the scientific builder (S4); other services
+    keep ``"unscored"`` until their gates land (S7/S8).
+    """
     if knowledge_service == SERVICE_TRUSTED_KNOWLEDGE:
         return build_trusted_knowledge_bundle(
             query_raw=query_raw,
@@ -314,6 +323,8 @@ def build_empty_bundle(
             rejected_count=rejected_count,
             latency_ms=latency_ms,
             stop_reason=stop_reason,
+            sufficiency=sufficiency,
+            sufficiency_rationale=sufficiency_rationale,
         )
     if knowledge_service == SERVICE_INTERNAL_CORPUS:
         return build_internal_corpus_bundle(
@@ -680,6 +691,50 @@ def _compute_scientific_confidence(sources: tuple[EvidenceObject, ...]) -> float
     )
 
 
+_PARTIAL_CONFIDENCE_CAP = 0.55
+
+
+def _scored_scientific_coverage(
+    sources: tuple[EvidenceObject, ...],
+    *,
+    sufficiency: str,
+    sufficiency_rationale: str,
+) -> tuple[str, str, float]:
+    """Coverage / confidence when the relevance reranker scored the pool (S4).
+
+    Mapping (``core.knowledge.ranking.sufficiency.Sufficiency``):
+
+    * ``sufficient``   → ``excellent`` with ≥ 3 sources, ≥ 2 abstracts and
+      ≥ 2 indexes; otherwise ``adequate``. Confidence: the legacy formula
+      (``relevance_score`` is now sigmoid(logit), one meaning everywhere).
+    * ``partial``      → ``poor``; confidence capped at 0.55 — something
+      relevant passed the gate, but not enough to call it well supported.
+    * ``insufficient`` / ``none`` (no sources) → ``none``, confidence 0.0.
+    """
+    if not sources or sufficiency not in ("sufficient", "partial"):
+        rationale = sufficiency_rationale or "No source passed the relevance threshold."
+        return COVERAGE_NONE, rationale, 0.0
+    confidence = _compute_scientific_confidence(sources)
+    abstract_count = sum(1 for s in sources if s.fetch_status == "abstract")
+    adapters = {s.adapter for s in sources}
+    if sufficiency == "partial":
+        return (
+            COVERAGE_POOR,
+            sufficiency_rationale
+            or f"{len(sources)} source(s) only partly match the question.",
+            min(confidence, _PARTIAL_CONFIDENCE_CAP),
+        )
+    if len(sources) >= 3 and abstract_count >= 2 and len(adapters) >= 2:
+        coverage = COVERAGE_EXCELLENT
+    else:
+        coverage = COVERAGE_ADEQUATE
+    rationale = (
+        f"{sufficiency_rationale} {len(sources)} source(s) across {len(adapters)} "
+        f"index(es); {abstract_count} with abstracts."
+    ).strip()
+    return coverage, rationale, confidence
+
+
 def build_scientific_evidence_bundle(
     *,
     query_raw: str,
@@ -691,15 +746,31 @@ def build_scientific_evidence_bundle(
     stop_reason: str = "budget_exhausted",
     medical_query: bool = False,
     knowledge_service: str = SERVICE_SCIENTIFIC_EVIDENCE,
+    sufficiency: str = _SUFFICIENCY_UNSCORED,
+    sufficiency_rationale: str = "",
 ) -> EvidenceBundle:
-    """Build a Phase-2 scientific-evidence bundle from adapter rows."""
+    """Build a Phase-2 scientific-evidence bundle from adapter rows.
+
+    ``sufficiency`` other than ``"unscored"`` means the relevance reranker scored
+    the pool (S4); coverage / confidence then derive from it instead of the
+    legacy count-based heuristics, and an empty insufficient bundle keeps
+    ``stop_reason="relevance_filtered"``.
+    """
     retrieved_at = time.time()
     sources = tuple(
         _scientific_row_to_evidence(row, index=i, retrieved_at=retrieved_at)
         for i, row in enumerate(kept_rows, start=1)
     )
-    coverage, coverage_rationale = _compute_scientific_coverage(sources)
-    confidence = _compute_scientific_confidence(sources)
+    scored = sufficiency != _SUFFICIENCY_UNSCORED
+    if scored:
+        coverage, coverage_rationale, confidence = _scored_scientific_coverage(
+            sources,
+            sufficiency=sufficiency,
+            sufficiency_rationale=sufficiency_rationale,
+        )
+    else:
+        coverage, coverage_rationale = _compute_scientific_coverage(sources)
+        confidence = _compute_scientific_confidence(sources)
 
     warnings: list[str] = []
     snippet_only = [s for s in sources if s.fetch_status == "snippet_only"]
@@ -739,8 +810,13 @@ def build_scientific_evidence_bundle(
         rejected_count=rejected_count,
         warnings=tuple(warnings),
         conflicts=(),
-        stop_reason=stop_reason if sources else "no_evidence",
+        stop_reason=(
+            stop_reason
+            if sources or (scored and stop_reason == "relevance_filtered")
+            else "no_evidence"
+        ),
         adapter_calls=adapter_calls,
+        sufficiency=sufficiency,
     )
 
 

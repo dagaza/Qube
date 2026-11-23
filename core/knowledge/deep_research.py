@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Callable
 
 import numpy as np
@@ -332,15 +332,8 @@ def apply_merged_relevance_gate(
         / len(filtered_sources)
     )
     return (
-        EvidenceBundle(
-            bundle_id=bundle.bundle_id,
-            query_raw=bundle.query_raw,
-            query_resolved=bundle.query_resolved,
-            knowledge_service=bundle.knowledge_service,
-            retrieval_strategy=bundle.retrieval_strategy,
-            profile_version=bundle.profile_version,
-            retrieved_at=bundle.retrieved_at,
-            latency_ms=bundle.latency_ms,
+        replace(
+            bundle,
             confidence=min(0.95, confidence),
             coverage=coverage,
             coverage_rationale=coverage_rationale,
@@ -353,10 +346,7 @@ def apply_merged_relevance_gate(
             diversity_summary=min(1.0, len(adapters) / 3.0),
             sources=filtered_sources,
             rejected_count=bundle.rejected_count + dropped,
-            warnings=bundle.warnings,
             conflicts=detect_conflicts(filtered_sources, topic=query),
-            stop_reason=bundle.stop_reason,
-            adapter_calls=bundle.adapter_calls,
         ),
         dropped,
         filter_diag,

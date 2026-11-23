@@ -73,6 +73,8 @@ class EvidenceBundleSummary:
     warnings: tuple[str, ...]
     source_types: tuple[str, ...]
     fetch_depth: str
+    # Plan S4: reranker sufficiency ("unscored" when the reranker did not run).
+    sufficiency: str = "unscored"
 
 
 @dataclass(frozen=True)
@@ -102,6 +104,10 @@ class EvidenceBundle:
 
     stop_reason: str
     adapter_calls: tuple[str, ...]
+    # Plan S4: core.knowledge.ranking.sufficiency.Sufficiency value. "unscored"
+    # means the relevance reranker did not run (legacy ranking). Copy bundles with
+    # ``dataclasses.replace`` so this trailing field is never dropped.
+    sufficiency: str = "unscored"
 
     def summary_for_skills(self) -> EvidenceBundleSummary:
         source_types = tuple(
@@ -126,6 +132,7 @@ class EvidenceBundle:
             warnings=self.warnings,
             source_types=source_types,
             fetch_depth=fetch_depth,
+            sufficiency=self.sufficiency,
         )
 
 

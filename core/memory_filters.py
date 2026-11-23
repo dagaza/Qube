@@ -536,6 +536,23 @@ COMPOSER_WEB_EMPTY_SUFFIX: str = (
     "knowledge only if clearly labeled as such."
 )
 
+# Plan S4: the search ran and returned sources, but the relevance gate kept none.
+RETRIEVAL_INSUFFICIENT_SUFFIX: str = (
+    " IMPORTANT: a search ran and found sources for this question, but none of "
+    "them actually address it, so no sources are provided. Your first sentence "
+    "MUST say that the sources found did not address the question. Do NOT say "
+    "the search failed, returned nothing, or that you lack internet access. "
+    "Do NOT emit bracket citation tokens such as [1], [2], or [W]. You may then "
+    "answer from general knowledge, labelled clearly as general knowledge and "
+    "not as findings from the sources."
+)
+
+# Plan S4: one-line note prepended to the evidence pack on a ``partial`` turn.
+RETRIEVAL_PARTIAL_NOTE: str = (
+    "[Evidence note: these sources only partly address the question. Cite them "
+    "only for what they actually support, and say plainly what they do not cover.]"
+)
+
 CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX: str = (
     " IMPORTANT: the prior turn attempted a web search but returned no usable "
     "results. The user may be continuing that topic. Do NOT claim you lack "

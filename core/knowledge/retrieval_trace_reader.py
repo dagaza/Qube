@@ -80,6 +80,48 @@ def read_last_retrieval_trace(
     return traces[0] if traces else None
 
 
+_CONSIDERED_NOT_USED_LIMIT = 15
+
+
+def format_relevance_gate_lines(trace: dict[str, Any]) -> list[str]:
+    """Relevance gate summary plus "Considered, not used" (plan S4, decision D2).
+
+    Rows come from ``relevance_diag["rerank_dropped"]``: sources the gate scored
+    below its threshold. They are shown here only — never in the sources
+    panel, the bundle, the prompt or citation numbering.
+    """
+    diag = trace.get("relevance_diag") or {}
+    rerank = diag.get("rerank") if isinstance(diag, dict) else None
+    sufficiency = str(trace.get("sufficiency") or diag.get("sufficiency") or "")
+    lines: list[str] = []
+    if isinstance(rerank, dict) and rerank:
+        skipped = rerank.get("skipped_reason")
+        if skipped:
+            lines.append(f"Relevance gate: not applied ({skipped}); legacy ranking used")
+        else:
+            lines.append(
+                f"Relevance gate: {sufficiency or rerank.get('state') or '—'} — "
+                f"{rerank.get('scored', '—')} scored, {rerank.get('survivors', '—')} passed "
+                f"(threshold {rerank.get('threshold_keep', '—')}), "
+                f"{rerank.get('latency_ms', '—')} ms"
+            )
+    dropped = diag.get("rerank_dropped") if isinstance(diag, dict) else None
+    if isinstance(dropped, list) and dropped:
+        lines.append(f"Considered, not used ({len(dropped)}):")
+        for row in dropped[:_CONSIDERED_NOT_USED_LIMIT]:
+            if not isinstance(row, dict):
+                continue
+            title = str(row.get("title") or "(untitled)")[:100]
+            adapter = row.get("adapter")
+            score = row.get("score")
+            score_txt = f"{float(score):.2f}" if isinstance(score, (int, float)) else "—"
+            suffix = f" [{adapter}]" if adapter else ""
+            lines.append(f"  - {title}{suffix} — relevance {score_txt}")
+        if len(dropped) > _CONSIDERED_NOT_USED_LIMIT:
+            lines.append(f"  … {len(dropped) - _CONSIDERED_NOT_USED_LIMIT} more")
+    return lines
+
+
 def format_retrieval_trace_summary(trace: dict[str, Any]) -> str:
     """Human-readable summary for UI display."""
     if not trace:
@@ -114,6 +156,7 @@ def format_retrieval_trace_summary(trace: dict[str, Any]) -> str:
     )
     if search_line:
         lines.append(search_line)
+    lines.extend(format_relevance_gate_lines(trace))
     warnings = trace.get("warnings") or []
     if warnings:
         lines.append(f"Warnings: {'; '.join(str(w) for w in warnings)}")

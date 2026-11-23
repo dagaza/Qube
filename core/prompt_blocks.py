@@ -30,6 +30,7 @@ from core.memory_filters import (
     STRICT_ISOLATION_SYSTEM_SUFFIX,
     EXPLICIT_WEB_EMPTY_SUFFIX,
     COMPOSER_WEB_EMPTY_SUFFIX,
+    RETRIEVAL_INSUFFICIENT_SUFFIX,
     CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX,
     SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX,
     FINANCIAL_DISCLAIMER_SUFFIX,
@@ -171,6 +172,7 @@ def build_prompt_blocks(
     rag_capability_blocked: bool = False,
     explicit_web_empty_results: bool = False,
     composer_web_empty: bool = False,
+    retrieval_insufficient: bool = False,
     prior_web_empty_follow_up: bool = False,
     scientific_medical_disclaimer: bool = False,
     financial_disclaimer: bool = False,
@@ -242,6 +244,12 @@ def build_prompt_blocks(
     elif rag_capability_blocked:
         persona = _BASE_PERSONA
         suffixes.append(RAG_CAPABILITY_DISABLED_SUFFIX)
+    elif retrieval_insufficient:
+        # S4: sources were found but the relevance gate kept none. Takes
+        # precedence over the web-empty wording ("search returned nothing").
+        no_sources = True
+        persona = _BASE_PERSONA
+        suffixes.append(RETRIEVAL_INSUFFICIENT_SUFFIX)
     elif explicit_web_empty_results:
         no_sources = True
         persona = _BASE_PERSONA
@@ -392,6 +400,7 @@ def build_prompt_blocks(
         and not web_capability_blocked
         and not rag_capability_blocked
         and not explicit_web_empty_results
+        and not retrieval_insufficient
     ):
         no_sources = True
         suffixes.append(CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX)

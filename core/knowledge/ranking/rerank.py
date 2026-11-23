@@ -15,7 +15,9 @@ Contract:
   * Loads only from Qube's streamed download directory
     (``core.bootstrap_search_download.reranker_dir``) — never a runtime Hub fetch.
 
-In S3 this module is used for **shadow scoring only** (selection unchanged).
+Used by the scientific relevance gate (S4, ``pipeline_scientific._rank_candidates_gated``;
+thresholds in ``core.knowledge.ranking.sufficiency``). Rows are scored after the
+legacy pre-order; a cold model loads synchronously (~160 ms on the dev laptop).
 """
 
 from __future__ import annotations
@@ -327,7 +329,6 @@ def rerank_rows(
 # Warm-up off the critical path
 # ---------------------------------------------------------------------------
 
-SKIP_COLD = "cold"
 _warm_thread: threading.Thread | None = None
 
 
@@ -355,100 +356,3 @@ def warm_up_reranker_async() -> bool:
             logger.debug("Reranker warm-up thread failed to start: %s", exc)
             return False
     return True
-
-
-# ---------------------------------------------------------------------------
-# Shadow scoring (S3): measure, never change selection
-# ---------------------------------------------------------------------------
-
-# Provisional cut used only to *report* what a gate would do in shadow mode.
-# S4 calibrates the real thresholds on the S2 corpus; logit 0 ≈ p(relevant) 0.5.
-SHADOW_KEEP_THRESHOLD = 0.0
-
-
-def shadow_state(rows_above_threshold: int) -> str:
-    """Sufficiency a gate would report: ≥ 2 → sufficient, 1 → partial, 0 → insufficient."""
-    if rows_above_threshold >= 2:
-        return "sufficient"
-    if rows_above_threshold == 1:
-        return "partial"
-    return "insufficient"
-
-
-def _row_key(row: dict[str, Any]) -> str:
-    for key in ("doi", "url", "pmid", "id"):
-        val = str(row.get(key) or "").strip().lower()
-        if val:
-            return f"{key}:{val}"
-    return "title:" + " ".join(str(row.get("title") or "").lower().split())
-
-
-def shadow_rerank(
-    question: str,
-    pool: Sequence[dict[str, Any]],
-    kept: Sequence[dict[str, Any]],
-    *,
-    budget: int,
-    allow_cold_load: bool = False,
-    text_chars: int = DEFAULT_TEXT_CHARS,
-    max_rows: int = DEFAULT_MAX_ROWS,
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Score ``pool`` and annotate copies of ``kept`` with ``_rerank_score``.
-
-    Selection is **unchanged**: the returned rows are ``kept`` in the same order
-    (copies, so cached candidate dicts are not mutated). The diagnostic dict
-    reports what a gate at ``SHADOW_KEEP_THRESHOLD`` would have kept. When the
-    model is not loaded yet and ``allow_cold_load`` is False, scoring is skipped
-    (``skipped_reason="cold"``) and a background warm-up is started, so the
-    first retrieval never pays the model load.
-    """
-    kept_out = [dict(r) for r in kept]
-    diag: dict[str, Any] = {
-        "model": RERANKER_MODEL_ID,
-        "mode": "shadow",
-        "question": str(question or "")[:300],
-        "pool_size": len(pool),
-    }
-    reason = unavailable_reason(question)
-    if reason is None and not allow_cold_load and not model_loaded():
-        warm_up_reranker_async()
-        reason = SKIP_COLD
-    if reason is None and not pool:
-        reason = SKIP_EMPTY
-    if reason is not None:
-        diag["skipped_reason"] = reason
-        return kept_out, diag
-
-    scored_rows = [r for r in list(pool)[: max(0, int(max_rows))] if isinstance(r, dict)]
-    result = rerank_rows(question, scored_rows, text_chars=text_chars, max_rows=max_rows)
-    if result is None:
-        diag["skipped_reason"] = SKIP_ERROR
-        return kept_out, diag
-
-    by_key = {_row_key(r): s for r, s in zip(scored_rows, result.scores)}
-    for row in kept_out:
-        score = by_key.get(_row_key(row))
-        if score is not None:
-            row["_rerank_score"] = round(float(score), 4)
-
-    ranked = sorted(result.scores, reverse=True)
-    above = [s for s in ranked if s > SHADOW_KEEP_THRESHOLD]
-    would_keep = min(len(above), max(0, int(budget)))
-    would_state = shadow_state(would_keep)
-    kept_scores = [row.get("_rerank_score") for row in kept_out]
-    diag.update(
-        {
-            "latency_ms": round(result.latency_ms, 1),
-            "scored": len(result.scores),
-            "text_chars": result.text_chars,
-            "threshold": SHADOW_KEEP_THRESHOLD,
-            "top_scores": [round(s, 3) for s in ranked[:5]],
-            "kept_scores": kept_scores,
-            "kept_below_threshold": sum(
-                1 for s in kept_scores if s is not None and s <= SHADOW_KEEP_THRESHOLD
-            ),
-            "would_keep_count": would_keep,
-            "would_state": would_state,
-        }
-    )
-    return kept_out, diag

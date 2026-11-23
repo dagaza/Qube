@@ -11,6 +11,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -106,7 +108,7 @@ class AvailabilityTests(unittest.TestCase):
 
     def test_model_missing(self) -> None:
         with patch("core.app_settings.get_knowledge_reranker_enabled", return_value=True), patch(
-            "core.bootstrap_search_download.resolve_reranker_path", return_value=None
+            "core.knowledge.ranking.rerank._model_path", return_value=None
         ):
             self.assertEqual(unavailable_reason(), SKIP_MODEL_MISSING)
             self.assertFalse(rerank.reranker_available())
@@ -116,7 +118,7 @@ class AvailabilityTests(unittest.TestCase):
     def test_load_failure_is_swallowed_and_backed_off(self) -> None:
         rerank.unload_reranker()
         with patch("core.app_settings.get_knowledge_reranker_enabled", return_value=True), patch(
-            "core.bootstrap_search_download.resolve_reranker_path", return_value="/nonexistent"
+            "core.knowledge.ranking.rerank._model_path", return_value="/nonexistent"
         ), patch(
             "fastembed.rerank.cross_encoder.TextCrossEncoder", side_effect=RuntimeError("bad onnx")
         ):
@@ -223,74 +225,6 @@ class DownloadSpecTests(unittest.TestCase):
                 download_reranker(lambda *_a: None)
 
 
-class ShadowRerankTests(FakeScorerTestCase):
-    POOL = [
-        {"title": "aa", "url": "https://x/1"},
-        {"title": "aaaa", "url": "https://x/2"},
-        {"title": "a", "url": "https://x/3"},
-    ]
-
-    def test_selection_unchanged_and_scores_attached(self) -> None:
-        set_reranker_scorer_for_tests(lambda _q, docs: [1.0 if len(d) > 2 else -5.0 for d in docs])
-        kept_in = [self.POOL[2], self.POOL[0]]
-        kept, diag = rerank.shadow_rerank("what is it about pumps", self.POOL, kept_in, budget=3)
-        self.assertEqual([r["url"] for r in kept], ["https://x/3", "https://x/1"])
-        self.assertTrue(all("_rerank_score" in r for r in kept))
-        self.assertNotIn("_rerank_score", self.POOL[0])  # copies; cached rows untouched
-        self.assertEqual(diag["would_keep_count"], 1)
-        self.assertEqual(diag["would_state"], "partial")
-        self.assertEqual(diag["kept_below_threshold"], 2)
-        self.assertEqual(diag["mode"], "shadow")
-
-    def test_cold_model_skips_and_starts_warmup(self) -> None:
-        set_reranker_scorer_for_tests(None)
-        rerank.unload_reranker()
-        with patch("core.app_settings.get_knowledge_reranker_enabled", return_value=True), patch(
-            "core.bootstrap_search_download.resolve_reranker_path", return_value="/some/path"
-        ), patch.object(rerank, "warm_up_reranker_async", return_value=True) as warm:
-            kept, diag = rerank.shadow_rerank("what is a heat pump", self.POOL, self.POOL[:1], budget=3)
-        self.assertEqual(diag["skipped_reason"], rerank.SKIP_COLD)
-        warm.assert_called_once()
-        self.assertEqual(kept, [dict(self.POOL[0])])
-
-    def test_skipped_when_unavailable(self) -> None:
-        set_reranker_scorer_for_tests(None)
-        with patch("core.app_settings.get_knowledge_reranker_enabled", return_value=False):
-            kept, diag = rerank.shadow_rerank("what is a heat pump", self.POOL, self.POOL, budget=3)
-        self.assertEqual(diag["skipped_reason"], SKIP_DISABLED)
-        self.assertEqual(len(kept), 3)
-
-
-_SCI_ROWS = [
-    {
-        "title": "Semaglutide and cardiovascular outcomes",
-        "snippet": "Semaglutide reduced major adverse cardiovascular events.",
-        "full_text": "Semaglutide reduced major adverse cardiovascular events in adults with type 2 diabetes.",
-        "url": "https://pubmed.ncbi.nlm.nih.gov/12345678/",
-        "_adapter": "pubmed",
-        "doi": "10.1000/test.1",
-        "publication_date": "2024-01",
-        "peer_reviewed": True,
-    },
-    {
-        "title": "Semaglutide subgroup analysis",
-        "snippet": "No significant benefit for semaglutide in this cohort.",
-        "full_text": "No significant benefit was observed for semaglutide cardiovascular endpoints in this cohort.",
-        "url": "https://openalex.org/W123",
-        "_adapter": "openalex",
-        "doi": "10.1000/test.2",
-        "publication_date": "2023",
-        "peer_reviewed": True,
-    },
-    {
-        "title": "Ant colony optimisation for routing",
-        "snippet": "Swarm heuristics for vehicle routing.",
-        "url": "https://arxiv.org/abs/0000.0001",
-        "_adapter": "arxiv",
-    },
-]
-
-
 class CeEvalRankerTests(FakeScorerTestCase):
     def test_unavailable_raises(self) -> None:
         from core.knowledge.quality_eval import RankerUnavailable, get_fixture_ranker
@@ -317,56 +251,8 @@ class CeEvalRankerTests(FakeScorerTestCase):
         self.assertEqual(out.state, "insufficient")
 
 
-class ScientificPipelineShadowTests(unittest.TestCase):
-    """S3 acceptance: kept sources identical with shadow scoring on and off."""
-
-    def _run(self):
-        from core.knowledge.types import SERVICE_SCIENTIFIC_EVIDENCE
-        from core.knowledge.web_retrieval import run_v2_web_retrieval
-
-        with patch("core.knowledge.pipeline_scientific.get_cached_rows", return_value=None), patch(
-            "core.knowledge.pipeline_scientific.set_cached_rows"
-        ), patch.dict(
-            "core.knowledge.adapters.registry.SEARCH_FUNCTIONS",
-            {
-                "pubmed": lambda q, max_results=3: [dict(_SCI_ROWS[0])],
-                "openalex": lambda q, max_results=3: [dict(_SCI_ROWS[1])],
-                "arxiv": lambda q, max_results=3: [dict(_SCI_ROWS[2])],
-            },
-            clear=False,
-        ):
-            return run_v2_web_retrieval(
-                query="semaglutide cardiovascular outcomes",
-                semantic_query="semaglutide cardiovascular outcomes",
-                knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
-            )
-
-    def test_kept_identical_on_and_off(self) -> None:
-        with patch("core.app_settings.get_knowledge_reranker_enabled", return_value=False):
-            off = self._run()
-        set_reranker_scorer_for_tests(lambda _q, docs: [5.0 if "emaglutide" in d else -8.0 for d in docs])
-        try:
-            on = self._run()
-        finally:
-            set_reranker_scorer_for_tests(None)
-        assert off.bundle is not None and on.bundle is not None
-        self.assertEqual([s.id for s in off.bundle.sources], [s.id for s in on.bundle.sources])
-        self.assertEqual(off.relevance_diag["rerank"]["skipped_reason"], SKIP_DISABLED)
-        shadow = on.relevance_diag["rerank"]
-        self.assertNotIn("skipped_reason", shadow)
-        self.assertEqual(shadow["scored"], shadow["pool_size"])
-        self.assertEqual(shadow["would_state"], "sufficient")
-        import json
-
-        from core.knowledge.observability import build_retrieval_trace, serialize_retrieval_trace
-
-        json.dumps(shadow)  # persisted verbatim in the retrieval trace
-        self.assertIn("rerank", json.dumps(serialize_retrieval_trace(
-            build_retrieval_trace(on.bundle, relevance_diag=on.relevance_diag)
-        )))
-
-
 @unittest.skipUnless(rerank._model_path() is not None, "reranker model not downloaded")
+@pytest.mark.real_reranker
 class RerankModelIntegrationTests(unittest.TestCase):
     def test_real_model_separates_on_and_off_topic(self) -> None:
         rerank.unload_reranker()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -39,6 +40,14 @@ from core.knowledge.ranking.relevance import score_rows
 from core.knowledge.ranking.trial_grounding import extract_trial_signal
 from core.knowledge.ranking.reliability import apply_reliability_scores
 from core.knowledge.ranking.stopping import adaptive_stop_reason
+from core.knowledge.ranking.sufficiency import (
+    SCIENTIFIC_THRESHOLDS,
+    Sufficiency,
+    SufficiencyResult,
+    SufficiencyThresholds,
+    assess_sufficiency,
+    relevance_probability,
+)
 from core.knowledge.retrieval_profiles import (
     get_profile_spec,
     normalize_profile_id,
@@ -90,6 +99,177 @@ def _rank_candidates(
     selected = mmr_select_rows(scored, max_results=max_results)
     selected = apply_reliability_scores(selected)
     return selected, rejected
+
+
+# Low-core machines score fewer rows: 40 × 800 chars took p95 1.12 s at 2 threads
+# vs 0.67 s at 4 (S3 benchmark); 24 rows keeps the gate under ~0.7 s there.
+_GATE_MAX_ROWS_LOW_CORE = 24
+_GATE_DROPPED_DIAG_LIMIT = 40
+
+
+@dataclasses.dataclass
+class ScientificRanking:
+    """Result of ``_rank_candidates_gated`` (plan S4)."""
+
+    kept: list[dict[str, Any]]
+    rejected: list[dict[str, Any]]
+    sufficiency: SufficiencyResult
+    # Rows a discipline slot may reserve: the whole pool when UNSCORED, only rows
+    # that passed ``keep`` when scored.
+    slot_pool: list[dict[str, Any]]
+    # Rows the gate dropped (copies carrying ``_rerank_score``), best first.
+    dropped: list[dict[str, Any]]
+    rerank_diag: dict[str, Any]
+
+    @property
+    def scored(self) -> bool:
+        return self.sufficiency.state is not Sufficiency.UNSCORED
+
+
+def _gate_max_rows() -> int:
+    from core.knowledge.ranking.rerank import DEFAULT_MAX_ROWS, reranker_threads
+
+    return DEFAULT_MAX_ROWS if reranker_threads() >= 4 else _GATE_MAX_ROWS_LOW_CORE
+
+
+def _rank_candidates_gated(
+    rows: list[dict[str, Any]],
+    *,
+    ctx: RetrievalContext,
+    max_results: int,
+    trial_signals: frozenset[str] | None = None,
+    question: str | None = None,
+    thresholds: SufficiencyThresholds = SCIENTIFIC_THRESHOLDS,
+) -> ScientificRanking:
+    """Relevance-gated selection (S4): order by cross-encoder score, drop rows
+    below ``thresholds.keep``, MMR for diversity among survivors, reliability.
+
+    When the reranker cannot run (missing, disabled, non-English or
+    content-free question, scoring error) this is exactly ``_rank_candidates``
+    with ``Sufficiency.UNSCORED``: no silent weakening of today's path.
+    """
+    from core.knowledge.ranking import rerank
+
+    q = str(question or ctx.semantic_query or ctx.query or "")
+    diag: dict[str, Any] = {
+        "model": rerank.RERANKER_MODEL_ID,
+        "mode": "gate",
+        "question": q[:300],
+        "pool_size": len(rows),
+        "threshold_keep": thresholds.keep,
+        "threshold_strong": thresholds.strong,
+    }
+
+    def _legacy(reason: str) -> ScientificRanking:
+        kept, rejected = _rank_candidates(
+            rows, ctx=ctx, max_results=max_results, trial_signals=trial_signals
+        )
+        diag["skipped_reason"] = reason
+        return ScientificRanking(
+            kept=kept,
+            rejected=rejected,
+            sufficiency=assess_sufficiency(None, thresholds),
+            slot_pool=list(rows),
+            dropped=[],
+            rerank_diag=diag,
+        )
+
+    reason = rerank.unavailable_reason(q)
+    if reason is None and not rows:
+        reason = rerank.SKIP_EMPTY
+    if reason is not None:
+        return _legacy(reason)
+
+    # Pre-order by the legacy scorer so a row cap keeps the most promising rows,
+    # and so ``_token_relevance`` stays available for diagnostics.
+    token_kept, token_rejected = score_rows(
+        rows,
+        query=sanitize_api_query(ctx.semantic_query or ctx.query),
+        query_vector=ctx.query_vector,
+        embed_fn=ctx.embed_fn,
+        min_score=0.12,
+        trial_signals=trial_signals,
+    )
+    token_rejected.sort(key=lambda r: float(r.get("_scientific_relevance") or 0.0), reverse=True)
+    ordered = [*token_kept, *token_rejected]
+    cap = _gate_max_rows()
+    to_score, unscored = ordered[:cap], ordered[cap:]
+    result = rerank.rerank_rows(q, to_score, max_rows=cap)
+    if result is None:
+        return _legacy(rerank.SKIP_ERROR)
+
+    for row, score in zip(to_score, result.scores):
+        row["_token_relevance"] = row.get("_scientific_relevance")
+        row["_rerank_score"] = round(float(score), 4)
+        # One meaning everywhere (MMR, bundle, slots, UI): p(relevant).
+        row["_scientific_relevance"] = relevance_probability(score)
+
+    pool_result = assess_sufficiency(result.scores, thresholds)
+    kept_idx = set(pool_result.kept_indices)
+    survivors = [to_score[i] for i in pool_result.kept_indices]
+    dropped = sorted(
+        (r for i, r in enumerate(to_score) if i not in kept_idx),
+        key=lambda r: float(r["_rerank_score"]),
+        reverse=True,
+    )
+    # Calibrated probabilities: no min-max stretching (S4 eval: recall 0.83 → 0.86
+    # at equal precision vs normalised MMR).
+    selected = apply_reliability_scores(
+        mmr_select_rows(survivors, max_results=max_results, normalize=False)
+    )
+    final = _final_sufficiency(selected, pool_result, thresholds)
+    ranked_scores = sorted((float(s) for s in result.scores), reverse=True)
+    diag.update(
+        {
+            "latency_ms": round(result.latency_ms, 1),
+            "scored": len(result.scores),
+            "unscored": len(unscored),
+            "text_chars": result.text_chars,
+            "top_scores": [round(s, 3) for s in ranked_scores[:5]],
+            "kept_scores": [r.get("_rerank_score") for r in selected],
+            "survivors": len(survivors),
+            "dropped": len(dropped),
+            "state": final.state.value,
+            "strong_count": final.strong_count,
+        }
+    )
+    return ScientificRanking(
+        kept=selected,
+        rejected=[*dropped, *unscored],
+        sufficiency=final,
+        slot_pool=survivors,
+        dropped=dropped,
+        rerank_diag=diag,
+    )
+
+
+def _final_sufficiency(
+    kept: list[dict[str, Any]],
+    pool_result: SufficiencyResult,
+    thresholds: SufficiencyThresholds,
+) -> SufficiencyResult:
+    """Sufficiency of what is actually kept (after MMR / budget / slot reservation)."""
+    if not kept:
+        return pool_result
+    scores = [r.get("_rerank_score") for r in kept]
+    if any(s is None for s in scores):
+        return pool_result
+    return assess_sufficiency([float(s) for s in scores], thresholds)
+
+
+def _dropped_for_diag(dropped: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """D2: gate-dropped sources for the retrieval inspector (trace only, never the prompt)."""
+    out: list[dict[str, Any]] = []
+    for row in dropped[:_GATE_DROPPED_DIAG_LIMIT]:
+        out.append(
+            {
+                "title": str(row.get("title") or "")[:200],
+                "url": str(row.get("url") or "") or None,
+                "adapter": str(row.get("_adapter") or "") or None,
+                "score": row.get("_rerank_score"),
+            }
+        )
+    return out
 
 
 def _ensure_chemistry_pubchem_slot(
@@ -334,48 +514,62 @@ class ScientificEvidencePipeline:
             adapter_filter=ctx.adapter_filter,
         )
         trial_signals = extract_trial_signal(ctx.query)
-        kept, rejected = _rank_candidates(
+        ranking = _rank_candidates_gated(
             candidates,
             ctx=ranked_ctx,
             max_results=budget,
             trial_signals=trial_signals,
+            question=semantic or query,
         )
+        kept, rejected = ranking.kept, ranking.rejected
+        # Discipline slots may only reserve a row that passed the relevance gate
+        # (the whole pool when UNSCORED, as before S4).
+        slot_pool = ranking.slot_pool
         kept = _ensure_chemistry_pubchem_slot(
             kept,
-            candidates,
+            slot_pool,
             discipline=discipline_match.discipline,
             query=query,
             max_results=budget,
         )
         kept = _ensure_economics_repec_slot(
             kept,
-            candidates,
+            slot_pool,
             discipline=discipline_match.discipline,
             query=query,
             max_results=budget,
         )
         kept = _ensure_physics_arxiv_slot(
             kept,
-            candidates,
+            slot_pool,
             discipline=discipline_match.discipline,
             query=query,
             max_results=budget,
         )
-        # S3 shadow scoring: cross-encoder scores over the whole pool are recorded
-        # for calibration; ``kept`` (order and membership) is unchanged.
-        from core.knowledge.ranking.rerank import shadow_rerank
-
-        kept, rerank_diag = shadow_rerank(
-            semantic or query,
-            candidates,
-            kept,
-            budget=budget,
-        )
+        sufficiency = ranking.sufficiency
+        if ranking.scored:
+            sufficiency = _final_sufficiency(kept, ranking.sufficiency, SCIENTIFIC_THRESHOLDS)
+        rerank_diag = dict(ranking.rerank_diag)
+        if ranking.scored:
+            rerank_diag["state"] = sufficiency.state.value
+            rerank_diag["kept_scores"] = [r.get("_rerank_score") for r in kept]
+        gate_diag: dict[str, Any] = {
+            "rerank": rerank_diag,
+            "sufficiency": sufficiency.state.value,
+        }
+        if ranking.dropped:
+            gate_diag["rerank_dropped"] = _dropped_for_diag(ranking.dropped)
         latency_ms = (time.time() - t0) * 1000
 
         if not kept:
+            empty_kwargs: dict[str, Any] = {}
+            if ranking.scored:
+                empty_kwargs = {
+                    "sufficiency": Sufficiency.INSUFFICIENT.value,
+                    "sufficiency_rationale": sufficiency.rationale,
+                }
             rel_diag_empty = {
-                "rerank": rerank_diag,
+                **gate_diag,
                 "scientific_relevance_dropped": len(rejected),
                 "scientific_adapters_selected": list(adapter_ids),
                 "scientific_discipline": discipline_match.discipline,
@@ -401,6 +595,7 @@ class ScientificEvidencePipeline:
                     rejected_count=len(rejected),
                     stop_reason="relevance_filtered",
                     knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
+                    **empty_kwargs,
                 ),
                 rel_diag_empty,
                 raw_audit,
@@ -428,12 +623,14 @@ class ScientificEvidencePipeline:
             adapter_calls=tuple(adapter_calls),
             stop_reason=stop_reason,
             medical_query=is_medical_query(query),
+            sufficiency=sufficiency.state.value,
+            sufficiency_rationale=sufficiency.rationale if ranking.scored else "",
         )
         conflicts = detect_conflicts(bundle.sources, topic=query)
         if conflicts:
             bundle = _bundle_with_conflicts(bundle, conflicts)
         rel_diag = {
-            "rerank": rerank_diag,
+            **gate_diag,
             "scientific_relevance_dropped": len(rejected),
             "scientific_avg_relevance": round(avg_rel, 4),
             "scientific_cache_hit": cached is not None,
@@ -463,25 +660,4 @@ class ScientificEvidencePipeline:
 
 def _bundle_with_conflicts(bundle: EvidenceBundle, conflicts):
     warnings = tuple(dict.fromkeys((*bundle.warnings, "material_conflict")))
-    return EvidenceBundle(
-        bundle_id=bundle.bundle_id,
-        query_raw=bundle.query_raw,
-        query_resolved=bundle.query_resolved,
-        knowledge_service=bundle.knowledge_service,
-        retrieval_strategy=bundle.retrieval_strategy,
-        profile_version=bundle.profile_version,
-        retrieved_at=bundle.retrieved_at,
-        latency_ms=bundle.latency_ms,
-        confidence=bundle.confidence,
-        coverage=bundle.coverage,
-        coverage_rationale=bundle.coverage_rationale,
-        authority_summary=bundle.authority_summary,
-        reliability_summary=bundle.reliability_summary,
-        diversity_summary=bundle.diversity_summary,
-        sources=bundle.sources,
-        rejected_count=bundle.rejected_count,
-        warnings=warnings,
-        conflicts=conflicts,
-        stop_reason=bundle.stop_reason,
-        adapter_calls=bundle.adapter_calls,
-    )
+    return dataclasses.replace(bundle, warnings=warnings, conflicts=conflicts)
