@@ -811,6 +811,41 @@ flowchart LR
   - **0** false anchors on topic-switch cases
   - routing decisions unchanged on the existing routing tests
 - **Dependencies:** S5.
+- **As built (2026-11-23):**
+  - **`core/discourse_subject.py` (new)**: replays the user turns in the last 12 messages and relates each to the tracked subject as `continuation`, `new_subject`, `none` (the subject is dropped, never guessed) or `no_prior`.
+    - Rules, in order:
+      1. a topic-change phrase starts a new subject;
+      2. the turn names the subject, plural- and hyphen-insensitive, or names its defined acronym;
+      3. it refers back with "its", "that group", "install one", "live there" or "why is that"; "you" / "we", a dummy "is it true", and clause "that" do not count;
+      4. "what about the X / 3.14" is a facet, while "what about Rust / vaccines" is a new subject;
+      5. a short lowercase facet question ("What are the symptoms?", "Is there a cure?") is a facet;
+      6. the turn's own subject means `new_subject`;
+      7. an affirmation is a continuation;
+      8. a short ellipsis ("And in mobile apps?") is a continuation.
+    - A facet never replaces the subject. An entity answer ("Kathmandu is the capital of Nepal.", via the existing answer patterns) becomes the subject.
+    - Subject extraction reuses `discourse_state._extract_topic_from_text`, adds yes/no and wh-be fallbacks ("Are statins effective…" → `statins`), and normalises articles, "new in", dangling "made of" and stray "?>".
+  - **`DiscourseState`**: new trailing fields `subject`, `facet` and `subject_relation`, set by `update_discourse_state` (the old body is now `_update_topic_and_referent`). They are in `to_dict`.
+    - **Deviation from the plan text:** `active_topic` was **not** turned into a subject property; it keeps its legacy value. The plan's own risk note limits S6 to the web/retrieval text. `active_topic` feeds routing and the prompt salience hints, and on the ANT turn it still reads "Artificial Inteligence". Moving those consumers to `subject` needs its own evidence; proposed for S9/S13.
+  - **`discourse_intent.classify_follow_up`**:
+    - affirmation-led turns become `EXPAND` 0.60, or `WHY_HOW` 0.62 when "how/why" follows ("Yes, tell me how…");
+    - when the subject tracker says `continuation`, a capitalised phrase is a facet (signal `facet_of_subject`, no `explicit_entity_penalty`) and the score is floored at threshold + 0.03 (signal `subject_continuation`);
+    - topic-change phrases and explicit new entities behave as before.
+  - **`discourse_query.build_resolved_retrieval_query` → `_subject_web_target`**:
+    - continuation: subject + cleaned turn (frames and leading "and/so" removed), with the facet kept inside the turn text.
+      - Bare acceptance becomes subject + the assistant's offer ("Would you like an example of the authorization code flow?" → `OAuth example of the authorization code flow`).
+      - A version ellipsis is substituted into the subject's question (`What's new in Python 3.14?`).
+      - When the existing inference rewrite already resolved the reference ("And its population?" → "…population of Kathmandu?"), that text is kept.
+    - `new_subject` / `none`: **no anchor**, even where the legacy follow-up anchor would have added one.
+    - `no_prior` (no user-stated subject in history; tests with session state only): the legacy result, minus its "Regarding X:" prefix.
+    - Meta web requests and discourse-disabled turns are unchanged.
+    - New `ResolvedRetrievalQuery.web_subject / web_facet / web_subject_relation`, in the decision as `web_query_subject*`.
+    - The rewrite reason stays `topic_expansion`, so the worker's existing flags still fire.
+  - **Blast radius, measured:** all 132 router-corpus and query-resolution cases were run through S5 (HEAD) and S6.
+    - `follow_up.active`, `routing_text`, `retrieval_text`, `inference_text` and `active_topic`: **0 changes**.
+    - `web_text`: 1 change (`fu_006`, "Search the web for more on this." → "quantum entanglement Search the web for more on this.").
+    - `tools/evaluate_query_resolution.py`: 7/7.
+  - **B3:** the scientific planner already reads `ctx.query`, which is the resolved web query. With S6 it finds the drug entity `Statins` for PubMed on the "that group" turn, where the raw turn yields none (test added).
+  - One existing assertion changed: `test_discourse_source_venue.test_plain_check_that_keeps_topic_expansion` now checks "space" case-insensitively. The anchor comes from the user's wording ("What is space made of?") instead of the assistant's capitalised sentence, and search is case-insensitive.
 
 #### S7 — Gate for web / trusted / finance / legal pipelines (+ recency)
 
@@ -1023,7 +1058,7 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 ## Implementation progress log
 
 > **Do not edit sections 1–11 above.** Record shipped work here only.  
-> **Last reviewed:** 2026-11-23, S5 complete (§12.4 S5, acronyms + request frames); S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
+> **Last reviewed:** 2026-11-23, S6 complete (§12.4 S6, subject/facet + follow-ups); S5 complete (§12.4 S5, acronyms + request frames); S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
 
 ### Summary
 
@@ -1077,6 +1112,12 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 | 2026-11-23 | S3 | Kept-identical check | Done | `token` / `embed` × production / standalone vs `kq_s2_*` baselines: kept titles identical on all 48 fixtures, aggregates byte-equal, 0 regressions. Pipeline test `ScientificPipelineShadowTests`: identical source ids with shadow on and off. | — |
 | 2026-11-23 | S3 | Latency (dev laptop, 40 × ~794-char docs, 20 runs) | Done | 4 threads: load 159 ms, p50 629 ms, **p95 670 ms** (≤ 1.0 s ✓). 2 threads: p50 1042 ms, p95 1119 ms. | 2-thread hardware exceeds 1 s; S4 may cap at 24–30 rows on low-core machines |
 | 2026-11-23 | S3 | Packaging | Partial | `qube.spec` hidden import `fastembed.rerank.cross_encoder` | **Frozen-build smoke test not run** (no build env here) — do before release |
+| 2026-11-23 | S6 | Subject / facet tracker | Done | `core/discourse_subject.py`; `DiscourseState.subject / facet / subject_relation`; stray "?>" stripped from topics | `active_topic` keeps legacy meaning (deviation, see S6 "As built") |
+| 2026-11-23 | S6 | Follow-up classifier | Done | Affirmation-led continuations, how/why after an affirmation, no entity penalty for facets of the tracked subject | — |
+| 2026-11-23 | S6 | Follow-up retrieval text | Done | `_subject_web_target`: subject + facet + cleaned turn, offer acceptance, version ellipsis, no "Regarding X:", no anchor on topic switch / unrelated turns; `web_query_subject*` telemetry | Web text only; routing/retrieval text unchanged (measured: 0 of 132 cases) |
+| 2026-11-23 | S6 | Tests | Done | `tests/test_discourse_subject.py` (17 follow-ups + 14 topic switches as table tests, fixture acceptance, B3, state, classifier); S5 tests in `tests/test_resolved_retrieval_query.py` updated for S6 (expansion still tested without a follow-up); one case-insensitive assertion in `tests/test_discourse_source_venue.py` | — |
+| 2026-11-23 | S6 | Acceptance | Done | Multi-turn fixtures: follow-up detected **7/7** (100 %), subject preserved **7/7** (gold subject in query 8/8 incl. the topic switch); **0** false anchors on 1 fixture + 14 table topic switches; routing: existing routing/worker/prompt tests (1184) pass and 0 of 132 corpus routing texts change. Live (S5 → S6): OAuth "Yes, please." 0 → 3 authorization-code-flow sources; Python "what about 3.14?" Pi pages → Python 3.14 docs; heat pump EV-charger costs → heat pump pages; statins `insufficient` → `sufficient` ("Muscular Side Effects of Statins"). | ANT still blocked by the typo (S8, D6) |
+| 2026-11-23 | S6 | Baselines | Done | `eval/retrieval_corpus/baselines/kq_s6_{token,embed,ce}_{production,standalone}.json` | — |
 | 2026-11-23 | — | D6 recorded: misspellings handled with a correctly spelt variant alongside the user's wording, in S8 | Done | §12.6 D6, §12.4 S8 | — |
 | 2026-11-23 | S5 | Acronym expansion | Done | `core/discourse_acronyms.py`; `build_resolved_retrieval_query` hook (regardless of follow-up); `ResolvedRetrievalQuery.acronym_expansions`; `web_query_acronym_expansions` in the decision | — |
 | 2026-11-23 | S5 | Request-frame stripping | Done | `core/retrieval_query_cleanup.py`; scientific planner (keyword + semantic), general-web and trusted discovery + gate text; changes 3 of 48 corpus queries, all intended | Finance/legal planners keep their own prefix lists (S13) |
@@ -1280,6 +1321,18 @@ What S4 shows:
 | "Yes, please tell me how a heat pump works for example.", general web | 0 sources | Heat pump; Air source heat pump |
 
 Spelling: OpenAlex is literal, so one misspelt content word removes every on-topic result. **Decided (D6):** S8 searches a correctly spelt variant alongside the user's wording, inside its multi-query union, and never replaces the user's word (a naive corrector would turn "statins" into "stations"). The live ANT acceptance moves to S8.
+
+**S6 results** (48 fixtures, production queries, budget 3). Cells: P@3 · nDCG@5 · irrelevant_kept · relevant_recall · abstain_correct · subject_in_query. `ce` on general web / trusted is the gate **preview**; those paths still use the legacy ranker until S7.
+
+| Group | token S5 | token S6 | ce S5 | ce S6 |
+|---|---|---|---|---|
+| all | 0.71 · 0.77 · 0.29 · 0.84 · 0.83 · 0.50 | 0.70 · 0.77 · 0.30 · 0.84 · 0.81 · **1.00** | 0.88 · 0.84 · 0.12 · 0.91 · 0.94 · 0.50 | **0.92** · 0.84 · **0.08** · 0.91 · **0.98** · **1.00** |
+| multi_turn (6) | 0.27 · 0.58 · 0.73 · 0.67 · 0.50 · 0.33 | 0.22 · 0.58 · 0.78 · 0.67 · 0.33 · **1.00** | 0.50 · 0.86 · 0.50 · 1.00 · 0.67 · 0.33 | **1.00** · 0.86 · **0.00** · 1.00 · **1.00** · **1.00** |
+| general_web (20) | 0.81 · 0.92 · 0.19 · 1.00 · 0.85 · 0.25 | 0.77 · 0.92 · 0.23 · 1.00 · 0.80 · 1.00 | 0.82 · 0.92 · 0.18 · 0.96 · 0.85 · 0.25 | 0.91 · 0.92 · 0.09 · 0.96 · 0.95 · 1.00 |
+
+Standalone mode is unchanged (it already uses the gold question). The pools were captured with the S2-era queries, so these numbers only show how a better query **ranks the old pool**; the live table in the S6 progress-log row shows what the new queries **retrieve**.
+
+The one token regression (multi_turn abstain_correct 0.50 → 0.33, category tolerance 0.17) is `kq_affirmation_followup`. Its pool, captured for the query "Yes, please.", holds only "Yes, please" dictionary pages. With the S6 query the legacy web gate keeps two of them instead of keeping nothing. That is a legacy-gate weakness on a stale pool, and S7 replaces that gate; live, the S6 query retrieves the right pages.
 
 ### Git reference
 

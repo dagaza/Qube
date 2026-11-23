@@ -10,6 +10,13 @@ from typing import Any
 from core.composer_attachments import is_web_composer_tool
 from core.composer_skills import substantive_composer_prompt
 from core.discourse_acronyms import expand_acronyms, extract_acronym_definitions
+from core.discourse_subject import (
+    RELATION_CONTINUATION,
+    RELATION_NO_PRIOR,
+    compose_retrieval_text,
+    has_back_reference,
+    track_subject,
+)
 from core.discourse_intent import FOLLOW_UP_SUPPRESS_THRESHOLD, FollowUpClassification
 from core.discourse_patterns import (
     has_possessive_anaphor,
@@ -89,6 +96,10 @@ class ResolvedRetrievalQuery:
     # ``"acronym_expansion"`` when that was the only rewrite; otherwise it keeps
     # the discourse reason and this field records the expansion.
     acronym_expansions: tuple[tuple[str, str], ...] = ()
+    # Plan S6: conversation subject / facet / relation behind ``web_text``.
+    web_subject: str | None = None
+    web_facet: str | None = None
+    web_subject_relation: str = "no_prior"
 
     @property
     def web_rewritten(self) -> bool:
@@ -108,6 +119,10 @@ class ResolvedRetrievalQuery:
             "resolved_query_web": self.web_text,
             "web_query_rewrite_reason": self.web_rewrite_reason,
         }
+        if self.web_subject_relation != "no_prior" or self.web_subject:
+            out["web_query_subject"] = self.web_subject
+            out["web_query_facet"] = self.web_facet
+            out["web_query_subject_relation"] = self.web_subject_relation
         if self.acronym_expansions:
             out["web_query_acronym_expansions"] = [
                 f"{acronym}={long_form}" for acronym, long_form in self.acronym_expansions
@@ -146,12 +161,12 @@ def build_resolved_retrieval_query(
         meta_prompt=raw,
         web_tool_attached=web_tool_attached,
     )
+    web_text, web_reason, track = _subject_web_target(
+        raw, inference, web_target, discourse, history
+    )
     # An acronym defined earlier in the conversation is a safe signal on its
     # own, so this runs whether or not the turn was classified as a follow-up.
-    web_text, expansions = expand_acronyms(
-        web_target.query, extract_acronym_definitions(history)
-    )
-    web_reason = web_target.rewrite_reason
+    web_text, expansions = expand_acronyms(web_text, extract_acronym_definitions(history))
     if expansions and web_reason == "none":
         web_reason = "acronym_expansion"
     inf_reason = "none"
@@ -169,7 +184,52 @@ def build_resolved_retrieval_query(
         inference_rewrite_reason=inf_reason,
         inference_confidence=inf_conf,
         acronym_expansions=tuple(expansions),
+        web_subject=track.subject if track else None,
+        web_facet=track.facet if track else None,
+        web_subject_relation=track.relation if track else "no_prior",
     )
+
+
+_REGARDING_PREFIX = re.compile(r"^Regarding\s+(.+?):\s+(?:(.+?):\s+)?", re.S)
+
+
+def _subject_web_target(
+    raw: str,
+    inference: str,
+    web_target: SearchTargetResult,
+    discourse: DiscourseState | None,
+    history: list[dict[str, Any]] | None,
+):
+    """Web search text from the conversation subject (plan S6).
+
+    * meta web request ("search for the answer") — unchanged (prior turn);
+    * discourse disabled — unchanged (legacy);
+    * the turn continues the tracked subject — subject + facet + cleaned turn;
+    * the turn has its own subject, or is unrelated — no anchor at all, even if
+      the legacy follow-up anchor would have added one;
+    * no subject in history — the legacy result, without a "Regarding X:" prefix.
+
+    Returns ``(text, rewrite_reason, track)``; ``track`` is ``None`` when the
+    subject tracker was not consulted.
+    """
+    if web_target.rewrite_reason == "meta_prior_turn" or discourse is None:
+        return web_target.query, web_target.rewrite_reason, None
+    track = track_subject(history, raw)
+    if track.relation == RELATION_CONTINUATION:
+        if inference.strip() != raw.strip() and not has_back_reference(inference):
+            # The inference rewrite already resolved the reference ("And its
+            # population?" -> "What is the population of Kathmandu?").
+            return inference, "none", track
+        composed = compose_retrieval_text(inference, track)
+        if composed and composed.strip() != inference.strip():
+            return composed, "topic_expansion", track
+        return inference, "none", track
+    if track.relation != RELATION_NO_PRIOR:
+        return inference, "none", track
+    text = web_target.query
+    if web_target.rewrite_reason in ("topic_expansion", "referent_expansion"):
+        text = _REGARDING_PREFIX.sub(lambda m: f"{m.group(1)} {m.group(2) + ' ' if m.group(2) else ''}", text)
+    return text, web_target.rewrite_reason, track
 
 
 def resolve_routing_query(

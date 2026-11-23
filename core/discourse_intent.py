@@ -31,6 +31,16 @@ class FollowUpKind(str, Enum):
 
 
 _WHY_HOW = re.compile(r"^\s*(why|how)\b", re.I)
+# Plan S6: "Yes, please tell me how …", "Sure, go on" continue the conversation.
+_AFFIRMATION_LEAD = re.compile(
+    r"^\s*(?:yes|yeah|yep|yup|sure|ok|okay|alright|absolutely|definitely|of course|please|"
+    r"go on|go ahead|continue|keep going)\b[\s,.!]*",
+    re.I,
+)
+_WHY_HOW_AFTER_FRAME = re.compile(
+    r"^(?:please\s+)?(?:(?:tell|show)\s+me|explain|describe)?\s*(?:more\s+)?(?:about\s+)?(why|how)\b",
+    re.I,
+)
 _COMPARE = re.compile(r"\b(compare|versus|vs\.?|difference between)\b", re.I)
 _EXPAND = re.compile(
     r"\b(expand on|elaborate|more detail|tell me more|go deeper|can you explain)\b",
@@ -257,13 +267,36 @@ def classify_follow_up(
         score = 0.58
         signals.append("what_about")
 
+    affirmation = _AFFIRMATION_LEAD.match(text)
+    if kind == FollowUpKind.NONE and affirmation:
+        rest = text[affirmation.end():]
+        if _WHY_HOW_AFTER_FRAME.match(rest):
+            kind = FollowUpKind.WHY_HOW
+            score = 0.62
+            signals.append("why_how_after_affirmation")
+        else:
+            kind = FollowUpKind.EXPAND
+            score = 0.60
+            signals.append("affirmation")
+
+    # The subject tracker (S6) decided this turn continues the conversation
+    # subject: a capitalised phrase in it is a facet ("how ANT analyzes
+    # Artificial Intelligence"), not a new entity.
+    subject_continuation = (
+        getattr(discourse_state, "subject_relation", None) == "continuation"
+        if discourse_state
+        else False
+    )
     tokens = _token_count(text)
     if tokens <= FOLLOW_UP_SHORT_TOKEN_MAX and not _has_explicit_entity(text):
         score += 0.08
         signals.append("short_query")
     elif _has_explicit_entity(text):
-        score -= 0.25
-        signals.append("explicit_entity_penalty")
+        if subject_continuation:
+            signals.append("facet_of_subject")
+        else:
+            score -= 0.25
+            signals.append("explicit_entity_penalty")
 
     active_referent = (
         getattr(discourse_state, "active_referent", None) if discourse_state else None
@@ -282,6 +315,15 @@ def classify_follow_up(
         kind = FollowUpKind.ELLIPSIS
         score = 0.50
         signals.append("ellipsis_short")
+
+    if subject_continuation:
+        if kind == FollowUpKind.NONE:
+            kind = FollowUpKind.ELLIPSIS
+            score = 0.0
+        floor = FOLLOW_UP_SUPPRESS_THRESHOLD + 0.03
+        if score < floor:
+            score = floor
+        signals.append("subject_continuation")
 
     score = max(0.0, min(1.0, score))
     if kind == FollowUpKind.NONE:

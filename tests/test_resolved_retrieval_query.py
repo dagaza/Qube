@@ -11,7 +11,11 @@ _WS_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _WS_ROOT not in sys.path:
     sys.path.insert(0, _WS_ROOT)
 
-from core.discourse_intent import classify_follow_up  # noqa: E402
+from core.discourse_intent import (  # noqa: E402
+    FollowUpClassification,
+    FollowUpKind,
+    classify_follow_up,
+)
 from core.discourse_query import (  # noqa: E402
     SearchTargetResult,
     build_resolved_retrieval_query,
@@ -148,10 +152,16 @@ _FIXTURES = os.path.join(_WS_ROOT, "eval", "fixtures", "knowledge_quality")
 class TestAcronymExpansion(unittest.TestCase):
     """Plan S5: acronyms defined earlier expand into the web/retrieval query."""
 
-    def test_ant_follow_up_expands_without_follow_up_classification(self) -> None:
-        follow_up, _state, canonical = build_discourse_resolution(_ANT_TURN, _ANT_HISTORY)
-        # The production failure: the turn is not classified as a follow-up at all.
-        self.assertFalse(follow_up.active)
+    def test_expansion_does_not_need_a_follow_up_classification(self) -> None:
+        # S5: a definition in history is enough, even when the turn is not a
+        # follow-up and discourse tracking is off.
+        canonical = build_resolved_retrieval_query(
+            raw_text=_ANT_TURN,
+            inference_text=_ANT_TURN,
+            follow_up=FollowUpClassification(FollowUpKind.NONE, 0.0),
+            discourse=None,
+            history=_ANT_HISTORY,
+        )
         self.assertIn("Actor-network theory (ANT)", canonical.web_text)
         self.assertEqual(canonical.web_rewrite_reason, "acronym_expansion")
         self.assertTrue(canonical.web_rewritten)
@@ -159,6 +169,23 @@ class TestAcronymExpansion(unittest.TestCase):
         telemetry = canonical.to_telemetry_dict()
         self.assertEqual(telemetry["web_query_rewrite_reason"], "acronym_expansion")
         self.assertEqual(telemetry["web_query_acronym_expansions"], ["ANT=Actor-network theory"])
+
+    def test_ant_follow_up_keeps_subject_with_facet(self) -> None:
+        # S6: the production failure was kind=NONE / confidence 0.0, and the
+        # facet "Artificial Inteligence" replaced the subject.
+        follow_up, state, canonical = build_discourse_resolution(_ANT_TURN, _ANT_HISTORY)
+        self.assertTrue(follow_up.active)
+        self.assertEqual(state.subject, "actor-network theory")
+        self.assertEqual(state.facet, "Artificial Inteligence")
+        self.assertEqual(state.subject_relation, "continuation")
+        self.assertEqual(
+            canonical.web_text, "actor-network theory how ANT analyzes Artificial Inteligence"
+        )
+        self.assertEqual(canonical.web_rewrite_reason, "topic_expansion")
+        self.assertNotIn("Regarding", canonical.web_text)
+        telemetry = canonical.to_telemetry_dict()
+        self.assertEqual(telemetry["web_query_subject"], "actor-network theory")
+        self.assertEqual(telemetry["web_query_subject_relation"], "continuation")
 
     def test_only_web_text_is_expanded(self) -> None:
         _fu, _state, canonical = build_discourse_resolution(_ANT_TURN, _ANT_HISTORY)
@@ -182,12 +209,15 @@ class TestAcronymExpansion(unittest.TestCase):
     def test_discourse_rewrite_reason_is_kept_alongside_expansion(self) -> None:
         # The worker keys flags on "topic_expansion" / "meta_prior_turn"; an
         # acronym expansion on top must not hide them.
+        # No user turn sets a subject here, so the legacy discourse anchor is
+        # used (S6 drops its "Regarding X:" prefix).
+        assistant_only = _ANT_HISTORY[1:]
         with patch(
             "core.discourse_query.resolve_search_target",
             return_value=SearchTargetResult("Regarding sociology: how ANT works", "topic_expansion"),
         ):
-            _fu, _state, canonical = build_discourse_resolution("how ANT works", _ANT_HISTORY)
-        self.assertEqual(canonical.web_text, "Regarding sociology: how Actor-network theory (ANT) works")
+            _fu, _state, canonical = build_discourse_resolution("how ANT works", assistant_only)
+        self.assertEqual(canonical.web_text, "sociology how Actor-network theory (ANT) works")
         self.assertEqual(canonical.web_rewrite_reason, "topic_expansion")
         self.assertEqual(canonical.acronym_expansions, (("ANT", "Actor-network theory"),))
 
