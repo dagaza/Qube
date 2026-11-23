@@ -72,7 +72,16 @@ class TranscriptWallpaperHost(QWidget):
         return self._surface_id
 
     def set_expensive_resize_paused(self, paused: bool) -> None:
-        self._expensive_resize_paused = bool(paused)
+        paused = bool(paused)
+        if paused == self._expensive_resize_paused:
+            return
+        self._expensive_resize_paused = paused
+        if paused:
+            self._resize_debounce.stop()
+            self._background_build_generation += 1
+            self._cache_build_pending = False
+            if not self._background_cache_is_current():
+                self._pending_resize_work = True
 
     def flush_pending_resize_work(self) -> None:
         if not self._pending_resize_work and self._background_cache_is_current():
@@ -130,6 +139,7 @@ class TranscriptWallpaperHost(QWidget):
     def _schedule_background_cache_build(self) -> None:
         if self._resize_builds_blocked():
             self._pending_resize_work = True
+            self._cache_build_pending = False
             return
         if self._cache_build_pending:
             return
@@ -367,6 +377,7 @@ class TranscriptWallpaperHost(QWidget):
 
         self._background_cache = pixmap
         self._background_cache_key = cache_key
+        self._cache_build_pending = False
         return pixmap
 
     def _paint_context(self) -> tuple[ResolvedTheme, SurfaceProfile, Any] | None:
