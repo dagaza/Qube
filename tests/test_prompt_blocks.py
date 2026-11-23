@@ -34,7 +34,7 @@ def _legacy_compose(
     engine_mode: str = "external",
     internal_nvidia: bool = False,
 ) -> str:
-    """Inline replica of pre-PR2 LLMWorker system_prompt assembly."""
+    """Inline replica of pre-PR2 LLMWorker system_prompt assembly (no date suffix)."""
     system_prompt = (
         "You are Qube, a highly capable offline AI assistant. "
         "Answer naturally and accurately."
@@ -76,14 +76,16 @@ def _legacy_compose(
                 system_prompt += NARRATIVE_RECALL_SYSTEM_SUFFIX
     elif route in ("WEB", "INTERNET"):
         system_prompt = (
-            "Real-time live web search results have been provided for this turn. "
-            "You MUST use the TOOLS context provided below to answer the user's query. "
+            "Retrieved sources have been provided for this turn. "
+            "Use them when they are relevant to the user's question. "
             "Do not state that you are offline or cannot browse the internet. "
             "CRITICAL: Respond directly to the user in a natural, conversational tone. "
             "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
             "Write only the user-facing response. "
-            "Cite using the numbered bracket ids from context ([1], [2], etc.)—"
-            "never echo SOURCE headers, never use Markdown links or URLs after citations."
+            "Cite using the numbered bracket ids from context ([1], [2], etc.) only when "
+            "a source supports the claim—"
+            "never echo SOURCE headers, never use Markdown links or URLs after citations. "
+            "If none of the sources are relevant, say so plainly first without brackets."
         )
         system_prompt += CITATION_DISCIPLINE_SUFFIX
     if engine_mode == "internal":
@@ -106,9 +108,15 @@ def _legacy_compose(
     return system_prompt
 
 
+def _blocks(**kwargs):
+    """build_prompt_blocks with date omitted for stable parity asserts."""
+    kwargs.setdefault("current_date", "")
+    return build_prompt_blocks(**kwargs)
+
+
 class TestPromptBlocks(unittest.TestCase):
     def test_parity_chat_none_internal(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="NONE",
             explicit_remember_active=False,
             engine_mode="internal",
@@ -122,7 +130,7 @@ class TestPromptBlocks(unittest.TestCase):
         ))
 
     def test_parity_no_sources_memory(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="MEMORY",
             explicit_remember_active=False,
             has_retrieval_sources=False,
@@ -141,7 +149,7 @@ class TestPromptBlocks(unittest.TestCase):
         )
 
     def test_parity_rag_with_sources_and_narrative(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="RAG",
             explicit_remember_active=False,
             has_retrieval_sources=True,
@@ -166,7 +174,7 @@ class TestPromptBlocks(unittest.TestCase):
         )
 
     def test_parity_web_route(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="WEB",
             explicit_remember_active=False,
             has_retrieval_sources=True,
@@ -186,7 +194,7 @@ class TestPromptBlocks(unittest.TestCase):
         )
 
     def test_parity_explicit_remember(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="MEMORY",
             explicit_remember_active=True,
             explicit_remember_body="My dog is named Rex",
@@ -204,7 +212,7 @@ class TestPromptBlocks(unittest.TestCase):
         )
 
     def test_render_injects_retrieval_on_last_user(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="RAG",
             explicit_remember_active=False,
             has_retrieval_sources=True,
@@ -221,7 +229,7 @@ class TestPromptBlocks(unittest.TestCase):
         self.assertIn("USER QUERY:\nWhat is X?", messages[-1]["content"])
 
     def test_explicit_remember_avoids_brand_persona(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="NONE",
             explicit_remember_active=True,
             explicit_remember_body="Favorite color is green",
@@ -231,7 +239,7 @@ class TestPromptBlocks(unittest.TestCase):
         self.assertIn("persisted automatically", sys_p)
 
     def test_web_route_avoids_brand_persona(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="WEB",
             explicit_remember_active=False,
             has_retrieval_sources=True,
@@ -240,32 +248,32 @@ class TestPromptBlocks(unittest.TestCase):
         )
         sys_p = compose_system_prompt(blocks)
         self.assertNotIn("You are Qube", sys_p)
-        self.assertIn("Real-time live web search results", sys_p)
+        self.assertIn("Retrieved sources have been provided for this turn", sys_p)
 
     def test_web_route_empty_results_uses_explicit_empty_suffix(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="WEB",
             explicit_remember_active=False,
             has_retrieval_sources=False,
             explicit_web_empty_results=True,
         )
         sys_p = compose_system_prompt(blocks)
-        self.assertNotIn("Real-time live web search results", sys_p)
+        self.assertNotIn("Retrieved sources have been provided for this turn", sys_p)
         self.assertIn(EXPLICIT_WEB_EMPTY_SUFFIX.strip()[:40], sys_p)
 
     def test_web_route_without_sources_defaults_to_empty_suffix(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="WEB",
             explicit_remember_active=False,
             has_retrieval_sources=False,
         )
         sys_p = compose_system_prompt(blocks)
-        self.assertNotIn("Real-time live web search results", sys_p)
+        self.assertNotIn("Retrieved sources have been provided for this turn", sys_p)
         self.assertIn(EXPLICIT_WEB_EMPTY_SUFFIX.strip()[:40], sys_p)
         self.assertTrue(blocks.no_sources_mode)
 
     def test_multi_web_suffix_forbids_w(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="WEB",
             explicit_remember_active=False,
             has_retrieval_sources=True,
@@ -276,7 +284,7 @@ class TestPromptBlocks(unittest.TestCase):
         self.assertIn("do NOT use [W] on this turn", sys_p)
 
     def test_web_retrieval_injects_citation_exemplar(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="WEB",
             explicit_remember_active=False,
             has_retrieval_sources=True,
@@ -288,7 +296,7 @@ class TestPromptBlocks(unittest.TestCase):
         messages = render_system_ok_messages(blocks)
         last = messages[-1]["content"]
         self.assertIn("=== CITATION FORMAT (follow exactly) ===", last)
-        self.assertIn("Every factual sentence using the source above must end with [1].", last)
+        self.assertIn("Cite [1] only on sentences that source directly supports.", last)
         self.assertIn("--- [1]: Example ---", last)
         q_idx = last.index("USER QUERY:")
         ex_idx = last.index("=== CITATION FORMAT (follow exactly) ===")
@@ -297,7 +305,7 @@ class TestPromptBlocks(unittest.TestCase):
         self.assertLess(ex_idx, q_idx)
 
     def test_web_multi_retrieval_exemplar_avoids_numeric_examples(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="WEB",
             explicit_remember_active=False,
             has_retrieval_sources=True,
@@ -314,7 +322,7 @@ class TestPromptBlocks(unittest.TestCase):
         self.assertNotIn("the same day [2]", last)
 
     def test_rag_retrieval_omits_web_citation_exemplar(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="RAG",
             explicit_remember_active=False,
             has_retrieval_sources=True,
@@ -329,14 +337,14 @@ class TestPromptBlocks(unittest.TestCase):
         )
 
     def test_base_chat_keeps_brand_persona(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="NONE",
             explicit_remember_active=False,
         )
         sys_p = compose_system_prompt(blocks)
         self.assertIn("You are Qube, a highly capable offline AI assistant.", sys_p)
 
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="NONE",
             explicit_remember_active=False,
             conversation_history=[{"role": "user", "content": "Hi"}],
@@ -350,7 +358,7 @@ class TestPromptBlocks(unittest.TestCase):
             "[Task decomposition] Break it down.\n"
             "=== END REASONING GUIDANCE ==="
         )
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="NONE",
             explicit_remember_active=False,
             skill_guidance=guidance,
@@ -360,7 +368,7 @@ class TestPromptBlocks(unittest.TestCase):
         self.assertIn("You are Qube", sys_p)
 
     def test_skill_guidance_skipped_on_explicit_remember(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="NONE",
             explicit_remember_active=True,
             explicit_remember_body="My cat is Rex",
@@ -370,7 +378,7 @@ class TestPromptBlocks(unittest.TestCase):
         self.assertNotIn("REASONING GUIDANCE", sys_p)
 
     def test_legal_sources_empty_blocks_parametric_case_law(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="WEB",
             explicit_remember_active=False,
             has_retrieval_sources=False,
@@ -382,7 +390,7 @@ class TestPromptBlocks(unittest.TestCase):
         self.assertTrue(blocks.no_sources_mode)
 
     def test_finance_sources_empty_blocks_parametric_filings(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="WEB",
             explicit_remember_active=False,
             has_retrieval_sources=False,
@@ -394,7 +402,7 @@ class TestPromptBlocks(unittest.TestCase):
         self.assertTrue(blocks.no_sources_mode)
 
     def test_composer_web_empty_uses_composer_suffix(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="WEB",
             explicit_remember_active=False,
             has_retrieval_sources=False,
@@ -407,7 +415,7 @@ class TestPromptBlocks(unittest.TestCase):
         self.assertNotIn("explicitly asked for an online/web search", sys_p)
 
     def test_prior_web_empty_follow_up_suffix(self) -> None:
-        blocks = build_prompt_blocks(
+        blocks = _blocks(
             execution_route="NONE",
             explicit_remember_active=False,
             has_retrieval_sources=False,

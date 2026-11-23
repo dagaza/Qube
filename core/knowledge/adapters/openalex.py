@@ -78,6 +78,20 @@ def search_openalex(
         pub_year = work.get("publication_year")
         pub_date = str(pub_year) if pub_year else None
         oa = work.get("open_access") if isinstance(work.get("open_access"), dict) else {}
+        work_type = str(work.get("type") or "").strip().lower()
+        source_type = str(source.get("type") or "").strip().lower()
+        is_preprint = work_type in {
+            "preprint",
+            "posted-content",
+            "working-paper",
+        } or source_type in {"repository", "preprint"}
+        # OpenAlex mixes journals, repositories, and gray literature; do not
+        # mark every work as peer-reviewed.
+        peer_reviewed = bool(
+            not is_preprint
+            and work_type in {"article", "journal-article", "review"}
+            and source_type in {"journal", "conference"}
+        )
         excerpt = abstract[:600] if abstract else title
         rows.append(
             {
@@ -90,10 +104,12 @@ def search_openalex(
                 "venue": venue or None,
                 "publication_date": pub_date,
                 "doi": doi,
-                "peer_reviewed": True,
-                "preprint": False,
+                "peer_reviewed": peer_reviewed,
+                "preprint": is_preprint,
                 "open_access": bool(oa.get("is_oa")) if oa else None,
-                "document_type": "journal_abstract",
+                "document_type": (
+                    "preprint" if is_preprint else "journal_abstract"
+                ),
             }
         )
     return rows

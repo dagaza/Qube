@@ -67,7 +67,7 @@ class WebVetoFallbackTests(unittest.TestCase):
             WEB_CAPABILITY_DISABLED_SUFFIX.strip()[:40],
             system,
         )
-        self.assertIn("live web search results", system.lower())
+        self.assertIn("retrieved sources have been provided", system.lower())
 
     def test_joke_query_without_live_web_intent(self):
         self.assertFalse(query_implies_live_web_intent("Tell me a joke."))

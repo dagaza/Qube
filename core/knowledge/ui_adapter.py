@@ -55,13 +55,30 @@ def source_provenance_metadata_parts(src: dict) -> list[str]:
     return parts
 
 
+# Prefer full abstract/body in the prompt over the short SERP-style excerpt.
+_PROMPT_SOURCE_BODY_CHARS = 1500
+
+
+def evidence_body_for_prompt(obj: EvidenceObject, *, char_budget: int = _PROMPT_SOURCE_BODY_CHARS) -> str:
+    """Best available source body for LLM context (full text preferred)."""
+    full = (obj.full_text or "").strip()
+    excerpt = (obj.excerpt or "").strip()
+    body = full if full else excerpt
+    if not body:
+        return ""
+    if char_budget <= 0 or len(body) <= char_budget:
+        return body
+    return _truncate_at_boundary(body, char_budget)
+
+
 def evidence_to_ui_source(obj: EvidenceObject, *, ui_id: int) -> dict:
     """Produce a legacy ``all_ui_sources`` row (additive evidence fields)."""
     source_type = "library" if obj.document_type == "library_chunk" else "web"
+    body = evidence_body_for_prompt(obj)
     row: dict = {
         "id": ui_id,
         "filename": obj.title,
-        "content": obj.excerpt,
+        "content": body or obj.excerpt,
         "type": source_type,
         "evidence_id": obj.id,
         "source_adapter": obj.adapter,
@@ -86,6 +103,10 @@ def evidence_to_ui_source(obj: EvidenceObject, *, ui_id: int) -> dict:
         row["preprint"] = True
     if obj.peer_reviewed is not None:
         row["peer_reviewed"] = bool(obj.peer_reviewed)
+    if obj.freshness_score is not None:
+        row["freshness_score"] = round(float(obj.freshness_score), 4)
+    if obj.reliability_score is not None:
+        row["reliability_score"] = round(float(obj.reliability_score), 4)
     # Capability provenance (cap: URN) for INSPECT / Sources, when the hit came
     # from a capability provider (e.g. MCP). Preserved end-to-end (P8, KI1).
     capability = (obj.raw_metadata or {}).get("capability")
@@ -133,7 +154,7 @@ def _truncate_at_boundary(text: str, char_budget: int) -> str:
     return re.sub(r"\w+$", "", truncated).rstrip() or truncated.rstrip()
 
 
-def _fit_source_blocks_to_budget(blocks: list[str], char_budget: int) -> str:
+def fit_source_blocks_to_budget(blocks: list[str], char_budget: int) -> str:
     if char_budget <= 0:
         return "\n\n".join(blocks)
 
@@ -194,7 +215,7 @@ def bundle_to_prompt_context(
         body_budget = max(0, char_budget - len(header_prefix))
         meta_allowance = min(len(meta_block) + 2, max(0, body_budget // 4))
         content_budget = max(0, body_budget - meta_allowance)
-        body = _fit_source_blocks_to_budget(source_blocks, content_budget)
+        body = fit_source_blocks_to_budget(source_blocks, content_budget)
         parts = [meta_block, body] if body else [meta_block]
         body = "\n\n".join(part for part in parts if part)
         if len(body) > body_budget:

@@ -426,10 +426,14 @@ FILE_SEARCH_SYSTEM_SUFFIX: str = (
 CITATION_DISCIPLINE_SUFFIX: str = (
     " NEVER reply with only a bracket citation token like [1], [2], or [W]. "
     "A citation annotates a sentence — it is never the whole answer. "
+    "Cite a source only for claims that source directly supports; do not "
+    "force a citation onto unrelated sentences. "
     "Always write a full natural-language reply that answers the user's "
     "question in your own words; place citations at the end of the "
-    "sentences they support. If none of the sources are relevant, "
-    "say so plainly in a sentence without brackets."
+    "sentences they support. "
+    "If the retrieved sources do not address the user's question, say so "
+    "clearly in the first sentence without bracket citations, then answer "
+    "from general knowledge only if you label that part as general knowledge."
 )
 
 

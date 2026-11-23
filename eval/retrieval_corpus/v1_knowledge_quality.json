@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "description": "Phase 0 knowledge-quality corpus: multi-turn composer follow-ups, relevance labels, and abstention cases. Offline fixtures live under eval/fixtures/knowledge_quality/.",
+  "phase0": {
+    "min_queries": 6,
+    "metrics": [
+      "composer_token_stripped",
+      "prompt_allows_abstention",
+      "evidence_pack_has_metadata",
+      "reject_title_ok",
+      "expect_topic_ok"
+    ]
+  },
+  "queries": [
+    {
+      "id": "kq_ant_ai_followup",
+      "fixture": "eval/fixtures/knowledge_quality/ant_ai_candidates.json",
+      "tool": "evidence",
+      "multi_turn": true,
+      "expect_abstention_allowed": true,
+      "expect_composer_token_stripped": true,
+      "notes": "Observed 2026-11-21 session 07014912 — ANT acronym collision with insect papers."
+    },
+    {
+      "id": "kq_ace_hf_single",
+      "query": "ACE inhibitors heart failure outcomes randomized trials",
+      "tool": "evidence",
+      "multi_turn": false,
+      "expect_any_tokens": ["ace", "angiotensin", "heart failure", "enalapril", "ramipril"],
+      "reject_title_patterns": ["takotsubo", "chemotherapy", "oncolog"],
+      "notes": "Baseline biomedical relevance (also covered by deep-research corpus)."
+    },
+    {
+      "id": "kq_trusted_who",
+      "query": "WHO air quality guidelines particulate matter",
+      "tool": "trusted",
+      "multi_turn": false,
+      "expect_any_tokens": ["who", "air quality", "particulate", "pm2.5"],
+      "notes": "Trusted / institutional authority path."
+    },
+    {
+      "id": "kq_affirmation_followup",
+      "history": [
+        {"role": "user", "content": "What is OAuth?"},
+        {
+          "role": "assistant",
+          "content": "OAuth is an authorization framework. Would you like an example of the authorization code flow?"
+        }
+      ],
+      "query": "Yes, please.",
+      "tool": "evidence",
+      "multi_turn": true,
+      "expect_topic_tokens": ["oauth", "authorization"],
+      "notes": "Affirmation continuation — discourse should retain OAuth as subject."
+    },
+    {
+      "id": "kq_no_good_sources",
+      "query": "How does actor-network theory analyze large language model deployment?",
+      "tool": "evidence",
+      "multi_turn": false,
+      "expect_abstention_allowed": true,
+      "reject_title_patterns": ["ant colon", "artificial ant"],
+      "notes": "If only swarm/XAI papers are returned, the model must be allowed to abstain."
+    },
+    {
+      "id": "kq_recency_news",
+      "query": "What is the latest US inflation rate?",
+      "tool": "internet",
+      "multi_turn": false,
+      "expect_any_tokens": ["inflation", "cpi", "bureau", "bls"],
+      "notes": "Recency-sensitive general web (Phase 1 date injection helps; Phase 2+ for freshness ranking)."
+    }
+  ]
+}

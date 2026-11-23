@@ -6,6 +6,7 @@ JSON query sets for live validation of Qube's external knowledge platform. Used 
 
 | File | Service | Purpose |
 |------|---------|---------|
+| `v1_knowledge_quality.json` | multi-tool | **Phase 0/1** — multi-turn composer follow-ups, abstention, offline fixtures under `eval/fixtures/knowledge_quality/` |
 | `v1_scientific.json` | `scientific_evidence` | **Phase 6c** — 12 discipline-tagged scholarly queries (`discipline` + `primary_adapter`) |
 | `v1_trusted.json` | `trusted_knowledge` | Phase 6 Slice 1 `@trusted` — Wikipedia-first, authority tiers |
 | `v1_finance.json` | `finance_knowledge` | Phase 6 Slice 5a `@finance` — SEC EDGAR filings |
