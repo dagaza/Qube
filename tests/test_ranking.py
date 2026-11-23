@@ -57,14 +57,25 @@ class TestRanking(unittest.TestCase):
     def test_mmr_prefers_adapter_diversity(self) -> None:
         dup = dict(_PUBMED)
         dup["title"] = "Semaglutide cardiovascular trial duplicate"
+        # Calibrated (un-normalised) relevance: near-equal scores (0.82 vs 0.75)
+        # let a different-index source beat a near-duplicate. This passed before
+        # 2026-11-23 only because of the relevance-misalignment bug; with the
+        # legacy min-max scaling the 0.07 gap becomes 1 vs 0 (see next test).
         selected = mmr_select_rows(
             [_PUBMED, dup, _OPENALEX],
             max_results=2,
+            normalize=False,
         )
         adapters = {r["_adapter"] for r in selected}
         self.assertEqual(len(selected), 2)
         self.assertIn("pubmed", adapters)
         self.assertIn("openalex", adapters)
+
+    def test_mmr_legacy_normalised_relevance_keeps_higher_row(self) -> None:
+        dup = dict(_PUBMED)
+        dup["title"] = "Semaglutide cardiovascular trial duplicate"
+        selected = mmr_select_rows([_PUBMED, dup, _OPENALEX], max_results=2)
+        self.assertEqual([r["title"] for r in selected], [_PUBMED["title"], dup["title"]])
 
     def test_reliability_scores_applied(self) -> None:
         scored = apply_reliability_scores([_PUBMED, _OPENALEX])

@@ -29,32 +29,44 @@ def mmr_select_rows(
     *,
     max_results: int,
     lambda_: float = MMR_LAMBDA,
+    normalize: bool = True,
 ) -> list[dict[str, Any]]:
-    """Maximal Marginal Relevance with adapter-diversity penalty."""
+    """Maximal Marginal Relevance with adapter-diversity penalty.
+
+    ``normalize=True`` (legacy token/embedding scores, compressed into a narrow
+    band) min-max scales relevance across the pool. ``normalize=False`` uses
+    ``_scientific_relevance`` as-is on its 0–1 scale; the S4 relevance gate
+    passes calibrated reranker probabilities that way.
+    """
     if not rows or max_results <= 0:
         return []
     if len(rows) <= max_results:
         return list(rows)
 
-    rel_scores = [float(r.get("_scientific_relevance") or 0.0) for r in rows]
+    rel_scores = [
+        max(0.0, min(1.0, float(r.get("_scientific_relevance") or 0.0))) for r in rows
+    ]
     lo = min(rel_scores)
-    hi = max(rel_scores)
-    span = hi - lo
+    span = max(rel_scores) - lo
 
-    def _norm_rel(idx: int) -> float:
+    def _rel(score: float) -> float:
+        if not normalize:
+            return score
         if span <= 1e-9:
-            return 1.0 if rel_scores[idx] > 0 else 0.0
-        return (rel_scores[idx] - lo) / span
+            return 1.0 if score > 0 else 0.0
+        return (score - lo) / span
 
+    # Relevance travels with its row. Fixed 2026-11-23 (S4 progress log): it was
+    # looked up by position in the shrinking ``remaining`` list, so after the
+    # first pick every candidate was scored with another row's relevance.
     selected: list[dict[str, Any]] = []
     selected_adapters: set[str] = set()
-    remaining = list(rows)
+    remaining = [(row, _rel(score)) for row, score in zip(rows, rel_scores)]
 
     while remaining and len(selected) < max_results:
         best_idx = 0
         best_mmr = float("-inf")
-        for idx, cand in enumerate(remaining):
-            rel = _norm_rel(idx)
+        for idx, (cand, rel) in enumerate(remaining):
             cand_text = _row_content(cand)
             max_sim = 0.0
             for picked in selected:
@@ -65,7 +77,7 @@ def mmr_select_rows(
             if mmr > best_mmr:
                 best_mmr = mmr
                 best_idx = idx
-        picked_row = remaining.pop(best_idx)
+        picked_row, _ = remaining.pop(best_idx)
         selected.append(picked_row)
         selected_adapters.add(_adapter_key(picked_row))
 
