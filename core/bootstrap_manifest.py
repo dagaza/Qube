@@ -125,18 +125,23 @@ BOOTSTRAP_MODELS: dict[BootstrapModelId, BootstrapModelSpec] = {
     BootstrapModelId.SEARCH_PRESET_BALANCED: BootstrapModelSpec(
         model_id=BootstrapModelId.SEARCH_PRESET_BALANCED,
         label="Balanced search",
-        size_bytes=130 * _MB,
+        # 130 MB embedding preset + ~87 MB cross-encoder relevance reranker (S3, D1).
+        size_bytes=217 * _MB,
         description_recommended=(
-            "Default search quality for library uploads and memory retrieval (Required)"
+            "Default search quality for library uploads, memory retrieval and "
+            "source relevance ranking (Required)"
         ),
         description_advanced=(
-            "Core semantic search for library and memory. "
+            "Core semantic search for library and memory, plus the relevance reranker "
+            "for web/knowledge sources. "
             "(Unchecking disables library uploads and memory retrieval)"
         ),
         locked_in_recommended=True,
         default_recommended=True,
         default_advanced=True,
-        source_display="fastembed / jinaai/jina-embeddings-v2-small-en",
+        source_display=(
+            "fastembed / jinaai/jina-embeddings-v2-small-en + Xenova/ms-marco-MiniLM-L-6-v2"
+        ),
     ),
     BootstrapModelId.LLM_QWEN35_9B: BootstrapModelSpec(
         model_id=BootstrapModelId.LLM_QWEN35_9B,

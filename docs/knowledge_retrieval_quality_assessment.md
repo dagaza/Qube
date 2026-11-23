@@ -598,6 +598,23 @@ flowchart LR
   - a frozen-build smoke test loads the model
   - the app is unchanged with the model absent
 - **Dependencies:** S1 (and S2 for meaningful numbers).
+- **As built (2026-11-23):**
+  - `core/knowledge/ranking/rerank.py` implements the API above. It never raises. Skip reasons are recorded in `rel_diag["rerank"]["skipped_reason"]`:
+    - `disabled`, `model_missing`, `load_failed` (5-minute retry back-off), `non_english`, `empty`, `error`
+    - `no_content` (new): content-free turns such as "Yes, please." or "tell me more". The S3 eval showed the cross-encoder scores these literally; it ranked dictionary pages for "Yes, please." highest. They stay on the legacy scorer until S5/S6 supply a real question.
+    - `cold`: the model is on disk but not loaded yet. The shadow pass starts a background warm-up and skips this turn rather than loading on the critical path.
+  - **Shadow placement:** the shadow pass runs in `pipeline_scientific.run()` right after `_rank_candidates` and the slot guarantees, not inside `_rank_candidates`. That function therefore stays reranker-free, and the `token` / `embed` eval rankers keep measuring the legacy path with no extra flag. S4 must add the explicit disable switch when it moves the reranker into selection.
+    - Kept rows are **copies**: `_rerank_score` never touches cached rows.
+    - Bundle builders copy fields explicitly, so the score never reaches the prompt.
+    - `rel_diag["rerank"]` is persisted verbatim in the retrieval trace.
+  - **Provisioning:**
+    - The reranker is bundled into the existing **Balanced search** bootstrap entry, now 217 MB, instead of a new consent row. It downloads after the embedding preset through the same streamed `.part` helper.
+    - `selected_models_needing_download` also flags Balanced search when only the reranker is missing, so existing installs fetch it on their next start. A failure becomes a non-fatal splash error ("continuing with available models"), and retrieval is unaffected. A failure marker (`~/.qube/models/search/reranker.download_failed`) stops startup retrying for 24 h, so offline installs do not hit the error on every launch. The Settings button ignores the back-off and clears the marker on success.
+    - When the setting is off, nothing is downloaded.
+    - Settings → Knowledge → Search quality gets the toggle and a "Download relevance reranker" row that is visible only while the reranker is enabled and missing. The toggle is included in the Knowledge section reset.
+  - **Warm-up:** lazy. The first scientific turn, or switching the toggle on, starts a background load (~160 ms). No load happens at startup, so users who never use knowledge pay no ~150 MB RSS. S4 can load synchronously (~160 ms) if a cold first turn must be gated.
+  - **Packaging:** `qube.spec` adds the hidden import `fastembed.rerank.cross_encoder`, because `fastembed/__init__` does not import its rerank package. A frozen-build smoke test was **not run**: no frozen build environment is available on this machine. It is still open before release.
+  - **Shadow cost:** each scientific turn now pays the rerank latency (p95 0.67 s at 4 threads for 40 rows) for diagnostics only. Typical pools are smaller than 40 rows.
 
 #### S4 — Scientific sufficiency gate + honest "found but not relevant"
 
@@ -947,7 +964,7 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 ## Implementation progress log
 
 > **Do not edit sections 1–11 above.** Record shipped work here only.  
-> **Last reviewed:** 2026-11-23, S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
+> **Last reviewed:** 2026-11-23, S3 complete (§12.4 S3, shadow only); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
 
 ### Summary
 
@@ -993,6 +1010,15 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 | 2026-11-23 | S2 | Findings V13–V16 | Done | §12.1: trusted path keeps Wikipedia unchecked (V13); web pool is 3 rows (V14); DuckDuckGo challenge / burst budget silently degrades web search to Wikipedia and is logged as a bot challenge (V15); 6 of 7 multi-turn cases send the raw follow-up (V16) | S5, S7, S8, S12 updated |
 | 2026-11-23 | S2 | Tests | Done | `tests/test_knowledge_quality_eval.py`: +19 tests. Covers captured-pool rebuild (depth, adapter order, variants, fallback), derived `expect` (including an unlabelled pool giving no verdict and an empty pool expecting abstention), degraded-capture validation, path-faithful rankers, and S2 corpus-composition acceptance (≥ 45 cases, ≥ 12 `general_web`, ≥ 4 recency, ≥ 6 multi-turn with gold slots, every production pool fully labelled, ≥ 400 labels, ≥ 8 `insufficient`). Full suite (verbose): **3879 passed** (3860 + 19). The 8 failures are **identical** to the S1 baseline set; one of them is order-dependent and passes in isolation. The suite still aborts at Qt teardown (pre-existing). | — |
 | 2026-11-23 | S2 | Baselines | Done | Per-path and per-category tables below; JSON in `eval/retrieval_corpus/baselines/` | — |
+| 2026-11-23 | S3 | Reranker module | Done | `core/knowledge/ranking/rerank.py`: `Xenova/ms-marco-MiniLM-L-6-v2` through fastembed `TextCrossEncoder`, offline from `~/.qube/models/search/reranker/`, `threads=min(4, physical cores)`. It never raises, and every skip records a reason. | Multilingual is future work (§12.7, D4) |
+| 2026-11-23 | S3 | Setting | Done | `core/app_settings.py` `get/set_knowledge_reranker_enabled` (default on); in `core/settings_section_reset.py` Knowledge keys | — |
+| 2026-11-23 | S3 | Provisioning (D1) | Done | `core/bootstrap_search_download.py` (`RERANKER_DOWNLOAD_SPEC`, `download_reranker`, `reranker_complete`); bundled into Balanced search in `core/bootstrap_download.py` / `core/bootstrap_manifest.py` (217 MB) / `core/bootstrap_hf_metadata.py`. Existing installs fetch it on the next start. Failures are non-fatal. Settings → Knowledge → Search quality has the toggle and a download row. | — |
+| 2026-11-23 | S3 | Shadow scoring | Done | `pipeline_scientific.run()` → `shadow_rerank()`; `rel_diag["rerank"]` records `model, mode, question, pool_size, latency_ms, scored, top_scores, kept_scores, kept_below_threshold, would_keep_count, would_state` (or `skipped_reason`) and is persisted in the retrieval trace. **Selection unchanged.** | General web / trusted / finance shadow comes with S7/S8 |
+| 2026-11-23 | S3 | Eval `ce` ranker | Done | `quality_eval._build_ce_ranker`: score the pool, keep rows above 0 up to the budget, and abstain when none pass. Content-free / non-English questions fall back to `token`. `--ranker ce` table below. | Threshold 0 is provisional; S4 tunes it on S2 |
+| 2026-11-23 | S3 | Kept-identical check | Done | `token` / `embed` × production / standalone vs `kq_s2_*` baselines: kept titles identical on all 48 fixtures, aggregates byte-equal, 0 regressions. Pipeline test `ScientificPipelineShadowTests`: identical source ids with shadow on and off. | — |
+| 2026-11-23 | S3 | Latency (dev laptop, 40 × ~794-char docs, 20 runs) | Done | 4 threads: load 159 ms, p50 629 ms, **p95 670 ms** (≤ 1.0 s ✓). 2 threads: p50 1042 ms, p95 1119 ms. | 2-thread hardware exceeds 1 s; S4 may cap at 24–30 rows on low-core machines |
+| 2026-11-23 | S3 | Packaging | Partial | `qube.spec` hidden import `fastembed.rerank.cross_encoder` | **Frozen-build smoke test not run** (no build env here) — do before release |
+| 2026-11-23 | S3 | Tests | Done | `tests/test_knowledge_rerank.py` (28 tests: row text, scoring contract, availability, back-off, thread cap, language and content guards, shadow diag, `ce` ranker, pipeline on/off identity plus trace persistence, download spec, real-model integration, skipped when absent); `tests/test_bootstrap_search_download.py` +6 (bundled download, disabled → no download, failure non-fatal, needing-download detection, 24 h failure back-off). | — |
 | 2026-11-23 | — | **R4** sufficiency gate / drop weak sources before prompt | Not done | — | **S4** |
 | 2026-11-23 | — | **R3** cross-encoder reranker (fastembed `TextCrossEncoder`) | Not done | Feasibility validated (§12.1 V1, V2, V5, V12) | **S3** (shadow) → S4 / S7 |
 | 2026-11-23 | — | **R1** QueryPlan / multi-query / subject+facet discourse | Not done | LLM plan latency measured: 3–21 s on CPU (§12.1 V6) | Deterministic first: **S5, S6**; gated LLM fallback: **S9** |
@@ -1128,6 +1154,26 @@ What the baseline says, in priority order:
 - trusted_cdc_mmr_doses #2/#12: Polio / HPV vaccine (Wikipedia, kept unconditionally today) -> irrelevant; #3 Vaccines and autism -> irrelevant.
 - trusted_census_texas_population #0 Collin County / #3 United States (Wikipedia; kept unconditionally today) -> irrelevant; #1 Demographics of the US -> partial; #13 2020 decennial figure (not latest estimate) -> relevant.
 - trusted_abstain_fictional #3/#8–#14: real Latera nasal-implant guidance/policies -> irrelevant (different device; Varnex-7 is fictional).
+
+**S3 `--ranker ce` vs S2 token baseline** (48 fixtures, production pool, budget 3). Cells: P@3 · nDCG@5 · irrelevant_kept · abstain_correct.
+
+| Group | n | token / production | **ce / production** | token / standalone | **ce / standalone** |
+|-------|---|--------------------|---------------------|--------------------|---------------------|
+| all | 48 | 0.71 · 0.75 · 0.29 · 0.83 | **0.89 · 0.84 · 0.11 · 0.94** | 0.77 · 0.76 · 0.23 · 0.90 | **0.96 · 0.84 · 0.04 · 1.00** |
+| scientific_evidence | 21 | 0.62 · 0.66 · 0.38 · 0.76 | **0.93 · 0.78 · 0.07 · 1.00** | 0.65 · 0.64 · 0.35 · 0.86 | **0.92 · 0.77 · 0.08 · 1.00** |
+| general_web | 20 | 0.81 · 0.92 · 0.19 · 0.85 | 0.82 · 0.92 · 0.18 · 0.85 | 0.93 · 0.95 · 0.07 · 0.95 | 0.98 · 0.92 · 0.02 · 1.00 |
+| trusted_knowledge | 5 | 0.75 · 0.34 · 0.25 · 1.00 | **1.00 · 0.74 · 0.00 · 1.00** | 0.71 · 0.32 · 0.29 · 1.00 | **1.00 · 0.72 · 0.00 · 1.00** |
+| finance_knowledge | 2 | 0.67 · 1.00 · 0.33 · 1.00 | 1.00 · 1.00 · 0.00 · 1.00 | 0.50 · 1.00 · 0.50 · 0.50 | 1.00 · 1.00 · 0.00 · 1.00 |
+| abstain | 5 | 0.08 · 0.17 · 0.92 · 0.40 | 0.25 · 0.21 · 0.75 · 0.80 | 0.08 · 0.17 · 0.92 · 0.40 | 0.50 · 0.21 · 0.50 · 1.00 |
+| multi_turn | 6 | 0.27 · 0.58 · 0.73 · 0.50 | 0.50 · 0.86 · 0.50 · 0.67 | 0.94 · 0.85 · 0.06 · 1.00 | 1.00 · 0.94 · 0.00 · 1.00 |
+| sts_humanities | 4 | 0.33 · 0.53 · 0.67 · 0.50 | 1.00 · 0.82 · 0.00 · 1.00 | 0.58 · 0.68 · 0.42 · 0.75 | 1.00 · 0.85 · 0.00 · 1.00 |
+| recency | 4 | 0.83 · 0.88 · 0.17 · 1.00 | 0.88 · 0.79 · 0.12 · 1.00 | 0.88 · 0.85 · 0.12 · 1.00 | 0.92 · 0.78 · 0.08 · 1.00 |
+
+What S3 shows (input to S4/S7, nothing is enforced yet):
+1. **The cross-encoder is the relevance scale the plan assumed.** On scientific it takes irrelevant_kept from 0.38 to 0.07 and abstain_correct to 1.00. The fictional-drug and city-council cases now abstain correctly at threshold 0. Trusted nDCG goes from 0.34 to 0.74 once Wikipedia is no longer placed first by default.
+2. **Query resolution still matters (S5/S6).** CE plus the production query fixes only part of multi_turn (P@3 0.27 → 0.50). CE plus standalone reaches 1.00. Content-free follow-ups need the `no_content` guard, and before it the eval kept dictionary pages for "Yes, please.".
+3. **Threshold 0 almost solves abstention.** With the standalone question, all 5 abstain cases are correct. With the production query, the web fictional toaster still keeps one wrong-product page ("Manually Update Firmware on Toast Flex"), which scores above 0. S4/S7 should tune the threshold on S2, and S5 should keep the product name in the query. A kept `partial` case (`kq_no_good_sources`) is correct by the rubric, but its kept SCALAR paper is off-topic, so precision there stays low (0.50 in the standalone column).
+4. **General web has no regression but some trade-offs.** P@3 is equal or better, nDCG dips slightly on recency (CE keeps 2 instead of 3 on CPI / Python release), and relevant_recall goes 1.00 → 0.96. S7 must keep the "≥ 2 kept" floor for sufficient web answers.
 
 ### Git reference
 

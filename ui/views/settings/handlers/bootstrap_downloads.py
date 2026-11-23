@@ -79,6 +79,32 @@ class EmbeddingWarmupWorker(QThread):
             self.failed.emit(str(exc))
 
 
+class RerankerDownloadWorker(QThread):
+    """Download the knowledge relevance reranker (plan S3)."""
+
+    finished_ok = pyqtSignal()
+    failed = pyqtSignal(str)
+
+    def run(self) -> None:
+        try:
+            from core.bootstrap_search_download import download_reranker_no_progress
+
+            download_reranker_no_progress()
+            from core.bootstrap_download import _clear_reranker_download_failed
+
+            _clear_reranker_download_failed()
+            from core.knowledge.ranking.rerank import warm_up_reranker_async
+
+            warm_up_reranker_async()
+            self.finished_ok.emit()
+        except Exception as exc:
+            logger.exception("Relevance reranker download failed")
+            self.failed.emit(
+                "Could not download the relevance reranker. Check your internet "
+                f"connection and try again.\n\n{exc}"
+            )
+
+
 def make_bootstrap_download_row(
     host,
     *,
@@ -207,6 +233,54 @@ class BootstrapDownloadsHandlersMixin:
                 self.window(),
                 "Search models not ready",
                 str(err or "Could not prepare search models."),
+                is_dark=is_dark,
+                tone="danger",
+            ).exec()
+
+        worker.finished_ok.connect(_on_ok)
+        worker.failed.connect(_on_failed)
+        worker.start()
+
+    def _download_relevance_reranker(self) -> None:
+        is_dark = getattr(self.window(), "_is_dark_theme", True)
+        if getattr(self, "_reranker_download_worker", None) is not None:
+            PrestigeDialog(
+                self.window(),
+                "Download in progress",
+                "The relevance reranker is already downloading.",
+                is_dark=is_dark,
+            ).exec()
+            return
+        worker = RerankerDownloadWorker()
+        self._reranker_download_worker = worker
+        self._reranker_download_dialog = PrestigeDialog(
+            self.window(),
+            "Downloading relevance reranker",
+            "Downloading the relevance reranker (~87 MB)…",
+            is_dark=is_dark,
+            show_cancel=False,
+        )
+        self._reranker_download_dialog.show()
+
+        def _close_dialog(accept: bool) -> None:
+            try:
+                dlg = getattr(self, "_reranker_download_dialog", None)
+                if dlg is not None:
+                    dlg.accept() if accept else dlg.reject()
+            except Exception:
+                pass
+            self._reranker_download_worker = None
+
+        def _on_ok() -> None:
+            _close_dialog(True)
+            self._sync_bootstrap_download_visibility()
+
+        def _on_failed(err: str) -> None:
+            _close_dialog(False)
+            PrestigeDialog(
+                self.window(),
+                "Download failed",
+                str(err or "Relevance reranker download failed."),
                 is_dark=is_dark,
                 tone="danger",
             ).exec()
@@ -422,6 +496,7 @@ class BootstrapDownloadsHandlersMixin:
             active_search_preset_satisfied,
             all_search_presets_satisfied,
         )
+        from core.bootstrap_download import search_reranker_missing
 
         rows = (
             ("stt_bootstrap_download_row", stt_model_available),
@@ -431,6 +506,7 @@ class BootstrapDownloadsHandlersMixin:
                 active_search_preset_satisfied,
             ),
             ("embedding_all_presets_download_row", all_search_presets_satisfied),
+            ("reranker_bootstrap_download_row", lambda: not search_reranker_missing()),
             ("cognition_bootstrap_download_row", cognition_model_present),
         )
         tour = getattr(self, "_tour_knowledge_bootstrap_preview_active", False)

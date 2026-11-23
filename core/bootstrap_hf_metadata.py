@@ -110,7 +110,10 @@ def resolve_bootstrap_size(model_id: BootstrapModelId) -> ResolvedBootstrapSize:
             model_id=model_id,
             size_bytes=fallback,
             source=BootstrapSizeSource.ESTIMATE,
-            detail=f"fastembed ONNX preset ({mode_spec.fastembed_model})",
+            detail=(
+                f"fastembed ONNX preset ({mode_spec.fastembed_model}) + relevance reranker "
+                "(Xenova/ms-marco-MiniLM-L-6-v2)"
+            ),
         )
 
     if not spec.hf_repo or not spec.hf_filename:

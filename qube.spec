@@ -81,6 +81,9 @@ _hidden_imports = [
     # Lazy-imported by core/knowledge/discovery/ddg_http.py (browser-like DDG requests)
     "curl_cffi",
     "curl_cffi.requests",
+    # Lazy-imported by core/knowledge/ranking/rerank.py (relevance reranker, plan S3);
+    # fastembed/__init__ does not import its rerank package.
+    "fastembed.rerank.cross_encoder",
 ]
 _excludes = []
 if _IS_MACOS:

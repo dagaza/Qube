@@ -520,7 +520,42 @@ def _build_embed_ranker() -> RankerFn:
     return rank
 
 
-RANKER_NAMES: tuple[str, ...] = ("token", "embed")
+def _build_ce_ranker() -> RankerFn:
+    """Cross-encoder gate ranker (S3 ``ce``): what S4/S7 selection would do.
+
+    Path-agnostic: score the pool (first 40 rows, adapter order), keep rows above
+    ``rerank.SHADOW_KEEP_THRESHOLD`` in descending score order up to the budget;
+    state from the kept count (≥ 2 sufficient, 1 partial, 0 insufficient →
+    abstain). Raises ``RankerUnavailable`` when the model is not on disk. Never
+    touches production state; the ``token`` / ``embed`` rankers keep measuring
+    the legacy path.
+    """
+    from core.knowledge.ranking import rerank
+
+    reason = rerank.unavailable_reason()
+    if reason is not None:
+        raise RankerUnavailable(f"cross-encoder reranker unavailable ({reason})")
+
+    def rank(query: str, rows: list[dict[str, Any]], budget: int, path: str = PATH_SCIENTIFIC) -> RankerOutput:
+        pool = list(rows)
+        result = rerank.rerank_rows(query, pool)
+        if result is None:
+            # Non-English / empty question or scoring failure: production keeps the
+            # legacy scorer (D4), so the eval does too.
+            return _token_ranker(query, rows, budget, path)
+        scored = list(zip(pool, result.scores))
+        for row, score in scored:
+            row["_rerank_score"] = float(score)
+        ordered = sorted(scored, key=lambda item: item[1], reverse=True)
+        kept = [r for r, s in ordered if s > rerank.SHADOW_KEEP_THRESHOLD][: max(0, budget)]
+        kept_ids = {id(r) for r in kept}
+        rejected = [r for r in pool if id(r) not in kept_ids]
+        return RankerOutput(kept=kept, rejected=rejected, state=rerank.shadow_state(len(kept)))
+
+    return rank
+
+
+RANKER_NAMES: tuple[str, ...] = ("token", "embed", "ce")
 
 
 def get_fixture_ranker(name: str) -> RankerFn:
@@ -530,6 +565,8 @@ def get_fixture_ranker(name: str) -> RankerFn:
         return _token_ranker
     if key == "embed":
         return _build_embed_ranker()
+    if key == "ce":
+        return _build_ce_ranker()
     raise RankerUnavailable(f"unknown ranker {name!r}; choose from {RANKER_NAMES}")
 
 

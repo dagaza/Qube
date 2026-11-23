@@ -70,6 +70,7 @@ KEY_RXNORM_ENTITY_LOOKUP_ENABLED = "qube.knowledge.rxnorm_entity_lookup_enabled"
 KEY_DEEP_RESEARCH_ENABLED = "qube.knowledge.deep_research_enabled"  # legacy; ignored
 KEY_DEEP_RESEARCH_PROFILE = "qube.knowledge.deep_research_profile"
 KEY_KNOWLEDGE_SOURCE_PREFERENCES = "qube.knowledge.source_preferences"
+KEY_KNOWLEDGE_RERANKER_ENABLED = "qube.knowledge.reranker.enabled"
 KEY_KNOWLEDGE_PROVIDER_CREDENTIALS = "qube.knowledge.provider_credentials"
 KEY_DEFAULT_KNOWLEDGE_SERVICE = "qube.knowledge.default_service"
 KEY_SKILLS_ENABLED = "qube.skills.enabled"
@@ -582,6 +583,19 @@ def set_knowledge_provider_credentials(credentials: dict[str, dict[str, str]]) -
         KEY_KNOWLEDGE_PROVIDER_CREDENTIALS,
         normalize_provider_credentials(credentials),
     )
+
+
+def get_knowledge_reranker_enabled() -> bool:
+    """Cross-encoder relevance reranking for knowledge retrieval (default on).
+
+    Effective only when the reranker model is on disk; see
+    ``core.knowledge.ranking.rerank.reranker_available``.
+    """
+    return bool(_store().get(KEY_KNOWLEDGE_RERANKER_ENABLED, True))
+
+
+def set_knowledge_reranker_enabled(enabled: bool) -> None:
+    _store().set(KEY_KNOWLEDGE_RERANKER_ENABLED, bool(enabled))
 
 
 def get_default_knowledge_service() -> str:

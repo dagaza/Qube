@@ -361,10 +361,21 @@ class ScientificEvidencePipeline:
             query=query,
             max_results=budget,
         )
+        # S3 shadow scoring: cross-encoder scores over the whole pool are recorded
+        # for calibration; ``kept`` (order and membership) is unchanged.
+        from core.knowledge.ranking.rerank import shadow_rerank
+
+        kept, rerank_diag = shadow_rerank(
+            semantic or query,
+            candidates,
+            kept,
+            budget=budget,
+        )
         latency_ms = (time.time() - t0) * 1000
 
         if not kept:
             rel_diag_empty = {
+                "rerank": rerank_diag,
                 "scientific_relevance_dropped": len(rejected),
                 "scientific_adapters_selected": list(adapter_ids),
                 "scientific_discipline": discipline_match.discipline,
@@ -422,6 +433,7 @@ class ScientificEvidencePipeline:
         if conflicts:
             bundle = _bundle_with_conflicts(bundle, conflicts)
         rel_diag = {
+            "rerank": rerank_diag,
             "scientific_relevance_dropped": len(rejected),
             "scientific_avg_relevance": round(avg_rel, 4),
             "scientific_cache_hit": cached is not None,
