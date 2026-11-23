@@ -28,6 +28,15 @@ def test_resolve_preset_download_spec_balanced_jina_repo():
     assert "preprocessor_config.json" not in spec.files
 
 
+def test_canonical_hf_repo_keeps_known_casing_and_passes_unknown_through():
+    from core.bootstrap_search_download import _canonical_hf_repo
+
+    assert _canonical_hf_repo("balanced", "xenova/jina-embeddings-v2-small-en") == (
+        "Xenova/jina-embeddings-v2-small-en"
+    )
+    assert _canonical_hf_repo("balanced", "someone/other-model") == "someone/other-model"
+
+
 def test_sanitize_hub_repo_file_path_allows_onnx_and_tokenizer_assets():
     assert _sanitize_hub_repo_file_path("onnx/model.onnx") == "onnx/model.onnx"
     assert _sanitize_hub_repo_file_path("config.json") == "config.json"

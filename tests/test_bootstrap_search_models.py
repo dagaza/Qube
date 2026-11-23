@@ -144,7 +144,18 @@ def test_embedding_preset_cached_on_disk_matches_qdrant_fastembed_layout():
 
 
 def test_embedding_preset_cached_on_disk_checks_hf_hub_layout():
-    with patch("pathlib.Path.is_dir", return_value=True), patch(
+    # Isolate from the developer machine: a really-installed Qube preset would
+    # otherwise short-circuit to True before the HF hub layout is inspected.
+    with patch(
+        "core.bootstrap_search_models.search_preset_has_incomplete_artifacts",
+        return_value=False,
+    ), patch(
+        "core.bootstrap_search_download.qube_preset_complete",
+        return_value=False,
+    ), patch(
+        "core.bootstrap_search_models.search_models_cache_dir",
+        return_value=Path("/tmp/qube-search-cache-empty"),
+    ), patch("pathlib.Path.is_dir", return_value=True), patch(
         "pathlib.Path.iterdir",
         return_value=[],
     ), patch(

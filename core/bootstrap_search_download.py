@@ -53,6 +53,19 @@ def _dedupe_files(*groups: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(path for group in groups for path in group))
 
 
+def _canonical_hf_repo(mode_id: ModeId, hf_repo: str) -> str:
+    """Prefer the canonical repo casing when fastembed reports the same repo.
+
+    fastembed 0.8 lists e.g. ``xenova/jina-embeddings-v2-small-en`` (lowercase
+    owner). The Hub resolves it, but the casing then depends on the installed
+    fastembed version; keep Qube's known canonical id (``Xenova/...``) stable.
+    """
+    known = _PRESET_DOWNLOAD_SPECS.get(mode_id)
+    if known is not None and known.hf_repo.lower() == hf_repo.lower():
+        return known.hf_repo
+    return hf_repo
+
+
 def _try_fastembed_download_spec(mode_id: ModeId) -> FastembedPresetDownloadSpec | None:
     """Resolve preset files from fastembed when installed (keeps us aligned with library)."""
     try:
@@ -70,7 +83,7 @@ def _try_fastembed_download_spec(mode_id: ModeId) -> FastembedPresetDownloadSpec
             additional = tuple(str(path) for path in (entry.get("additional_files") or ()))
             files = _dedupe_files(_STANDARD_TOKENIZER_FILES, (model_file,), additional)
             return FastembedPresetDownloadSpec(
-                hf_repo=str(hf_repo),
+                hf_repo=_canonical_hf_repo(mode_id, str(hf_repo)),
                 files=files,
                 model_marker=model_file,
             )
