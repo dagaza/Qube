@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+## [1.3.59] - 2026-11-23
+
+### Added
+- **Conversations:** Per-chat **sticky library document** scope — persisted attached filenames, composer chips restored when you reopen a chat, and the LLM worker merges sticky files on every turn; **Settings → General** composer toggles; help corpus **v1.0.35** with FAQ **Sticky library document for one chat**.
+- **Knowledge (retrieval quality, phase 0/1):** Offline evaluation harness (`tools/evaluate_knowledge_quality.py`, fixtures under `eval/retrieval_corpus/`), richer evidence context in prompt blocks, and pipeline tuning groundwork documented in `docs/knowledge_retrieval_quality_assessment.md`.
+
+### Changed
+- **Shell / transcript:** Transcript wallpaper and splash overlay performance probes (`QUBE_UI_PERF`), deferred resize/cache builds, and main-window tools-pane polish.
+- **Knowledge:** OpenAlex adapter, bundle builder, and source-reliability ranking adjustments for evidence quality.
+
+### Fixed
+- **CI / transcript wallpaper:** Clear wallpaper cache build pending state when resize work is paused so async background builds do not strand on slower runners.
+
 ## [1.3.58] - 2026-11-22
 
 ### Added
