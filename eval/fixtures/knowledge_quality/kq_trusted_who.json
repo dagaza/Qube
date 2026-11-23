@@ -1,0 +1,359 @@
+{
+  "schema_version": 2,
+  "id": "kq_trusted_who",
+  "path": "trusted_knowledge",
+  "category": "health_official",
+  "description": "Trusted / institutional authority path.",
+  "query_raw": "@[tool:trusted] WHO air quality guidelines particulate matter",
+  "query_clean": "WHO air quality guidelines particulate matter",
+  "retrieval_query": "WHO air quality guidelines particulate matter",
+  "standalone_question": "What are the WHO air quality guideline levels for particulate matter (PM2.5 and PM10)?",
+  "gold_subject": "WHO air quality guidelines",
+  "gold_facet": "particulate matter limits",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T20:06:36+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "wikipedia_api": 2,
+    "duckduckgo": 6
+  },
+  "adapter_queries": {
+    "production": {
+      "wikipedia_api": "WHO air quality guidelines particulate matter",
+      "duckduckgo": "WHO air quality guidelines particulate matter"
+    },
+    "standalone": {
+      "wikipedia_api": "What are the WHO air quality guideline levels for particulate matter (PM2.5 and PM10)?",
+      "duckduckgo": "What are the WHO air quality guideline levels for particulate matter (PM2.5 and PM10)?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Air pollution",
+      "snippet": "Air pollution is the presence of substances in the air that are harmful to humans, other living beings or the environment. Pollutants can be gases, like ozone or nitrogen oxides, or small particles like soot and dust. Both outdoor and indoor air can be polluted.\nOutdoor air pollution comes from burning fossil fuels for electricity and transport, wildfires, some industrial processes, waste management, demolition and agriculture. Indoor air pollution is often from burning firewood or agricultural waste for cooking and heating. Other sources of air pollution include dust storms and volcanic erupt",
+      "full_text": "Air pollution is the presence of substances in the air that are harmful to humans, other living beings or the environment. Pollutants can be gases, like ozone or nitrogen oxides, or small particles like soot and dust. Both outdoor and indoor air can be polluted.\nOutdoor air pollution comes from burning fossil fuels for electricity and transport, wildfires, some industrial processes, waste management, demolition and agriculture. Indoor air pollution is often from burning firewood or agricultural waste for cooking and heating. Other sources of air pollution include dust storms and volcanic eruptions. Many sources of local air pollution, especially burning fossil fuels, also release greenhouse gases that cause global warming. However, air pollution may limit warming locally.\nAir pollution kills 7 to 8 million people each year. It is a significant risk factor for a number of diseases, including stroke, heart disease, chronic obstructive pulmonary disease (COPD), asthma, coronavirus and lung cancer. Particulate matter is the most deadly, both for indoor and outdoor air pollution. Ozone affects crops, and forests are damaged by the pollution that causes acid rain. Overall, the World Bank has estimated that welfare losses (premature deaths) and productivity losses (lost labor) caused by air pollution cost the world economy over $8 trillion per year.\nVarious technologies and strategies reduce air pollution. Key approaches include clean cookers, fire protection, improved waste management, dust control, industrial scrubbers, electric vehicles and renewable energy. National air quality laws have often been effective, notably the 1956 Clean Air Act in Britain and the 1963 US Clean Air Act. International efforts have had mixed results: the Montreal Protocol almost eliminated harmful ozone-depleting chemicals, while international action on climate change has been less successful.",
+      "url": "https://en.wikipedia.org/wiki/Air_pollution",
+      "pageid": 10934212,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Air quality guideline",
+      "snippet": "The World Health Organization guidelines were most recently updated in 2021. The guidelines offer guidance about these air pollutants: particulate matter (PM), ozone (O3), nitrogen dioxide (NO2), sulfur dioxide (SO2) and carbon monoxide (CO). The WHO first released the air quality guidelines in 1987, then updated them in 1997. The reports provide guidelines intending to give guidelines to reduce the health effects of air pollution.\nThe guidelines stipulate that PM2.5 should not exceed 5 μg/m3 annual mean, or 15 μg/m3 24-hour mean; and that PM10 should not exceed 15 μg/m3 annual mean, or 45 μg/",
+      "full_text": "The World Health Organization guidelines were most recently updated in 2021. The guidelines offer guidance about these air pollutants: particulate matter (PM), ozone (O3), nitrogen dioxide (NO2), sulfur dioxide (SO2) and carbon monoxide (CO). The WHO first released the air quality guidelines in 1987, then updated them in 1997. The reports provide guidelines intending to give guidelines to reduce the health effects of air pollution.\nThe guidelines stipulate that PM2.5 should not exceed 5 μg/m3 annual mean, or 15 μg/m3 24-hour mean; and that PM10 should not exceed 15 μg/m3 annual mean, or 45 μg/m3 24-hour mean. For ozone (O3), the guidelines suggest values no higher than 100 μg/m3 for an 8-hour mean and 60 μg/m3 peak season mean. For nitrogen dioxide (NO2), the guidelines set 10 μg/m3 for the annual mean or 25 μg/m3 for a 24-hours mean. For sulfur dioxide (SO2), the guidelines stipulate concentrations not exceeding 40 μg/m3 24-hour mean. For carbon monoxide concentrations not exceeding 4 mg/m3 24-hour mean.\n\nIn terms of health effects, the guideline states that PM2.5 concentration of 10 is the lowest level at which total, cardiopulmonary and lung cancer mortality have been shown to increase with more than 95% confidence in response to long-term exposure to PM2.5.\nAlong with cardiopulmonary and lung cancer deaths, the chances of which an individual increases their risk of being diagnosed with these is highly coordinated to fine particulate matter and sulfur dioxide-related pollution. A 2002 study found that \"Each 10 μg/m3 elevation in fine particulate air pollution was associated with approximately a 4%, 6% and 8% increased risk of all-cause, cardiopulmonary, and lung cancer mortality, respectively.\" A 2021 study found that outdoor air pollution is associated with substantially increased mortality \"even at low pollution levels below the current European and North American standards and WHO guideline values\". Shortly afterwards, on 22 September 2021, for the first time since 2005, the WHO, after a systematic review of the accumulated evidence, adjusted their air quality guidelines whose adherence \"could save millions of lives, protect against future diseases and help meet climate goals\".\nOn 4 April 2022 the WHO released their report based on the new guidelines. Pollutants for which new guidelines for annual mean have been set are PM2.5, with guideline value half the previous one, PM10, which is decreased by 25%, and that for nitrogen dioxide (NO2), which is four times lower than the previous guideline.",
+      "url": "https://en.wikipedia.org/wiki/Air_quality_guideline",
+      "pageid": 48808889,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "List of countries by air pollution",
+      "snippet": "The following list of countries by air pollution sorts the countries of the world according to their average measured concentration of particulate matter (PM2.5) in micrograms per cubic metre (μg/m3). The World Health Organization's recommended limit is 10 micrograms per cubic metre, although there are also various national guideline values, which are often much higher. Air pollution is among the biggest health problems of modern industrial society and is responsible for more than 10 percent of all deaths worldwide (nearly 4.5 million premature deaths in 2019), according to The Lancet. Air pol",
+      "full_text": "The following list of countries by air pollution sorts the countries of the world according to their average measured concentration of particulate matter (PM2.5) in micrograms per cubic metre (μg/m3). The World Health Organization's recommended limit is 10 micrograms per cubic metre, although there are also various national guideline values, which are often much higher. Air pollution is among the biggest health problems of modern industrial society and is responsible for more than 10 percent of all deaths worldwide (nearly 4.5 million premature deaths in 2019), according to The Lancet. Air pollution can affect nearly every organ and system of the body, negatively affecting nature and humans alike. Air pollution is a particularly big problem in emerging and developing countries, where global environmental standards often cannot be met. The data in this list refers only to outdoor air quality and not indoor air quality, which caused an additional two million premature deaths in 2019.",
+      "url": "https://en.wikipedia.org/wiki/List_of_countries_by_air_pollution",
+      "pageid": 73238226,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Particulate matter",
+      "snippet": "Particulate matter (PM) or particulates are microscopic particles of solid or liquid matter suspended in the air. The combination of particulates and air is called an aerosol. Sources of particulate matter can be either natural or occur as a result of human activities. Particulates may adversely affect human health and impact climate and precipitation.\nCategories of atmospheric particles include inhalable coarse particles, designated PM10, which are particles of coarse granularity, with a particle diameter of 10 micrometers (μm) or less; fine particles, designated PM2.5, with a diameter of 2.5",
+      "full_text": "Particulate matter (PM) or particulates are microscopic particles of solid or liquid matter suspended in the air. The combination of particulates and air is called an aerosol. Sources of particulate matter can be either natural or occur as a result of human activities. Particulates may adversely affect human health and impact climate and precipitation.\nCategories of atmospheric particles include inhalable coarse particles, designated PM10, which are particles of coarse granularity, with a particle diameter of 10 micrometers (μm) or less; fine particles, designated PM2.5, with a diameter of 2.5 μm or less; ultrafine particles, PM.10 with a diameter of 100 nanometers (nm) or less; and soot (fine or ultrafine particles primarily made up of carbon).\nAirborne particulate matter is a IARC Group 1 carcinogen. Particulate matter is considered the most dangerous type of air pollution because particulates can penetrate deep into the lungs and travel through the blood stream to multiple organs, such as the brain. Particulate matter contributes to health problems such as stroke, cardiovascular disease, respiratory disease, many types of cancer,  and preterm birth. It is associated with an increased risk of cognitive impairment. There is no safe level for exposure to particulates.\nWorldwide, exposure to PM2.5 contributed to 7.9 million deaths in 2023; of those, 4.9 million had outdoor air pollution as a contributing factor, and 2.8 million had household air pollution as a contributing factor. Fine particulate matter (PM2.5) is considered the leading environmental risk factor for earlier death worldwide. Because many sources of particulates result from human actions, it is a modifiable risk factor which can be addressed. Many countries have established standards for particulate matter and are improving air quality.",
+      "url": "https://en.wikipedia.org/wiki/Particulate_matter",
+      "pageid": 30876688,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO global air quality guidelines: particulate matter (‎PM2.5 and PM10 ...",
+      "snippet": "Clean air is fundamental to health. Compared to 15 years ago, when the previous edition of these guidelines was published, there is now a much stronger body of evidence to show how air pollution affects different aspects of health at even lower concentrations than previously understood. But here's what hasn't changed: every year, exposure to air pollution is still estimated to cause ...",
+      "url": "https://www.who.int/publications/i/item/9789240034228/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO global air quality guidelines: particulate matter (‎PM2.5 and PM10 ...",
+      "snippet": "The global nature of the challenge calls for an enhanced global response. WHO global air quality guidelines: particulate matter (‎PM2.5 and PM10)‎, ozone, nitrogen dioxide, sulfur dioxide and carbon monoxide: executive summary",
+      "url": "https://www.who.int/europe/publications/i/item/9789240034228",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO global air quality guidelines: particulate matter (PM2.5 and PM10 ...",
+      "snippet": "It provides evidence-informed recommendations for air quality management by establishing updated air quality guideline (AQG) levels for particulate matter (PM₂.₅ and PM₁₀), ozone, nitrogen dioxide, sulfur dioxide and carbon monoxide, together with interim targets to support progressive reductions in exposure where guideline levels ...",
+      "url": "https://iris.who.int/items/2f8fec42-5636-4506-9b44-e0c91c678484",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO global air quality guidelines: particulate matter (PM2.5 and PM10 ...",
+      "snippet": "500 Service Unavailable The server is temporarily unable to service your request due to maintenance downtime or capacity problems. Please try again later. Take me to the home page",
+      "url": "https://iris.who.int/items/5b0ca7ab-830a-44b8-b99f-4ee743b4d7b2",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO global air quality guidelines: particulate matter (‎PM2.5 and PM10 ...",
+      "snippet": "Clean air is fundamental to health. WHO global air quality guidelines: particulate matter (‎PM2.5 and PM10)‎, ozone, nitrogen dioxide, sulfur dioxide and carbon monoxide",
+      "url": "https://ceh.unicef.org/events-and-resources/knowledge-library/who-global-air-quality-guidelines-particulate-matter-pm25",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PDF WHO global air quality guidelines",
+      "snippet": "The WHO air quality guidelines were last published in 2006: Air quality guidelines - global update 2005. Particulate matter, ozone, nitrogen dioxide and sulfur dioxide (hereafter referred to as Global update 2005) (WHO Regional Office for Europe, 2006).",
+      "url": "https://assets-global.website-files.com/61822390f9078179b84556a4/61afe06d1187005644448835_WHO-2021-AQ-Guidelines.pdf",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO global air quality guidelines: particulate matter (‎PM2.5 ... - PAHO",
+      "snippet": "The global burden of disease associated with air pollution exposure exacts a massive toll on human health worldwide: exposure to air pollution is estimated to cause millions of deaths and lost years of healthy life annually. The burden of disease attributable to air pollution is now estimated to be on a par with other major global health risks such as unhealthy diet and tobacco smoking, and ...",
+      "url": "https://www.paho.org/en/documents/who-global-air-quality-guidelines-particulate-matter-pm25-and-pm10-ozone-nitrogen-dioxide",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO global air quality guidelines: Particulate matter (PM2.5 ... - JSTOR",
+      "snippet": "The WHO air quality guidelines were last published in 2006: Air quality guidelines - global update 2005. Particulate matter, ozone, nitrogen dioxide and sulfur dioxide (hereafter referred to as Global update 2005) (WHO Regional Office for Europe, 2006). Since they were issued, air pollution has become recognized as the single biggest environmental threat to human health based on its notable ...",
+      "url": "https://www.jstor.org/stable/resrep56622",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Air pollution in Delhi",
+      "snippet": "Air pollution in Delhi, in the National Capital Region, India, was found to be one of the most lethal of any city in the world in an August 2022 study of 7,000 world cities by the US-based Health Effects Institute. Air pollution in India is estimated to kill about 2 million people every year. India has the world's highest death rate from chronic respiratory diseases and asthma according to the World Health Organization. In Delhi, poor air quality has irreversibly damaged the lungs of 2.2 million children.\nDuring the COVID-19 pandemic lockdown in India, the air quality in Delhi significantly im",
+      "full_text": "Air pollution in Delhi, in the National Capital Region, India, was found to be one of the most lethal of any city in the world in an August 2022 study of 7,000 world cities by the US-based Health Effects Institute. Air pollution in India is estimated to kill about 2 million people every year. India has the world's highest death rate from chronic respiratory diseases and asthma according to the World Health Organization. In Delhi, poor air quality has irreversibly damaged the lungs of 2.2 million children.\nDuring the COVID-19 pandemic lockdown in India, the air quality in Delhi significantly improved.\nIndia's Ministry of Earth Sciences published a research paper in October 2018 attributing almost 41% of air pollution to vehicular emissions, 21.5% to dust and 18% to industrial emissions. The director of the Centre for Science and Environment alleged that the Society of Indian Automobile Manufacturers was lobbying \"against the report\" because it was \"inconvenient\" to the automobile industry.\nThe air quality index (AQI) in Delhi generally falls within the Satisfactory (51–100) and Moderate (101–200) ranges between March and September, and then drastically deteriorates to Poor (201–300), Severe (301–400), or Hazardous (401–500+) levels between October and February due to various factors including the burning of effigies during Vijayadashami, the bursting of firecrackers during Diwali, thermal power plants in the National Capital Region, stubble burning, road dust, vehicle pollution and cold weather.\nIn November 2016, in an event known as the \"Great Smog of Delhi\", the air pollution spiked far beyond acceptable levels. The levels of PM2.5 and PM 10 particulate matter hit 999 micrograms per cubic meter, well above their respective 24-hour peak limits of 15 and 60 micrograms per cubic metre.\nAccording to Bloomberg, 1,670,000 people died due to polluted air in India in 2019. According to data released by the Ministry of Environment, Forest and Climate Change in 2022, the Air Quality Index in Delhi stood at over 200 for at least half the year.\nAnimal agriculture also contributes to Delhi's pollution problem, as smog and other harmful particles have been produced by farmers burning their crops in other states since the 1980s.\nAn initiative that is being considered to address air pollution is a 1,600 km long and 5 km wide green ecological corridor along the Aravalli Range from Gujarat to Delhi connecting to the Sivalik Hills range. This would involve the planting of 1.35 billion (135 crore) new native trees over 10 years to combat pollution. In December 2019, IIT Bombay, in partnership with the McKelvey School of Engineering of Washington University in St. Louis, launched the Aerosol and Air Quality Research Facility to study air pollution in India.\nThe Delhi government announced in November 2021 that it would be shutting all schools and government offices for a week due to the severe air pollution. The government told the Supreme Court that it was confident and prepared for a complete lockdown. The Supreme Court asked authorities in the NCR region to consider remote work policies for employees. When the air quality in Delhi on 18 November 2021 slipped into the \"severe\" category with an AQI of 362, the Supreme Court of India reprimanded the central and state governments and asked them to take strict measures to reduce pollution in Delhi and the NCR region.\nIn November 2023, New Delhi was suffering from particularly high levels of air pollution. 38% of this 2023's pollution has been caused by stubble burning.\nOn November 18, 2024, Delhi recorded its worst air quality of the season, with a 24-hour AQI reading of 491, classified as \"severe plus.\" This level, as reported by India's pollution control authority, indicates hazardous conditions with significant health impacts, particularly for vulnerable populations. The reading marks the highest AQI level for Delhi in 2024. The Bharatiya Janta Party-led Delhi Government was accused of deliberate",
+      "url": "https://en.wikipedia.org/wiki/Air_pollution_in_Delhi",
+      "pageid": 46877253,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Air quality index",
+      "snippet": "An air quality index (AQI) is an approximation of how polluted the air currently is or how polluted it is forecast to become. As air pollution levels rise, so does the AQI, along with the associated public health risks.\nDifferent countries have their own air quality indices, corresponding to different national air quality standards. These include Canada's Air Quality Health Index, Malaysia's Air Pollution Index, and Singapore's Pollutant Standards Index. The World Health Organization has an Air quality guideline. Pollutants that are commonly monitored include ground-level ozone, particulates, ",
+      "full_text": "An air quality index (AQI) is an approximation of how polluted the air currently is or how polluted it is forecast to become. As air pollution levels rise, so does the AQI, along with the associated public health risks.\nDifferent countries have their own air quality indices, corresponding to different national air quality standards. These include Canada's Air Quality Health Index, Malaysia's Air Pollution Index, and Singapore's Pollutant Standards Index. The World Health Organization has an Air quality guideline. Pollutants that are commonly monitored include ground-level ozone, particulates, sulfur dioxide, carbon monoxide, and nitrogen dioxide.\nChildren, the elderly, and individuals with respiratory or cardiovascular problems are typically the first groups affected by poor air quality. When the AQI is high, governmental bodies generally encourage people to reduce physical activity outdoors, or even avoid going out altogether.",
+      "url": "https://en.wikipedia.org/wiki/Air_quality_index",
+      "pageid": 1942366,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO global air quality guidelines",
+      "snippet": "The main objective of these updated global guidelines is to offer health-based air quality guideline levels, expressed as long-term or short-term concentrations for six key air pollutants: PM2.5, PM10, ozone, nitrogen dioxide, sulfur dioxide and carbon monoxide. In addition, the guidelines provide interim targets to guide reduction efforts of these pollutants, as well as good practice ...",
+      "url": "https://www.who.int/publications/b/59593",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO global air quality guidelines",
+      "snippet": "WHO global air quality guidelines: particulate matter (PM2.5 and PM10), ozone, nitrogen dioxide, sulfur dioxide and carbon monoxide. Executive summary ISBN 978-92-4-003443-3 (electronic version)",
+      "url": "https://iris.who.int/bitstreams/b729bbc4-7032-4799-898e-d112faa16f22/download",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO Global Air Quality Guidelines 2021 Explained | Airscan",
+      "snippet": "WHO 2021 air quality guidelines table for PM2.5, PM10, O3, NO2, SO2 and CO, with interim targets, the 2005 values they replaced and the health outcome behind each limit.",
+      "url": "https://airscan.org/insights/iaq-testing/new-who-air-quality-guidelines-2021/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "World Health Organization Global Air Quality Guideline Recommendations ...",
+      "snippet": "The purpose of the guideline is to provide key stakeholders and decision-makers with 1) evidence-based air quality guideline (AQG) levels, or the lowest levels of exposure that result in harms to health, for particulate matter 2.5 (PM 2.5), particulate matter 10 (PM 10), nitrogen dioxide, ozone, sulfur dioxide, and carbon monoxide in both ...",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12052406/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO Air Quality Guidelines 2021-Aiming for Healthier Air for all: A ...",
+      "snippet": "The new air quality guidelines (WHO AQG) are ambitious and reflect the large impact that air pollution has on global health. They recommend aiming for annual mean concentrations of PM 2.5 not exceeding 5 µg/m 3 and NO 2 not exceeding 10 µg/m 3, and the peak season mean 8-hr ozone concentration not exceeding 60 µg/m 3 [1].",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8494774/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

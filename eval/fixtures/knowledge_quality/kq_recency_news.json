@@ -1,0 +1,224 @@
+{
+  "schema_version": 2,
+  "id": "kq_recency_news",
+  "path": "general_web",
+  "category": "recency",
+  "description": "Recency-sensitive general web (Phase 1 date injection helps; Phase 2+ for freshness ranking).",
+  "query_raw": "@[tool:internet] What is the latest US inflation rate?",
+  "query_clean": "What is the latest US inflation rate?",
+  "retrieval_query": "What is the latest US inflation rate?",
+  "standalone_question": "What is the latest US CPI inflation rate?",
+  "gold_subject": "US inflation rate",
+  "gold_facet": "latest value",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T19:01:16+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "What is the latest US inflation rate?"
+    },
+    "standalone": {
+      "duckduckgo": "What is the latest US CPI inflation rate?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Current U.S. Inflation Rates: 2000-2026 - US Inflation Calculator",
+      "snippet": "The annual inflation rate in the United States was unavailable for October 2026 because of missing data from the October 2025 government shutdown. The latest U.S. Labor Department report, released November 10, puts September's annual inflation rate of 3.7%, up from 3.4% in August, as the most recent available. The next report is scheduled for",
+      "url": "https://www.usinflationcalculator.com/inflation/current-inflation-rates/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What Is the Current Inflation Rate? Today's US CPI Inflation | CPI Monitor",
+      "snippet": "The current US inflation rate from the latest CPI release: year-over-year and month-over-month CPI inflation, core inflation, and which categories are driving it.",
+      "url": "https://cpimonitor.com/current-inflation-rate",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Latest Numbers - U.S. Bureau of Labor Statistics",
+      "snippet": "Latest Numbers CPI-U, US City Average, All Items: NSA +0.2% in Oct 2026 SA +0.4% in Oct 2026 NSA unchanged since Oct 2025 CPI-U, US City Average, All Items Less Food and Energy: NSA +0.2% in Oct 2026 SA +0.3% in Oct 2026 NSA unchanged since Oct 2025 CPI-U, US City Average, Medical Care: NSA +0.3% in Oct 2026 SA +0.3% in Oct 2026 NSA unchanged ...",
+      "url": "https://www.bls.gov/cpi/latest-numbers.htm",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "CPI Home : U.S. Bureau of Labor Statistics",
+      "snippet": "The Consumer Price Index (CPI) is a measure of the average change over time in the prices paid by urban consumers for a market basket of consumer goods and services. Indexes are available for the U.S. and various geographic areas. Average price data for select utility, automotive fuel, and food items are also available.",
+      "url": "https://www.bls.gov/cpi/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "United States Inflation Rate - TRADING ECONOMICS",
+      "snippet": "Inflation Rate in the United States increased to 3.70 percent in September from 3.40 percent in August of 2026. This page provides - United States Inflation Rate - actual values, historical data, forecast, chart, statistics, economic calendar and news.",
+      "url": "https://tradingeconomics.com/united-states/inflation-cpi",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "US Inflation: Trending News, Latest Updates, Analysis",
+      "snippet": "See the latest on US Inflation. From breaking news to in-depth reporting, Bloomberg tracks the full story in real time.",
+      "url": "https://www.bloomberg.com/latest/us-inflation",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The Fed - Inflation (PCE) - Federal Reserve Board",
+      "snippet": "What is the Fed's inflation target? The Federal Reserve seeks to achieve inflation at the rate of 2 percent over the longer run as measured by the annual change in the price index for personal consumption expenditures (PCE). Why does the Fed target PCE inflation instead of the CPI?",
+      "url": "https://www.federalreserve.gov/economy-at-a-glance-inflation-pce.htm",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "What is the Current Inflation Rate?",
+      "snippet": "Track current inflation in the U.S., understand its impact on prices, wages, and savings, and explore historical trends with charts and calculators.",
+      "url": "https://inflationdata.com/articles/current-inflation/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "United States Consumer Price Index (CPI) - TRADING ECONOMICS",
+      "snippet": "This page provides the latest reported value for - United States Consumer Price Index (CPI) - plus previous releases, historical high and low, short-term forecast and long-term prediction, economic calendar, survey consensus and news.",
+      "url": "https://tradingeconomics.com/united-states/consumer-price-index-cpi",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Inflation (CPI) forecast for 2026-2030: latest data, chart and outlook ...",
+      "snippet": "CPI inflation, yearly average (%) CBO (February 2026) forecast 0 3 5 8 1990 1998 2006 2014 2022 2030 CBO FORECAST → 2.3 Yearly averages; 2026 is the average so far (9 months).",
+      "url": "https://gov.house/data/inflation/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Consumer Price Index Data from 1913 to 2026 - US Inflation Calculator",
+      "snippet": "The latest CPI update was released November 10, covering inflation data through October 2026. The next CPI report is scheduled for December 10, 2026, and will include inflation figures through November 2026. What Is the Consumer Price Index (CPI)?",
+      "url": "https://www.usinflationcalculator.com/inflation/consumer-price-index-and-annual-percent-changes-from-1913-to-2008/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

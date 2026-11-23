@@ -1,0 +1,472 @@
+{
+  "schema_version": 2,
+  "id": "mt_ant_followup_live",
+  "path": "scientific_evidence",
+  "category": "sts_humanities",
+  "description": "Live re-capture of the 2026-11-21 ANT turn: production (raw) vs standalone pools.",
+  "query_raw": "@[tool:evidence] Yes, please tell me how ANT analyzes Artificial Inteligence for example.",
+  "query_clean": "Yes, please tell me how ANT analyzes Artificial Inteligence for example.",
+  "retrieval_query": "Yes, please tell me how ANT analyzes Artificial Inteligence for example.",
+  "standalone_question": "How does actor-network theory (ANT) analyze artificial intelligence?",
+  "gold_subject": "actor-network theory",
+  "gold_facet": "analysis of artificial intelligence",
+  "budget": 3,
+  "history": [
+    {
+      "role": "user",
+      "content": "What is actor-network theory?>"
+    },
+    {
+      "role": "assistant",
+      "content": "Actor-network theory (ANT) is a sociological approach that treats both human and non-human entities—like tools, documents, or technologies—as \"actors\" capable of influencing social outcomes. Would you like an example of how ANT analyzes a specific technology?"
+    }
+  ],
+  "captured_at": "2026-11-23T17:04:26+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "Yes, please tell me how ANT analyzes Artificial Inteligence for example",
+      "arxiv": "Yes, please tell me how ANT analyzes Artificial Inteligence for example"
+    },
+    "standalone": {
+      "openalex": "How does actor-network theory (ANT) analyze artificial intelligence",
+      "arxiv": "How does actor-network theory (ANT) analyze artificial intelligence"
+    }
+  },
+  "candidates": [
+    {
+      "title": "OPENING ADDRESS",
+      "snippet": "Chairman of the Committee on Etrglish Sjelling of the Atnen~can PhiCologicaZ Association.Esq., to communicate with the American Association in order to ascertain whether in was practicabl to effect a",
+      "full_text": "Chairman of the Committee on Etrglish Sjelling of the Atnen~can PhiCologicaZ Association.Esq., to communicate with the American Association in order to ascertain whether in was practicabl to effect a",
+      "url": "https://openalex.org/W4231632860",
+      "_adapter": "openalex",
+      "authors": [
+        "F. A. MARCH"
+      ],
+      "venue": "American Anthropologist",
+      "publication_date": "1893",
+      "doi": "10.1525/aa.1893.6.2.02a00020",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Artificial Ant Colonies in Digital Image Habitats - A Mass Behaviour Effect Study on Pattern Recognition",
+      "snippet": "Some recent studies have pointed that, the self-organization of neurons into brain-like structures, and the self-organization of ants into a swarm are similar in many respects. If possible to implement, these features could lead to important developments in pattern recognition systems, where perceptive capabilities can emerge and evolve from the interaction of many simple local rules. The principle of the method is inspired by the work of Chialvo and Millonas who developed the first numerical simulation in which swarm cognitive map formation could be explained. From this point, an extended mod",
+      "full_text": "Some recent studies have pointed that, the self-organization of neurons into brain-like structures, and the self-organization of ants into a swarm are similar in many respects. If possible to implement, these features could lead to important developments in pattern recognition systems, where perceptive capabilities can emerge and evolve from the interaction of many simple local rules. The principle of the method is inspired by the work of Chialvo and Millonas who developed the first numerical simulation in which swarm cognitive map formation could be explained. From this point, an extended model is presented in order to deal with digital image habitats, in which artificial ants could be able to react to the environment and perceive it. Evolution of pheromone fields point that artificial ant colonies could react and adapt appropriately to any type of digital habitat. KEYWORDS: Swarm Intelligence, Self-Organization, Stigmergy, Artificial Ant Systems, Pattern Recognition and Perception, Image Segmentation, Gestalt Perception Theory, Distributed Computation.",
+      "url": "https://arxiv.org/abs/cs/0412086v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Vitorino Ramos",
+        "Filipe Almeida"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2004-12-17",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "cs/0412086v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "A Review on Explainable Artificial Intelligence for Healthcare: Why, How, and When?",
+      "snippet": "Artificial intelligence (AI) models are increasingly finding applications in the field of medicine. Concerns have been raised about the explainability of the decisions that are made by these AI models. In this article, we give a systematic analysis of explainable artificial intelligence (XAI), with a primary focus on models that are currently being used in the field of healthcare. The literature search is conducted following the preferred reporting items for systematic reviews and meta-analyses (PRISMA) standards for relevant work published from 1 January 2012 to 02 February 2022. The review a",
+      "full_text": "Artificial intelligence (AI) models are increasingly finding applications in the field of medicine. Concerns have been raised about the explainability of the decisions that are made by these AI models. In this article, we give a systematic analysis of explainable artificial intelligence (XAI), with a primary focus on models that are currently being used in the field of healthcare. The literature search is conducted following the preferred reporting items for systematic reviews and meta-analyses (PRISMA) standards for relevant work published from 1 January 2012 to 02 February 2022. The review analyzes the prevailing trends in XAI and lays out the major directions in which research is headed. We investigate the why, how, and when of the uses of these XAI models and their implications. We present a comprehensive examination of XAI methodologies as well as an explanation of how a trustworthy AI can be derived from describing AI models for healthcare fields. The discussion of this work will contribute to the formalization of the XAI field.",
+      "url": "https://arxiv.org/abs/2304.04780v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Subrato Bharati",
+        "M. Rubaiyat Hossain Mondal",
+        "Prajoy Podder"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-04-10",
+      "doi": "10.1109/TAI.2023.3266418",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2304.04780v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Artificial Scientist: Logicist, Emergentist, and Universalist Approaches to Artificial General Intelligence",
+      "snippet": "We attempt to define what is necessary to construct an Artificial Scientist, explore and evaluate several approaches to artificial general intelligence (AGI) which may facilitate this, conclude that a unified or hybrid approach is necessary and explore two theories that satisfy this requirement to some degree.",
+      "full_text": "We attempt to define what is necessary to construct an Artificial Scientist, explore and evaluate several approaches to artificial general intelligence (AGI) which may facilitate this, conclude that a unified or hybrid approach is necessary and explore two theories that satisfy this requirement to some degree.",
+      "url": "https://arxiv.org/abs/2110.01831v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Michael Timothy Bennett",
+        "Yoshihiro Maruyama"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2021-10-05",
+      "doi": "10.1007/978-3-030-93758-4_6",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2110.01831v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Polyethism in a colony of artificial ants",
+      "snippet": "We explore self-organizing strategies for role assignment in a foraging task carried out by a colony of artificial agents. Our strategies are inspired by various mechanisms of division of labor (polyethism) observed in eusocial insects like ants, termites, or bees. Specifically we instantiate models of caste polyethism and age or temporal polyethism to evaluated the benefits to foraging in a dynamic environment. Our experiment is directly related to the exploration/exploitation trade of in machine learning.",
+      "full_text": "We explore self-organizing strategies for role assignment in a foraging task carried out by a colony of artificial agents. Our strategies are inspired by various mechanisms of division of labor (polyethism) observed in eusocial insects like ants, termites, or bees. Specifically we instantiate models of caste polyethism and age or temporal polyethism to evaluated the benefits to foraging in a dynamic environment. Our experiment is directly related to the exploration/exploitation trade of in machine learning.",
+      "url": "https://arxiv.org/abs/1104.3152v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Chris Marriott",
+        "Carlos Gershenson"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2011-04-15",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1104.3152v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Compression, The Fermi Paradox and Artificial Super-Intelligence",
+      "snippet": "The following briefly discusses possible difficulties in communication with and control of an AGI (artificial general intelligence), building upon an explanation of The Fermi Paradox and preceding work on symbol emergence and artificial general intelligence. The latter suggests that to infer what someone means, an agent constructs a rationale for the observed behaviour of others. Communication then requires two agents labour under similar compulsions and have similar experiences (construct similar solutions to similar tasks). Any non-human intelligence may construct solutions such that any rat",
+      "full_text": "The following briefly discusses possible difficulties in communication with and control of an AGI (artificial general intelligence), building upon an explanation of The Fermi Paradox and preceding work on symbol emergence and artificial general intelligence. The latter suggests that to infer what someone means, an agent constructs a rationale for the observed behaviour of others. Communication then requires two agents labour under similar compulsions and have similar experiences (construct similar solutions to similar tasks). Any non-human intelligence may construct solutions such that any rationale for their behaviour (and thus the meaning of their signals) is outside the scope of what a human is inclined to notice or comprehend. Further, the more compressed a signal, the closer it will appear to random noise. Another intelligence may possess the ability to compress information to the extent that, to us, their signals would appear indistinguishable from noise (an explanation for The Fermi Paradox). To facilitate predictive accuracy an AGI would tend to more compressed representations of the world, making any rationale for their behaviour more difficult to comprehend for the same reason. Communication with and control of an AGI may subsequently necessitate not only human-like compulsions and experiences, but imposed cognitive impairment.",
+      "url": "https://arxiv.org/abs/2110.01835v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Michael Timothy Bennett"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2021-10-05",
+      "doi": "10.1007/978-3-030-93758-4_5",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2110.01835v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Creative Problem Solving in Artificially Intelligent Agents: A Survey and Framework",
+      "snippet": "Creative Problem Solving (CPS) is a sub-area within Artificial Intelligence (AI) that focuses on methods for solving off-nominal, or anomalous problems in autonomous systems. Despite many advancements in planning and learning, resolving novel problems or adapting existing knowledge to a new context, especially in cases where the environment may change in unpredictable ways post deployment, remains a limiting factor in the safe and useful integration of intelligent systems. The emergence of increasingly autonomous systems dictates the necessity for AI agents to deal with environmental uncertain",
+      "full_text": "Creative Problem Solving (CPS) is a sub-area within Artificial Intelligence (AI) that focuses on methods for solving off-nominal, or anomalous problems in autonomous systems. Despite many advancements in planning and learning, resolving novel problems or adapting existing knowledge to a new context, especially in cases where the environment may change in unpredictable ways post deployment, remains a limiting factor in the safe and useful integration of intelligent systems. The emergence of increasingly autonomous systems dictates the necessity for AI agents to deal with environmental uncertainty through creativity. To stimulate further research in CPS, we present a definition and a framework of CPS, which we adopt to categorize existing AI methods in this field. Our framework consists of four main components of a CPS problem, namely, 1) problem formulation, 2) knowledge representation, 3) method of knowledge manipulation, and 4) method of evaluation. We conclude our survey with open research questions, and suggested directions for the future.",
+      "url": "https://arxiv.org/abs/2204.10358v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Evana Gizzi",
+        "Lakshmi Nair",
+        "Sonia Chernova",
+        "Jivko Sinapov"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-04-21",
+      "doi": "10.1613/jair.1.13864",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2204.10358v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Artificial Intelligence as a Distributed Actor: Rethinking Organizational Theory Through Sociotechnical Networks",
+      "snippet": "The rapid integration of Artificial Intelligence (AI) into organizational contexts is profoundly changing the fundamental assumptions in contemporary management and organizational theory. In response to these changes, this article introduces the Distributed Sociotechnical Agency Model (DSAM), a novel conceptual framework that synthesizes insights from Actor-Network Theory (ANT), sociomateriality, and principles of ethical governance. The DSAM framework conceptualizes AI as a distributed actor operating within complex networks and highlights three core dimensions: distributed agency, relational",
+      "full_text": "The rapid integration of Artificial Intelligence (AI) into organizational contexts is profoundly changing the fundamental assumptions in contemporary management and organizational theory. In response to these changes, this article introduces the Distributed Sociotechnical Agency Model (DSAM), a novel conceptual framework that synthesizes insights from Actor-Network Theory (ANT), sociomateriality, and principles of ethical governance. The DSAM framework conceptualizes AI as a distributed actor operating within complex networks and highlights three core dimensions: distributed agency, relational dynamics between human and non-human actors, and the imperative of ethical accountability. By using an integrated approach combining extensive literature review and analysis of real-life case studies, including a practical example involving an AI-driven university monitoring system, this study demonstrates how DSAM can facilitate more inclusive, user-friendly, flexible, responsive, and ethically aligned approaches to AI integration in organizations. To provide clarity and practical understanding, this article includes a detailed flowchart and a comparative table as well. Furthermore, recent academic studies and evolving policy developments are included in the discussion to strengthen the global relevance of the model. The article concludes by offering strategic recommendations for organizational governance and identifying promising directions for future empirical research. Received: 27 February 2025 | Revised: 14 July 2025 | Accepted: 22 August 2025 Conflicts of Interest The author declares that she has no conflicts of interest to this work. Data Availability Statement Data sharing is not applicable to this article as no new data were created or analyzed in this study. Author Contribution Statement Hasibe Aysan: Conceptualization, Methodology, Data curation, Writing – original draft, Writing – review & editing, Visualization, Supervision, Project administration.",
+      "url": "https://openalex.org/W4415361380",
+      "_adapter": "openalex",
+      "authors": [
+        "Hasibe Aysan"
+      ],
+      "venue": "Artificial Intelligence and Applications",
+      "publication_date": "2025",
+      "doi": "10.47852/bonviewaia52025546",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Generative artificial intelligence in jazz improvisation: an Actor-Network Theory perspective",
+      "snippet": "Generative artificial intelligence (GAI) plays an increasingly significant role in the artistic creation process. In the domain of highly interactive human-machine composition, GAI is no longer a passive tool but exhibits a certain degree of agency. Based on Actor-Network Theory (ANT), a social science theoretical framework proposed by French sociologist Bruno Latour and other scholars, GAI can be viewed as a non-human subject endowed with the status of an actor. In jazz improvisation, a representative creative activity, the agency of GAI is manifested in the generation of its specific musical",
+      "full_text": "Generative artificial intelligence (GAI) plays an increasingly significant role in the artistic creation process. In the domain of highly interactive human-machine composition, GAI is no longer a passive tool but exhibits a certain degree of agency. Based on Actor-Network Theory (ANT), a social science theoretical framework proposed by French sociologist Bruno Latour and other scholars, GAI can be viewed as a non-human subject endowed with the status of an actor. In jazz improvisation, a representative creative activity, the agency of GAI is manifested in the generation of its specific musical works, presenting a contrast to human creation. Furthermore, this process reveals the leading and constraining factors in the actions of GAI, as well as the potential pathways and mutual interactions of its future co-creative development with humans.",
+      "url": "https://openalex.org/W7215118424",
+      "_adapter": "openalex",
+      "authors": [
+        "Chenge Gao"
+      ],
+      "venue": "Frontiers in Psychology",
+      "publication_date": "2026",
+      "doi": "10.3389/fpsyg.2026.1895145",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Music, Mediation Theories and Actor-Network Theory",
+      "snippet": "In this double issue of the Contemporary Music Review we focus not on Adorno but on theories of music’s mediation that have emerged in the last two decades, offering some systematic reflection. The impetus for the issue came from the research programme ‘Music, Digitisation, Mediation: Towards Interdisciplinary Music Studies’ (or MusDig). MusDig received funding from the European Research Council Advanced Grants scheme under the EU’s Seventh Framework Programme, ERC grant no. 249598. The MusDig programme was directed by Georgina Born and ran from 2010–15 based at the Faculty of Music, Universit",
+      "full_text": "In this double issue of the Contemporary Music Review we focus not on Adorno but on theories of music’s mediation that have emerged in the last two decades, offering some systematic reflection. The impetus for the issue came from the research programme ‘Music, Digitisation, Mediation: Towards Interdisciplinary Music Studies’ (or MusDig). MusDig received funding from the European Research Council Advanced Grants scheme under the EU’s Seventh Framework Programme, ERC grant no. 249598. The MusDig programme was directed by Georgina Born and ran from 2010–15 based at the Faculty of Music, University of Oxford. MusDig consisted of a series of comparative ethnographic studies that each addressed, in different ways, how music is being transformed around the world by digitisation and digital media. Studies were located in Cuba, India, Kenya, Argentina, Canada and the UK, but the programme also encompassed ethnographies of music’s online consumption and circulation, of internet-mediated music genres, and of the software platform, Max. As the title announces, questions of music’s mediation were central to MusDig from its inception; a core theoretical ambition was, through the combined ethnographic, historical and conceptual work engaged in by the researchers, to further develop those mediation theories that have been emerging in recent years in relation to music. This issue is one of the main vehicles for attaining that goal. It interweaves research from the MusDig programme (articles by Christopher Haworth and Patrick Valiquet, and this introduction) with that of colleagues also working broadly with these ideas.",
+      "url": "https://openalex.org/W2924786310",
+      "_adapter": "openalex",
+      "authors": [
+        "Georgina Born",
+        "Andrew Barry"
+      ],
+      "venue": "Contemporary Music Review",
+      "publication_date": "2018",
+      "doi": "10.1080/07494467.2018.1578107",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The Classification of Artificial Intelligence as \"Social Actors\"",
+      "snippet": "Robotic honey bees are drones that are mobile and can successfully pollinate flowers by mimicking the behavior of wild bees in nature. This technology is a potential solution to the declining wild honey bee population. Although robotic honey bees could offer a positive solution to a problem, the fictionalization of robotic honey bees in the popular television show Black Mirror depicts the downside of independently operating drone bees. In the television show, the drones go rogue and pose a threat to human life. Concepts stemming from the anthropology of religion, like 'fetish' and Bruno Latour",
+      "full_text": "Robotic honey bees are drones that are mobile and can successfully pollinate flowers by mimicking the behavior of wild bees in nature. This technology is a potential solution to the declining wild honey bee population. Although robotic honey bees could offer a positive solution to a problem, the fictionalization of robotic honey bees in the popular television show Black Mirror depicts the downside of independently operating drone bees. In the television show, the drones go rogue and pose a threat to human life. Concepts stemming from the anthropology of religion, like 'fetish' and Bruno Latour's actor-network theory, offer ways to think about advances in artificial intelligence and may help us understand the place of these objects and artificial intelligence in the culture. This project will investigate whether robotic honey bees fit into one of these categories or if an expansion of Bruno Latour's actor-network theory needs expanded.",
+      "url": "https://openalex.org/W2904531825",
+      "_adapter": "openalex",
+      "authors": [
+        "Mallory Reed"
+      ],
+      "venue": "Digital Archive @ GSU",
+      "publication_date": "2018",
+      "doi": "10.57709/12004652",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "From Analog to Algorithm: a comprehensive review of Artificial Intelligence's intersection with Management Literature and Actor-Network Theory",
+      "snippet": "In the digital age, the current Management literature remains heavily rooted in anthropocentric and analog perspectives, often overlooking the profound influence of algorithms and artificial intelligence (AI) in modern organizational dynamics. To this end, this systematic literature review seeks to bridge this gap by exploring the evolving landscape of AI in organizations and the role of the Actor-Network Theory (ANT) as a theoretical-methodological lens for understanding AI’s impact on Management. Through a systematic literature review, we address research on the utilization of AI in Manageme",
+      "full_text": "In the digital age, the current Management literature remains heavily rooted in anthropocentric and analog perspectives, often overlooking the profound influence of algorithms and artificial intelligence (AI) in modern organizational dynamics. To this end, this systematic literature review seeks to bridge this gap by exploring the evolving landscape of AI in organizations and the role of the Actor-Network Theory (ANT) as a theoretical-methodological lens for understanding AI’s impact on Management. Through a systematic literature review, we address research on the utilization of AI in Management over the past decade, the applications of ANT in non-IT or non-AI management studies, and studies explaining IT or AI concepts via ANT. Our findings highlight a significant research gap in understanding human-machine interactions and Business Management within organizations that use AI. Additionally, we identify potential avenues for future scholarly contributions, emphasizing the need for a more integrated approach that considers human and machine actors in organizational contexts.",
+      "url": "https://openalex.org/W4394742782",
+      "_adapter": "openalex",
+      "authors": [
+        "Wellington Rodrigo Monteiro",
+        "Eduardo André Teixeira Ayrosa"
+      ],
+      "venue": "Brazilian Journal of Information Science research trends",
+      "publication_date": "2024",
+      "doi": "10.36311/1981-1640.2024.v18.e024013",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Material Actors in Remote Interpreting: Practical Applications of Actor–Network Theory (ANT)",
+      "snippet": "This study, based on Actor–Network Theory (ANT), explores the mechanisms through which material actors operate in remote interpreting. The research finds that material actors—such as technological devices, environmental factors, and network platforms—play a crucial role in remote interpreting, not only affecting the accuracy and fluency of interpretation but also profoundly shaping interpreters’ work experiences and cognition. By analyzing the interactions between material actors, interpreters, clients, and other non-human actors, the study reveals the direct impact of equipment quality, platf",
+      "full_text": "This study, based on Actor–Network Theory (ANT), explores the mechanisms through which material actors operate in remote interpreting. The research finds that material actors—such as technological devices, environmental factors, and network platforms—play a crucial role in remote interpreting, not only affecting the accuracy and fluency of interpretation but also profoundly shaping interpreters’ work experiences and cognition. By analyzing the interactions between material actors, interpreters, clients, and other non-human actors, the study reveals the direct impact of equipment quality, platform stability, and usability on interpreting outcomes. At the same time, interpreters’ experience and skills help them adapt to equipment characteristics, mitigating potential issues that could affect interpreting quality. This study is the first to introduce the concept of material actors from ANT into the field of remote interpreting, providing a new theoretical perspective and methodological approach, as well as offering practical guidance for improving interpreting practice. Future research could expand scenarios and adopt interdisciplinary methods to more comprehensively understand the complex role of material actors in remote interpreting.",
+      "url": "https://openalex.org/W7119538490",
+      "_adapter": "openalex",
+      "authors": [
+        "Wang-qi Gao"
+      ],
+      "venue": "Integrated Journal for Research in Arts and Humanities",
+      "publication_date": "2026",
+      "doi": "10.55544/ijrah.6.1.6",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Artificial Intelligence and Economic Theories",
+      "snippet": "The advent of artificial intelligence has changed many disciplines such as engineering, social science and economics. Artificial intelligence is a computational technique which is inspired by natural intelligence such as the swarming of birds, the working of the brain and the pathfinding of the ants. These techniques have impact on economic theories. This book studies the impact of artificial intelligence on economic theories, a subject that has not been extensively studied. The theories that are considered are: demand and supply, asymmetrical information, pricing, rational choice, rational ex",
+      "full_text": "The advent of artificial intelligence has changed many disciplines such as engineering, social science and economics. Artificial intelligence is a computational technique which is inspired by natural intelligence such as the swarming of birds, the working of the brain and the pathfinding of the ants. These techniques have impact on economic theories. This book studies the impact of artificial intelligence on economic theories, a subject that has not been extensively studied. The theories that are considered are: demand and supply, asymmetrical information, pricing, rational choice, rational expectation, game theory, efficient market hypotheses, mechanism design, prospect, bounded rationality, portfolio theory, rational counterfactual and causality. The benefit of this book is that it evaluates existing theories of economics and update them based on the developments in artificial intelligence field.",
+      "url": "https://arxiv.org/abs/1703.06597v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Tshilidzi Marwala",
+        "Evan Hurwitz"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-03-20",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1703.06597v1",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Artificial Intelligence Framework for Simulating Clinical Decision-Making: A Markov Decision Process Approach",
+      "snippet": "In the modern healthcare system, rapidly expanding costs/complexity, the growing myriad of treatment options, and exploding information streams that often do not effectively reach the front lines hinder the ability to choose optimal treatment decisions over time. The goal in this paper is to develop a general purpose (non-disease-specific) computational/artificial intelligence (AI) framework to address these challenges. This serves two potential functions: 1) a simulation environment for exploring various healthcare policies, payment methodologies, etc., and 2) the basis for clinical artificia",
+      "full_text": "In the modern healthcare system, rapidly expanding costs/complexity, the growing myriad of treatment options, and exploding information streams that often do not effectively reach the front lines hinder the ability to choose optimal treatment decisions over time. The goal in this paper is to develop a general purpose (non-disease-specific) computational/artificial intelligence (AI) framework to address these challenges. This serves two potential functions: 1) a simulation environment for exploring various healthcare policies, payment methodologies, etc., and 2) the basis for clinical artificial intelligence - an AI that can think like a doctor. This approach combines Markov decision processes and dynamic decision networks to learn from clinical data and develop complex plans via simulation of alternative sequential decision paths while capturing the sometimes conflicting, sometimes synergistic interactions of various components in the healthcare system. It can operate in partially observable environments (in the case of missing observations or data) by maintaining belief states about patient health status and functions as an online agent that plans and re-plans. This framework was evaluated using real patient data from an electronic health record. Such an AI framework easily outperforms the current treatment-as-usual (TAU) case-rate/fee-for-service models of healthcare (Cost per Unit Change: $189 vs. $497) while obtaining a 30-35% increase in patient outcomes. Tweaking certain model parameters further enhances this advantage, obtaining roughly 50% more improvement for roughly half the costs. Given careful design and problem formulation, an AI simulation framework can approximate optimal decisions even in complex and uncertain environments. Future work is described that outlines potential lines of research and integration of machine learning algorithms for personalized medicine.",
+      "url": "https://arxiv.org/abs/1301.2158v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Casey C. Bennett",
+        "Kris Hauser"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2013-01-10",
+      "doi": "10.1016/j.artmed.2012.12.003",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1301.2158v1",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

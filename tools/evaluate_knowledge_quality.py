@@ -32,6 +32,7 @@ if str(ROOT) not in sys.path:
 
 from core.knowledge.quality_eval import (  # noqa: E402
     CONTRACT_FLAGS,
+    POOL_MODES,
     QUERY_MODES,
     RANKER_NAMES,
     RankerUnavailable,
@@ -106,6 +107,12 @@ def main() -> int:
         help="production = query today's pipeline ranks with; "
         "standalone = gold standalone question (S5/S6 target)",
     )
+    parser.add_argument(
+        "--pool-mode",
+        default="production",
+        choices=POOL_MODES,
+        help="production = rows within today's per-adapter depth; full = whole capture",
+    )
     parser.add_argument("--k", type=int, default=3, help="k for precision@k")
     parser.add_argument(
         "--include-synthetic",
@@ -138,6 +145,12 @@ def main() -> int:
                 {"id": entry.get("id"), "skipped": True, "reason": "no_offline_fixture"}
             )
             continue
+        if not (ROOT / fixture_rel).is_file():
+            results.append(
+                {"id": entry.get("id"), "skipped": True, "reason": "fixture_file_missing",
+                 "fixture": fixture_rel}
+            )
+            continue
         fixture = load_json(fixture_rel)
         schema_errors = validate_fixture(fixture)
         report = evaluate_fixture(
@@ -145,6 +158,7 @@ def main() -> int:
             ranker=rank_fn,
             query_mode=args.query_mode,
             include_synthetic=args.include_synthetic,
+            pool_mode=args.pool_mode,
             k=args.k,
         )
         report["ranker"] = args.ranker
@@ -162,7 +176,11 @@ def main() -> int:
     by_category = aggregate_reports(evaluated, group_by="category")
     by_path = aggregate_reports(evaluated, group_by="path")
 
-    failures: list[str] = []
+    failures: list[str] = [
+        f"{r['id']}: fixture file missing ({r.get('fixture')})"
+        for r in results
+        if r.get("reason") == "fixture_file_missing"
+    ]
     for r in evaluated:
         for err in r.get("schema_errors") or []:
             failures.append(f"{r['id']}: schema: {err}")
@@ -204,6 +222,7 @@ def main() -> int:
         "ranker": args.ranker,
         "query_mode": args.query_mode,
         "include_synthetic": args.include_synthetic,
+        "pool_mode": args.pool_mode,
         "total": len(results),
         "evaluated": len(evaluated),
         "aggregates": {"all": overall, "category": by_category, "path": by_path},
@@ -217,7 +236,7 @@ def main() -> int:
     else:
         print(
             f"Knowledge quality eval — {len(evaluated)}/{len(results)} fixtures "
-            f"(ranker={args.ranker}, query={args.query_mode})"
+            f"(ranker={args.ranker}, query={args.query_mode}, pool={args.pool_mode})"
         )
         for r in results:
             if r.get("skipped"):

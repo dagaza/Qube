@@ -1,0 +1,283 @@
+{
+  "schema_version": 2,
+  "id": "mt_ellipsis_python",
+  "path": "general_web",
+  "category": "multi_turn",
+  "description": "Ellipsis follow-up.",
+  "query_raw": "@[tool:internet] and what about 3.14?",
+  "query_clean": "and what about 3.14?",
+  "retrieval_query": "and what about 3.14?",
+  "standalone_question": "What is new in Python 3.14?",
+  "gold_subject": "Python",
+  "gold_facet": "3.14 new features",
+  "budget": 3,
+  "history": [
+    {
+      "role": "user",
+      "content": "What's new in Python 3.13?"
+    },
+    {
+      "role": "assistant",
+      "content": "Python 3.13 added an experimental free-threaded build, a new interactive REPL, and an experimental JIT compiler."
+    }
+  ],
+  "captured_at": "2026-11-23T20:00:51+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "and what about 3.14?"
+    },
+    "standalone": {
+      "duckduckgo": "What is new in Python 3.14?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Pi - Wikipedia",
+      "snippet": "The number π (/ paɪ / ⓘ; spelled out as pi) is a mathematical constant, approximately equal to 3.14159, that is the ratio of a circle 's circumference to its diameter. It appears in many formulae across mathematics and physics, and some of these formulae are commonly used for defining π, to avoid relying on the definition of the length of a curve. The number π is an irrational number ...",
+      "url": "https://en.wikipedia.org/wiki/Pi",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Pi | Definition, Symbol, Number, History, Applications, & Facts ...",
+      "snippet": "Pi Day, observed on March 14 (3/14), honors the mathematical constant π and its significance across science and engineering. The date reflects the first three digits of pi, 3.14, and coincides with Albert Einstein 's birthday.",
+      "url": "https://www.britannica.com/science/pi-mathematics",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Pi Day - Wikipedia",
+      "snippet": "Pi Day is observed on March 14 (the 3rd month) since 3, 1, and 4 are the first three significant figures of π ${\\displaystyle \\pi }$ and was founded in 1988 by Larry Shaw, an employee of the Exploratorium, a science museum in San Francisco. [2][3] Celebrations often involve eating pie or holding pi recitation competitions.",
+      "url": "https://en.wikipedia.org/wiki/Pi_Day",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Number Pi Explained: Experiment, Archimedes and Uses",
+      "snippet": "The number pi explained simply: find π with a string experiment, see Archimedes' polygons, bust pi myths, and practice with a free 10-question quiz.",
+      "url": "https://www.basic-mathematics.com/the-number-pi",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Pi (π) - Math is Fun",
+      "snippet": "Then the circumference (all the way around the circle) is 3.14159265... a number known as Pi Pi (pronounced like \"pie\") is often written using the Greek symbol π ... The definition of π is: ... The circumference divided by the diameter of a circle is always π, no matter how large or small the circle is!",
+      "url": "https://www.mathsisfun.com/numbers/pi.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Pi Day and Albert Einstein Birthday: Why 3.14 Is Called Pi - TIME",
+      "snippet": "The significance of the number 3.14—the inspiration for Pi Day on March 14—was known in Ancient Greece, but it wasn't called \"pi\" till later",
+      "url": "https://time.com/4699479/pi-day-history-origins/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What Is Pi Day? | Date, Origin, Albert Einstein, & Pie | Britannica",
+      "snippet": "The numerical value of pi to five decimal places is 3.14159; hence, Pi Day is celebrated on March 14 (3/14). Pi Day is often celebrated with pies or pizzas decorated with the Greek letter π. American physicist Larry Shaw, who worked at the Exploratorium, a science museum in San Francisco, devised the holiday at a staff retreat in 1988.",
+      "url": "https://www.britannica.com/science/What-Is-Pi-Day",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What Is Pi? - NASA",
+      "snippet": "This article is for students. What is Pi? Pi is a number. You might know it as 3.14 or the symbol π. But it's way more than that!",
+      "url": "https://www.nasa.gov/learning-resources/what-is-pi/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What's new in Python 3.14 — Python 3.15.2 documentation",
+      "snippet": "Summary - Release highlights ¶ Python 3.14 is a stable release of the Python programming language, with a mix of changes to the language, the implementation, and the standard library. The biggest changes include template string literals, deferred evaluation of annotations, and support for subinterpreters in the standard library.",
+      "url": "https://docs.python.org/3/whatsnew/3.14.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What's New in Python — Python 3.14.10 documentation",
+      "snippet": "What's New in Python ¶ The \"What's New in Python\" series of essays takes tours through the most important changes between major Python versions. They are a \"must read\" for anyone wishing to stay up-to-date after a new release.",
+      "url": "https://docs.python.org/3.14/whatsnew/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Python Release Python 3.14.0 | Python.org",
+      "snippet": "This is the stable release of Python 3.14.0 Python 3.14.0 is the newest major release of the Python programming language, and it contains many new features and optimisations compared to Python 3.13.",
+      "url": "https://www.python.org/downloads/release/python-3140/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What's New in Python 3.14",
+      "snippet": "Python 3.14 was published on October 7, 2025. While many of its biggest changes happen under the hood, there are practical improvements you'll notice right away. This version sharpens the language's tools, boosts ergonomics, and opens doors to new capabilities without forcing you to rewrite everything.",
+      "url": "https://realpython.com/courses/whats-new-python-314/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Python 3.14: Cool New Features for You to Try - Real Python",
+      "snippet": "Learn what's new in Python 3.14, including an upgraded REPL, template strings, lazy annotations, and subinterpreters, with examples to try in your code.",
+      "url": "https://realpython.com/python314-new-features/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What's New in Python 3.14: Features Worth Adopting in 2026",
+      "snippet": "Python 3.14 released October 7, 2025, ending a development cycle dominated by free-threading work and template strings. Eight months later, the ecosystem has caught up: most major libraries ship 3.14-compatible wheels, the experimental free-threaded build is officially supported via PEP 779, and the new t-string syntax (PEP 750) is finding production use in structured logging and HTML ...",
+      "url": "https://codegym.cc/groups/posts/whats-new-in-python-314",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What's New in Python 3.14 - Better Stack Community",
+      "snippet": "Learn what's new in Python 3.14: deferred annotations, subinterpreters, template strings, and free-threaded builds for faster, safer, parallel code.",
+      "url": "https://betterstack.com/community/guides/scaling-python/python-3-14-new-features/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Python 3.14: What Data Scientists and Developers Need to Know",
+      "snippet": "Python 3.14 brings Zstandard compression, multiple interpreters, free-threaded mode, and template strings. Learn what's new and how to prepare your workflows.",
+      "url": "https://www.anaconda.com/blog/python-3-14-what-data-scientists-developers-need-know",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

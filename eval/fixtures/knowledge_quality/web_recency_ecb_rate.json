@@ -1,0 +1,224 @@
+{
+  "schema_version": 2,
+  "id": "web_recency_ecb_rate",
+  "path": "general_web",
+  "category": "recency",
+  "description": "",
+  "query_raw": "@[tool:internet] What is the current ECB deposit facility rate?",
+  "query_clean": "What is the current ECB deposit facility rate?",
+  "retrieval_query": "What is the current ECB deposit facility rate?",
+  "standalone_question": "What is the European Central Bank's current deposit facility rate?",
+  "gold_subject": "ECB deposit facility rate",
+  "gold_facet": "current value",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T19:03:47+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "What is the current ECB deposit facility rate?"
+    },
+    "standalone": {
+      "duckduckgo": "What is the European Central Bank's current deposit facility rate?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Key ECB interest rates - European Central Bank",
+      "snippet": "The Governing Council of the ECB sets the key interest rates for the euro area. These are as follows: Deposit facility: The rate on the deposit facility, which banks may use to make overnight deposits with the Eurosystem at a pre-set interest rate. The Governing Council decided in March 2024 to continue to steer the monetary policy stance through this rate. Main refinancing operations: The ...",
+      "url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/key_ecb_interest_rates/html/index.en.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Key ECB interest rates | ECB Data Portal - Europa",
+      "snippet": "The Governing Council of the ECB sets the key interest rates for the euro area. These are the interest rates on the main refinancing operations, the deposit facility and the marginal lending facility.",
+      "url": "https://data.ecb.europa.eu/key-figures/ecb-interest-rates-and-exchange-rates/key-ecb-interest-rates",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ECB Deposit Facility Rate for Euro Area - FRED | St. Louis Fed",
+      "snippet": "Graph and download economic data for ECB Deposit Facility Rate for Euro Area (ECBDFR) from 1999-01-01 to 2026-11-23 about overnight, Euro Area, deposits, Europe, and rate.",
+      "url": "https://fred.stlouisfed.org/series/ECBDFR",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What is the deposit facility rate? - European Central Bank",
+      "snippet": "The deposit facility rate is the interest rate banks receive when they deposit money with the central bank overnight. It is one of the three interest rates the ECB sets every six weeks as part of its monetary policy decisions. This is the rate through which the Governing Council steers its monetary policy stance.",
+      "url": "https://www.ecb.europa.eu/ecb-and-you/explainers/tell-me/html/what-is-the-deposit-facility-rate.en.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "ECB Deposit Facility Rate for Euro Area - FRED | St. Louis Fed",
+      "snippet": "Graph and download economic data for ECB Deposit Facility Rate for Euro Area from 1999-01-01 to 2026-11-23 about overnight, Euro Area, deposits, Europe, and rate.",
+      "url": "https://fred.stlouisfed.org/graph/?id=ECBDFR",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ECB interest rate today: deposit rate 2.50 % (since 16/09/2026)",
+      "snippet": "The deposit facility rate, through which the ECB steers monetary policy, has been 2.50 % since 16 September 2026. The main refinancing rate is 2.65 % and the marginal lending rate 2.90 %.",
+      "url": "https://euribor-rates.info/en/ecb-interest-rates/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Official interest rates | ECB Data Portal - Europa",
+      "snippet": "Daily - businessweek [B] (Modified), Daily - businessweek (Original) [B] Reference area Euro area (changing composition) [U2] Currency Euro [EUR] Financial market provider ECB [4F] Financial market instrument Key interest rate [KR] Financial market provider identifier Deposit facility - date of changes (raw data) [DFR] Financial market data ...",
+      "url": "https://data.ecb.europa.eu/data/data-categories/financial-markets-and-interest-rates/financial-market-data/official-interest-rates",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "ECB Deposit Facility Rate Today - Current Level, Decision History & Chart",
+      "snippet": "ECB Deposit Facility Rate: current level, every decision in the available history and charts, from the central bank's official publications.",
+      "url": "https://marketsgrid.com/rates/ecb-deposit-rate",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Standing facilities - European Central Bank",
+      "snippet": "The Eurosystem offers eligible counterparties access to two standing facilities: Marginal lending facility in order to obtain overnight liquidity from the national central bank, against the provision of adequate eligible collateral; Deposit facility in order to make overnight deposits with the national central bank.",
+      "url": "https://www.ecb.europa.eu/mopo/implement/sf/html/index.en.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "European Central Bank keeps key interest rate on hold at 2.5% - CNBC",
+      "snippet": "It keeps the central bank's key rate, the deposit facility, at 2.5% following a 25 basis point hike in September.",
+      "url": "https://www.cnbc.com/2026/10/29/european-central-bank-interest-rates.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ECB Interest Rates - Central Bank of Ireland",
+      "snippet": "Interest rates from the European Central Bank. ECB Interest Rates The Governing Council of European Central Bank sets interest rates for the euro area. Interest rates are in percentages per annumn. Current rates effective 16 September 2026 Deposit Facility: 2.50% The rate on the deposit facility, which banks may use to make overnight deposits with the Eurosystem. The Governing Council decided ...",
+      "url": "https://www.centralbank.ie/statistics/interest-rates-exchange-rates/ecb-interest-rates",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

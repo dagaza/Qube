@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "description": "Phase 0 knowledge-quality corpus: multi-turn composer follow-ups, relevance labels, and abstention cases. Offline fixtures live under eval/fixtures/knowledge_quality/.",
+  "schema_version": 2,
+  "description": "Knowledge-quality corpus (S2): cases across general_web, trusted, finance and scholarly paths, with multi-turn follow-ups and abstention cases. Offline replay fixtures under eval/fixtures/knowledge_quality/ are captured with tools/capture_knowledge_fixture.py.",
   "phase0": {
     "min_queries": 6,
     "metrics": [
@@ -19,39 +19,650 @@
       "multi_turn": true,
       "expect_abstention_allowed": true,
       "expect_composer_token_stripped": true,
-      "notes": "Observed 2026-11-21 session 07014912 — ANT acronym collision with insect papers."
+      "notes": "Observed 2026-11-21 session 07014912 — ANT acronym collision with insect papers.",
+      "path": "scientific_evidence",
+      "category": "sts_humanities"
     },
     {
-      "id": "kq_ace_hf_single",
-      "query": "ACE inhibitors heart failure outcomes randomized trials",
-      "tool": "evidence",
+      "id": "web_def_roth_ira",
+      "fixture": "eval/fixtures/knowledge_quality/web_def_roth_ira.json",
+      "path": "general_web",
+      "category": "definition",
+      "tool": "internet",
       "multi_turn": false,
-      "expect_any_tokens": ["ace", "angiotensin", "heart failure", "enalapril", "ramipril"],
-      "reject_title_patterns": ["takotsubo", "chemotherapy", "oncolog"],
-      "notes": "Baseline biomedical relevance (also covered by deep-research corpus)."
+      "query": "What is a Roth IRA?",
+      "standalone_question": "What is a Roth IRA and how does it work?",
+      "gold_subject": "Roth IRA",
+      "gold_facet": ""
     },
     {
-      "id": "kq_trusted_who",
-      "query": "WHO air quality guidelines particulate matter",
-      "tool": "trusted",
+      "id": "web_def_heat_pump",
+      "fixture": "eval/fixtures/knowledge_quality/web_def_heat_pump.json",
+      "path": "general_web",
+      "category": "definition",
+      "tool": "internet",
       "multi_turn": false,
-      "expect_any_tokens": ["who", "air quality", "particulate", "pm2.5"],
-      "notes": "Trusted / institutional authority path."
+      "query": "how does a heat pump work",
+      "standalone_question": "How does a heat pump work?",
+      "gold_subject": "heat pump",
+      "gold_facet": "how it works"
+    },
+    {
+      "id": "web_def_sourdough_starter",
+      "fixture": "eval/fixtures/knowledge_quality/web_def_sourdough_starter.json",
+      "path": "general_web",
+      "category": "definition",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "what is a sourdough starter and how do i keep it alive",
+      "standalone_question": "What is a sourdough starter and how do you maintain it?",
+      "gold_subject": "sourdough starter",
+      "gold_facet": "maintenance"
+    },
+    {
+      "id": "web_howto_git_undo_commit",
+      "fixture": "eval/fixtures/knowledge_quality/web_howto_git_undo_commit.json",
+      "path": "general_web",
+      "category": "how_to",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "how do I undo the last git commit but keep my changes",
+      "standalone_question": "How do I undo the last git commit while keeping the changes?",
+      "gold_subject": "git",
+      "gold_facet": "undo last commit"
+    },
+    {
+      "id": "web_howto_descale_kettle",
+      "fixture": "eval/fixtures/knowledge_quality/web_howto_descale_kettle.json",
+      "path": "general_web",
+      "category": "how_to",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "how to descale an electric kettle with vinegar",
+      "standalone_question": "How do I descale an electric kettle with vinegar?",
+      "gold_subject": "electric kettle",
+      "gold_facet": "descaling"
+    },
+    {
+      "id": "web_howto_python_venv",
+      "fixture": "eval/fixtures/knowledge_quality/web_howto_python_venv.json",
+      "path": "general_web",
+      "category": "how_to",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "how to create a python virtual environment on windows",
+      "standalone_question": "How do I create a Python virtual environment on Windows?",
+      "gold_subject": "Python virtual environment",
+      "gold_facet": "Windows setup"
+    },
+    {
+      "id": "web_entity_bled_castle",
+      "fixture": "eval/fixtures/knowledge_quality/web_entity_bled_castle.json",
+      "path": "general_web",
+      "category": "entity_lookup",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "Bled Castle opening hours",
+      "standalone_question": "What are the opening hours of Bled Castle in Slovenia?",
+      "gold_subject": "Bled Castle",
+      "gold_facet": "opening hours"
+    },
+    {
+      "id": "web_entity_framework_laptop",
+      "fixture": "eval/fixtures/knowledge_quality/web_entity_framework_laptop.json",
+      "path": "general_web",
+      "category": "entity_lookup",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "Framework Laptop 13 battery life review",
+      "standalone_question": "How good is the battery life of the Framework Laptop 13?",
+      "gold_subject": "Framework Laptop 13",
+      "gold_facet": "battery life"
+    },
+    {
+      "id": "web_entity_sydney_opera_house",
+      "fixture": "eval/fixtures/knowledge_quality/web_entity_sydney_opera_house.json",
+      "path": "general_web",
+      "category": "entity_lookup",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "who designed the sydney opera house",
+      "standalone_question": "Who designed the Sydney Opera House?",
+      "gold_subject": "Sydney Opera House",
+      "gold_facet": "architect"
+    },
+    {
+      "id": "kq_recency_news",
+      "query": "What is the latest US inflation rate?",
+      "tool": "internet",
+      "multi_turn": false,
+      "expect_any_tokens": [
+        "inflation",
+        "cpi",
+        "bureau",
+        "bls"
+      ],
+      "notes": "Recency-sensitive general web (Phase 1 date injection helps; Phase 2+ for freshness ranking).",
+      "fixture": "eval/fixtures/knowledge_quality/kq_recency_news.json",
+      "path": "general_web",
+      "category": "recency",
+      "standalone_question": "What is the latest US CPI inflation rate?",
+      "gold_subject": "US inflation rate",
+      "gold_facet": "latest value"
+    },
+    {
+      "id": "web_recency_ecb_rate",
+      "fixture": "eval/fixtures/knowledge_quality/web_recency_ecb_rate.json",
+      "path": "general_web",
+      "category": "recency",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "What is the current ECB deposit facility rate?",
+      "standalone_question": "What is the European Central Bank's current deposit facility rate?",
+      "gold_subject": "ECB deposit facility rate",
+      "gold_facet": "current value"
+    },
+    {
+      "id": "web_recency_python_release",
+      "fixture": "eval/fixtures/knowledge_quality/web_recency_python_release.json",
+      "path": "general_web",
+      "category": "recency",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "What is the latest stable Python version?",
+      "standalone_question": "What is the latest stable release of Python?",
+      "gold_subject": "Python",
+      "gold_facet": "latest stable release"
+    },
+    {
+      "id": "web_recency_iphone_latest",
+      "fixture": "eval/fixtures/knowledge_quality/web_recency_iphone_latest.json",
+      "path": "general_web",
+      "category": "recency",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "What is the newest iPhone model?",
+      "standalone_question": "What is the newest iPhone model currently available?",
+      "gold_subject": "iPhone",
+      "gold_facet": "newest model"
+    },
+    {
+      "id": "web_homograph_jaguar",
+      "fixture": "eval/fixtures/knowledge_quality/web_homograph_jaguar.json",
+      "path": "general_web",
+      "category": "acronym_homograph",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "How fast can a jaguar run?",
+      "standalone_question": "How fast can a jaguar (the animal) run?",
+      "gold_subject": "jaguar (animal)",
+      "gold_facet": "top speed",
+      "notes": "Homograph: animal vs car brand."
+    },
+    {
+      "id": "web_acronym_gdpr_erasure",
+      "fixture": "eval/fixtures/knowledge_quality/web_acronym_gdpr_erasure.json",
+      "path": "general_web",
+      "category": "acronym_homograph",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "GDPR right to erasure exceptions",
+      "standalone_question": "What are the exceptions to the GDPR right to erasure?",
+      "gold_subject": "GDPR right to erasure",
+      "gold_facet": "exceptions"
+    },
+    {
+      "id": "web_abstain_fictional_product",
+      "fixture": "eval/fixtures/knowledge_quality/web_abstain_fictional_product.json",
+      "path": "general_web",
+      "category": "abstain",
+      "tool": "internet",
+      "multi_turn": false,
+      "query": "Zorblax 9000 smart toaster firmware update instructions",
+      "standalone_question": "How do I update the firmware on a Zorblax 9000 smart toaster?",
+      "gold_subject": "Zorblax 9000 smart toaster",
+      "gold_facet": "firmware update",
+      "notes": "Fictional product: no source can answer; expect abstention."
     },
     {
       "id": "kq_affirmation_followup",
       "history": [
-        {"role": "user", "content": "What is OAuth?"},
+        {
+          "role": "user",
+          "content": "What is OAuth?"
+        },
         {
           "role": "assistant",
           "content": "OAuth is an authorization framework. Would you like an example of the authorization code flow?"
         }
       ],
       "query": "Yes, please.",
+      "tool": "internet",
+      "multi_turn": true,
+      "notes": "Affirmation continuation — discourse should retain OAuth as subject.",
+      "fixture": "eval/fixtures/knowledge_quality/kq_affirmation_followup.json",
+      "path": "general_web",
+      "category": "multi_turn",
+      "standalone_question": "Can you give an example of the OAuth 2.0 authorization code flow?",
+      "gold_subject": "OAuth",
+      "gold_facet": "authorization code flow example",
+      "expect_topic_tokens": [
+        "oauth",
+        "authorization"
+      ]
+    },
+    {
+      "id": "mt_facet_shift_heat_pump",
+      "fixture": "eval/fixtures/knowledge_quality/mt_facet_shift_heat_pump.json",
+      "path": "general_web",
+      "category": "multi_turn",
+      "tool": "internet",
+      "multi_turn": true,
+      "query": "And how much does it cost to install one?",
+      "history": [
+        {
+          "role": "user",
+          "content": "How does a heat pump work?"
+        },
+        {
+          "role": "assistant",
+          "content": "A heat pump moves heat from outside air or ground into your home using a refrigerant cycle, and can reverse to cool in summer."
+        }
+      ],
+      "standalone_question": "How much does it cost to install a heat pump?",
+      "gold_subject": "heat pump",
+      "gold_facet": "installation cost",
+      "notes": "Facet shift with pronoun 'one'."
+    },
+    {
+      "id": "mt_ellipsis_python",
+      "fixture": "eval/fixtures/knowledge_quality/mt_ellipsis_python.json",
+      "path": "general_web",
+      "category": "multi_turn",
+      "tool": "internet",
+      "multi_turn": true,
+      "query": "and what about 3.14?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What's new in Python 3.13?"
+        },
+        {
+          "role": "assistant",
+          "content": "Python 3.13 added an experimental free-threaded build, a new interactive REPL, and an experimental JIT compiler."
+        }
+      ],
+      "standalone_question": "What is new in Python 3.14?",
+      "gold_subject": "Python",
+      "gold_facet": "3.14 new features",
+      "notes": "Ellipsis follow-up."
+    },
+    {
+      "id": "mt_topic_switch_ethanol",
+      "fixture": "eval/fixtures/knowledge_quality/mt_topic_switch_ethanol.json",
+      "path": "general_web",
+      "category": "multi_turn",
+      "tool": "internet",
+      "multi_turn": true,
+      "query": "What is the boiling point of ethanol?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is actor-network theory?"
+        },
+        {
+          "role": "assistant",
+          "content": "Actor-network theory (ANT) is a sociological approach that treats human and non-human entities as actors in networks."
+        }
+      ],
+      "standalone_question": "What is the boiling point of ethanol?",
+      "gold_subject": "ethanol",
+      "gold_facet": "boiling point",
+      "notes": "True topic switch: must NOT be anchored to the prior subject."
+    },
+    {
+      "id": "kq_trusted_who",
+      "query": "WHO air quality guidelines particulate matter",
+      "tool": "trusted",
+      "multi_turn": false,
+      "expect_any_tokens": [
+        "who",
+        "air quality",
+        "particulate",
+        "pm2.5"
+      ],
+      "notes": "Trusted / institutional authority path.",
+      "fixture": "eval/fixtures/knowledge_quality/kq_trusted_who.json",
+      "path": "trusted_knowledge",
+      "category": "health_official",
+      "standalone_question": "What are the WHO air quality guideline levels for particulate matter (PM2.5 and PM10)?",
+      "gold_subject": "WHO air quality guidelines",
+      "gold_facet": "particulate matter limits"
+    },
+    {
+      "id": "trusted_cdc_mmr_doses",
+      "fixture": "eval/fixtures/knowledge_quality/trusted_cdc_mmr_doses.json",
+      "path": "trusted_knowledge",
+      "category": "health_official",
+      "tool": "trusted",
+      "multi_turn": false,
+      "query": "How many doses of the MMR vaccine do children need?",
+      "standalone_question": "How many doses of the MMR vaccine are recommended for children?",
+      "gold_subject": "MMR vaccine",
+      "gold_facet": "childhood dose schedule"
+    },
+    {
+      "id": "trusted_census_texas_population",
+      "fixture": "eval/fixtures/knowledge_quality/trusted_census_texas_population.json",
+      "path": "trusted_knowledge",
+      "category": "official_statistics",
+      "tool": "trusted",
+      "multi_turn": false,
+      "query": "What is the population of Texas according to the US Census?",
+      "standalone_question": "What is the population of Texas according to the US Census Bureau?",
+      "gold_subject": "Texas population",
+      "gold_facet": "US Census figure"
+    },
+    {
+      "id": "mt_acronym_ms_treatment",
+      "fixture": "eval/fixtures/knowledge_quality/mt_acronym_ms_treatment.json",
+      "path": "trusted_knowledge",
+      "category": "multi_turn",
+      "tool": "trusted",
+      "multi_turn": true,
+      "query": "Yes, tell me how MS is treated",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is multiple sclerosis?"
+        },
+        {
+          "role": "assistant",
+          "content": "Multiple sclerosis (MS) is a chronic autoimmune disease in which the immune system attacks the myelin sheath of nerves. Would you like to know how MS is treated?"
+        }
+      ],
+      "standalone_question": "How is multiple sclerosis (MS) treated?",
+      "gold_subject": "multiple sclerosis",
+      "gold_facet": "treatment",
+      "notes": "Acronym defined in history; 'MS' is ambiguous (Microsoft, master of science)."
+    },
+    {
+      "id": "trusted_abstain_fictional",
+      "fixture": "eval/fixtures/knowledge_quality/trusted_abstain_fictional.json",
+      "path": "trusted_knowledge",
+      "category": "abstain",
+      "tool": "trusted",
+      "multi_turn": false,
+      "query": "Official WHO guidance on the Varnex-7 nasal implant",
+      "standalone_question": "What is the official WHO guidance on the Varnex-7 nasal implant?",
+      "gold_subject": "Varnex-7 nasal implant",
+      "gold_facet": "WHO guidance",
+      "notes": "Fictional device: expect abstention."
+    },
+    {
+      "id": "fin_apple_10k",
+      "fixture": "eval/fixtures/knowledge_quality/fin_apple_10k.json",
+      "path": "finance_knowledge",
+      "category": "finance_filings",
+      "tool": "finance",
+      "multi_turn": false,
+      "query": "Apple annual report 10-K revenue",
+      "standalone_question": "What revenue did Apple report in its latest 10-K annual report?",
+      "gold_subject": "Apple 10-K",
+      "gold_facet": "revenue"
+    },
+    {
+      "id": "fin_tesla_10q",
+      "fixture": "eval/fixtures/knowledge_quality/fin_tesla_10q.json",
+      "path": "finance_knowledge",
+      "category": "finance_filings",
+      "tool": "finance",
+      "multi_turn": false,
+      "query": "Tesla latest quarterly report 10-Q",
+      "standalone_question": "What does Tesla's latest 10-Q quarterly report say?",
+      "gold_subject": "Tesla 10-Q",
+      "gold_facet": "latest quarterly report"
+    },
+    {
+      "id": "kq_ace_hf_single",
+      "query": "ACE inhibitors heart failure outcomes randomized trials",
+      "tool": "evidence",
+      "multi_turn": false,
+      "expect_any_tokens": [
+        "ace",
+        "angiotensin",
+        "heart failure",
+        "enalapril",
+        "ramipril"
+      ],
+      "reject_title_patterns": [
+        "takotsubo",
+        "chemotherapy",
+        "oncolog"
+      ],
+      "notes": "Baseline biomedical relevance (also covered by deep-research corpus).",
+      "fixture": "eval/fixtures/knowledge_quality/kq_ace_hf_single.json",
+      "path": "scientific_evidence",
+      "category": "biomedical",
+      "standalone_question": "What do randomized trials show about ACE inhibitor outcomes in heart failure?",
+      "gold_subject": "ACE inhibitors",
+      "gold_facet": "heart failure outcomes"
+    },
+    {
+      "id": "sci_bio_microplastics",
+      "fixture": "eval/fixtures/knowledge_quality/sci_bio_microplastics.json",
+      "path": "scientific_evidence",
+      "category": "biomedical",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "Long-term effects of microplastics on human health",
+      "standalone_question": "What are the long-term effects of microplastics on human health?",
+      "gold_subject": "microplastics",
+      "gold_facet": "human health effects"
+    },
+    {
+      "id": "sci_bio_fasting_insulin",
+      "fixture": "eval/fixtures/knowledge_quality/sci_bio_fasting_insulin.json",
+      "path": "scientific_evidence",
+      "category": "biomedical",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "Does intermittent fasting improve insulin sensitivity?",
+      "standalone_question": "Does intermittent fasting improve insulin sensitivity?",
+      "gold_subject": "intermittent fasting",
+      "gold_facet": "insulin sensitivity"
+    },
+    {
+      "id": "sci_soc_social_media_depression",
+      "fixture": "eval/fixtures/knowledge_quality/sci_soc_social_media_depression.json",
+      "path": "scientific_evidence",
+      "category": "social_science",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "What does research say about social media use and adolescent depression?",
+      "standalone_question": "What is the effect of social media use on adolescent depression?",
+      "gold_subject": "social media use",
+      "gold_facet": "adolescent depression"
+    },
+    {
+      "id": "sci_soc_remote_work_productivity",
+      "fixture": "eval/fixtures/knowledge_quality/sci_soc_remote_work_productivity.json",
+      "path": "scientific_evidence",
+      "category": "social_science",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "Does remote work affect employee productivity?",
+      "standalone_question": "Does remote work affect employee productivity?",
+      "gold_subject": "remote work",
+      "gold_facet": "productivity"
+    },
+    {
+      "id": "sci_psych_sleep_memory",
+      "fixture": "eval/fixtures/knowledge_quality/sci_psych_sleep_memory.json",
+      "path": "scientific_evidence",
+      "category": "social_science",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "How does sleep deprivation affect memory consolidation?",
+      "standalone_question": "How does sleep deprivation affect memory consolidation?",
+      "gold_subject": "sleep deprivation",
+      "gold_facet": "memory consolidation"
+    },
+    {
+      "id": "mt_ant_followup_live",
+      "fixture": "eval/fixtures/knowledge_quality/mt_ant_followup_live.json",
+      "path": "scientific_evidence",
+      "category": "sts_humanities",
       "tool": "evidence",
       "multi_turn": true,
-      "expect_topic_tokens": ["oauth", "authorization"],
-      "notes": "Affirmation continuation — discourse should retain OAuth as subject."
+      "query": "Yes, please tell me how ANT analyzes Artificial Inteligence for example.",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is actor-network theory?>"
+        },
+        {
+          "role": "assistant",
+          "content": "Actor-network theory (ANT) is a sociological approach that treats both human and non-human entities—like tools, documents, or technologies—as \"actors\" capable of influencing social outcomes. Would you like an example of how ANT analyzes a specific technology?"
+        }
+      ],
+      "standalone_question": "How does actor-network theory (ANT) analyze artificial intelligence?",
+      "gold_subject": "actor-network theory",
+      "gold_facet": "analysis of artificial intelligence",
+      "notes": "Live re-capture of the 2026-11-21 ANT turn: production (raw) vs standalone pools."
+    },
+    {
+      "id": "sci_hum_printing_press_reformation",
+      "fixture": "eval/fixtures/knowledge_quality/sci_hum_printing_press_reformation.json",
+      "path": "scientific_evidence",
+      "category": "sts_humanities",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "What role did the printing press play in the Protestant Reformation?",
+      "standalone_question": "What role did the printing press play in the Protestant Reformation?",
+      "gold_subject": "printing press",
+      "gold_facet": "Protestant Reformation"
+    },
+    {
+      "id": "sci_sts_scot",
+      "fixture": "eval/fixtures/knowledge_quality/sci_sts_scot.json",
+      "path": "scientific_evidence",
+      "category": "sts_humanities",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "What is the social construction of technology (SCOT) approach?",
+      "standalone_question": "What is the social construction of technology (SCOT) approach?",
+      "gold_subject": "social construction of technology",
+      "gold_facet": ""
+    },
+    {
+      "id": "sci_cs_oauth_flow",
+      "fixture": "eval/fixtures/knowledge_quality/sci_cs_oauth_flow.json",
+      "path": "scientific_evidence",
+      "category": "cs_engineering",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "How does the OAuth 2.0 authorization code flow work?",
+      "standalone_question": "How does the OAuth 2.0 authorization code flow work?",
+      "gold_subject": "OAuth 2.0",
+      "gold_facet": "authorization code flow",
+      "notes": "Service mismatch: how-to question sent to scholarly indexes (recorded, not gated)."
+    },
+    {
+      "id": "sci_cs_self_attention",
+      "fixture": "eval/fixtures/knowledge_quality/sci_cs_self_attention.json",
+      "path": "scientific_evidence",
+      "category": "cs_engineering",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "How does self-attention work in transformer models?",
+      "standalone_question": "How does self-attention work in transformer models?",
+      "gold_subject": "transformer self-attention",
+      "gold_facet": "mechanism"
+    },
+    {
+      "id": "sci_cs_rust_ownership",
+      "fixture": "eval/fixtures/knowledge_quality/sci_cs_rust_ownership.json",
+      "path": "scientific_evidence",
+      "category": "cs_engineering",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "How does Rust's ownership model prevent memory safety bugs?",
+      "standalone_question": "How does Rust's ownership model prevent memory safety bugs?",
+      "gold_subject": "Rust ownership model",
+      "gold_facet": "memory safety"
+    },
+    {
+      "id": "sci_phys_dark_matter",
+      "fixture": "eval/fixtures/knowledge_quality/sci_phys_dark_matter.json",
+      "path": "scientific_evidence",
+      "category": "physical_econ",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "What is the observational evidence for dark matter?",
+      "standalone_question": "What is the observational evidence for dark matter?",
+      "gold_subject": "dark matter",
+      "gold_facet": "observational evidence"
+    },
+    {
+      "id": "sci_chem_perovskite_degradation",
+      "fixture": "eval/fixtures/knowledge_quality/sci_chem_perovskite_degradation.json",
+      "path": "scientific_evidence",
+      "category": "physical_econ",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "Why do perovskite solar cells degrade?",
+      "standalone_question": "Why do perovskite solar cells degrade?",
+      "gold_subject": "perovskite solar cells",
+      "gold_facet": "degradation"
+    },
+    {
+      "id": "sci_econ_minimum_wage",
+      "fixture": "eval/fixtures/knowledge_quality/sci_econ_minimum_wage.json",
+      "path": "scientific_evidence",
+      "category": "physical_econ",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "Effect of minimum wage increases on employment",
+      "standalone_question": "What is the effect of minimum wage increases on employment?",
+      "gold_subject": "minimum wage",
+      "gold_facet": "employment effects"
+    },
+    {
+      "id": "sci_homograph_python_everglades",
+      "fixture": "eval/fixtures/knowledge_quality/sci_homograph_python_everglades.json",
+      "path": "scientific_evidence",
+      "category": "acronym_homograph",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "Burmese python impact on Everglades mammals",
+      "standalone_question": "What is the impact of invasive Burmese pythons on mammals in the Everglades?",
+      "gold_subject": "Burmese python",
+      "gold_facet": "Everglades mammal decline",
+      "notes": "Homograph: snake vs programming language."
+    },
+    {
+      "id": "mt_pronoun_statins",
+      "fixture": "eval/fixtures/knowledge_quality/mt_pronoun_statins.json",
+      "path": "scientific_evidence",
+      "category": "multi_turn",
+      "tool": "evidence",
+      "multi_turn": true,
+      "query": "what about side effects in that group?",
+      "history": [
+        {
+          "role": "user",
+          "content": "Are statins effective for primary prevention in older adults?"
+        },
+        {
+          "role": "assistant",
+          "content": "Evidence is mixed for people over 75; trials like JUPITER included few very old participants."
+        }
+      ],
+      "standalone_question": "What are the side effects of statins in older adults?",
+      "gold_subject": "statins",
+      "gold_facet": "side effects in older adults",
+      "notes": "Pronoun/deictic follow-up ('that group')."
     },
     {
       "id": "kq_no_good_sources",
@@ -59,16 +670,43 @@
       "tool": "evidence",
       "multi_turn": false,
       "expect_abstention_allowed": true,
-      "reject_title_patterns": ["ant colon", "artificial ant"],
-      "notes": "If only swarm/XAI papers are returned, the model must be allowed to abstain."
+      "reject_title_patterns": [
+        "ant colon",
+        "artificial ant"
+      ],
+      "notes": "If only swarm/XAI papers are returned, the model must be allowed to abstain.",
+      "fixture": "eval/fixtures/knowledge_quality/kq_no_good_sources.json",
+      "path": "scientific_evidence",
+      "category": "abstain",
+      "standalone_question": "How does actor-network theory analyze large language model deployment?",
+      "gold_subject": "actor-network theory",
+      "gold_facet": "LLM deployment"
     },
     {
-      "id": "kq_recency_news",
-      "query": "What is the latest US inflation rate?",
-      "tool": "internet",
+      "id": "sci_abstain_city_council",
+      "fixture": "eval/fixtures/knowledge_quality/sci_abstain_city_council.json",
+      "path": "scientific_evidence",
+      "category": "abstain",
+      "tool": "evidence",
       "multi_turn": false,
-      "expect_any_tokens": ["inflation", "cpi", "bureau", "bls"],
-      "notes": "Recency-sensitive general web (Phase 1 date injection helps; Phase 2+ for freshness ranking)."
+      "query": "What did the Cluj-Napoca city council decide about bike lanes in October 2026?",
+      "standalone_question": "What did the Cluj-Napoca city council decide about bike lanes in October 2026?",
+      "gold_subject": "Cluj-Napoca city council",
+      "gold_facet": "bike lane decision",
+      "notes": "Local news via scholarly indexes: expect abstention."
+    },
+    {
+      "id": "sci_abstain_fictional_drug",
+      "fixture": "eval/fixtures/knowledge_quality/sci_abstain_fictional_drug.json",
+      "path": "scientific_evidence",
+      "category": "abstain",
+      "tool": "evidence",
+      "multi_turn": false,
+      "query": "Clinical trials of zelvoraxine for migraine",
+      "standalone_question": "What do clinical trials show about zelvoraxine for migraine?",
+      "gold_subject": "zelvoraxine",
+      "gold_facet": "migraine trials",
+      "notes": "Fictional drug: expect abstention."
     }
   ]
 }

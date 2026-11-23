@@ -1,0 +1,1074 @@
+{
+  "schema_version": 2,
+  "id": "mt_pronoun_statins",
+  "path": "scientific_evidence",
+  "category": "multi_turn",
+  "description": "Pronoun/deictic follow-up ('that group').",
+  "query_raw": "@[tool:evidence] what about side effects in that group?",
+  "query_clean": "what about side effects in that group?",
+  "retrieval_query": "Regarding Evidence: what about side effects in that group?",
+  "standalone_question": "What are the side effects of statins in older adults?",
+  "gold_subject": "statins",
+  "gold_facet": "side effects in older adults",
+  "budget": 3,
+  "history": [
+    {
+      "role": "user",
+      "content": "Are statins effective for primary prevention in older adults?"
+    },
+    {
+      "role": "assistant",
+      "content": "Evidence is mixed for people over 75; trials like JUPITER included few very old participants."
+    }
+  ],
+  "captured_at": "2026-11-23T17:05:50+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3,
+    "pubmed": 3,
+    "nice": 3,
+    "cdc": 3,
+    "who": 3,
+    "clinicaltrials_gov": 3,
+    "openfda": 3,
+    "europe_pmc": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "Regarding Evidence: what about side effects in that group",
+      "arxiv": "Regarding Evidence: what about side effects in that group"
+    },
+    "standalone": {
+      "pubmed": "Statins",
+      "nice": "What are the side effects of statins in older adults",
+      "cdc": "What are the side effects of statins in older adults",
+      "who": "What are the side effects of statins in older adults",
+      "clinicaltrials_gov": "What are the side effects of statins in older adults",
+      "openfda": "What are the side effects of statins in older adults",
+      "openalex": "What are the side effects of statins in older adults",
+      "europe_pmc": "What are the side effects of statins in older adults"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Cognitive side-effects of electroconvulsive therapy: what are they, how to monitor them and what to tell patients",
+      "snippet": "BACKGROUND: Electroconvulsive therapy (ECT) is recommended in treatment guidelines as an efficacious therapy for treatment-resistant depression. However, it has been associated with loss of autobiographical memory and short-term reduction in new learning. AIMS: To provide clinically useful guidelines to aid clinicians in informing patients regarding the cognitive side-effects of ECT and in monitoring these during a course of ECT, using complex data. METHOD: A Committee of clinical and academic experts from Australia and New Zealand met to the discuss the key issues pertaining to ECT and cognit",
+      "full_text": "BACKGROUND: Electroconvulsive therapy (ECT) is recommended in treatment guidelines as an efficacious therapy for treatment-resistant depression. However, it has been associated with loss of autobiographical memory and short-term reduction in new learning. AIMS: To provide clinically useful guidelines to aid clinicians in informing patients regarding the cognitive side-effects of ECT and in monitoring these during a course of ECT, using complex data. METHOD: A Committee of clinical and academic experts from Australia and New Zealand met to the discuss the key issues pertaining to ECT and cognitive side-effects. Evidence regarding cognitive side-effects was reviewed, as was the limited evidence regarding how to monitor them. Both issues were supplemented by the clinical experience of the authors. RESULTS: Meta-analyses suggest that new learning is impaired immediately following ECT but that group mean scores return at least to baseline by 14 days after ECT. Other cognitive functions are generally unaffected. However, the finding of a mean score that is not reduced from baseline cannot be taken to indicate that impairment, particularly of new learning, cannot occur in individuals, particularly those who are at greater risk. Therefore, monitoring is still important. Evidence suggests that ECT does cause deficits in autobiographical memory. The evidence for schedules of testing to monitor cognitive side-effects is currently limited. We therefore make practical recommendations based on clinical experience. CONCLUSIONS: Despite modern ECT techniques, cognitive side-effects remain an important issue, although their nature and degree remains to be clarified fully. In these circumstances it is useful for clinicians to have guidance regarding what to tell patients and how to monitor these side-effects clinically.",
+      "url": "https://openalex.org/W3016564443",
+      "_adapter": "openalex",
+      "authors": [
+        "Richard Porter",
+        "Bernhard Theodor Baune",
+        "Grace Morris",
+        "Amber Hamilton",
+        "Darryl L. Bassett",
+        "Philip M. Boyce",
+        "Malcolm Hopwood",
+        "Roger Mulder",
+        "Gordon Barraclough Parker",
+        "Ajeet Singh",
+        "Tim Outhred",
+        "Pritha Das",
+        "Gin Singh Malhi"
+      ],
+      "venue": "BJPsych Open",
+      "publication_date": "2020",
+      "doi": "10.1192/bjo.2020.17",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Changing mindsets about side effects",
+      "snippet": "Given research showing that the very act of communicating side effects can increase their likelihood, how can providers inform patients about side effects while upholding their oath to do no unnecessary harm? An emerging approach provides a potential solution: truthfully describe certain minor side effects as a sign the treatment is active and working in the body. This approach focuses on instilling adaptive mindsets about the meaning of side effects while still keeping patients informed. This article describes existing research suggesting that this approach can be helpful in improving experie",
+      "full_text": "Given research showing that the very act of communicating side effects can increase their likelihood, how can providers inform patients about side effects while upholding their oath to do no unnecessary harm? An emerging approach provides a potential solution: truthfully describe certain minor side effects as a sign the treatment is active and working in the body. This approach focuses on instilling adaptive mindsets about the meaning of side effects while still keeping patients informed. This article describes existing research suggesting that this approach can be helpful in improving experience and outcomes in treatments for pain, hypertension and allergy. Compared with control groups given a standard, empathetic message about side effects, patients who were informed that side effects are a sign treatment is working were less anxious about side effects and rated them as less threatening and intense. A longitudinal, randomised controlled trial of this approach in patients receiving oral immunotherapy for food allergies found that describing side effects as a sign treatment was working reduced the rate at which patients contacted providers with concerns about side effects and led to greater increases in a biomarker of allergic tolerance from pretreatment to post-treatment (peanut-specific blood IgG4). In unveiling this approach, this article also raises important issues regarding which treatments and symptoms this approach should be applied to. Finally, we outline questions future research should address to further understand and leverage this approach.",
+      "url": "https://openalex.org/W3127781247",
+      "_adapter": "openalex",
+      "authors": [
+        "Kari A. Leibowitz",
+        "Lauren Christine Howe",
+        "Alia Joy Crum"
+      ],
+      "venue": "BMJ Open",
+      "publication_date": "2021",
+      "doi": "10.1136/bmjopen-2020-040134",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Common questions and misconceptions about creatine supplementation: what does the scientific evidence really show?",
+      "snippet": "Supplementing with creatine is very popular amongst athletes and exercising individuals for improving muscle mass, performance and recovery. Accumulating evidence also suggests that creatine supplementation produces a variety of beneficial effects in older and patient populations. Furthermore, evidence-based research shows that creatine supplementation is relatively well tolerated, especially at recommended dosages (i.e. 3-5 g/day or 0.1 g/kg of body mass/day). Although there are over 500 peer-refereed publications involving creatine supplementation, it is somewhat surprising that questions re",
+      "full_text": "Supplementing with creatine is very popular amongst athletes and exercising individuals for improving muscle mass, performance and recovery. Accumulating evidence also suggests that creatine supplementation produces a variety of beneficial effects in older and patient populations. Furthermore, evidence-based research shows that creatine supplementation is relatively well tolerated, especially at recommended dosages (i.e. 3-5 g/day or 0.1 g/kg of body mass/day). Although there are over 500 peer-refereed publications involving creatine supplementation, it is somewhat surprising that questions regarding the efficacy and safety of creatine still remain. These include, but are not limited to: 1. Does creatine lead to water retention? 2. Is creatine an anabolic steroid? 3. Does creatine cause kidney damage/renal dysfunction? 4. Does creatine cause hair loss / baldness? 5. Does creatine lead to dehydration and muscle cramping? 6. Is creatine harmful for children and adolescents? 7. Does creatine increase fat mass? 8. Is a creatine 'loading-phase' required? 9. Is creatine beneficial for older adults? 10. Is creatine only useful for resistance / power type activities? 11. Is creatine only effective for males? 12. Are other forms of creatine similar or superior to monohydrate and is creatine stable in solutions/beverages? To answer these questions, an internationally renowned team of research experts was formed to perform an evidence-based scientific evaluation of the literature regarding creatine supplementation.",
+      "url": "https://openalex.org/W3127319292",
+      "_adapter": "openalex",
+      "authors": [
+        "José António",
+        "Darren Glenn Candow",
+        "Scott C. Forbes",
+        "Bruno Gualano",
+        "Andrew R. Jagim",
+        "Richard B. Kreider",
+        "Eric S. Rawson",
+        "Abbie E. Smith‐Ryan",
+        "Trisha A. VanDusseldorp",
+        "Darryn S. Willoughby",
+        "Tim N. Ziegenfuss"
+      ],
+      "venue": "Journal of the International Society of Sports Nutrition",
+      "publication_date": "2021",
+      "doi": "10.1186/s12970-021-00412-w",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Can Positive Framing Reduce Nocebo Side Effects? Current Evidence and Recommendation for Future Research",
+      "snippet": "Although critical for informed consent, side effect warnings can contribute directly to poorer patient outcomes because they often induce negative expectations that trigger nocebo side effects. Communication strategies that reduce the development of nocebo side effects whilst maintaining informed consent are therefore of considerable interest. We reviewed theoretical and empirical evidence for the use of framing strategies to achieve this. Framing refers to the way in which information about the likelihood or significance of side effects is presented (e.g. negative frame: 30% will experience h",
+      "full_text": "Although critical for informed consent, side effect warnings can contribute directly to poorer patient outcomes because they often induce negative expectations that trigger nocebo side effects. Communication strategies that reduce the development of nocebo side effects whilst maintaining informed consent are therefore of considerable interest. We reviewed theoretical and empirical evidence for the use of framing strategies to achieve this. Framing refers to the way in which information about the likelihood or significance of side effects is presented (e.g. negative frame: 30% will experience headache vs positive frame: 70% will not experience headache), with the rationale that positively framing such information could diminish nocebo side effects. Relatively few empirical studies (k=6) have tested whether framing strategies can reduce nocebo side effects. Of these, four used attribute framing and two message framing. All but one of the studies found a significant framing effect on at least one aspect of side effects (e.g. experience, attribution, threat), suggesting that framing is a promising strategy for reducing nocebo effects. However, our review also revealed some important open questions regarding these types of framing effects, including, the best method of communicating side effects (written, oral, pictorial), optimal statistical presentation (e.g., frequencies versus percentages), whether framing affects perceived absolute risk of side effects, and what psychological mechanisms underlie framing effects. Future research that addresses these open questions will be vital for understanding the circumstances in which framing is most likely to be effective.",
+      "url": "https://openalex.org/W2922254588",
+      "_adapter": "openalex",
+      "authors": [
+        "Kirsten Barnes",
+        "Kate Faasse",
+        "Andrew L. Geers",
+        "Suzanne G. Helfer",
+        "Louise Sharpe",
+        "Luana Colloca",
+        "Ben Colagiuri"
+      ],
+      "venue": "Frontiers in Pharmacology",
+      "publication_date": "2019",
+      "doi": "10.3389/fphar.2019.00167",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What about N? A methodological study of sample-size reporting in focus group studies",
+      "snippet": "BACKGROUND: Focus group studies are increasingly published in health related journals, but we know little about how researchers use this method, particularly how they determine the number of focus groups to conduct. The methodological literature commonly advises researchers to follow principles of data saturation, although practical advise on how to do this is lacking. Our objectives were firstly, to describe the current status of sample size in focus group studies reported in health journals. Secondly, to assess whether and how researchers explain the number of focus groups they carry out. ME",
+      "full_text": "BACKGROUND: Focus group studies are increasingly published in health related journals, but we know little about how researchers use this method, particularly how they determine the number of focus groups to conduct. The methodological literature commonly advises researchers to follow principles of data saturation, although practical advise on how to do this is lacking. Our objectives were firstly, to describe the current status of sample size in focus group studies reported in health journals. Secondly, to assess whether and how researchers explain the number of focus groups they carry out. METHODS: We searched PubMed for studies that had used focus groups and that had been published in open access journals during 2008, and extracted data on the number of focus groups and on any explanation authors gave for this number. We also did a qualitative assessment of the papers with regard to how number of groups was explained and discussed. RESULTS: We identified 220 papers published in 117 journals. In these papers insufficient reporting of sample sizes was common. The number of focus groups conducted varied greatly (mean 8.4, median 5, range 1 to 96). Thirty seven (17%) studies attempted to explain the number of groups. Six studies referred to rules of thumb in the literature, three stated that they were unable to organize more groups for practical reasons, while 28 studies stated that they had reached a point of saturation. Among those stating that they had reached a point of saturation, several appeared not to have followed principles from grounded theory where data collection and analysis is an iterative process until saturation is reached. Studies with high numbers of focus groups did not offer explanations for number of groups. Too much data as a study weakness was not an issue discussed in any of the reviewed papers. CONCLUSIONS: Based on these findings we suggest that journals adopt more stringent requirements for focus group method reporting. The often poor and inconsistent reporting seen in these studies may also reflect the lack of clear, evidence-based guidance about deciding on sample size. More empirical research is needed to develop focus group methodology.",
+      "url": "https://openalex.org/W2013335946",
+      "_adapter": "openalex",
+      "authors": [
+        "Benedicte Carlsen",
+        "Claire Glenton"
+      ],
+      "venue": "BMC Medical Research Methodology",
+      "publication_date": "2011",
+      "doi": "10.1186/1471-2288-11-26",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What does the evidence tell us about merit principles and government performance?",
+      "snippet": "In October 2020, President Donald Trump sought to convert many US federal civil servants to at‐will employees by executive order. Trump's initiative, referred to as Schedule F, has stimulated a partisan debate about dismantling the merit system in the US federal government. A substantial international body of evidence has developed during the last three decades about the effects of administrative practices associated with meritocracy and the likely consequences of changes to civil service systems, such as those embedded in Schedule F. This article employs guidelines established under the Prefe",
+      "full_text": "In October 2020, President Donald Trump sought to convert many US federal civil servants to at‐will employees by executive order. Trump's initiative, referred to as Schedule F, has stimulated a partisan debate about dismantling the merit system in the US federal government. A substantial international body of evidence has developed during the last three decades about the effects of administrative practices associated with meritocracy and the likely consequences of changes to civil service systems, such as those embedded in Schedule F. This article employs guidelines established under the Preferred Reporting Items for Systematic Reviews and Meta‐Analyses (PRISMA) to conduct a systematic review of the evidence to address the question: What does the evidence tell us about merit principles and government performance? This systematic review summarizes what empirical research tells us about effects of civil service practices, such as meritocratic appointments, meritocratic advancement, and tenure protection, for government performance and the quality of government. The findings indicate that factors such as meritocratic appointments/recruitment, tenure protection, impartiality, and professionalism are strongly associated with higher government performance and lower corruption. We conclude by discussing implications of our findings for public policy and management and for future research.",
+      "url": "https://openalex.org/W4380442221",
+      "_adapter": "openalex",
+      "authors": [
+        "Eloy Oliveira",
+        "Gordon Abner",
+        "Shinwoo Lee",
+        "Kohei Suzuki",
+        "Hyunkang Hur",
+        "James L. Perry"
+      ],
+      "venue": "Public Administration",
+      "publication_date": "2023",
+      "doi": "10.1111/padm.12945",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Tevatron-for-LHC Report of the QCD Working Group",
+      "snippet": "The experiments at Run 2 of the Tevatron have each accumulated over 1 inverse femtobarn of high-transverse momentum data. Such a dataset allows for the first precision (i.e. comparisons between theory and experiment at the few percent level) tests of QCD at a hadron collider. While the Large Hadron Collider has been designed as a discovery machine, basic QCD analyses will still need to be performed to understand the working environment. The Tevatron-for-LHC workshop was conceived as a communication link to pass on the expertise of the Tevatron and to test new analysis ideas coming from the LHC",
+      "full_text": "The experiments at Run 2 of the Tevatron have each accumulated over 1 inverse femtobarn of high-transverse momentum data. Such a dataset allows for the first precision (i.e. comparisons between theory and experiment at the few percent level) tests of QCD at a hadron collider. While the Large Hadron Collider has been designed as a discovery machine, basic QCD analyses will still need to be performed to understand the working environment. The Tevatron-for-LHC workshop was conceived as a communication link to pass on the expertise of the Tevatron and to test new analysis ideas coming from the LHC community. The TeV4LHC QCD Working Group focussed on important aspects of QCD at hadron colliders: jet definitions, extraction and use of Parton Distribution Functions, the underlying event, Monte Carlo tunes, and diffractive physics. This report summarizes some of the results achieved during this workshop.",
+      "url": "https://arxiv.org/abs/hep-ph/0610012v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "TeV4LHC QCD Working Group",
+        "M. Albrow",
+        "M. Begel",
+        "D. Bourilkov",
+        "M. Campanelli",
+        "F. Chlebana",
+        "A. De Roeck",
+        "J. R. Dittmann",
+        "S. D. Ellis",
+        "B. Field",
+        "R. Field",
+        "M. Gallinaro",
+        "W. Giele",
+        "K. Goulianos",
+        "R. C. Group",
+        "K. Hatakeyama",
+        "Z. Hubacek",
+        "J. Huston",
+        "W. Kilgore",
+        "T. Kluge",
+        "S. W. Lee",
+        "A. Moraes",
+        "S. Mrenna",
+        "F. Olness",
+        "J. Proudfoot",
+        "K. Rabbertz",
+        "C. Royon",
+        "T. Sjostrand",
+        "P. Skands",
+        "J. Smith",
+        "W. K. Tung",
+        "M. R. Whalley",
+        "M. Wobisch",
+        "M. Zielinski"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2006-10-01",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "hep-ph/0610012v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Schur multipliers of special p-groups of rank 2",
+      "snippet": "A group G is called special p-group of rank k if the commutator subgroup [G,G] and centre Z(G) are equal, which is elementary abelian p-group of rank k and G/[G,G] is also elementary abelian p-group. In this article we determine the Schur multiplier of special p-groups of rank 2 explicitly.",
+      "full_text": "A group G is called special p-group of rank k if the commutator subgroup [G,G] and centre Z(G) are equal, which is elementary abelian p-group of rank k and G/[G,G] is also elementary abelian p-group. In this article we determine the Schur multiplier of special p-groups of rank 2 explicitly.",
+      "url": "https://arxiv.org/abs/1908.06409v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Sumana Hatui"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-08-18",
+      "doi": "10.1515/jgth-2019-0045",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1908.06409v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "On Automorphisms of Finite $p$-groups",
+      "snippet": "Let $G$ be a finite $p$-group such that $x\\Z(G) \\subseteq x^G$ for all $x \\in G- \\Z(G)$, where $x^G$ denotes the conjugacy class of $x$ in $G$. Then $|G|$ divides $|\\Aut(G)|$, where $\\Aut(G)$ is the group of all automorphisms of $G$.",
+      "full_text": "Let $G$ be a finite $p$-group such that $x\\Z(G) \\subseteq x^G$ for all $x \\in G- \\Z(G)$, where $x^G$ denotes the conjugacy class of $x$ in $G$. Then $|G|$ divides $|\\Aut(G)|$, where $\\Aut(G)$ is the group of all automorphisms of $G$.",
+      "url": "https://arxiv.org/abs/math/0608534v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Manoj K. Yadav"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2006-08-22",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "math/0608534v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Andrews-Curtis and Nielsen equivalence relations on some infinite groups",
+      "snippet": "The Andrews-Curtis conjecture asserts that, for a free group $F_n$ of rank $n$ and a free basis $(x_1,...,x_n)$, any normally generating tuple $(y_1,...,y_n)$ is Andrews-Curtis equivalent to $(x_1,...,x_n)$. This equivalence corresponds to the actions of $\\operatorname{Aut}F_n$ and of $F_n$ on normally generating $n$-tuples. The equivalence corresponding to the action of $\\operatorname{Aut}F_n$ on generating $n$-tuples is called Nielsen equivalence. The conjecture for arbitrary finitely generated group has its own importance to analyse potential counter-examples to the original conjecture. We ",
+      "full_text": "The Andrews-Curtis conjecture asserts that, for a free group $F_n$ of rank $n$ and a free basis $(x_1,...,x_n)$, any normally generating tuple $(y_1,...,y_n)$ is Andrews-Curtis equivalent to $(x_1,...,x_n)$. This equivalence corresponds to the actions of $\\operatorname{Aut}F_n$ and of $F_n$ on normally generating $n$-tuples. The equivalence corresponding to the action of $\\operatorname{Aut}F_n$ on generating $n$-tuples is called Nielsen equivalence. The conjecture for arbitrary finitely generated group has its own importance to analyse potential counter-examples to the original conjecture. We study the Andrews-Curtis and Nielsen equivalence in the class of finitely generated groups for which every maximal subgroup is normal, including nilpotent groups and Grigorchuk groups.",
+      "url": "https://arxiv.org/abs/1304.2668v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Aglaia Myropolska"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2013-04-09",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1304.2668v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Quotients and subgroups of Baumslag-Solitar groups",
+      "snippet": "We determine all generalized Baumslag-Solitar groups (finitely generated groups acting on a tree with all stabilizers infinite cyclic) which are quotients of a given Baumslag-Solitar group BS(m,n), and (when BS(m,n) is not Hopfian) which of them also admit BS(m,n) as a quotient. We determine for which values of r,s one may embed BS(r,s) into a given BS(m,n), and we characterize finitely generated groups which embed into some BS(n,n).",
+      "full_text": "We determine all generalized Baumslag-Solitar groups (finitely generated groups acting on a tree with all stabilizers infinite cyclic) which are quotients of a given Baumslag-Solitar group BS(m,n), and (when BS(m,n) is not Hopfian) which of them also admit BS(m,n) as a quotient. We determine for which values of r,s one may embed BS(r,s) into a given BS(m,n), and we characterize finitely generated groups which embed into some BS(n,n).",
+      "url": "https://arxiv.org/abs/1308.5122v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Gilbert Levitt"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2013-08-23",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1308.5122v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Graphs, free groups and the Hanna Neumann conjecture",
+      "snippet": "A new bound for the rank of the intersection of finitely generated subgroups of a free group is given, formulated in topological terms, and very much in the spirit of Stallings. The bound is a contribution to (although unfortunately not a solution of) the strengthened Hanna Neumann conjecture.",
+      "full_text": "A new bound for the rank of the intersection of finitely generated subgroups of a free group is given, formulated in topological terms, and very much in the spirit of Stallings. The bound is a contribution to (although unfortunately not a solution of) the strengthened Hanna Neumann conjecture.",
+      "url": "https://arxiv.org/abs/math/0701214v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Brent Everitt"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2007-01-08",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "math/0701214v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Cerebral Infarction As the Presenting Feature of Janus Kinase 2 (JAK2) V617F-Positive Polycythemia Vera: A Case Report.",
+      "snippet": "Polycythemia vera (PV) is a clonal myeloproliferative neoplasm driven predominantly by the Janus kinase (JAK)2 V617F mutation and characterized by an absolute increase in red cell mass. Because its early features are frequently nonspecific, PV can remain undetected until a thrombotic event - commonly an arterial ischemic stroke - brings the patient to medical attention. We report a 56-year-old woman with a two-year history of systemic hypertension who presented with a six-day history of insidious, distally predominant weakness of the left lower limb, with no other neurological deficit or limb ",
+      "full_text": "Polycythemia vera (PV) is a clonal myeloproliferative neoplasm driven predominantly by the Janus kinase (JAK)2 V617F mutation and characterized by an absolute increase in red cell mass. Because its early features are frequently nonspecific, PV can remain undetected until a thrombotic event - commonly an arterial ischemic stroke - brings the patient to medical attention. We report a 56-year-old woman with a two-year history of systemic hypertension who presented with a six-day history of insidious, distally predominant weakness of the left lower limb, with no other neurological deficit or limb involvement recorded. Magnetic resonance imaging of the brain demonstrated an acute infarct in the right high frontal region together with chronic small-vessel ischemic changes. Laboratory evaluation revealed marked erythrocytosis (hemoglobin 19 g/dL, hematocrit 62%), a normal serum erythropoietin level, and a positive JAK2 V617F mutation; bone marrow biopsy showed erythroid hyperplasia, with no further morphological detail available. A working diagnosis of PV was made on the combined clinical, hematological, and molecular findings. In the absence of a documented alternative cause on the available work-up, PV was considered a plausible contributor to the infarction. The patient was started on dual antiplatelet therapy and a high-intensity statin for secondary stroke prevention, underwent serial therapeutic phlebotomy (hematocrit falling from 62% to 50.8% by day 22), and was discharged on hydroxyurea 500 mg twice daily. Left lower-limb power improved from 0/5 at admission to 3/5 at discharge on day 9. This case illustrates the importance of considering PV in the differential diagnosis of stroke, particularly when routine blood counts show unexplained erythrocytosis, since early recognition and cytoreductive therapy may reduce the thrombotic risk, though longer follow-up and a more complete stroke work-up are needed to confirm this in the individual patient. Copyright © 2026, Pendharkar et al.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43069952/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Pendharkar, Yoshita",
+        "Chaoji, Sunanda",
+        "Manohar, Tanuja",
+        "Tiwari, Nishka",
+        "Shaikh, Fahad Idrees"
+      ],
+      "venue": "Cureus",
+      "publication_date": "2026-Oct",
+      "doi": "10.7759/cureus.118461",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43069952",
+      "publication_types": [
+        "Case Reports",
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Difference in Basic Risk Factors Among Genders and Simulation of Lipid-Lowering Therapy in Acute Coronary Syndrome.",
+      "snippet": "Acute coronary syndrome (ACS) is a major cause of cardiovascular morbidity and mortality, with gender-related differences in cardiovascular risk factors and lipid management. Evidence regarding these differences and the potential benefit of intensified lipid-lowering therapy (LLT) in Indian patients is limited. This study evaluated gender differences in cardiovascular risk factors and simulated low-density lipoprotein cholesterol (LDL-C) target attainment with different LLT strategies. This single-centre, retrospective observational study included 658 consecutive Indian patients with ACS under",
+      "full_text": "Acute coronary syndrome (ACS) is a major cause of cardiovascular morbidity and mortality, with gender-related differences in cardiovascular risk factors and lipid management. Evidence regarding these differences and the potential benefit of intensified lipid-lowering therapy (LLT) in Indian patients is limited. This study evaluated gender differences in cardiovascular risk factors and simulated low-density lipoprotein cholesterol (LDL-C) target attainment with different LLT strategies. This single-centre, retrospective observational study included 658 consecutive Indian patients with ACS undergoing percutaneous coronary intervention. Baseline demographic, clinical, and biochemical characteristics were compared between women (n=134) and men (n=524), with exploratory stratification by age (<50 and ≥50 years). LDL-C target attainment (<50 mg/dL) was simulated with high-intensity statin monotherapy (50% LDL-C reduction), statin plus ezetimibe (60%), and triple therapy with statin, ezetimibe, and bempedoic acid (75%). Women had a higher prevalence of hypertension and diabetes, whereas smoking was more common among men (all p<0.001). Baseline LDL-C was comparable between women and men (115.2±34.7 vs. 109.4±32.1 mg/dL; p=0.071), while only 14 (2.1%) achieved LDL-C <50 mg/dL at presentation. Simulated target attainment was lower in women than men with statin monotherapy (41 (30.6%) vs. 205 (39.1%); p=0.085) and statin plus ezetimibe (87 (64.9%) vs. 371 (70.8%); p=0.225), although differences were not statistically significant. Triple therapy achieved near-universal target attainment in women and men (132 (98.5%) vs. 520 (99.2%); p=0.354). Overall attainment increased from 246 (37.4%) with statin monotherapy to 458 (69.6%) with dual therapy and 652 (99.1%) with triple therapy. Similar trends were observed across age groups. Women with ACS had a greater burden of cardiovascular risk factors despite comparable LDL-C levels. Combination LLT, particularly triple therapy, markedly improved simulated LDL-C target attainment in both sexes, supporting early intensification of lipid-lowering treatment in Indian patients with ACS. Copyright © 2026, Himral et al.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43069801/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Himral, Surender",
+        "Sharma, Jai Bharat",
+        "Sandal, Shivali",
+        "Chandel, Pankaj",
+        "Mohite, Komal M",
+        "Thakur, Vaishali",
+        "Singh, Ritvik",
+        "Dhiman, Anu",
+        "Soni, Swati",
+        "Mahajan, Kunal"
+      ],
+      "venue": "Cureus",
+      "publication_date": "2026-Oct",
+      "doi": "10.7759/cureus.118443",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43069801",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Implementation pathway of NAT2 genotype-guided isoniazid dosing in tuberculosis.",
+      "snippet": "N-Acetyltransferase 2 (NAT2) is a major determinant of isoniazid exposure and contributes to clinically important variability in drug response during tuberculosis treatment. The poor-metabolizer phenotype is associated with increased isoniazid exposure and a higher risk of anti-tuberculosis drug-induced liver injury, whereas the rapid-metabolizer phenotype is associated with reduced exposure and potentially unfavourable treatment outcomes. However, NAT2 genotype-guided dosing has not been widely implemented in routine care. In this narrative review, we summarize the biological, pharmacokinetic",
+      "full_text": "N-Acetyltransferase 2 (NAT2) is a major determinant of isoniazid exposure and contributes to clinically important variability in drug response during tuberculosis treatment. The poor-metabolizer phenotype is associated with increased isoniazid exposure and a higher risk of anti-tuberculosis drug-induced liver injury, whereas the rapid-metabolizer phenotype is associated with reduced exposure and potentially unfavourable treatment outcomes. However, NAT2 genotype-guided dosing has not been widely implemented in routine care. In this narrative review, we summarize the biological, pharmacokinetic and clinical evidence for NAT2 and compare the translational pathways of TPMT-thiopurines, SLCO1B1-statins, CYP2C19-clopidogrel, DPYD-fluoropyrimidines and NAT2-hydralazine to identify considerations relevant to implementing NAT2-guided isoniazid dosing. These examples demonstrate that pharmacogenomic prescribing guidance and clinical implementation do not follow a single linear pathway and that initial prescribing recommendations have sometimes been developed without definitive randomized trial evidence. Importantly, the evidence needed to support prescribing guidance differs from that required to establish the clinical utility of routine testing. For NAT2, priorities include defining actionable phenotype-specific dosing and monitoring strategies; evaluating the complete test-to-treatment pathway; and generating further evidence on clinical effectiveness, feasibility and economic value across diverse settings. Carefully governed regional implementation with prospective evaluation, together with targeted comparative studies, may help strengthen the evidence base for future pharmacogenetic prescribing recommendations and the incorporation of NAT2 testing into clinical practice guidelines. © 2026 The Author(s). British Journal of Clinical Pharmacology published by John Wiley & Sons Ltd on behalf of British Pharmacological Society.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43069663/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Miyahara, Reiko",
+        "Yanai, Hideki",
+        "Wattnapokayakit, Sukanya",
+        "Mahasirimongkol, Surakameth",
+        "Mushiroda, Taisei"
+      ],
+      "venue": "British journal of clinical pharmacology",
+      "publication_date": "2026-Nov",
+      "doi": "10.1002/bcp.70931",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43069663",
+      "publication_types": [
+        "Journal Article",
+        "Review"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Utility of apolipoprotein C3/A2 ratio for cardiovascular risk assessment in statin-treated patients following percutaneous coronary intervention.",
+      "snippet": "In secondary-prevention patients undergoing percutaneous coronary intervention (PCI) on LDL-lowering therapy, the clinical utility of apolipoproteins (Apos) for risk stratification remains unclear. This study investigated whether combined Apo A2 (associated with HDL metabolism) and Apo C3 (associated with triglyceride metabolism) evaluation predicts cardiovascular events.We analyzed 649 statin-treated patients undergoing PCI with drug-eluting stents for acute or chronic coronary syndrome (2016-2022) with measured serum Apo levels. Patients were categorized by median Apo A2 and Apo C3 levels in",
+      "full_text": "In secondary-prevention patients undergoing percutaneous coronary intervention (PCI) on LDL-lowering therapy, the clinical utility of apolipoproteins (Apos) for risk stratification remains unclear. This study investigated whether combined Apo A2 (associated with HDL metabolism) and Apo C3 (associated with triglyceride metabolism) evaluation predicts cardiovascular events.We analyzed 649 statin-treated patients undergoing PCI with drug-eluting stents for acute or chronic coronary syndrome (2016-2022) with measured serum Apo levels. Patients were categorized by median Apo A2 and Apo C3 levels into three groups: low-Apo A2 and high-Apo C3; low-Apo A2 or high-Apo C3; and high-Apo A2 and low-Apo C3. During follow-up, 124 patients (19.1%) experienced major adverse cardiovascular events (MACEs). The low-Apo A2 and high-Apo C3 group had the highest incidence (50.9% vs. 34.5% vs. 21.5%) and independently predicted MACE on multivariable Cox analysis (hazard ratio, 1.52; 95% confidence interval, 1.02-2.28). The Apo C3/Apo A2 ratio (cutoff = 0.414) was significantly associated with MACE, revascularization, and heart failure rehospitalization (log-rank p = 0.001, 0.006, and 0.003). Each 0.1 increase was associated with a 23% higher MACE risk.Among statin-treated post-PCI patients, concurrent low-Apo A2 and high-Apo C3 identified a high-risk subgroup for MACE. The Apo C3/Apo A2 ratio may serve as a novel marker for residual cardiovascular risk stratification beyond LDL-cholesterol. © 2026. The Author(s), under exclusive licence to Sakakibara Heart Foundation.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43069369/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Usuda, Hideki",
+        "Ikegami, Ryutaro",
+        "Akiyama, Takumi",
+        "Tashiro, Keita",
+        "Washiyama, Yuzo",
+        "Yoneyama, Shintaro",
+        "Nishida, Kota",
+        "Kubota, Naoki",
+        "Okubo, Takeshi",
+        "Ozaki, Kazuyuki",
+        "Hoyano, Makoto",
+        "Inomata, Takayuki"
+      ],
+      "venue": "Heart and vessels",
+      "publication_date": "2026-Nov",
+      "doi": "10.1007/s00380-026-02776-y",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43069369",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Impact of statins and aspirin on tumour response to total neoadjuvant therapy in advanced rectal cancer: A multicentre retrospective cohort study.",
+      "snippet": "The role of statins and aspirin in modulating tumour response to total neoadjuvant therapy (TNT) in advanced rectal cancer remains unclear. This study evaluates the impact of these medications on overall complete response (oCR) to TNT in patients with advanced rectal cancer. This multicentre, retrospective cohort study included patients with advanced rectal cancer treated with TNT with curative intent at five South Australian hospitals between 2019 and 2026. Medication use (statins and aspirin) was extracted from electronic medical records prior to TNT initiation. The primary outcome was the o",
+      "full_text": "The role of statins and aspirin in modulating tumour response to total neoadjuvant therapy (TNT) in advanced rectal cancer remains unclear. This study evaluates the impact of these medications on overall complete response (oCR) to TNT in patients with advanced rectal cancer. This multicentre, retrospective cohort study included patients with advanced rectal cancer treated with TNT with curative intent at five South Australian hospitals between 2019 and 2026. Medication use (statins and aspirin) was extracted from electronic medical records prior to TNT initiation. The primary outcome was the oCR rate, encompassing clinical complete response (cCR) and pathological complete response (pCR). Secondary outcomes included overall survival (OS), cancer-specific survival (CSS), disease-free survival (DFS) and local recurrence-free survival (LRFS). Of 360 patients receiving TNT, 95 (26.4%) used statins and 30 (8.3%) used aspirin. No significant differences in oCR rates were observed between statin or aspirin users and non-users (51.9% vs. 40.8%, p = 0.068; 43.3% vs. 43.6%, p = 0.974, respectively). Similarly, no significant differences in cCR or pCR rates were observed for either statin or aspirin use. On logistic regression, achievement of oCR was not significantly associated with statin use (OR, 1.55; 95% CI, 0.97-2.48) or aspirin use (OR, 0.99; 95% CI, 0.47-2.10). Cox regression revealed no significant associations between statin or aspirin use and OS, CSS, DFS or LRFS. Neither statin nor aspirin use was independently associated with improved tumour response to TNT in advanced rectal cancer. © 2026 The Author(s). Colorectal Disease published by John Wiley & Sons Ltd on behalf of Association of Coloproctology of Great Britain and Ireland.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43068487/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Bedrikovetski, Sergei",
+        "Lo, Johnny",
+        "Murshed, Ishraq",
+        "Fitzsimmons, Tracy",
+        "Nguyen, Thuy-My",
+        "Price, Timothy J",
+        "Penniment, Michael",
+        "Selva-Nayagam, Sudarshan",
+        "Sia, Tiong Cheng",
+        "Murphy, Elizabeth",
+        "Jameson, Michael B",
+        "Sammour, Tarik"
+      ],
+      "venue": "Colorectal disease : the official journal of the Association of Coloproctology of Great Britain and Ireland",
+      "publication_date": "2026-Nov",
+      "doi": "10.1111/codi.70684",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43068487",
+      "publication_types": [
+        "Journal Article",
+        "Multicenter Study"
+      ],
+      "mesh_terms": [
+        "Humans",
+        "Retrospective Studies",
+        "Rectal Neoplasms",
+        "Neoadjuvant Therapy",
+        "Hydroxymethylglutaryl-CoA Reductase Inhibitors",
+        "Aspirin",
+        "Female",
+        "Male",
+        "Pathologic Complete Response",
+        "Aged",
+        "Middle Aged",
+        "Disease-Free Survival",
+        "Treatment Outcome"
+      ],
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Long-term real-world efficacy of inclisiran at 15 months: new results from the INCLIVEN multicenter registry.",
+      "snippet": "Inclisiran, a long-acting small interfering RNA (siRNA) that inhibits hepatic PCSK9 synthesis, effectively lowers low-density lipoprotein cholesterol (LDL-C) in randomized trials, but real-world data beyond 12 months remain limited. This study evaluated the efficacy and safety of inclisiran in clinical practice over 15 months of follow-up. INCLIVEN is a multicenter, observational, retrospective registry conducted in 12 lipid clinics in the Veneto region, Italy. Patients at high, very high or extremely high cardiovascular risk who started inclisiran between October 2022 and February 2024 were i",
+      "full_text": "Inclisiran, a long-acting small interfering RNA (siRNA) that inhibits hepatic PCSK9 synthesis, effectively lowers low-density lipoprotein cholesterol (LDL-C) in randomized trials, but real-world data beyond 12 months remain limited. This study evaluated the efficacy and safety of inclisiran in clinical practice over 15 months of follow-up. INCLIVEN is a multicenter, observational, retrospective registry conducted in 12 lipid clinics in the Veneto region, Italy. Patients at high, very high or extremely high cardiovascular risk who started inclisiran between October 2022 and February 2024 were included. The primary endpoints were the absolute and percentage changes in LDL-C from baseline to 15 months and safety. Of the 240 patients included, 218 (90.8%) completed the 15-month follow-up (mean age 64.4 years; 72.9% male; 87.2% with established atherosclerotic cardiovascular disease). Mean LDL-C decreased from 118.2 ± 48.9 to 60.3 ± 36.3 mg/dL (-47.5 ± 26.0%; p < 0.001), and an LDL-C reduction was observed in 94.5% of patients. Overall, 56.9% of patients achieved their risk-based LDL-C target. Target attainment was higher in statin users than in non-users (67.5% vs 31.3%; p < 0.001), who had a higher baseline LDL-C. In multivariable analysis, diabetes mellitus (β 13.1 percentage points; p < 0.001) and statin therapy (β 11.6; p = 0.007) were independently associated with a greater LDL-C reduction. Mild, self-resolving injection-site reactions occurred in 1.4% of patients, and no serious adverse events were recorded. In routine clinical practice, inclisiran provided substantial and sustained LDL-C reductions over 15 months, consistent with the results of randomized trials. Concomitant statin therapy was associated with greater LDL-C lowering and target achievement. The greater response observed in patients with diabetes is hypothesis-generating and deserves confirmation in dedicated studies. © 2026 The Authors.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43068133/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Sani, E",
+        "Briani, F",
+        "Venturi, G",
+        "Bacchion, F",
+        "Balzano, S",
+        "Battocchio, M",
+        "D'Elia, K",
+        "Ferri, N",
+        "Frigo, G M",
+        "Licchelli, L",
+        "Lupo, A",
+        "Marangoni, A",
+        "Rivetti, L",
+        "Scanferlato, M",
+        "Zambon, S",
+        "Zenti, M G",
+        "Rinaldi, E",
+        "Mugnolo, A"
+      ],
+      "venue": "Atherosclerosis plus",
+      "publication_date": "2026-Dec",
+      "doi": "10.1016/j.athplu.2026.100624",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43068133",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Department for the Aging (NYC Aging) - All Contracted Providers",
+      "snippet": "The Department for the Aging (NYC Aging) provides a wide array of services to older adults (age 60 and older) in the five boroughs of New York City. To accomplish this, NYC Aging contracts out to external organizations (mainly non-profits) to provide the services.\n\nThis dataset contains a listing of all Older Adult Center (formerly Senior Center), Abuse Prevention, Home Care, Legal Services, NORC, Transportation, Case Management, Home Delivered Meal and Caregiver contracts managed by NYC Aging in the current Fiscal Year.  It also includes the contact information for the agencies providing the ",
+      "full_text": "The Department for the Aging (NYC Aging) provides a wide array of services to older adults (age 60 and older) in the five boroughs of New York City. To accomplish this, NYC Aging contracts out to external organizations (mainly non-profits) to provide the services.\n\nThis dataset contains a listing of all Older Adult Center (formerly Senior Center), Abuse Prevention, Home Care, Legal Services, NORC, Transportation, Case Management, Home Delivered Meal and Caregiver contracts managed by NYC Aging in the current Fiscal Year.  It also includes the contact information for the agencies providing the services.",
+      "url": "https://data.cdc.gov/d/cqc8-am9x",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-11-16",
+      "document_type": "government_publication",
+      "dataset_id": "cqc8-am9x",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "CDC Places Data by Census Tract",
+      "snippet": "This dataset contains model-based Census tract level estimates for the PLACES project  by the Centers for Disease Control and Prevention (CDC), Division of Population Health, Epidemiology and Surveillance Branch. It represents a first-of-its kind effort to release information uniformly on this large scale. \n\nData sources used to generate these model-based estimates include Behavioral Risk Factor Surveillance System (BRFSS) 2019 or 2018 data, Census Bureau 2010 population estimates, and American Community Survey (ACS) 2015–2019 or 2014–2018 estimates. The 2021 release uses 2019 BRFSS data for 2",
+      "full_text": "This dataset contains model-based Census tract level estimates for the PLACES project  by the Centers for Disease Control and Prevention (CDC), Division of Population Health, Epidemiology and Surveillance Branch. It represents a first-of-its kind effort to release information uniformly on this large scale. \n\nData sources used to generate these model-based estimates include Behavioral Risk Factor Surveillance System (BRFSS) 2019 or 2018 data, Census Bureau 2010 population estimates, and American Community Survey (ACS) 2015–2019 or 2014–2018 estimates. The 2021 release uses 2019 BRFSS data for 22 measures and 2018 BRFSS data for 7 measures (all teeth lost, dental visits, mammograms, cervical cancer screening, colorectal cancer screening, core preventive services among older adults, and sleeping less than 7 hours a night). Seven measures are based on the 2018 BRFSS data because the relevant questions are only asked every other year in the BRFSS.\n\nThis data only covers the health of adults (people 18 and over) in East Baton Rouge Parish. All estimates lie within a 95% confidence interval.",
+      "url": "https://data.cdc.gov/d/8au8-e3qg",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2023-06-29",
+      "document_type": "government_publication",
+      "dataset_id": "8au8-e3qg",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "CDC Places Data by ZIP Code",
+      "snippet": "This dataset contains model-based ZIP Code Tabulation Area (ZCTA) level estimates for the PLACES project by the Centers for Disease Control and Prevention (CDC), Division of Population Health, Epidemiology and Surveillance Branch. It represents a first-of-its kind effort to release information uniformly on this large scale.\n\nData sources used to generate these model-based estimates include Behavioral Risk Factor Surveillance System (BRFSS) 2019 or 2018 data, Census Bureau 2010 population estimates, and American Community Survey (ACS) 2015–2019 or 2014–2018 estimates. The 2021 release uses 2019",
+      "full_text": "This dataset contains model-based ZIP Code Tabulation Area (ZCTA) level estimates for the PLACES project by the Centers for Disease Control and Prevention (CDC), Division of Population Health, Epidemiology and Surveillance Branch. It represents a first-of-its kind effort to release information uniformly on this large scale.\n\nData sources used to generate these model-based estimates include Behavioral Risk Factor Surveillance System (BRFSS) 2019 or 2018 data, Census Bureau 2010 population estimates, and American Community Survey (ACS) 2015–2019 or 2014–2018 estimates. The 2021 release uses 2019 BRFSS data for 22 measures and 2018 BRFSS data for 7 measures (all teeth lost, dental visits, mammograms, cervical cancer screening, colorectal cancer screening, core preventive services among older adults, and sleeping less than 7 hours a night). Seven measures are based on the 2018 BRFSS data because the relevant questions are only asked every other year in the BRFSS.\n\nThis data only covers the health of adults (people 18 and over) in East Baton Rouge Parish. All estimates lie within a 95% confidence interval.",
+      "url": "https://data.cdc.gov/d/522a-c6dn",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2023-06-29",
+      "document_type": "government_publication",
+      "dataset_id": "522a-c6dn",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "New York State Lead Service Line Inventory",
+      "snippet": "This dataset includes information about New York State lead service lines, including service line materials, material identification methods, and service line installation dates.\n\nOn December 16, 2021, the federal Lead and Copper Rule Revisions (LCRR) went into effect, which requires every federally defined community and non-transient, non-community water system to develop a service line inventory and to make this information publicly available.\n\nIf you have any questions about your service line, please contact your water system. The public water system contact information can be found on your",
+      "full_text": "This dataset includes information about New York State lead service lines, including service line materials, material identification methods, and service line installation dates.\n\nOn December 16, 2021, the federal Lead and Copper Rule Revisions (LCRR) went into effect, which requires every federally defined community and non-transient, non-community water system to develop a service line inventory and to make this information publicly available.\n\nIf you have any questions about your service line, please contact your water system. The public water system contact information can be found on your water bill or online at:\n<a href=https://health.ny.gov/environmental/water/drinking/pws_contacts/map_pws_contacts>https://health.ny.gov/environmental/water/drinking/pws_contacts/map_pws_contacts</a>",
+      "url": "https://data.cdc.gov/d/j63k-4n92",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-10-06",
+      "document_type": "government_publication",
+      "dataset_id": "j63k-4n92",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Nursing Homes Current Statewide Health",
+      "snippet": "A nursing home is a place for older adults who do not need hospital care but cannot be cared for at home. More than 80,000 Pennsylvanians reside in more than 700 nursing homes throughout the state.\n\nLiving at home can be challenging for older adults when they require supervision or assistance to complete daily activities. A nursing home becomes an option when the level of care needed cannot be provided at home.\n\nNursing homes provide 24-hour, long-term nursing care and short-term options for older adults following surgery or hospital stay.",
+      "full_text": "A nursing home is a place for older adults who do not need hospital care but cannot be cared for at home. More than 80,000 Pennsylvanians reside in more than 700 nursing homes throughout the state.\n\nLiving at home can be challenging for older adults when they require supervision or assistance to complete daily activities. A nursing home becomes an option when the level of care needed cannot be provided at home.\n\nNursing homes provide 24-hour, long-term nursing care and short-term options for older adults following surgery or hospital stay.",
+      "url": "https://data.cdc.gov/d/xgn8-z9eg",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-11-22",
+      "document_type": "government_publication",
+      "dataset_id": "xgn8-z9eg",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Weekly Cumulative Percentage of Adults 60 Years and Older Vaccinated with Respiratory Syncytial Virus (RSV) Vaccine by Jurisdiction",
+      "snippet": "Weekly RSV Vaccination Coverage of Adults 60 Years and Older by Jurisdiction \n\n• RSV vaccination coverage among adults 60 years and older is assessed through the National Immunization Survey-Adult COVID Module providing weekly RSV vaccination coverage estimates. (https://www.cdc.gov/vaccines/imz-managers/nis/about.html) \n\n• The CDC recommended the RSV vaccine for adults 60 years and older in July 2023. (https://www.cdc.gov/respiratory-viruses/whats-new/rsv-update-2023-09-22.html)",
+      "full_text": "Weekly RSV Vaccination Coverage of Adults 60 Years and Older by Jurisdiction \n\n• RSV vaccination coverage among adults 60 years and older is assessed through the National Immunization Survey-Adult COVID Module providing weekly RSV vaccination coverage estimates. (https://www.cdc.gov/vaccines/imz-managers/nis/about.html) \n\n• The CDC recommended the RSV vaccine for adults 60 years and older in July 2023. (https://www.cdc.gov/respiratory-viruses/whats-new/rsv-update-2023-09-22.html)",
+      "url": "https://data.cdc.gov/d/qve4-fp9c",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-09-09",
+      "document_type": "government_publication",
+      "dataset_id": "qve4-fp9c",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "NCT07907965 — A Study on the Safety and Clinical Efficacy of Guominkang in the Treatment of Diabetic Kidney Disease",
+      "snippet": "ACTIVE_NOT_RECRUITING. Diabetic Kidney Disease (DKD), Type 2 Diabetes, Albuminuria. We are conducting this clinical trial to find out whether Guominkang-a traditional Chinese herbal formula-is safe and effective for people with diabetic kidney disease (DKD).\n\nDKD is a common complication of diabetes, affecting 20% to 40% of patients. If not well controlled, it can lead to chronic kidney disease or even kidney failure. Current treatments mainly focus on controlling blood sugar and",
+      "full_text": "We are conducting this clinical trial to find out whether Guominkang-a traditional Chinese herbal formula-is safe and effective for people with diabetic kidney disease (DKD).\n\nDKD is a common complication of diabetes, affecting 20% to 40% of patients. If not well controlled, it can lead to chronic kidney disease or even kidney failure. Current treatments mainly focus on controlling blood sugar and blood pressure, but few therapies directly target immune inflammation, which plays a key role in DKD progression.\n\nIn earlier animal studies, Guominkang reduced urine protein and blood sugar in mice with DKD and appeared to work by balancing both metabolism and immune-inflammatory responses.\n\nThis pilot study will enroll 18 adults aged 18-70 years with mild-to-moderate kidney damage (CKD stages G1-G3) due to DKD. Participants will be divided into three groups (6 per group):\n\nObservation group: receives standard care only (medications to control blood sugar, blood pressure, and lipids); Standard-dose group: standard care + 1 dose of Guominkang per day; Double-dose group: standard care + 2 doses of Guominkang per day. The treatment lasts 12 weeks, followed by a 4-week follow-up after stopping the study drug.\n\nDuring the study, you will need to:\n\nTake your assigned medication (or continue standard treatment) as directed; Visit the clinic at weeks 2, 4, 8, 12, and 4 weeks after stopping treatment; Provide blood and urine samples for testing (e.g., urine protein, blood sugar, cholesterol, kidney function).\n\nWe hope to answer two main questions:\n\nCan Guominkang reduce urine protein in patients with DKD? Is Guominkang safe-what side effects might occur?",
+      "url": "https://clinicaltrials.gov/study/NCT07907965",
+      "_adapter": "clinicaltrials_gov",
+      "authors": [],
+      "venue": "ClinicalTrials.gov",
+      "publication_date": null,
+      "document_type": "clinical_trial",
+      "nct_id": "NCT07907965",
+      "trial_status": "ACTIVE_NOT_RECRUITING",
+      "conditions": [
+        "Diabetic Kidney Disease (DKD)",
+        "Type 2 Diabetes",
+        "Albuminuria"
+      ],
+      "retrieval_method": "clinicaltrials_study_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "clinicaltrials_gov",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "NCT07493603 — A Study on Yiyang Huoluo Decoction in the Treatment of Coronary Heart Disease",
+      "snippet": "RECRUITING. Coronary Heart Disease, Coronary Artery Disease, Atheroscleroses. The goal of this clinical trial is to learn if Yiyang Huoluo Decoction (a custom Chinese herbal medicine) works safely and effectively to treat coronary heart disease with atherosclerosis in older adults. It also aims to find out how this herbal treatment may affect blood vessel health and repair at a cellular level.\n\nThe main questions it aims to answer are:\n\n* Does adding Yiyang Huoluo Decoction",
+      "full_text": "The goal of this clinical trial is to learn if Yiyang Huoluo Decoction (a custom Chinese herbal medicine) works safely and effectively to treat coronary heart disease with atherosclerosis in older adults. It also aims to find out how this herbal treatment may affect blood vessel health and repair at a cellular level.\n\nThe main questions it aims to answer are:\n\n* Does adding Yiyang Huoluo Decoction to standard Western medical care improve symptoms and heart-related health in older adults with coronary heart disease and atherosclerosis?\n* Is Yiyang Huoluo Decoction safe for older adults to take alongside their regular heart medications?\n* How does this herbal treatment affect the damaged blood vessels in study participants?\n\nResearchers will compare two groups of participants to see if the combined treatment works better than standard care alone.\n\nWho can take part: Older adults diagnosed with coronary heart disease and atherosclerosis who meet the study's health and eligibility rules.\n\nWhat participants will do:\n\n* Be split randomly into two groups of 15 people each: one group gets standard Western heart medicine only, and the other gets standard Western heart medicine plus Yiyang Huoluo Decoction (herbal granules)\n* Complete the 12-week decoction treatment plan as directed by the research team\n* Attend scheduled study visits for health checks, blood tests, heart and blood vessel scans (such as carotid ultrasound and coronary CTA), and symptom reviews\n* Provide two small blood samples for research testing (samples will be destroyed after study testing is finished)\n* Report any side effects, discomfort, or changes in health to the research team right away\n\nAll personal health information collected for this study will be kept private and confidential. Participation is completely voluntary, and participants may quit the study at any time for any reason without losing access to regular medical care.",
+      "url": "https://clinicaltrials.gov/study/NCT07493603",
+      "_adapter": "clinicaltrials_gov",
+      "authors": [],
+      "venue": "ClinicalTrials.gov",
+      "publication_date": null,
+      "document_type": "clinical_trial",
+      "nct_id": "NCT07493603",
+      "trial_status": "RECRUITING",
+      "conditions": [
+        "Coronary Heart Disease",
+        "Coronary Artery Disease",
+        "Atheroscleroses"
+      ],
+      "retrieval_method": "clinicaltrials_study_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "clinicaltrials_gov",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Discussion around statin discontinuation in older adults and patients with wasting diseases",
+      "snippet": "Statins are usually selected as the first-line therapy to lower plasma levels of low-density lipoprotein cholesterol (LDL-C) and cardiovascular disease (CVD) morbidity and mortality.1 They reduce the risk of myocardial infarction, stroke and CVD mortality by about 25–30%.2 That is one of the reasons why all current clinical guidelines 'virtually mandate' lifetime use of statins once they are started, thus becoming a challenge for the patients due to their possible side effects.3 Furthermore, there has been recently a tendency towards maximizing the strength of statin treatment, sometimes with ",
+      "full_text": "Statins are usually selected as the first-line therapy to lower plasma levels of low-density lipoprotein cholesterol (LDL-C) and cardiovascular disease (CVD) morbidity and mortality.1 They reduce the risk of myocardial infarction, stroke and CVD mortality by about 25–30%.2 That is one of the reasons why all current clinical guidelines 'virtually mandate' lifetime use of statins once they are started, thus becoming a challenge for the patients due to their possible side effects.3 Furthermore, there has been recently a tendency towards maximizing the strength of statin treatment, sometimes with greater doses or potent forms.3, 4 The IMProved Reduction of Outcomes: Vytorin Efficacy International Trial showed that the combination with ezetimibe/simvastatin 10 mg/40 mg let to an absolute 2.0% reduction (relative risk reduction: 6.4%) of the risk of CV events in contrast to simvastatin 40 mg alone.4, 5 The trial also demonstrated that the patients with obtained very low LDL-C levels <30 mg/dL experienced no discrepancies in adverse effects than those with higher LDL-C levels.5 ODYSSEY LONG-TERM and the Open-Label Study of Long-term Evaluation against LDL-C trials with proprotein convertase subtilisin/kexin type 9 inhibitors also supported the hypothesis 'the lower the better' for LDL-C levels, generating more arguments for lower LDL-C targets <50 mg/dL (1.3 mmol/L), in contrast with the current targets <70 mg/dL (1.8 mmol/L) for patients at the highest risk.6 These results are in line with the 2013 American College of Cardiology/American Heart Association guidelines, which advise the use of high-intensity statin therapy and extend its use to more categories susceptible to CVD.7 Taking into account still poor to moderate statin therapy control in the high-risk and highest-risk patients (even 50% of patients are non-adherent to therapy after 2 years), as well as the aforementioned data, more intense targets seem to be very important; however, on the other hand, high-intensity statin therapy might also increase the risk of statin-related side effects and statin discontinuation rate due to this fact.6 Statin discontinuation may concern the patients with complete statin intolerance,8 as well as patients with cancer, palliative care patients, patients with cachexia,9 but also elderly patients, and primary CV prevention individuals, in which the risk of statin-related side effects (mainly associated with new-onset diabetes) might exceed the benefits (especially with subjects with risk factors of diabetes well adhered to non-pharmacological therapy).10 Statin discontinuation (as well as essential dose reduction) has been associated with higher risk for CVD events and death in patients with coronary artery disease (CAD), and especially in patients after acute coronary syndrome, in which the instability of atheroma plaque might appear.3, 11 However, research on the causes of discontinuation of statins in routine practice is still very limited.3, 8 In the retrospective cohort study, the authors investigated the reasons for statin discontinuation and the role of statin-related side effects in 134 263 statin users from the Brigham and Women's Hospital and Massachusetts General Hospital.12 Of these, 53.1% patients reported statin discontinuation at least once, and 17.4% reported statin-related events. More than half of the patients who stopped taking a statin because of a statin-related event were successfully restarted with a statin.12 Another survey, conducted in the group of 1074 French subjects treated with low doses of rosuvastatin, atorvastatin or simvastatin, reported statin discontinuation in 30% of the symptomatic patients due to muscular symptoms.13 Approximately 38% of them reported that their symptoms prevented even moderate exertion during everyday activities, while 42% of patients suffered major disruption to their everyday life.13 In the Understanding Statin Use in America and Gaps in Education survey carried out on 10 138 US adult",
+      "url": "https://openalex.org/W2334642185",
+      "_adapter": "openalex",
+      "authors": [
+        "Maciej Banach",
+        "Maria-Corina Șerban"
+      ],
+      "venue": "Journal of Cachexia Sarcopenia and Muscle",
+      "publication_date": "2016",
+      "doi": "10.1002/jcsm.12109",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Statin Use and Self-Reported Hindering Muscle Complaints in Older Persons: A Population Based Study",
+      "snippet": "PURPOSE: Statins are widely used by older persons in primary and secondary prevention of cardiovascular disease. Although serious adverse events are rare, many statin users report mild muscle pain and/or muscle weakness. It's unclear what impact statins exert on a patient's daily life. Research on statin related side effects in older persons is relatively scarce. We therefore investigated the relation between statin use and self-reported hindering muscle complaints in older persons in the general population. METHODS: The present research was performed within the Integrated Systematic Care for ",
+      "full_text": "PURPOSE: Statins are widely used by older persons in primary and secondary prevention of cardiovascular disease. Although serious adverse events are rare, many statin users report mild muscle pain and/or muscle weakness. It's unclear what impact statins exert on a patient's daily life. Research on statin related side effects in older persons is relatively scarce. We therefore investigated the relation between statin use and self-reported hindering muscle complaints in older persons in the general population. METHODS: The present research was performed within the Integrated Systematic Care for Older Persons (ISCOPE) study in the Netherlands (Netherlands trial register, NTR1946). All registered adults aged ≥ 75 years from 59 participating practices (n = 12,066) were targeted. Information about the medical history and statin use at baseline and after 9 months was available for 4355 participants from the Electronic Patient Records of the general practitioners. In the screening questionnaire at baseline we asked participants: 'At the moment, which health complaints limit you the most in your day-to-day life?' Answers indicating muscle or musculoskeletal complaints were coded as such. No specific questions about muscle complaints were asked. RESULTS: The participants had a median age of 80.3 (IQR 77.6-84.4) years, 60.8% were female and 28.5% had a history of CVD. At baseline 29% used a statin. At follow-up, no difference was found in the prevalence of self-reported hindering muscle complaints in statin users compared to non-statin users (3.3% vs. 2.5%, OR 1.39, 95% CI 0.94-2.05; P = 0.98). Discontinuation of statin use during follow-up was independent of self-reported hindering muscle complaints. CONCLUSION: Based on the present findings, prevalent statin use in this community-dwelling older population is not associated with self-reported hindering muscle complaints; however, the results might be different for incident users.",
+      "url": "https://openalex.org/W2557594707",
+      "_adapter": "openalex",
+      "authors": [
+        "Milly A. van der Ploeg",
+        "Rosalinde K. E. Poortvliet",
+        "Sophie C. E. van Blijswijk",
+        "Wendy P. J. den Elzen",
+        "Petra G. van Peet",
+        "Wouter de Ruijter",
+        "Jeanet W. Blom",
+        "Jacobijn Gussekloo"
+      ],
+      "venue": "PLoS ONE",
+      "publication_date": "2016",
+      "doi": "10.1371/journal.pone.0166857",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Muscle- and skeletal-related side-effects of statins: tip of the iceberg?",
+      "snippet": "The clinical spectrum of muscle- and skeletal-related side-effects of statins includes varied myalgias and weakness, an asymptomatic increase in the concentration of creatine kinase and other biochemical parameters, myositis and rhabdomyolysis. Currently, there is no consensus on the definition of 'statin myopathy'. Evidence suggests that deleterious effects may also be associated with the volume or dosage of structured exercise and/or the intensity of physical activity. Moreover, non-muscle adverse effects on the joints and tendons are often overlooked and underemphasized. The incidence of my",
+      "full_text": "The clinical spectrum of muscle- and skeletal-related side-effects of statins includes varied myalgias and weakness, an asymptomatic increase in the concentration of creatine kinase and other biochemical parameters, myositis and rhabdomyolysis. Currently, there is no consensus on the definition of 'statin myopathy'. Evidence suggests that deleterious effects may also be associated with the volume or dosage of structured exercise and/or the intensity of physical activity. Moreover, non-muscle adverse effects on the joints and tendons are often overlooked and underemphasized. The incidence of myopathy associated with statin treatment typically ranges between 1.5% and 10%. Few data are available regarding the prevalence of muscle- related symptoms associated with different statins and the distribution of affected muscles. Furthermore, discrepancies between clinical trials and daily practice may emanate, in part, because of inconsistent definitions or exclusion criteria.The pathophysiology of statin-related myopathy is incompletely understood. A dose-dependent and proapoptotic effect, direct effects on mitochondria, drug interactions and genetic factors, or combinations thereof, may be involved. Recently, a rare immune-mediated myopathy triggered by statin use has been described. With the increasing number of patients treated with statins and with more patients being prescribed high doses of potent statins to achieve low-density lipoprotein targets, muscle-related side-effects will become more prevalent. Currently, the only effective treatment is the discontinuation of statin use. Further research is needed to develop alternative LDL-lowering drugs when statins are not well tolerated and to establish additional effective strategies to manage lipids and lipoproteins.",
+      "url": "https://openalex.org/W2073452619",
+      "_adapter": "openalex",
+      "authors": [
+        "Johann Auer",
+        "Helmut F. Sinzinger",
+        "Barry Franklin",
+        "Robert Berent"
+      ],
+      "venue": "European Journal of Preventive Cardiology",
+      "publication_date": "2014",
+      "doi": "10.1177/2047487314550804",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Cognitive Effects of Statins are Modified by Age",
+      "snippet": "To reveal new insights into statin cognitive effects, we performed an observational study on a population-based sample of 245,731 control and 55,114 statin-taking individuals from the UK Biobank. Cognitive performance in terms of reaction time, working memory and fluid intelligence was analysed at baseline and two follow-ups (within 5-10 years). Subjects were classified depending on age (up to 65 and over 65 years) and treatment duration (1-4 years, 5-10 years and over 10 years). Data were adjusted for health- and cognition-related covariates. Subjects generally improved in test performance wi",
+      "full_text": "To reveal new insights into statin cognitive effects, we performed an observational study on a population-based sample of 245,731 control and 55,114 statin-taking individuals from the UK Biobank. Cognitive performance in terms of reaction time, working memory and fluid intelligence was analysed at baseline and two follow-ups (within 5-10 years). Subjects were classified depending on age (up to 65 and over 65 years) and treatment duration (1-4 years, 5-10 years and over 10 years). Data were adjusted for health- and cognition-related covariates. Subjects generally improved in test performance with repeated assessment and middle-aged persons performed better than older persons. The effect of statin use differed considerably between the two age groups, with a beneficial effect on reaction time in older persons and fluid intelligence in both age groups, and a negative effect on working memory in younger subjects. Our analysis suggests a modulatory impact of age on the cognitive side effects of statins, revealing a possible reason for profoundly inconsistent findings on statin-related cognitive effects in the literature. The study highlights the importance of characterising modifiers of statin effects to improve knowledge and shape guidelines for clinicians when prescribing statins and evaluating their side effects in patients.",
+      "url": "https://openalex.org/W3015523125",
+      "_adapter": "openalex",
+      "authors": [
+        "Ahmed M. Alsehli",
+        "Gaia Olivo",
+        "Laura E. Clemensson",
+        "Michael J. Williams",
+        "Helgi B. Schiöth"
+      ],
+      "venue": "Scientific Reports",
+      "publication_date": "2020",
+      "doi": "10.1038/s41598-020-63035-2",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Statin Therapy for Primary and Secondary Prevention in Older Adults",
+      "snippet": "PURPOSE OF REVIEW: Although statin therapy is well established to prevent atherosclerotic vascular disease (ASCVD) events in adults 40 to 75 years of age, it is less clear whether older adults benefit from statin therapy. The purpose of this review is to summarize the current evidence and guidelines on statin use for primary and secondary prevention in older patients. RECENT FINDINGS: Moderate to high intensity statin therapy decreases cardiovascular event rates in older patients with or at risk for ASCVD. Cardiac biomarkers and coronary calcium scoring can identify older patients at higher AS",
+      "full_text": "PURPOSE OF REVIEW: Although statin therapy is well established to prevent atherosclerotic vascular disease (ASCVD) events in adults 40 to 75 years of age, it is less clear whether older adults benefit from statin therapy. The purpose of this review is to summarize the current evidence and guidelines on statin use for primary and secondary prevention in older patients. RECENT FINDINGS: Moderate to high intensity statin therapy decreases cardiovascular event rates in older patients with or at risk for ASCVD. Cardiac biomarkers and coronary calcium scoring can identify older patients at higher ASCVD risk who may benefit from statin therapy. Age alone should not be a deterrent to statin therapy in older patients. The decision to initiate statin therapy should occur after a patient to clinician discussion based on the patient's overall ASCVD risk and weighed against other clinical factors that influence the patient's life expectancy and quality of life.",
+      "url": "https://openalex.org/W4404702573",
+      "_adapter": "openalex",
+      "authors": [
+        "Alicia Bao",
+        "Dean G. Karalis"
+      ],
+      "venue": "Current Atherosclerosis Reports",
+      "publication_date": "2024",
+      "doi": "10.1007/s11883-024-01257-9",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Understanding the molecular mechanisms of statin pleiotropic effects",
+      "snippet": "Understanding the molecular mechanisms of statin pleiotropic effects",
+      "full_text": null,
+      "url": "https://openalex.org/W4366601886",
+      "_adapter": "openalex",
+      "authors": [
+        "Charles Amir German",
+        "James K. Liao"
+      ],
+      "venue": "Archives of Toxicology",
+      "publication_date": "2023",
+      "doi": "10.1007/s00204-023-03492-6",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ]
+}

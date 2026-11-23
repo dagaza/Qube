@@ -1,0 +1,355 @@
+{
+  "schema_version": 2,
+  "id": "sci_sts_scot",
+  "path": "scientific_evidence",
+  "category": "sts_humanities",
+  "description": "",
+  "query_raw": "@[tool:evidence] What is the social construction of technology (SCOT) approach?",
+  "query_clean": "What is the social construction of technology (SCOT) approach?",
+  "retrieval_query": "What is the social construction of technology (SCOT) approach?",
+  "standalone_question": "What is the social construction of technology (SCOT) approach?",
+  "gold_subject": "social construction of technology",
+  "gold_facet": "",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:04:45+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "What is the social construction of technology (SCOT) approach",
+      "arxiv": "What is the social construction of technology (SCOT) approach"
+    }
+  },
+  "candidates": [
+    {
+      "title": "What is the Metaverse and who seeks to define it? Mapping the site of social construction",
+      "snippet": "The Metaverse has become a buzz-phrase among tech businesses. Facebook’s rebranding to Meta is symptomatic of this. Many firms and other actors are trying to shape visions of the Metaverse, leading to confusion about the term’s meaning. We use social construction of technology (SCOT) theory to disentangle the conflicting notions proposing that what the Metaverse is and will become relies on the collective sensemaking processes. We point out similarities and differences between various concepts presented in the public media and link them to individual actors’ monetary, political, or social moti",
+      "full_text": "The Metaverse has become a buzz-phrase among tech businesses. Facebook’s rebranding to Meta is symptomatic of this. Many firms and other actors are trying to shape visions of the Metaverse, leading to confusion about the term’s meaning. We use social construction of technology (SCOT) theory to disentangle the conflicting notions proposing that what the Metaverse is and will become relies on the collective sensemaking processes. We point out similarities and differences between various concepts presented in the public media and link them to individual actors’ monetary, political, or social motives. We describe the tensions that occur because of the conflicting interests. As the Metaverse is an emerging phenomenon, opportunities exist to reorient it toward humanist values rather than singular interests. However, the complexity of the social processes that shape the Metaverse requires a considerate approach rather than premature conclusions about the Metaverse’s characteristics. The analysis presents the Metaverse as a new, continually evolving sociotechnical phenomenon, and calls for research that explores it as a dynamic, moving target.",
+      "url": "https://openalex.org/W4319985550",
+      "_adapter": "openalex",
+      "authors": [
+        "Mateusz Dolata",
+        "Gerhard Schwabe"
+      ],
+      "venue": "Journal of Information Technology",
+      "publication_date": "2023",
+      "doi": "10.1177/02683962231159927",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Examining international technology transfer on construction projects in developing countries through a social construction of technology (SCOT) lens",
+      "snippet": "The existence of technology gaps between developed and developing countries is well-known. Within the construction context, the latter have, for decades, embarked on project-based international technology transfer (ITT) to improve their construction industries. However, attempts consistently fall short in yielding the desired outcomes, and foreign contractors dominate in the delivery of vital projects in these countries. Technology is commonly viewed as embodied in physical technical artefacts or foreign experts. Transfer is expected to take place once local parties work with foreigners using ",
+      "full_text": "The existence of technology gaps between developed and developing countries is well-known. Within the construction context, the latter have, for decades, embarked on project-based international technology transfer (ITT) to improve their construction industries. However, attempts consistently fall short in yielding the desired outcomes, and foreign contractors dominate in the delivery of vital projects in these countries. Technology is commonly viewed as embodied in physical technical artefacts or foreign experts. Transfer is expected to take place once local parties work with foreigners using new technology on a project. The process of ITT is therefore reduced to a linear transaction between parties pervasively categorised into ‘transferors’ and ‘transferees’. These views about ITT and the components involved conflict with the intrinsically complex sociotechnical process of construction project delivery and neglect dynamic micro-processes entailed. Consequently, such perspectives generate inaccurate understandings that misrepresent what ITT entails. Construction project-based ITT involves complicated and dynamic interactions involving actors and technical artefacts of technology in a specific environment. To unpack the intricacies, this research examines what happens when new technology is introduced and used in a new environment as part of a project-based ITT attempt. The study, inspired by the social construction of technology (SCOT) approach, rejects reductionist views about ITT and its components. Instead, the process is conceptualised as comprising series of sociotechnical interactions involving a dynamic composition of technology and ‘free’ actors. The study used the constructs of SCOT to explore the case of what happened in an attempt to transfer a monolithic formwork (MF) technology on a mass housing project in Ghana. The inquiry followed the journey of the technology, capturing its development, the involvement of actors, and the impacts on the construction project. Using a mix of qualitative research techniques data were collected through semi-structured interviews and from archival documents related to the case. The findings underscore how a construction project-based ITT attempt is complicated and better understood from a sociotechnical perspective. Findings further show that technology on construction projects is location-specific, emergent and constantly evolving. This contrasts the idea that in ITT one party brings a complete technology to the recipient. Actors involved in ITT are free agents who contribute to the processes that shape the formation of technology: they are not constrained by any binary categorisation labelling them as transferors or transferees. Another key finding shows that the environment hosting ITT goes beyond a mere geographical locus: it is strongly woven into and shapes the sociotechnical interactions. Indeed, the project-specific and wider environment influenced actors’ proximity to and interpretation of the technology, alongside other interactions that had implications for the ITT attempt. The insights raise fundamental questions about the suitability of the ‘technology transfer’ concept in project-based settings. An argument positing that ‘technology transfer’ is a misnomer follows, leading to a proposition. That is: project-based attempts to technologically improve a construction industry are more precisely captured as the introduction of new technical artefacts in a new environment to initiate the emergence and evolution of a localised technology.",
+      "url": "https://openalex.org/W3016637223",
+      "_adapter": "openalex",
+      "authors": [
+        "Kwadwo Oti‐Sarpong"
+      ],
+      "venue": "The HKU Scholars Hub (University of Hong Kong)",
+      "publication_date": "2019",
+      "doi": "10.5353/th_991044168856603414",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How is technology made?--That is the question!",
+      "snippet": "This article reviews constructivist technology studies, and especially the social construction of technology (SCOT). To investigate how these constructivist studies regard the ontology of technology, I will trace their historical development in units of analysis, methodological approaches and research questions. Constructivist technology studies are relativistic in only one sense: methodological. They are agnostic with respect to the ontology of technology. Constructivist studies of technology thus do not primarily answer the question ‘what is technology?’; they trace the process ‘how to make ",
+      "full_text": "This article reviews constructivist technology studies, and especially the social construction of technology (SCOT). To investigate how these constructivist studies regard the ontology of technology, I will trace their historical development in units of analysis, methodological approaches and research questions. Constructivist technology studies are relativistic in only one sense: methodological. They are agnostic with respect to the ontology of technology. Constructivist studies of technology thus do not primarily answer the question ‘what is technology?’; they trace the process ‘how to make technology’.",
+      "url": "https://openalex.org/W1990058188",
+      "_adapter": "openalex",
+      "authors": [
+        "Wiebe E. Bijker"
+      ],
+      "venue": "Cambridge Journal of Economics",
+      "publication_date": "2009",
+      "doi": "10.1093/cje/bep068",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Social Construction of a Digital Library: A Case Study Examining Implications for Evaluation",
+      "snippet": "The social construction of technology (SCOT) frame-work encourages a focus on the multiple perspectives inherent in the development and evaluation of libraries. SCOT concepts such as social groups, interpretative flexibility, and closure are used to examine an evaluation case study of the Making of America library. Evaluation is a critical component of effective library (DL) design and implementation, but involves many theoretical and practical challenges. Not only are DLs intricate systems comprising scanning, storage, transmission, display, and printing components, they are also embedded in ",
+      "full_text": "The social construction of technology (SCOT) frame-work encourages a focus on the multiple perspectives inherent in the development and evaluation of libraries. SCOT concepts such as social groups, interpretative flexibility, and closure are used to examine an evaluation case study of the Making of America library. Evaluation is a critical component of effective library (DL) design and implementation, but involves many theoretical and practical challenges. Not only are DLs intricate systems comprising scanning, storage, transmission, display, and printing components, they are also embedded in complex social systems, comprising librarians, engineers, funders, scholars, and general users. Evaluation of these complex socio-technical systems is complicated by the need to convince early users to look beyond the immature technology and limited holdings; user expectations are especially high because of the rhetoric surrounding technologies. Finally, there is little agreement about what exactly constitutes a digital library, which can encompass an automated reserve system, online archives, or include the current Internet, online journals, existing holdings, or a combination of these,[1] except that the technology is poised to change the roles of libraries, librarians, and scholarly research.[2] This case study uses the social construction of technology (SCOT) approach to frame both the development and evaluation of a specific DL prototype, the Making of America (MOA) project (the name refers to its holdings of nineteenth-century U.S. journals). An important part of a promising but nascent technology such as a DL system is the evaluation process, which is itself socially-constructed. After summarizing the social constructivist approach and its application to other large-scale systems, we describe the MOA project and our evaluation methods and results. Finally, we discuss modifications that make SCOT more appropriate for an analysis of DL development. Some of the examples in this case study reflect the fact that initial versions of MOA did not meet the needs of all social groups, and that people are often especially critical in their early encounters with a new technology. These examples are, we believe, realistic given the very high expectations for current DL systems. While we are optimistic about MOA and the DL concept, our intention in this case study is to demonstrate the use of the SCOT model in highlighting the differing perceptions of a technology's performance in order to anticipate future design and use challenges. As with any useful analytical approach, SCOT's ultimate benefit lies in its reframing of the problem under study as much as in providing specific lessons for improvement. Social Construction of Technology (SCOT) The role of social interactions in the development of technology and the inherent ambiguities of engineering design are increasingly the subject of study.[3] Fundamentally, as Edwards notes, technological change is... a social process: Technologies can and do have `social impacts,' but they are simultaneously social products that embody power relationships and social goals and structures (original emphasis).[4] The SCOT approach, developed in the mid-1980s, accounts for multiple branches of a technology coexisting to meet the needs of multiple social groups.[5] Using this approach, the researcher examines the varied conceptions held by these relevant social groups involved in a technology's development, and then follows the social construction of each group's technology to examine how it reaches closure, that is, how it is conceptually frozen in the view of that group and then across multiple groups. More recent work has focused on the interplay among social groups, including the political nature of technology development,[6] and the mutual construction of technology and society. …",
+      "url": "https://openalex.org/W1567905663",
+      "_adapter": "openalex",
+      "authors": [
+        "Julian Kilker"
+      ],
+      "venue": "Information Technology and Libraries",
+      "publication_date": "1998",
+      "doi": null,
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The Social Construction of Technology for the Use of CHATGPT in Indonesia",
+      "snippet": "The purpose of this study is to map the vulnerable issue about ChatGPT in academic field. This study seeks to understand the role of online media channels in mediating the understanding behind the use of ChatGPT in Indonesia. This is because the media also constructs how new technology is used, so that the use of technology is not neutral or taken for granted according to what users want. Thus, mapping the information constructed by the media is important to locate in the context of the use of ChatGPT in Indonesia. The main research question of this paper is how does the media construct the di",
+      "full_text": "The purpose of this study is to map the vulnerable issue about ChatGPT in academic field. This study seeks to understand the role of online media channels in mediating the understanding behind the use of ChatGPT in Indonesia. This is because the media also constructs how new technology is used, so that the use of technology is not neutral or taken for granted according to what users want. Thus, mapping the information constructed by the media is important to locate in the context of the use of ChatGPT in Indonesia. The main research question of this paper is how does the media construct the discourse related to how ChatGPT should be used? This study tries to fill the knowledge gap over the use of ChatGPT through the social construction of technology (SCOT) approach. This study uses literature review as a method to understand the discourse about the use of ChatGPT through the existence of \"relevant social groups\". The result shows that online media channels not only act as producers of information, but also act as groups that construct a discourse behind the presence of ChatGPT. This study expands by analyzing the reporting or production of information about ChatGPT through online media channels in Indonesia by identifying three main themes namely context, navigation, and imagination. From the results of this study, it can be concluded that the use of ChatGPT constructs a discourse that triggers concerns regarding its misuse as misleading technology if there is no regulation surrounding it. Therefore, strict laws, regulations, and supervision need to be implemented to ensure the optimal use of ChatGPT and in accordance with the desired goals in related fields.",
+      "url": "https://openalex.org/W4400266074",
+      "_adapter": "openalex",
+      "authors": [
+        "Tangguh Okta Wibowo"
+      ],
+      "venue": "ETTISAL Journal of Communication",
+      "publication_date": "2024",
+      "doi": "10.21111/ejoc.v9i1.11479",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Beyond the Freedom of Expression in the Cyberspace based on Social Construction of Technology Perspective",
+      "snippet": "Social construction of technology (SCOT) hold on what known as a reason for accepting or refusing technology based on social reality. When we are investigating beliefs of technology, all explanations must be symmetrical. Symmetry creates freedom of interpretation, this means there are various different interpretation of the meaning of technology among the social groups. On the other word, there is a freedom in designing towards technical solution. The problems discussed in this article are about freedom of expression in cyberspace with SCOT perspective. The research is qualitative with empiric",
+      "full_text": "Social construction of technology (SCOT) hold on what known as a reason for accepting or refusing technology based on social reality. When we are investigating beliefs of technology, all explanations must be symmetrical. Symmetry creates freedom of interpretation, this means there are various different interpretation of the meaning of technology among the social groups. On the other word, there is a freedom in designing towards technical solution. The problems discussed in this article are about freedom of expression in cyberspace with SCOT perspective. The research is qualitative with empiric law and technological philosophy approach. The findings obtained are: first, there has been a displacement of the philosophy from the real world (wild west) into cyberspace (wild web); second, excessive freedom of expression in the web performed by people or content in Indonesian language are dominated with cases of fraud, defamation, and crimes against decency; and third, the existing laws have not been able to solve the freedom of expression completely in cyberspace, which breaks the limit or violates the law. It takes an understanding of technological philosophy and cyberspace, ethics on using and communicating via the internet, and in the effort to establish society with good information culture",
+      "url": "https://openalex.org/W3082471634",
+      "_adapter": "openalex",
+      "authors": [
+        "Agus Raharjo",
+        "Rini Fidiyani"
+      ],
+      "venue": "Proceedings of the 1st International Conference on Recent Innovations",
+      "publication_date": "2018",
+      "doi": "10.5220/0009944529522959",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Multidimensional Social Network in the Social Recommender System",
+      "snippet": "All online sharing systems gather data that reflects users' collective behaviour and their shared activities. This data can be used to extract different kinds of relationships, which can be grouped into layers, and which are basic components of the multidimensional social network proposed in the paper. The layers are created on the basis of two types of relations between humans, i.e. direct and object-based ones which respectively correspond to either social or semantic links between individuals. For better understanding of the complexity of the social network structure, layers and their profi",
+      "full_text": "All online sharing systems gather data that reflects users' collective behaviour and their shared activities. This data can be used to extract different kinds of relationships, which can be grouped into layers, and which are basic components of the multidimensional social network proposed in the paper. The layers are created on the basis of two types of relations between humans, i.e. direct and object-based ones which respectively correspond to either social or semantic links between individuals. For better understanding of the complexity of the social network structure, layers and their profiles were identified and studied on two, spanned in time, snapshots of the Flickr population. Additionally, for each layer, a separate strength measure was proposed. The experiments on the Flickr photo sharing system revealed that the relationships between users result either from semantic links between objects they operate on or from social connections of these users. Moreover, the density of the social network increases in time. The second part of the study is devoted to building a social recommender system that supports the creation of new relations between users in a multimedia sharing system. Its main goal is to generate personalized suggestions that are continuously adapted to users' needs depending on the personal weights assigned to each layer in the multidimensional social network. The conducted experiments confirmed the usefulness of the proposed model.",
+      "url": "https://arxiv.org/abs/1303.0093v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Przemyslaw Kazienko",
+        "Katarzyna Musial",
+        "Tomasz Kajdanowicz"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2013-03-01",
+      "doi": "10.1109/TSMCA.2011.2132707",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1303.0093v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Elusive Model of Technology, Media, Social Development, and Financial Sustainability",
+      "snippet": "We recount in this essay the decade-long story of Gram Vaani, a social enterprise with a vision to build appropriate ICTs (Information and Communication Technologies) for participatory media in rural and low-income settings, to bring about social development and community empowerment. Other social enterprises will relate to the learning gained and the strategic pivots that Gram Vaani had to undertake to survive and deliver on its mission, while searching for a robust financial sustainability model. While we believe the ideal model still remains elusive, we conclude this essay with an open ques",
+      "full_text": "We recount in this essay the decade-long story of Gram Vaani, a social enterprise with a vision to build appropriate ICTs (Information and Communication Technologies) for participatory media in rural and low-income settings, to bring about social development and community empowerment. Other social enterprises will relate to the learning gained and the strategic pivots that Gram Vaani had to undertake to survive and deliver on its mission, while searching for a robust financial sustainability model. While we believe the ideal model still remains elusive, we conclude this essay with an open question about the reason to differentiate between different kinds of enterprises - commercial or social, for-profit or not-for-profit - and argue that all enterprises should have an ethical underpinning to their work.",
+      "url": "https://arxiv.org/abs/1907.06360v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Aaditeshwar Seth"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-07-15",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1907.06360v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Keeping it Authentic: The Social Footprint of the Trolls Network",
+      "snippet": "In 2016, a network of social media accounts animated by Russian operatives attempted to divert political discourse within the American public around the presidential elections. This was a coordinated effort, part of a Russian-led complex information operation. Utilizing the anonymity and outreach of social media platforms Russian operatives created an online astroturf that is in direct contact with regular Americans, promoting Russian agenda and goals. The elusiveness of this type of adversarial approach rendered security agencies helpless, stressing the unique challenges this type of interven",
+      "full_text": "In 2016, a network of social media accounts animated by Russian operatives attempted to divert political discourse within the American public around the presidential elections. This was a coordinated effort, part of a Russian-led complex information operation. Utilizing the anonymity and outreach of social media platforms Russian operatives created an online astroturf that is in direct contact with regular Americans, promoting Russian agenda and goals. The elusiveness of this type of adversarial approach rendered security agencies helpless, stressing the unique challenges this type of intervention presents. Building on existing scholarship on the functions within influence networks on social media, we suggest a new approach to map those types of operations. We argue that pretending to be legitimate social actors obliges the network to adhere to social expectations, leaving a social footprint. To test the robustness of this social footprint we train artificial intelligence to identify it and create a predictive model. We use Twitter data identified as part of the Russian influence network for training the artificial intelligence and to test the prediction. Our model attains 88% prediction accuracy for the test set. Testing our prediction on two additional models results in 90.7% and 90.5% accuracy, validating our model. The predictive and validation results suggest that building a machine learning model around social functions within the Russian influence network can be used to map its actors and functions.",
+      "url": "https://arxiv.org/abs/2409.07720v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Ori Swed",
+        "Sachith Dassanayaka",
+        "Dimitri Volchenkov"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-09-12",
+      "doi": "10.1007/s13278-023-01161-1",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2409.07720v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Measuring social spam and the effect of bots on information diffusion in social media",
+      "snippet": "Bots have been playing a crucial role in online platform ecosystems, as efficient and automatic tools to generate content and diffuse information to the social media human population. In this chapter, we will discuss the role of social bots in content spreading dynamics in social media. In particular, we will first investigate some differences between diffusion dynamics of content generated by bots, as opposed to humans, in the context of political communication, then study the characteristics of bots behind the diffusion dynamics of social media spam campaigns.",
+      "full_text": "Bots have been playing a crucial role in online platform ecosystems, as efficient and automatic tools to generate content and diffuse information to the social media human population. In this chapter, we will discuss the role of social bots in content spreading dynamics in social media. In particular, we will first investigate some differences between diffusion dynamics of content generated by bots, as opposed to humans, in the context of political communication, then study the characteristics of bots behind the diffusion dynamics of social media spam campaigns.",
+      "url": "https://arxiv.org/abs/1708.08134v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Emilio Ferrara"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-08-27",
+      "doi": "10.1007/978-3-319-77332-2_13",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1708.08134v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Empirical Evaluation of Link Deletion Methods for Limiting Information Diffusion on Social Media",
+      "snippet": "Although beneficial information abounds on social media, the dissemination of harmful information such as so-called ``fake news'' has become a serious issue. Therefore, many researchers have devoted considerable effort to limiting the diffusion of harmful information. A promising approach to limiting diffusion of such information is link deletion methods in social networks. Link deletion methods have been shown to be effective in reducing the size of information diffusion cascades generated by synthetic models on a given social network. In this study, we evaluate the effectiveness of link dele",
+      "full_text": "Although beneficial information abounds on social media, the dissemination of harmful information such as so-called ``fake news'' has become a serious issue. Therefore, many researchers have devoted considerable effort to limiting the diffusion of harmful information. A promising approach to limiting diffusion of such information is link deletion methods in social networks. Link deletion methods have been shown to be effective in reducing the size of information diffusion cascades generated by synthetic models on a given social network. In this study, we evaluate the effectiveness of link deletion methods by using actual logs of retweet cascades, rather than by using synthetic diffusion models. Our results show that even after deleting 10\\%--50\\% of links from a social network, the size of cascades after link deletion is estimated to be only 50\\% the original size under the optimistic estimation, which suggests that the effectiveness of the link deletion strategy for suppressing information diffusion is limited. Moreover, our results also show that there is a considerable number of cascades with many seed users, which renders link deletion methods inefficient.",
+      "url": "https://arxiv.org/abs/2603.21470v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Shiori Furukawa",
+        "Sho Tsugawa"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-03-23",
+      "doi": "10.1007/s13278-022-00994-6",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2603.21470v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multitask learning for recognizing stress and depression in social media",
+      "snippet": "Stress and depression are prevalent nowadays across people of all ages due to the quick paces of life. People use social media to express their feelings. Thus, social media constitute a valuable form of information for the early detection of stress and depression. Although many research works have been introduced targeting the early recognition of stress and depression, there are still limitations. There have been proposed multi-task learning settings, which use depression and emotion (or figurative language) as the primary and auxiliary tasks respectively. However, although stress is inextric",
+      "full_text": "Stress and depression are prevalent nowadays across people of all ages due to the quick paces of life. People use social media to express their feelings. Thus, social media constitute a valuable form of information for the early detection of stress and depression. Although many research works have been introduced targeting the early recognition of stress and depression, there are still limitations. There have been proposed multi-task learning settings, which use depression and emotion (or figurative language) as the primary and auxiliary tasks respectively. However, although stress is inextricably linked with depression, researchers face these two tasks as two separate tasks. To address these limitations, we present the first study, which exploits two different datasets collected under different conditions, and introduce two multitask learning frameworks, which use depression and stress as the main and auxiliary tasks respectively. Specifically, we use a depression dataset and a stressful dataset including stressful posts from ten subreddits of five domains. In terms of the first approach, each post passes through a shared BERT layer, which is updated by both tasks. Next, two separate BERT encoder layers are exploited, which are updated by each task separately. Regarding the second approach, it consists of shared and task-specific layers weighted by attention fusion networks. We conduct a series of experiments and compare our approaches with existing research initiatives, single-task learning, and transfer learning. Experiments show multiple advantages of our approaches over state-of-the-art ones.",
+      "url": "https://arxiv.org/abs/2305.18907v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Loukas Ilias",
+        "Dimitris Askounis"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-05-30",
+      "doi": "10.1016/j.osnem.2023.100270",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2305.18907v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

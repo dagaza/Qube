@@ -1,0 +1,283 @@
+{
+  "schema_version": 2,
+  "id": "kq_affirmation_followup",
+  "path": "general_web",
+  "category": "multi_turn",
+  "description": "Affirmation continuation — discourse should retain OAuth as subject.",
+  "query_raw": "@[tool:internet] Yes, please.",
+  "query_clean": "Yes, please.",
+  "retrieval_query": "Yes, please.",
+  "standalone_question": "Can you give an example of the OAuth 2.0 authorization code flow?",
+  "gold_subject": "OAuth",
+  "gold_facet": "authorization code flow example",
+  "budget": 3,
+  "history": [
+    {
+      "role": "user",
+      "content": "What is OAuth?"
+    },
+    {
+      "role": "assistant",
+      "content": "OAuth is an authorization framework. Would you like an example of the authorization code flow?"
+    }
+  ],
+  "captured_at": "2026-11-23T19:53:11+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "Yes, please."
+    },
+    "standalone": {
+      "duckduckgo": "Can you give an example of the OAuth 2.0 authorization code flow?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Official site",
+      "snippet": "Yes Please",
+      "url": "http://amysaysyesplease.com/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Yes, Please: Definition, Meaning and Origin - US Dictionary",
+      "snippet": "Learn the meaning, usage and origin of the idiom \"Yes, Please\", a polite and enthusiastic way of expressing agreement or acceptance. See examples, alternative expressions and FAQs about this common phrase in English conversation.",
+      "url": "https://usdictionary.com/idioms/yes-please/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "YES PLEASE - Hello there!",
+      "snippet": "Located in the center of Old Town La Quinta, YES PLEASE has been serving locals, seasonal residents and vacationers since December 2022. Our menu is designed to satisfy different cravings and dietary preferences. From our delicious crafted coffee drinks, house-made pastries, light or hearty breakfast, brunch and lunch options, we are always improving and adding more for your tastebuds! Dogs ...",
+      "url": "https://www.yespleaselaquinta.com/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Yes, please | Meaning, Grammar Guide & Usage Examples - Ludwig",
+      "snippet": "Learn the meaning and correct usage of \"Yes, please\". Our guide provides clear grammar rules and real-world examples from authoritative sources to help you write with confidence.",
+      "url": "https://ludwig.guru/s/Yes,+please",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "YES PLEASE definition and meaning | Collins English Dictionary",
+      "snippet": "YES PLEASE. Click for English pronunciations, examples sentences, video.",
+      "url": "https://www.collinsdictionary.com/dictionary/english/yes-please",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "yes, please - Idioms by The Free Dictionary",
+      "snippet": "Definition of yes, please in the Idioms Dictionary. yes, please phrase. What does yes, please expression mean? Definitions by the largest Idiom Dictionary.",
+      "url": "https://idioms.thefreedictionary.com/yes%2c+please",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Yes, Please! Treats",
+      "snippet": "Perfect for any occasion, the Yes, Please! bark gift box contains dark chocolate salted caramel bark, red hot bark, peppermint bark and butterscotch bark. We make gifting easy!",
+      "url": "https://yespleasetreats.com/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Yes Please at The Palace Manila | Cocktail Bar in BGC",
+      "snippet": "Yes Please is The Palace Manila signature cocktail bar in BGC. Craft cocktails daily from 8PM.",
+      "url": "https://www.thepalacemanila.com/venues/yes-please",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Microsoft identity platform and OAuth 2.0 authorization code flow",
+      "snippet": "The OAuth 2.0 authorization code grant type, or auth code flow, enables a client application to obtain authorized access to protected resources like web APIs. The auth code flow requires a user-agent that supports redirection from the authorization server (the Microsoft identity platform) back to your application.",
+      "url": "https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Authorization Code Flow - Auth0 Docs",
+      "snippet": "The Authorization Code Flow (defined in OAuth 2.0 RFC 6749, section 4.1), involves exchanging an authorization code for a token. This flow can only be used for confidential applications (such as Regular Web Applications) because the application's authentication methods are included in the exchange and must be kept secure.",
+      "url": "https://auth0.com/docs/get-started/authentication-and-authorization-flow/authorization-code-flow",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Implement OAuth 2.0 Authorization Code Flow Step by Step - C# Corner",
+      "snippet": "Master OAuth 2.0 Authorization Code Flow! Secure user data access with this step-by-step guide. Learn implementation, real-world examples, and security benefits.",
+      "url": "https://www.c-sharpcorner.com/article/how-to-implement-oauth-2-0-authorization-code-flow-step-by-step",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Understanding OAuth 2.0 Flow: Complete Diagram and Implementation Guide",
+      "snippet": "Master OAuth 2.0 authorization flows with clear diagrams and code examples. Learn Authorization Code, PKCE, Client Credentials, and Implicit flows with step-by-step explanations.",
+      "url": "https://dev.to/_d7eb1c1703182e3ce1782/understanding-oauth-20-flow-complete-diagram-and-implementation-guide-486m",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Guide to implementing OAuth 2.0 (with examples) - Infisical Blog",
+      "snippet": "In this section, we demonstrate how to authenticate with the Google API, a popular use-case, using OAuth 2.0 — Authorization Code Flow; the example come directly from the implementation used in Infisical. Authenticating with the Google API can allow your web application to access Google services, user data, etc.",
+      "url": "https://infisical.com/blog/guide-to-implementing-oauth2",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Example Flow - OAuth 2.0 Simplified",
+      "snippet": "The following step-by-step example illustrates using the authorization code flow with PKCE. Step-by-step The high level overview is this: Create a log-in link with the app's client ID, redirect URL, state, and PKCE code challenge parameters The user sees the authorization prompt and approves the request The user is redirected back to the app's server with an auth code The app exchanges the ...",
+      "url": "https://www.oauth.com/oauth2-servers/server-side-apps/example-flow/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How OAuth 2.0 works: authorization code flow and PKCE",
+      "snippet": "Learn how OAuth 2.0 authorization code flow, PKCE, state, scopes, access tokens, OpenID Connect, sessions, and social login work in practice.",
+      "url": "https://flaviocopes.com/how-oauth-works/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Authorization Code Flow - OAuth 2.0 Playground",
+      "snippet": "Before you can begin the flow, you'll need to register a client and create a user. Registration will give you a client ID an secret your application will use during the OAuth flow.",
+      "url": "https://www.oauth.com/playground/authorization-code.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

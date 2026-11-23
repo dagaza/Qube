@@ -101,18 +101,92 @@ def candidate_gain(row: dict[str, Any]) -> int | None:
     return LABEL_GAINS.get(label)
 
 
-def fixture_pool(
-    fixture: dict[str, Any], *, include_synthetic: bool = False
-) -> list[dict[str, Any]]:
-    """Candidate rows to rank (copies); synthetic rows dropped by default."""
-    rows: list[dict[str, Any]] = []
+POOL_MODES: tuple[str, ...] = ("production", "full")
+
+
+def _fixture_variants(fixture: dict[str, Any]) -> set[str]:
+    variants: set[str] = set((fixture.get("adapter_queries") or {}).keys())
     for row in fixture.get("candidates") or []:
+        for hit in (row.get("retrieved") or []) if isinstance(row, dict) else []:
+            if isinstance(hit, dict) and hit.get("query"):
+                variants.add(str(hit["query"]))
+    return variants
+
+
+def pool_variant(fixture: dict[str, Any], query_mode: str = "production") -> str:
+    """Capture variant whose rows form the pool for ``query_mode``.
+
+    Falls back to ``production`` when the fixture has no standalone capture
+    (mirrors ``fixture_ranking_query``'s fallback).
+    """
+    if query_mode == "standalone" and "standalone" in _fixture_variants(fixture):
+        return "standalone"
+    return "production"
+
+
+def fixture_pool(
+    fixture: dict[str, Any],
+    *,
+    include_synthetic: bool = False,
+    query_mode: str = "production",
+    pool_mode: str = "production",
+) -> list[dict[str, Any]]:
+    """Candidate rows to rank (copies), in the order the adapters returned them.
+
+    Rows captured by ``tools/capture_knowledge_fixture.py`` carry ``retrieved``
+    entries (query variant, adapter, rank). For ``pool_mode="production"`` only
+    rows within the fixture's ``production_depth`` for that adapter are kept —
+    the pool today's pipeline would actually see; ``"full"`` keeps the whole
+    capture (recall-widening experiments). Rows without ``retrieved`` (v1 or
+    hand-built fixtures) are always in the pool. Synthetic rows are dropped
+    unless ``include_synthetic``.
+    """
+    if pool_mode not in POOL_MODES:
+        raise ValueError(f"pool_mode must be one of {POOL_MODES}")
+    variant = pool_variant(fixture, query_mode)
+    depth = dict(fixture.get("production_depth") or {})
+    adapter_order = {name: i for i, name in enumerate(depth)}
+    picked: list[tuple[tuple[int, int, int], dict[str, Any]]] = []
+    for idx, row in enumerate(fixture.get("candidates") or []):
         if not isinstance(row, dict):
             continue
         if row.get("synthetic") and not include_synthetic:
             continue
-        rows.append(dict(row))
-    return rows
+        hits = row.get("retrieved")
+        if not hits:
+            # Hand-built / v1 rows (no capture metadata) come first, in file order.
+            picked.append(((-1, 0, idx), dict(row)))
+            continue
+        best: tuple[int, int, int] | None = None
+        for hit in hits:
+            if not isinstance(hit, dict) or hit.get("query") != variant:
+                continue
+            adapter = str(hit.get("adapter") or "")
+            rank = int(hit.get("rank") or 0)
+            if pool_mode == "production" and adapter in depth and rank >= int(depth[adapter]):
+                continue
+            key = (adapter_order.get(adapter, len(adapter_order)), rank, idx)
+            if best is None or key < best:
+                best = key
+        if best is not None:
+            picked.append((best, dict(row)))
+    picked.sort(key=lambda item: item[0])
+    return [row for _, row in picked]
+
+
+def derive_expect(pool: Sequence[dict[str, Any]]) -> str:
+    """Expected sufficiency of a labelled pool.
+
+    ``sufficient``: ≥ 2 relevant rows; ``partial``: ≥ 1 relevant or partial
+    row; ``insufficient``: nothing useful (the pipeline should abstain).
+    """
+    relevant = sum(1 for r in pool if candidate_gain(r) == 2)
+    useful = sum(1 for r in pool if (candidate_gain(r) or 0) >= 1)
+    if relevant >= 2:
+        return "sufficient"
+    if useful >= 1:
+        return "partial"
+    return "insufficient"
 
 
 def validate_fixture(fixture: dict[str, Any]) -> list[str]:
@@ -137,6 +211,12 @@ def validate_fixture(fixture: dict[str, Any]) -> list[str]:
     if not isinstance(candidates, list):
         errors.append("candidates must be a list")
         return errors
+    degraded = fixture.get("capture_degraded")
+    if degraded:
+        errors.append(
+            f"capture degraded for {degraded} (discovery fell back from the primary "
+            "provider); re-capture before using as a baseline"
+        )
     seen: set[str] = set()
     for idx, row in enumerate(candidates):
         where = f"candidates[{idx}]"
@@ -248,7 +328,7 @@ def abstain_correct(expect: str | None, did_abstain: bool) -> bool | None:
 
 
 # ---------------------------------------------------------------------------
-# Rankers — thin wrappers over the production scientific ranking code
+# Rankers — thin wrappers over each path's production ranking code
 # ---------------------------------------------------------------------------
 
 
@@ -259,34 +339,40 @@ class RankerOutput:
     state: str = "unscored"  # sufficiency state once S4 lands
 
 
-RankerFn = Callable[[str, list[dict[str, Any]], int], RankerOutput]
+# (query, pool rows, budget, retrieval path) -> RankerOutput
+RankerFn = Callable[[str, list[dict[str, Any]], int, str], RankerOutput]
+
+PATH_SCIENTIFIC = "scientific_evidence"
+PATH_GENERAL_WEB = "general_web"
+PATH_TRUSTED = "trusted_knowledge"
+PATH_FINANCE = "finance_knowledge"
+RANKED_PATHS: tuple[str, ...] = (PATH_SCIENTIFIC, PATH_GENERAL_WEB, PATH_TRUSTED, PATH_FINANCE)
 
 
 class RankerUnavailable(RuntimeError):
     """Raised by ``get_fixture_ranker`` when a ranker cannot run here."""
 
 
-def _production_scientific_rank(
-    query: str,
-    rows: list[dict[str, Any]],
-    budget: int,
-    *,
-    query_vector: Any = None,
-    embed_fn: Callable[[str], Any] | None = None,
-) -> RankerOutput:
-    # Reuse the real pipeline ranking (score_rows → MMR → reliability) so the
-    # eval measures shipped behaviour, not a copy of it.
+def _normalize_path(path: str | None) -> str:
+    key = (path or "").strip().lower()
+    # v1 fixtures carry no path; they were all scientific (@evidence) replays.
+    return key if key and key != "unspecified" else PATH_SCIENTIFIC
+
+
+def _rest(rows: list[dict[str, Any]], kept: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    kept_ids = {id(r) for r in kept}
+    return [r for r in rows if id(r) not in kept_ids]
+
+
+def _rank_scientific(query, rows, budget, *, query_vector, embed_fn) -> RankerOutput:
+    # pipeline_scientific: score_rows → MMR → reliability.
     from core.knowledge.pipeline_scientific import _rank_candidates
-    from core.knowledge.types import (
-        SERVICE_SCIENTIFIC_EVIDENCE,
-        RetrievalBudget,
-        RetrievalContext,
-    )
+    from core.knowledge.types import RetrievalBudget, RetrievalContext
 
     ctx = RetrievalContext(
         query=query,
         semantic_query=query,
-        knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
+        knowledge_service=PATH_SCIENTIFIC,
         query_vector=query_vector,
         embed_fn=embed_fn,
         budget=RetrievalBudget(max_results=budget),
@@ -295,8 +381,107 @@ def _production_scientific_rank(
     return RankerOutput(kept=list(kept), rejected=list(rejected))
 
 
-def _token_ranker(query: str, rows: list[dict[str, Any]], budget: int) -> RankerOutput:
-    return _production_scientific_rank(query, rows, budget)
+def _rank_general_web(query, rows, budget, *, query_vector, embed_fn) -> RankerOutput:
+    # pipeline_general_web (default "strict" gate): filter_web_results keeps SERP
+    # order; every survivor is a candidate source (the balanced profile then
+    # fetches the top survivor — fetch is not replayed offline).
+    from core.retrieval_relevance import filter_web_results
+
+    kept, _ = filter_web_results(
+        query,
+        rows,
+        query_vector=query_vector,
+        embed_text_fn=embed_fn,
+        use_embedding_gate=True,
+    )
+    kept_urls = {str(r.get("url") or "") for r in kept}
+    rejected = [r for r in rows if str(r.get("url") or "") not in kept_urls]
+    return RankerOutput(kept=list(kept), rejected=rejected)
+
+
+def _rank_trusted(query, rows, budget, *, query_vector, embed_fn) -> RankerOutput:
+    # pipeline_trusted: Wikipedia rows (up to min(2, budget)) are kept with no
+    # relevance check; allowlisted SERP rows are gated and appended to budget.
+    from core.knowledge.adapters.wikipedia_api import ADAPTER_ID as WIKI_ADAPTER
+    from core.knowledge.ranking.authority import is_allowlisted_url
+    from core.retrieval_relevance import filter_web_results
+
+    wiki = [r for r in rows if str(r.get("_adapter") or "") == WIKI_ADAPTER][: min(2, budget)]
+    kept: list[dict[str, Any]] = list(wiki)
+    if len(kept) < budget:
+        seen = {str(r.get("url") or "").strip().lower() for r in kept if r.get("url")}
+        allowlisted = [
+            r
+            for r in rows
+            if str(r.get("_adapter") or "") != WIKI_ADAPTER
+            and is_allowlisted_url(str(r.get("url") or ""))
+            and str(r.get("url") or "").strip().lower() not in seen
+        ]
+        if allowlisted:
+            filtered, _ = filter_web_results(
+                query,
+                allowlisted,
+                query_vector=query_vector,
+                embed_text_fn=embed_fn,
+                use_embedding_gate=True,
+            )
+            by_url = {str(r.get("url") or ""): r for r in allowlisted}
+            for row in filtered:
+                if len(kept) >= budget:
+                    break
+                kept.append(by_url.get(str(row.get("url") or ""), row))
+    return RankerOutput(kept=kept, rejected=_rest(rows, kept))
+
+
+def _rank_finance(query, rows, budget, *, query_vector, embed_fn) -> RankerOutput:
+    # pipeline_finance: gate (no embeddings) only when rows exceed budget.
+    from core.knowledge.finance_query_planner import plan_finance_query
+    from core.retrieval_relevance import filter_web_results
+
+    kept = list(rows)
+    if len(kept) > budget:
+        plan = plan_finance_query(query, semantic_query=query)
+        filtered, _ = filter_web_results(
+            plan.semantic_query,
+            kept,
+            query_vector=query_vector,
+            embed_text_fn=embed_fn,
+            use_embedding_gate=False,
+        )
+        by_url = {str(r.get("url") or ""): r for r in kept}
+        kept = [by_url.get(str(r.get("url") or ""), r) for r in filtered[:budget]]
+    return RankerOutput(kept=kept, rejected=_rest(rows, kept))
+
+
+_PATH_RANKERS = {
+    PATH_SCIENTIFIC: _rank_scientific,
+    PATH_GENERAL_WEB: _rank_general_web,
+    PATH_TRUSTED: _rank_trusted,
+    PATH_FINANCE: _rank_finance,
+}
+
+
+def production_rank(
+    query: str,
+    rows: list[dict[str, Any]],
+    budget: int,
+    path: str | None,
+    *,
+    query_vector: Any = None,
+    embed_fn: Callable[[str], Any] | None = None,
+) -> RankerOutput:
+    """Rank ``rows`` the way the production pipeline for ``path`` does today."""
+    key = _normalize_path(path)
+    fn = _PATH_RANKERS.get(key)
+    if fn is None:
+        raise RankerUnavailable(f"no production ranker replay for path {key!r}")
+    return fn(query, rows, budget, query_vector=query_vector, embed_fn=embed_fn)
+
+
+def _token_ranker(
+    query: str, rows: list[dict[str, Any]], budget: int, path: str = PATH_SCIENTIFIC
+) -> RankerOutput:
+    return production_rank(query, rows, budget, path)
 
 
 def _build_embed_ranker() -> RankerFn:
@@ -325,9 +510,11 @@ def _build_embed_ranker() -> RankerFn:
             cache[text] = backend.embed_query(text)
         return cache[text]
 
-    def rank(query: str, rows: list[dict[str, Any]], budget: int) -> RankerOutput:
-        return _production_scientific_rank(
-            query, rows, budget, query_vector=embed(query), embed_fn=embed
+    def rank(
+        query: str, rows: list[dict[str, Any]], budget: int, path: str = PATH_SCIENTIFIC
+    ) -> RankerOutput:
+        return production_rank(
+            query, rows, budget, path, query_vector=embed(query), embed_fn=embed
         )
 
     return rank
@@ -376,6 +563,7 @@ def evaluate_fixture(
     ranker: str | RankerFn = "token",
     query_mode: str = "production",
     include_synthetic: bool = False,
+    pool_mode: str = "production",
     k: int = 3,
 ) -> dict[str, Any]:
     """Rank a fixture's pool and report graded ranking + abstention metrics."""
@@ -385,18 +573,36 @@ def evaluate_fixture(
     ranker_name = ranker if isinstance(ranker, str) else getattr(ranker, "__name__", "custom")
 
     budget = int(fixture.get("budget") or DEFAULT_FIXTURE_BUDGET)
-    pool = fixture_pool(fixture, include_synthetic=include_synthetic)
+    pool = fixture_pool(
+        fixture,
+        include_synthetic=include_synthetic,
+        query_mode=query_mode,
+        pool_mode=pool_mode,
+    )
     query = fixture_ranking_query(fixture, query_mode=query_mode)
-    output = rank_fn(query, [dict(r) for r in pool], budget)
+    output = rank_fn(query, [dict(r) for r in pool], budget, _normalize_path(fixture.get("path")))
     kept = output.kept
     did_abstain = abstained(kept, output.state)
-    expect = fixture.get("expect")
+    # An explicit fixture ``expect`` is for single-pool fixtures; captured
+    # fixtures derive it from the labels of the pool being evaluated.
+    # Empty pool -> nothing to cite (should abstain); an unlabelled pool gives
+    # no verdict rather than a fake "insufficient".
+    if fixture.get("expect"):
+        expect, expect_source = fixture.get("expect"), "fixture"
+    elif not pool:
+        expect, expect_source = "insufficient", "derived"
+    elif any(candidate_gain(r) is not None for r in pool):
+        expect, expect_source = derive_expect(pool), "derived"
+    else:
+        expect, expect_source = None, "unlabelled"
 
     return {
         "fixture_id": fixture.get("id"),
         "path": fixture.get("path") or "unspecified",
         "category": fixture.get("category") or "uncategorized",
         "expect": expect,
+        "expect_source": expect_source,
+        "pool_mode": pool_mode,
         "ranker": ranker_name,
         "query_mode": query_mode,
         "query": query,
@@ -408,6 +614,7 @@ def evaluate_fixture(
         if not include_synthetic
         else 0,
         "unlabelled_in_pool": sum(1 for r in pool if candidate_gain(r) is None),
+        "labelled_in_pool": sum(1 for r in pool if candidate_gain(r) is not None),
         "relevant_in_pool": sum(1 for r in pool if candidate_gain(r) == 2),
         "kept_count": len(kept),
         "kept_titles": [str(r.get("title") or "")[:120] for r in kept],

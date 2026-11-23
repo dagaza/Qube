@@ -1,0 +1,159 @@
+{
+  "schema_version": 2,
+  "id": "mt_topic_switch_ethanol",
+  "path": "general_web",
+  "category": "multi_turn",
+  "description": "True topic switch: must NOT be anchored to the prior subject.",
+  "query_raw": "@[tool:internet] What is the boiling point of ethanol?",
+  "query_clean": "What is the boiling point of ethanol?",
+  "retrieval_query": "What is the boiling point of ethanol?",
+  "standalone_question": "What is the boiling point of ethanol?",
+  "gold_subject": "ethanol",
+  "gold_facet": "boiling point",
+  "budget": 3,
+  "history": [
+    {
+      "role": "user",
+      "content": "What is actor-network theory?"
+    },
+    {
+      "role": "assistant",
+      "content": "Actor-network theory (ANT) is a sociological approach that treats human and non-human entities as actors in networks."
+    }
+  ],
+  "captured_at": "2026-11-23T20:02:46+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "What is the boiling point of ethanol?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "The Boiling Point of Alcohol - ThoughtCo",
+      "snippet": "The boiling point of alcohol varies depending on its type, but ethanol typically boils at 173.1°F (78.37°C) under standard atmospheric pressure.",
+      "url": "https://www.thoughtco.com/boiling-point-of-alcohol-608491",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Ethanol Boiling Point: 78.3 °C (173 °F, 351.5 K) — CASRAI",
+      "snippet": "Ethanol Boiling Point: 78.3 °C (173 °F) at 1 atm, Azeotrope and Vacuum Values Ethanol boils at about 78.3 °C (173 °F) at 1 atm. Sourced values, the 95% azeotrope, calculated vacuum boiling points and flash point for bench use.",
+      "url": "https://casrai.org/guides/ethanol-boiling-point",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Ethanol | 64-17-5 - ChemicalBook",
+      "snippet": "Introduction Ethanol, also known as ethyl alcohol (or grain spirits, or alcohol), is a clear colorless, volatile, flammable solvent with a characteristic odor. The boiling point of ethanal is 78.5°C. The bio-alcohol is found in alcoholic beverages. Concentrated alcohol has a strong burning taste, but it is somewhat sweet when diluted. It is also increasingly being used as a fuel (usually ...",
+      "url": "https://www.chemicalbook.com/ChemicalProductProperty_EN_CB2362508.htm",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Ethanol - Wikipedia",
+      "snippet": "Ethanol is an important industrial ingredient with widespread uses as a precursor for other organic compounds such as ethyl halides, ethyl esters, diethyl ether, acetic acid, and ethyl amines. As ethanol also has a low boiling point, it is easy to remove from a solution that has been used to dissolve other compounds, making it a popular extracting agent for botanical oils. Ethanol is found in ...",
+      "url": "https://en.wikipedia.org/wiki/Ethanol",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Ethanol - NIST Chemistry WebBook",
+      "snippet": "The boiling point as indicator of purity and a new apparatus for its determination without thermometer correction., Arch. Pharm. (Weinheim, Ger.), 1919, 257, 87. [all data]",
+      "url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C64175&amp;Type=TBOIL",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Alcohol - Boiling Point, Solubility, Flammability | Britannica",
+      "snippet": "Alcohol - Boiling Point, Solubility, Flammability: Most of the common alcohols are colorless liquids at room temperature. Methyl alcohol, ethyl alcohol, and isopropyl alcohol are free-flowing liquids with fruity odors. The higher alcohols—those containing 4 to 10 carbon atoms—are somewhat viscous, or oily, and they have heavier fruity odors. Some of the highly branched alcohols and many ...",
+      "url": "https://www.britannica.com/science/alcohol/Physical-properties-of-alcohols",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Ethanol - Thermophysical properties - The Engineering ToolBox",
+      "snippet": "Find the boiling point of ethanol (C2H5 OH) and other chemical, physical and thermal properties of this volatile, flammable liquid. The boiling point of ethanol is 351.39 K or 78.2 °C at 1 bara.",
+      "url": "https://www.engineeringtoolbox.com/ethanol-ethyl-alcohol-properties-C2H6O-d_2027.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Boiling Point of Alcohols - Table - Matmake",
+      "snippet": "The boiling point of alcohols varies depending on their molecular structure and size. Generally, as the molecular weight of the alcohol increases, so does its boiling point. The following table provides a comprehensive list of boiling point values for various alcohols at 1 atmospheric (atm) pressure. (1 atm = 101,325 Pa)",
+      "url": "https://matmake.com/properties/boiling-point-of-alcohols.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ]
+}

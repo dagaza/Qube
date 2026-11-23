@@ -26,6 +26,7 @@ from core.knowledge.quality_eval import (  # noqa: E402
     aggregate_reports,
     candidate_gain,
     compare_to_baseline,
+    derive_expect,
     evaluate_fixture,
     fixture_pool,
     fixture_ranking_query,
@@ -33,7 +34,9 @@ from core.knowledge.quality_eval import (  # noqa: E402
     irrelevant_kept_rate,
     load_json,
     ndcg_at_k,
+    pool_variant,
     precision_at_k,
+    production_rank,
     relevant_recall,
     validate_fixture,
 )
@@ -196,6 +199,57 @@ class ValidationTests(unittest.TestCase):
                     self.assertTrue((ROOT / entry["fixture"]).is_file())
 
 
+class CorpusCompositionTests(unittest.TestCase):
+    """S2 acceptance (§12.4): the labelled corpus is broad, not ANT-shaped."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.entries = load_json("eval/retrieval_corpus/v1_knowledge_quality.json")["queries"]
+        cls.fixtures = {
+            e["id"]: load_json(e["fixture"])
+            for e in cls.entries
+            if e.get("fixture") and (ROOT / e["fixture"]).is_file()
+        }
+
+    def test_case_counts(self) -> None:
+        paths = [e.get("path") for e in self.entries]
+        cats = [e.get("category") for e in self.entries]
+        self.assertGreaterEqual(len(self.entries), 45)
+        self.assertGreaterEqual(paths.count("general_web"), 12)
+        self.assertGreaterEqual(cats.count("recency"), 4)
+        for p in ("general_web", "trusted_knowledge", "finance_knowledge", "scientific_evidence"):
+            self.assertIn(p, paths)
+
+    def test_multi_turn_cases_have_gold_slots(self) -> None:
+        multi = [e for e in self.entries if e.get("history")]
+        self.assertGreaterEqual(len(multi), 6)
+        for e in multi:
+            with self.subTest(case=e["id"]):
+                self.assertTrue(e.get("standalone_question"))
+                self.assertTrue(e.get("gold_subject"))
+
+    def test_every_case_has_a_labelled_fixture(self) -> None:
+        for e in self.entries:
+            with self.subTest(case=e["id"]):
+                fx = self.fixtures.get(e["id"])
+                self.assertIsNotNone(fx, "fixture missing")
+                pool = fixture_pool(fx, include_synthetic=True)
+                unlabelled = [r["title"] for r in pool if candidate_gain(r) is None]
+                self.assertEqual(unlabelled, [], "production pool has unlabelled rows")
+
+    def test_labelled_volume_and_abstention_cases(self) -> None:
+        labelled = sum(
+            1 for fx in self.fixtures.values() for r in fx.get("candidates") or []
+            if candidate_gain(r) is not None
+        )
+        self.assertGreaterEqual(labelled, 400)
+        insufficient = sum(
+            1 for fx in self.fixtures.values()
+            if (fx.get("expect") or derive_expect(fixture_pool(fx))) == "insufficient"
+        )
+        self.assertGreaterEqual(insufficient, 8)
+
+
 class PoolAndQueryTests(unittest.TestCase):
     def test_synthetic_rows_excluded_by_default(self) -> None:
         fx = {"candidates": [R1, dict(R2, synthetic=True)]}
@@ -217,7 +271,7 @@ class PoolAndQueryTests(unittest.TestCase):
 
 
 def _stub_ranker(keep_titles: list[str], state: str = "unscored"):
-    def rank(query: str, rows: list[dict], budget: int) -> RankerOutput:
+    def rank(query: str, rows: list[dict], budget: int, path: str = "") -> RankerOutput:
         kept = [r for r in rows if r["title"] in keep_titles][:budget]
         rejected = [r for r in rows if r not in kept]
         return RankerOutput(kept=kept, rejected=rejected, state=state)
@@ -272,7 +326,10 @@ class EvaluateFixtureTests(unittest.TestCase):
         self.assertEqual(rep["path"], "unspecified")
         self.assertEqual(rep["category"], "uncategorized")
         self.assertEqual(rep["budget"], 3)
-        self.assertIsNone(rep["abstain_correct"])
+        # Since S2, expect is derived from the pool's labels when not given.
+        self.assertEqual(rep["expect"], "partial")
+        self.assertEqual(rep["expect_source"], "derived")
+        self.assertTrue(rep["abstain_correct"])
 
     def test_rejects_unknown_query_mode(self) -> None:
         with self.assertRaises(ValueError):
@@ -365,6 +422,127 @@ class BaselineCompareTests(unittest.TestCase):
         base = {"old": {"fixtures": 3, "precision_at_k": 1.0}, "cat": {"fixtures": 3}}
         cur = {"cat": {"fixtures": 3, "precision_at_k": 0.0}, "new": {"fixtures": 1}}
         self.assertEqual(compare_to_baseline(cur, base), [])
+
+
+def _hit(query: str, adapter: str, rank: int) -> dict:
+    return {"query": query, "adapter": adapter, "rank": rank}
+
+
+class CapturedPoolTests(unittest.TestCase):
+    """S2 fixtures record where each row came from; the pool is rebuilt from it."""
+
+    def _fixture(self) -> dict:
+        return {
+            "id": "cap",
+            "query_clean": "q",
+            "production_depth": {"ddg": 2, "wiki": 1},
+            "adapter_queries": {"production": {}, "standalone": {}},
+            "candidates": [
+                {"title": "d1", "retrieved": [_hit("production", "ddg", 1)]},
+                {"title": "d0", "retrieved": [_hit("production", "ddg", 0), _hit("standalone", "ddg", 2)]},
+                {"title": "d2-deep", "retrieved": [_hit("production", "ddg", 2)]},
+                {"title": "w0", "retrieved": [_hit("production", "wiki", 0)]},
+                {"title": "s0", "retrieved": [_hit("standalone", "ddg", 0)]},
+                {"title": "handmade"},
+            ],
+        }
+
+    def _titles(self, **kw) -> list[str]:
+        return [r["title"] for r in fixture_pool(self._fixture(), **kw)]
+
+    def test_production_pool_respects_depth_and_adapter_order(self) -> None:
+        # ddg first (depth order), by rank; deep row excluded; hand-built row kept.
+        self.assertEqual(self._titles(), ["handmade", "d0", "d1", "w0"])
+
+    def test_full_pool_includes_deep_rows(self) -> None:
+        self.assertIn("d2-deep", self._titles(pool_mode="full"))
+
+    def test_standalone_variant_pool(self) -> None:
+        self.assertEqual(self._titles(query_mode="standalone"), ["handmade", "s0"])
+        self.assertIn("d0", self._titles(query_mode="standalone", pool_mode="full"))
+
+    def test_standalone_falls_back_to_production_without_capture(self) -> None:
+        fx = self._fixture()
+        fx["adapter_queries"] = {"production": {}}
+        for cand in fx["candidates"]:
+            cand["retrieved"] = [h for h in cand.get("retrieved", []) if h["query"] == "production"]
+        self.assertEqual(pool_variant(fx, "standalone"), "production")
+
+    def test_rejects_unknown_pool_mode(self) -> None:
+        with self.assertRaises(ValueError):
+            fixture_pool(self._fixture(), pool_mode="wide")
+
+
+class DegradedCaptureTests(unittest.TestCase):
+    def test_degraded_capture_fails_validation(self) -> None:
+        fx = {"id": "d", "query_clean": "q", "capture_degraded": ["production"], "candidates": []}
+        self.assertTrue(any("degraded" in e for e in validate_fixture(fx)))
+
+
+class DeriveExpectTests(unittest.TestCase):
+    def test_thresholds(self) -> None:
+        self.assertEqual(derive_expect([R1, R2, I1]), "sufficient")
+        self.assertEqual(derive_expect([R1, I1]), "partial")
+        self.assertEqual(derive_expect([P1, I1]), "partial")
+        self.assertEqual(derive_expect([I1, I2, U1]), "insufficient")
+        self.assertEqual(derive_expect([]), "insufficient")
+
+    def test_unlabelled_pool_gives_no_verdict(self) -> None:
+        fx = {"id": "u", "query_clean": "q", "candidates": [U1]}
+        rep = evaluate_fixture(fx, ranker=_stub_ranker([]))
+        self.assertIsNone(rep["expect"])
+        self.assertEqual(rep["expect_source"], "unlabelled")
+        self.assertIsNone(rep["abstain_correct"])
+
+    def test_empty_pool_expects_abstention(self) -> None:
+        rep = evaluate_fixture({"id": "e", "query_clean": "q", "candidates": []}, ranker=_stub_ranker([]))
+        self.assertEqual(rep["expect"], "insufficient")
+        self.assertTrue(rep["abstain_correct"])
+
+    def test_explicit_expect_overrides(self) -> None:
+        fx = {"id": "e", "query_clean": "q", "expect": "insufficient", "candidates": [R1, R2]}
+        rep = evaluate_fixture(fx, ranker=_stub_ranker(["rel one"]))
+        self.assertEqual(rep["expect"], "insufficient")
+        self.assertEqual(rep["expect_source"], "fixture")
+
+
+class ProductionPathRankerTests(unittest.TestCase):
+    """Each path replays its own production ranking (token path, no embeddings)."""
+
+    def test_general_web_keeps_serp_order_and_gates_by_token_overlap(self) -> None:
+        rows = [
+            {"title": "Heat pump basics", "snippet": "how a heat pump works", "url": "https://a.example/1"},
+            {"title": "Celebrity gossip", "snippet": "red carpet news", "url": "https://b.example/2"},
+            {"title": "Heat pump installation guide", "snippet": "heat pump work explained", "url": "https://c.example/3"},
+        ]
+        out = production_rank("how does a heat pump work", rows, 3, "general_web")
+        self.assertEqual([r["url"] for r in out.kept], ["https://a.example/1", "https://c.example/3"])
+        self.assertEqual([r["url"] for r in out.rejected], ["https://b.example/2"])
+
+    def test_trusted_keeps_wikipedia_without_relevance_check(self) -> None:
+        rows = [
+            {"title": "Completely unrelated article", "snippet": "nothing", "url": "https://en.wikipedia.org/wiki/X", "_adapter": "wikipedia_api"},
+            {"title": "MMR vaccine schedule", "snippet": "two doses of MMR vaccine for children", "url": "https://www.cdc.gov/mmr", "_adapter": "duckduckgo"},
+            {"title": "MMR vaccine doses children", "snippet": "two doses of MMR vaccine", "url": "https://random-blog.example/mmr", "_adapter": "duckduckgo"},
+        ]
+        out = production_rank("how many doses of MMR vaccine for children", rows, 3, "trusted_knowledge")
+        urls = [r["url"] for r in out.kept]
+        self.assertEqual(urls[0], "https://en.wikipedia.org/wiki/X")  # kept unconditionally today
+        self.assertIn("https://www.cdc.gov/mmr", urls)  # allowlisted and relevant
+        self.assertNotIn("https://random-blog.example/mmr", urls)  # not allowlisted
+
+    def test_finance_keeps_all_rows_within_budget(self) -> None:
+        rows = [{"title": "Unrelated filing", "url": "https://sec.example/1"}]
+        out = production_rank("apple revenue", rows, 3, "finance_knowledge")
+        self.assertEqual(len(out.kept), 1)
+
+    def test_unknown_path(self) -> None:
+        with self.assertRaises(RankerUnavailable):
+            production_rank("q", [], 3, "legal_knowledge")
+
+    def test_v1_unspecified_path_is_scientific(self) -> None:
+        out = production_rank("actor network theory", [_row("Actor network theory", "relevant")], 3, "unspecified")
+        self.assertEqual(len(out.kept), 1)
 
 
 class CliSmokeTests(unittest.TestCase):

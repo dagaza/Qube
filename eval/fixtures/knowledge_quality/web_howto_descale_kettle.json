@@ -1,0 +1,224 @@
+{
+  "schema_version": 2,
+  "id": "web_howto_descale_kettle",
+  "path": "general_web",
+  "category": "how_to",
+  "description": "",
+  "query_raw": "@[tool:internet] how to descale an electric kettle with vinegar",
+  "query_clean": "how to descale an electric kettle with vinegar",
+  "retrieval_query": "how to descale an electric kettle with vinegar",
+  "standalone_question": "How do I descale an electric kettle with vinegar?",
+  "gold_subject": "electric kettle",
+  "gold_facet": "descaling",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:56:13+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "how to descale an electric kettle with vinegar"
+    },
+    "standalone": {
+      "duckduckgo": "How do I descale an electric kettle with vinegar?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "How to Clean an Electric Kettle: 5 Quick & Easy Ways - wikiHow",
+      "snippet": "Over time, the natural minerals present in water build up inside your electric kettle, leading to limescale deposits or kettle furring. The mineral buildup can slow down your kettle or even affect the taste of your water, so descale your machine about once a month. Luckily, all it takes is household ingredients like vinegar, lemons, or baking soda to clean out your kettle. Keep reading to ...",
+      "url": "https://www.wikihow.com/Clean-an-Electric-Kettle",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Clean an Electric Kettle, According to Experts",
+      "snippet": "Here's how to use vinegar, lemon juice, or baking soda to clean your kettle.",
+      "url": "https://www.goodhousekeeping.com/home/cleaning/a71245516/expert-tips-cleaning-electric-kettle/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Descale a Kettle: 3 Effective Ways to Clean Limescale",
+      "snippet": "How to Descale a Teapot with Vinegar, Lemon, or Baking Soda To descale a kettle with vinegar, boil equal parts white vinegar and water in the kettle. Let the solution soak for 1 hour before rinsing it out. To use lemons, squeeze half a lemon into a kettle half full with water. Boil the lemon water, let it cool, and wipe out any limescale deposits.",
+      "url": "https://www.wikihow.com/Descale-a-Kettle",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Clean Electric Kettle with Vinegar: The Ultimate Guide",
+      "snippet": "Learn how to clean electric kettle using vinegar for a sparkling clean appliance and better-tasting drinks! Follow our step-by-step guide for easy descaling and maintenance.",
+      "url": "https://romestable.com/kettle/how-to-clean-electric-kettle-using-vinegar/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Can You Clean an Electric Kettle with Vinegar? Yes! (here's How)",
+      "snippet": "Learn how to clean an electric kettle with vinegar! This guide provides a step-by-step method for descaling, ensuring clean water and a longer-lasting kettle. Get rid of limescale!",
+      "url": "https://romestable.com/kettle/can-you-clean-an-electric-kettle-with-vinegar/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Clean a Kettle with Vinegar: A Simple, Safe Descaling Method",
+      "snippet": "Why vinegar works for kettle cleaning Household vinegar contains acetic acid, which reacts with mineral deposits such as calcium carbonate and helps break them down. That makes it a practical descaling solution for electric kettles, stovetop kettles, stainless steel kettles, and glass kettles. Hard water regions tend to produce faster limescale buildup because water contains more dissolved ...",
+      "url": "https://sprucebath.com/how-to-clean-kettle-with-vinegar/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How To Clean An Electric Kettle With Vinegar Simple Tips",
+      "snippet": "To clean an electric kettle with vinegar, fill the kettle halfway with equal parts water and white vinegar. Boil the mixture, then let it sit for 15-20 minutes to loosen mineral deposits.",
+      "url": "https://kitchenadvising.com/how-to-clean-an-electric-kettle-with-vinegar/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How To Clean An Electric Tea Kettle: Step-By-Step Guide",
+      "snippet": "Give your electric tea kettle a deep clean to make it sparkle again and give you a better tasting cup of tea. Here's how to clean and descale an electric tea kettle.",
+      "url": "https://www.southernliving.com/how-to-clean-an-electric-tea-kettle-11811457",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Descale Electric Kettle with Vinegar: The Ultimate Guide",
+      "snippet": "Learn how to descale electric kettle with vinegar effectively! Get rid of limescale, improve taste, and extend your kettle's life. Simple steps for a clean kettle.",
+      "url": "https://romestable.com/kettle/how-to-descale-electric-kettle-with-vinegar/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Descale a Kettle | Electric and Stovetop Kettles",
+      "snippet": "Descaling a kettle is a simple way to keep your tea tasting as it should. Follow these steps to descale electric and stovetop kettles.",
+      "url": "https://www.bobvila.com/articles/how-to-descale-kettle/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Clean a Kettle With Vinegar: Safe Step-by-Step Descaling Guide",
+      "snippet": "How to Clean a Kettle With Vinegar If your manufacturer allows vinegar descaling, a safe general method is 1 part white distilled vinegar to 3 parts water — enough to cover the limescale without exceeding the kettle's maximum-fill line. Both KitchenAid and Good Housekeeping describe this 1:3 ratio for electric kettles. Check the kettle manual to confirm vinegar is safe to use.",
+      "url": "https://cleanservant.com/how-to-clean-a-kettle-with-vinegar/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

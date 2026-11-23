@@ -1,0 +1,373 @@
+{
+  "schema_version": 2,
+  "id": "sci_soc_remote_work_productivity",
+  "path": "scientific_evidence",
+  "category": "social_science",
+  "description": "",
+  "query_raw": "@[tool:evidence] Does remote work affect employee productivity?",
+  "query_clean": "Does remote work affect employee productivity?",
+  "retrieval_query": "Does remote work affect employee productivity?",
+  "standalone_question": "Does remote work affect employee productivity?",
+  "gold_subject": "remote work",
+  "gold_facet": "productivity",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:03:54+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "Does remote work affect employee productivity",
+      "arxiv": "Does remote work affect employee productivity"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Exploring the Impact of Remote Work on Employee Productivity",
+      "snippet": "The rapid evolution of technology and the global shift toward flexible work arrangements have positioned remote work as a cornerstone of modern workplaces. Remote work, once a niche practice, has become mainstream, particularly in knowledge-based industries such as IT, finance, and marketing. This study explores the impact of remote work on employee productivity, a critical factor for organizational success in the digital age. By examining both the benefits and challenges of remote work environments, the research aims to provide a nuanced understanding of how productivity is influenced by key ",
+      "full_text": "The rapid evolution of technology and the global shift toward flexible work arrangements have positioned remote work as a cornerstone of modern workplaces. Remote work, once a niche practice, has become mainstream, particularly in knowledge-based industries such as IT, finance, and marketing. This study explores the impact of remote work on employee productivity, a critical factor for organizational success in the digital age. By examining both the benefits and challenges of remote work environments, the research aims to provide a nuanced understanding of how productivity is influenced by key factors such as flexibility, work-life balance, technological infrastructure, communication practices, and organizational support. The study is guided by two primary research questions: (1) How does remote work affect employee productivity? (2) What factors contribute to or hinder productivity in remote work settings? Using a mixed-methods approach, quantitative data was collected through surveys administered to 200 employees working remotely, while qualitative insights were gathered through semi-structured interviews with 20 managers. The findings reveal that remote work can significantly enhance productivity for employees who benefit from flexibility and autonomy. However, challenges such as distractions at home, isolation, and communication gaps can negatively impact performance if not addressed effectively. The study concludes that organizations must adopt tailored strategies to maximize the benefits of remote work while mitigating its challenges. Recommendations include investing in advanced collaboration tools, fostering a culture of trust and accountability, and providing training programs to help employees adapt to remote work dynamics. These insights are intended to guide managers and policymakers in designing effective remote work policies that align with organizational goals and employee well-being. This version provides a comprehensive yet concise summary of the study's purpose, importance, research questions, methodology, findings, and implications.",
+      "url": "https://openalex.org/W4410014515",
+      "_adapter": "openalex",
+      "authors": [
+        "Shinu K Joy",
+        "Ambrish Kumar Sharma"
+      ],
+      "venue": null,
+      "publication_date": "2025",
+      "doi": "10.31124/advance.174607645.58020342/v1",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Impact of Remote Work on Employees & Businesses",
+      "snippet": "The Impact of Remote Work on Employees & Businesses",
+      "full_text": null,
+      "url": "https://openalex.org/W4407260243",
+      "_adapter": "openalex",
+      "authors": [
+        "Shakir Muhammad Usman",
+        "Hamed Nabeel Shahbar"
+      ],
+      "venue": "Contributions to finance and accounting",
+      "publication_date": "2024",
+      "doi": "10.1007/978-3-031-75960-4_27",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The Impact of Remote Work on Employee Engagement and Productivity",
+      "snippet": "This research paper seeks to investigate the impact incidences of remote work on employee engagement and productivity, a very drastic shift introduced in the wake of the pandemic worldwide. Organizations have adapted with new work models, and its implication on workforce effectiveness. A mixed-methods research approach of primary research using a structure-based hypothetical questionnaire for quantitative analysis and subjecting it into secondary research through an exhaustive literature review process for qualitative insight was adopted. The findings indicate that even though remote work is f",
+      "full_text": "This research paper seeks to investigate the impact incidences of remote work on employee engagement and productivity, a very drastic shift introduced in the wake of the pandemic worldwide. Organizations have adapted with new work models, and its implication on workforce effectiveness. A mixed-methods research approach of primary research using a structure-based hypothetical questionnaire for quantitative analysis and subjecting it into secondary research through an exhaustive literature review process for qualitative insight was adopted. The findings indicate that even though remote work is flexible resulting in increased job satisfaction, it could lead to some complications such as isolation and barriers in communication. By analysing these dynamics, this study offers valuable recommendations for organizations seeking to optimize remote work practices, ultimately aiming to improve employee engagement and productivity in an increasingly digital work environment.",
+      "url": "https://openalex.org/W4405979846",
+      "_adapter": "openalex",
+      "authors": [
+        "DR RAJESH KUMAR -"
+      ],
+      "venue": "International Journal For Multidisciplinary Research",
+      "publication_date": "2024",
+      "doi": "10.36948/ijfmr.2024.v06i06.34103",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "A Systematic Review on the Impact of Remote Work on Employee Engagement",
+      "snippet": "The aim of this study is to better identify how remote work affects employee engagement. This systematic review looks at the advantages and challenges of remote work in a diversity of industries and organizational settings. An extensive review of the literature was done, with an emphasis on research papers released between 2018-2024. 20 peer-reviewed studies were chosen adhering to strict inclusion criteria. This review assessed the methods used to quantify the impact of remote work on employee engagement, the research designs and sampling data that are used, and the primary findings that can ",
+      "full_text": "The aim of this study is to better identify how remote work affects employee engagement. This systematic review looks at the advantages and challenges of remote work in a diversity of industries and organizational settings. An extensive review of the literature was done, with an emphasis on research papers released between 2018-2024. 20 peer-reviewed studies were chosen adhering to strict inclusion criteria. This review assessed the methods used to quantify the impact of remote work on employee engagement, the research designs and sampling data that are used, and the primary findings that can be drawn using these studies. Flexibility, employment satisfaction, and productivity all increase with remote work. It does, however, also present several serious difficulties, such as a decline in social connection, obstacles to communication, and problems with work-life balance. If these elements are not effectively managed, employee engagement may suffer. As a dependent variable, employee engagement was studied in two thirds of the research. The study found that employee engagement is complexly impacted by remote employment. Telecommuting can increase autonomy and enjoyment, but it also has substantial drawbacks, including the possibility of isolation and the absence of physical presence. Robust communication strategies and supportive organizational policies are essential for the success of remote working. This research offers valuable insights for creating healthy work environments and helps understand how remote work effects on employee engagement in organizations.",
+      "url": "https://openalex.org/W4399549368",
+      "_adapter": "openalex",
+      "authors": [
+        "Hafsa Fatima",
+        "Zartashia Kynat Javaid",
+        "Zainab Arshad",
+        "Maryam Ashraf",
+        "Hina Batool"
+      ],
+      "venue": "Bulletin of Business and Economics (BBE)",
+      "publication_date": "2024",
+      "doi": "10.61506/01.00306",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The Impact of Remote Work on Employee Engagement and Productivity",
+      "snippet": "Remote work has become a significant component of modern work environments, influencing employee engagement, productivity, and job satisfaction.With the rapid advancement of digital communication tools and the growing demand for workplace flexibility, remote work has evolved from being an occasional privilege to a mainstream working model.The COVID-19 pandemic accelerated the shift to remote work, compelling businesses to reevaluate their operational strategies and employee management practices.While some organizations have fully embraced remote work, others have adopted hybrid models, balanci",
+      "full_text": "Remote work has become a significant component of modern work environments, influencing employee engagement, productivity, and job satisfaction.With the rapid advancement of digital communication tools and the growing demand for workplace flexibility, remote work has evolved from being an occasional privilege to a mainstream working model.The COVID-19 pandemic accelerated the shift to remote work, compelling businesses to reevaluate their operational strategies and employee management practices.While some organizations have fully embraced remote work, others have adopted hybrid models, balancing inoffice and remote work to maintain efficiency and collaboration.This study analyzes survey data to assess how remote work affects employees, focusing on benefits, challenges, communication tools, and organizational support.The research aims to provide an in-depth understanding of employees' experiences, exploring factors such as work-life balance, job satisfaction, and overall productivity in a remote setting.By leveraging quantitative data, this study highlights key trends in remote work and provides insights for organizations seeking to optimize remote work policies.Additionally, this research examines the role of digital collaboration tools, organizational culture, and managerial support in shaping remote work outcomes.Understanding how different factors contribute to the success or failure of remote work arrangements is crucial for developing sustainable work models that align with business objectives and employee well-being.Furthermore, this study incorporates a review of relevant literature to contextualize the findings within the broader scope of remote work research, highlighting best practices and lessons learned from various industries.By synthesizing empirical data with theoretical insights, this study aims to present actionable recommendations for enhancing remote work frameworks, ensuring that both employers and employees can thrive in the evolving digital workplace.",
+      "url": "https://openalex.org/W4408845085",
+      "_adapter": "openalex",
+      "authors": [
+        "Ishika Tandon",
+        "Alpana Srivastava"
+      ],
+      "venue": "International Journal of Research Publication and Reviews",
+      "publication_date": "2025",
+      "doi": "10.55248/gengpi.6.0325.1122",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Impact of Remote Work on Employee Productivity and Well-Being",
+      "snippet": "The world's trend towards remote work has been further accelerated by the sudden start of the COVID-19 epidemic and the quick development of communication technology. Researchers and practitioners are becoming more interested in learning how remote work affects worker productivity and well-being as a result of this shift. This study examines the complex effects of remote work arrangements on human experiences as well as organisational outcomes. We examine both quantitative productivity indicators and qualitative information gleaned from staff surveys and interviews using a mixed-methods method",
+      "full_text": "The world's trend towards remote work has been further accelerated by the sudden start of the COVID-19 epidemic and the quick development of communication technology. Researchers and practitioners are becoming more interested in learning how remote work affects worker productivity and well-being as a result of this shift. This study examines the complex effects of remote work arrangements on human experiences as well as organisational outcomes. We examine both quantitative productivity indicators and qualitative information gleaned from staff surveys and interviews using a mixed-methods methodology. According to this research, working remotely can have two effects: it can increase productivity by allowing for greater flexibility and autonomy, but it can also have negative effects on mental health because of the absence of direct social connection, isolation, and blurred work-life boundaries. The study also emphasises how management techniques, technology, and organisational support mediate these impacts. This study adds to the expanding corpus of research on remote work and provides helpful suggestions for creating rules that balance worker well-being and productivity.",
+      "url": "https://openalex.org/W4411157454",
+      "_adapter": "openalex",
+      "authors": [
+        "Ishita Naithani"
+      ],
+      "venue": "INTERANTIONAL JOURNAL OF SCIENTIFIC RESEARCH IN ENGINEERING AND MANAGEMENT",
+      "publication_date": "2025",
+      "doi": "10.55041/ijsrem49720",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Clinical Productivity System - A Decision Support Model",
+      "snippet": "Purpose: This goal of this study was to evaluate the effects of a data-driven clinical productivity system that leverages Electronic Health Record (EHR) data to provide productivity decision support functionality in a real-world clinical setting. The system was implemented for a large behavioral health care provider seeing over 75,000 distinct clients a year. Design/methodology/approach: The key metric in this system is a \"VPU\", which simultaneously optimizes multiple aspects of clinical care. The resulting mathematical value of clinical productivity was hypothesized to tightly link the organi",
+      "full_text": "Purpose: This goal of this study was to evaluate the effects of a data-driven clinical productivity system that leverages Electronic Health Record (EHR) data to provide productivity decision support functionality in a real-world clinical setting. The system was implemented for a large behavioral health care provider seeing over 75,000 distinct clients a year. Design/methodology/approach: The key metric in this system is a \"VPU\", which simultaneously optimizes multiple aspects of clinical care. The resulting mathematical value of clinical productivity was hypothesized to tightly link the organization's performance to its expectations and, through transparency and decision support tools at the clinician level, affect significant changes in productivity, quality, and consistency relative to traditional models of clinical productivity. Findings: In only 3 months, every single variable integrated into the VPU system showed significant improvement, including a 30% rise in revenue, 10% rise in clinical percentage, a 25% rise in treatment plan completion, a 20% rise in case rate eligibility, along with similar improvements in compliance/audit issues, outcomes collection, access, etc. Practical implications: A data-driven clinical productivity system employing decision support functionality is effective because of the impact on clinician behavior relative to traditional clinical productivity systems. Critically, the model is also extensible to integration with outcomes-based productivity. Originality/Value: EHR's are only a first step - the problem is turning that data into useful information. Technology can leverage the data in order to produce actionable information that can inform clinical practice and decision-making. Without additional technology, EHR's are essentially just copies of paper-based records stored in electronic form.",
+      "url": "https://arxiv.org/abs/1206.0021v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Casey C. Bennett"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2012-05-31",
+      "doi": "10.1108/17410401111112014",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1206.0021v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "TimeSenCLIP: A Time Series Vision-Language Model for Remote Sensing",
+      "snippet": "Vision-language models (VLMs) have shown significant promise in remote sensing applications, particularly for land-use and land-cover (LULC) mapping via zero-shot classification and retrieval. However, current approaches face several key challenges, such as the dependence on caption-based supervision, which is often not available or very limited in terms of the covered semantics, and the fact of being adapted from generic VLM architectures that are suitable for very high resolution images. Consequently, these models tend to prioritize spatial context over spectral and temporal information, lim",
+      "full_text": "Vision-language models (VLMs) have shown significant promise in remote sensing applications, particularly for land-use and land-cover (LULC) mapping via zero-shot classification and retrieval. However, current approaches face several key challenges, such as the dependence on caption-based supervision, which is often not available or very limited in terms of the covered semantics, and the fact of being adapted from generic VLM architectures that are suitable for very high resolution images. Consequently, these models tend to prioritize spatial context over spectral and temporal information, limiting their effectiveness for medium-resolution remote sensing imagery. In this work, we present TimeSenCLIP, a lightweight VLM for remote sensing time series, using a cross-view temporal contrastive framework to align multispectral Sentinel-2 time series with geo-tagged ground-level imagery, without requiring textual annotations. Unlike prior VLMs, TimeSenCLIP emphasizes temporal and spectral signals over spatial context, investigating whether single-pixel time series contain sufficient information for solving a variety of tasks.",
+      "url": "https://arxiv.org/abs/2508.11919v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Pallavi Jain",
+        "Diego Marcos",
+        "Dino Ienco",
+        "Roberto Interdonato",
+        "Tristan Berchoux"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-08-16",
+      "doi": "10.1016/j.isprsjprs.2026.03.043",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2508.11919v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Vision-Language Modeling Meets Remote Sensing: Models, Datasets and Perspectives",
+      "snippet": "Vision-language modeling (VLM) aims to bridge the information gap between images and natural language. Under the new paradigm of first pre-training on massive image-text pairs and then fine-tuning on task-specific data, VLM in the remote sensing domain has made significant progress. The resulting models benefit from the absorption of extensive general knowledge and demonstrate strong performance across a variety of remote sensing data analysis tasks. Moreover, they are capable of interacting with users in a conversational manner. In this paper, we aim to provide the remote sensing community wi",
+      "full_text": "Vision-language modeling (VLM) aims to bridge the information gap between images and natural language. Under the new paradigm of first pre-training on massive image-text pairs and then fine-tuning on task-specific data, VLM in the remote sensing domain has made significant progress. The resulting models benefit from the absorption of extensive general knowledge and demonstrate strong performance across a variety of remote sensing data analysis tasks. Moreover, they are capable of interacting with users in a conversational manner. In this paper, we aim to provide the remote sensing community with a timely and comprehensive review of the developments in VLM using the two-stage paradigm. Specifically, we first cover a taxonomy of VLM in remote sensing: contrastive learning, visual instruction tuning, and text-conditioned image generation. For each category, we detail the commonly used network architecture and pre-training objectives. Second, we conduct a thorough review of existing works, examining foundation models and task-specific adaptation methods in contrastive-based VLM, architectural upgrades, training strategies and model capabilities in instruction-based VLM, as well as generative foundation models with their representative downstream applications. Third, we summarize datasets used for VLM pre-training, fine-tuning, and evaluation, with an analysis of their construction methodologies (including image sources and caption generation) and key properties, such as scale and task adaptability. Finally, we conclude this survey with insights and discussions on future research directions: cross-modal representation alignment, vague requirement comprehension, explanation-driven model reliability, continually scalable model capabilities, and large-scale datasets featuring richer modalities and greater challenges.",
+      "url": "https://arxiv.org/abs/2505.14361v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Xingxing Weng",
+        "Chao Pang",
+        "Gui-Song Xia"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-05-20",
+      "doi": "10.1109/MGRS.2025.3572702",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2505.14361v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Aggregated Deep Local Features for Remote Sensing Image Retrieval",
+      "snippet": "Remote Sensing Image Retrieval remains a challenging topic due to the special nature of Remote Sensing Imagery. Such images contain various different semantic objects, which clearly complicates the retrieval task. In this paper, we present an image retrieval pipeline that uses attentive, local convolutional features and aggregates them using the Vector of Locally Aggregated Descriptors (VLAD) to produce a global descriptor. We study various system parameters such as the multiplicative and additive attention mechanisms and descriptor dimensionality. We propose a query expansion method that requ",
+      "full_text": "Remote Sensing Image Retrieval remains a challenging topic due to the special nature of Remote Sensing Imagery. Such images contain various different semantic objects, which clearly complicates the retrieval task. In this paper, we present an image retrieval pipeline that uses attentive, local convolutional features and aggregates them using the Vector of Locally Aggregated Descriptors (VLAD) to produce a global descriptor. We study various system parameters such as the multiplicative and additive attention mechanisms and descriptor dimensionality. We propose a query expansion method that requires no external inputs. Experiments demonstrate that even without training, the local convolutional features and global representation outperform other systems. After system tuning, we can achieve state-of-the-art or competitive results. Furthermore, we observe that our query expansion method increases overall system performance by about 3%, using only the top-three retrieved images. Finally, we show how dimensionality reduction produces compact descriptors with increased retrieval performance and fast retrieval computation times, e.g. 50% faster than the current systems.",
+      "url": "https://arxiv.org/abs/1903.09469v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Raffaele Imbriaco",
+        "Clint Sebastian",
+        "Egor Bondarev",
+        "Peter H. N. de With"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-03-22",
+      "doi": "10.3390/rs11050493",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1903.09469v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Change-Agent: Towards Interactive Comprehensive Remote Sensing Change Interpretation and Analysis",
+      "snippet": "Monitoring changes in the Earth's surface is crucial for understanding natural processes and human impacts, necessitating precise and comprehensive interpretation methodologies. Remote sensing satellite imagery offers a unique perspective for monitoring these changes, leading to the emergence of remote sensing image change interpretation (RSICI) as a significant research focus. Current RSICI technology encompasses change detection and change captioning, each with its limitations in providing comprehensive interpretation. To address this, we propose an interactive Change-Agent, which can follow",
+      "full_text": "Monitoring changes in the Earth's surface is crucial for understanding natural processes and human impacts, necessitating precise and comprehensive interpretation methodologies. Remote sensing satellite imagery offers a unique perspective for monitoring these changes, leading to the emergence of remote sensing image change interpretation (RSICI) as a significant research focus. Current RSICI technology encompasses change detection and change captioning, each with its limitations in providing comprehensive interpretation. To address this, we propose an interactive Change-Agent, which can follow user instructions to achieve comprehensive change interpretation and insightful analysis, such as change detection and change captioning, change object counting, change cause analysis, etc. The Change-Agent integrates a multi-level change interpretation (MCI) model as the eyes and a large language model (LLM) as the brain. The MCI model contains two branches of pixel-level change detection and semantic-level change captioning, in which the BI-temporal Iterative Interaction (BI3) layer is proposed to enhance the model's discriminative feature representation capabilities. To support the training of the MCI model, we build the LEVIR-MCI dataset with a large number of change masks and captions of changes. Experiments demonstrate the SOTA performance of the MCI model in achieving both change detection and change description simultaneously, and highlight the promising application value of our Change-Agent in facilitating comprehensive interpretation of surface changes, which opens up a new avenue for intelligent remote sensing applications. To facilitate future research, we will make our dataset and codebase of the MCI model and Change-Agent publicly available at https://github.com/Chen-Yang-Liu/Change-Agent",
+      "url": "https://arxiv.org/abs/2403.19646v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Chenyang Liu",
+        "Keyan Chen",
+        "Haotian Zhang",
+        "Zipeng Qi",
+        "Zhengxia Zou",
+        "Zhenwei Shi"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-03-28",
+      "doi": "10.1109/TGRS.2024.3425815",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2403.19646v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Remote Sensing SpatioTemporal Vision-Language Models: A Comprehensive Survey",
+      "snippet": "The interpretation of multi-temporal remote sensing imagery is critical for monitoring Earth's dynamic processes-yet previous change detection methods, which produce binary or semantic masks, fall short of providing human-readable insights into changes. Recent advances in Vision-Language Models (VLMs) have opened a new frontier by fusing visual and linguistic modalities, enabling spatio-temporal vision-language understanding: models that not only capture spatial and temporal dependencies to recognize changes but also provide a richer interactive semantic analysis of temporal images (e.g., gene",
+      "full_text": "The interpretation of multi-temporal remote sensing imagery is critical for monitoring Earth's dynamic processes-yet previous change detection methods, which produce binary or semantic masks, fall short of providing human-readable insights into changes. Recent advances in Vision-Language Models (VLMs) have opened a new frontier by fusing visual and linguistic modalities, enabling spatio-temporal vision-language understanding: models that not only capture spatial and temporal dependencies to recognize changes but also provide a richer interactive semantic analysis of temporal images (e.g., generate descriptive captions and answer natural-language queries). In this survey, we present the first comprehensive review of RS-STVLMs. The survey covers the evolution of models from early task-specific models to recent general foundation models that leverage powerful large language models. We discuss progress in representative tasks, such as change captioning, change question answering, and change grounding. Moreover, we systematically dissect the fundamental components and key technologies underlying these models, and review the datasets and evaluation metrics that have driven the field. By synthesizing task-level insights with a deep dive into shared architectural patterns, we aim to illuminate current achievements and chart promising directions for future research in spatio-temporal vision-language understanding for remote sensing. We will keep tracing related works at https://github.com/Chen-Yang-Liu/Awesome-RS-SpatioTemporal-VLMs",
+      "url": "https://arxiv.org/abs/2412.02573v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Chenyang Liu",
+        "Jiafan Zhang",
+        "Keyan Chen",
+        "Man Wang",
+        "Zhengxia Zou",
+        "Zhenwei Shi"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-12-03",
+      "doi": "10.1109/MGRS.2025.3598283",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2412.02573v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

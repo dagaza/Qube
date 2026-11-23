@@ -1,0 +1,388 @@
+{
+  "schema_version": 2,
+  "id": "sci_psych_sleep_memory",
+  "path": "scientific_evidence",
+  "category": "social_science",
+  "description": "",
+  "query_raw": "@[tool:evidence] How does sleep deprivation affect memory consolidation?",
+  "query_clean": "How does sleep deprivation affect memory consolidation?",
+  "retrieval_query": "How does sleep deprivation affect memory consolidation?",
+  "standalone_question": "How does sleep deprivation affect memory consolidation?",
+  "gold_subject": "sleep deprivation",
+  "gold_facet": "memory consolidation",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:04:10+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "How does sleep deprivation affect memory consolidation",
+      "arxiv": "How does sleep deprivation affect memory consolidation"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Slow Wave Sleep and REM Sleep Awakenings Do Not Affect Sleep Dependent Memory Consolidation",
+      "snippet": "STUDY OBJECTIVES: The effects of REM sleep and slow wave sleep (SWS) deprivation on sleep-dependent motor and declarative memory consolidation. DESIGN: Randomized, within-subject, cross-over study. SETTING: Weekly (women: monthly) sleep laboratory visits, with retest 60 hours later. PARTICIPANTS: Twelve healthy subjects (6 men) aged between 20 and 30 years. INTERVENTIONS: REM sleep deprivation, SWS deprivation, or undisturbed sleep. MEASUREMENTS AND RESULTS: We deprived subjects once each of REM sleep and SWS, and once let them sleep undisturbed through the night. After each night, we tested d",
+      "full_text": "STUDY OBJECTIVES: The effects of REM sleep and slow wave sleep (SWS) deprivation on sleep-dependent motor and declarative memory consolidation. DESIGN: Randomized, within-subject, cross-over study. SETTING: Weekly (women: monthly) sleep laboratory visits, with retest 60 hours later. PARTICIPANTS: Twelve healthy subjects (6 men) aged between 20 and 30 years. INTERVENTIONS: REM sleep deprivation, SWS deprivation, or undisturbed sleep. MEASUREMENTS AND RESULTS: We deprived subjects once each of REM sleep and SWS, and once let them sleep undisturbed through the night. After each night, we tested declarative and procedural memory consolidation. We tested memory performance by a verbal paired associate task and a sequential finger-tapping task at 21:00 on the study night and again 60 hours later. Although REM sleep and SWS awakenings led to a significant reduction of the respective sleep stages, memory consolidation remained unaffected. We also found a significant correlation between the declarative task and sleep spindles in the undisturbed condition, especially the sleep spindles in the first third of the night. CONCLUSION: We suggest that word-pair learning relies on stage 2 sleep spindles and requires little SWS. Their sleep dependent consolidation is not affected by SWS deprivation. Simple motor tasks may either be consolidated in stage 2 sleep or depend on only small amounts of REM sleep. Their sleep dependent consolidation is not influenced by REM sleep deprivation.",
+      "url": "https://openalex.org/W1493193098",
+      "_adapter": "openalex",
+      "authors": [
+        "Lisa Genzel",
+        "Martin Dresler",
+        "Renate Wehrle",
+        "Michael Grözinger",
+        "Axel Steiger"
+      ],
+      "venue": "SLEEP",
+      "publication_date": "2009",
+      "doi": "10.5665/sleep/32.3.302",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Memory Consolidation in Sleep",
+      "snippet": "Memory Consolidation in Sleep",
+      "full_text": null,
+      "url": "https://openalex.org/W2015017344",
+      "_adapter": "openalex",
+      "authors": [
+        "Robert P. Vertes"
+      ],
+      "venue": "Neuron",
+      "publication_date": "2004",
+      "doi": "10.1016/j.neuron.2004.08.034",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Sleep deprivation affects extinction but not acquisition memory in honeybees",
+      "snippet": "Sleep-like behavior has been studied in honeybees before, but the relationship between sleep and memory formation has not been explored. Here we describe a new approach to address the question if sleep in bees, like in other animals, improves memory consolidation. Restrained bees were observed by a web camera, and their antennal activities were used as indicators of sleep. We found that the bees sleep more during the dark phase of the day compared with the light phase. Sleep phases were characterized by two distinct patterns of antennal activities: symmetrical activity, more prominent during t",
+      "full_text": "Sleep-like behavior has been studied in honeybees before, but the relationship between sleep and memory formation has not been explored. Here we describe a new approach to address the question if sleep in bees, like in other animals, improves memory consolidation. Restrained bees were observed by a web camera, and their antennal activities were used as indicators of sleep. We found that the bees sleep more during the dark phase of the day compared with the light phase. Sleep phases were characterized by two distinct patterns of antennal activities: symmetrical activity, more prominent during the dark phase; and asymmetrical activity, more common during the light phase. Sleep-deprived bees showed rebound the following day, confirming effective deprivation of sleep. After appetitive conditioning of the bees to various olfactory stimuli, we observed their sleep. Bees conditioned to odor with sugar reward showed lesser sleep compared with bees that were exposed to either reward alone or air alone. Next, we asked whether sleep deprivation affects memory consolidation. While sleep deprivation had no effect on retention scores after odor acquisition, retention for extinction learning was significantly reduced, indicating that consolidation of extinction memory but not acquisition memory was affected by sleep deprivation.",
+      "url": "https://openalex.org/W2096567522",
+      "_adapter": "openalex",
+      "authors": [
+        "S. Abid Hussaini",
+        "Lisa Bogusch",
+        "Tim Landgraf",
+        "Randolf Menzel"
+      ],
+      "venue": "Learning & Memory",
+      "publication_date": "2009",
+      "doi": "10.1101/lm.1578409",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Sleep-dependent memory consolidation",
+      "snippet": "Sleep-dependent memory consolidation",
+      "full_text": null,
+      "url": "https://openalex.org/W2086162146",
+      "_adapter": "openalex",
+      "authors": [
+        "Robert Stickgold"
+      ],
+      "venue": "Nature",
+      "publication_date": "2005",
+      "doi": "10.1038/nature04286",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Sleep Deprivation Impairs Consolidation of Cued Fear Memory in Rats",
+      "snippet": "Post-learning sleep facilitates negative memory consolidation and also helps preserve it over several years. It is believed, therefore, that sleep deprivation may help prevent consolidation of fearful memory. Its effect, however, on consolidation of negative/frightening memories is not known. Cued fear-conditioning (CuFC) is a widely used model to understand the neural basis of negative memory associated with anxiety disorders. In this study, we first determined the suitable circadian timing for consolidation of CuFC memory and changes in sleep architecture after CuFC. Thereafter, we studied t",
+      "full_text": "Post-learning sleep facilitates negative memory consolidation and also helps preserve it over several years. It is believed, therefore, that sleep deprivation may help prevent consolidation of fearful memory. Its effect, however, on consolidation of negative/frightening memories is not known. Cued fear-conditioning (CuFC) is a widely used model to understand the neural basis of negative memory associated with anxiety disorders. In this study, we first determined the suitable circadian timing for consolidation of CuFC memory and changes in sleep architecture after CuFC. Thereafter, we studied the effect of sleep deprivation on CuFC memory consolidation. Three sets of experiments were performed in male Wistar rat (n=51). In experiment-I, animals were conditioned to cued-fear by presenting ten tone-shock paired stimuli during lights-on (7 AM) (n=9) and lights-off (7 PM) (n=9) periods. In experiment-II, animals were prepared for polysomnographic recording (n=8) and changes in sleep architecture after CuFC was determined. Further in experiment-III, animals were cued fear-conditioned during the lights-off period and were randomly divided into four groups: Sleep-Deprived (SD) (n=9), Non-Sleep Deprived (NSD) (n=9), Stress Control (SC) (n=9) and Tone Control (n=7). Percent freezing amount, a hallmark of fear, was compared statistically in these groups. Rats trained during the lights-off period exhibited significantly more freezing compared to lights-on period. In CuFC trained animals, total sleep amount did not change, however, REM sleep decreased significantly. Further, out of total sleep time, animals spent proportionately more time in NREM sleep. Nevertheless, SD animals exhibited significantly less freezing compared to NSD and SC groups. These data suggest that sleep plays an important role in the consolidation of cued fear-conditioned memory.",
+      "url": "https://openalex.org/W2009113928",
+      "_adapter": "openalex",
+      "authors": [
+        "Tankesh Kumar",
+        "Sushil K. Jha"
+      ],
+      "venue": "PLoS ONE",
+      "publication_date": "2012",
+      "doi": "10.1371/journal.pone.0047042",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sleep Deprivation and False Memories",
+      "snippet": "Many studies have investigated factors that affect susceptibility to false memories. However, few have investigated the role of sleep deprivation in the formation of false memories, despite overwhelming evidence that sleep deprivation impairs cognitive function. We examined the relationship between self-reported sleep duration and false memories and the effect of 24 hr of total sleep deprivation on susceptibility to false memories. We found that under certain conditions, sleep deprivation can increase the risk of developing false memories. Specifically, sleep deprivation increased false memori",
+      "full_text": "Many studies have investigated factors that affect susceptibility to false memories. However, few have investigated the role of sleep deprivation in the formation of false memories, despite overwhelming evidence that sleep deprivation impairs cognitive function. We examined the relationship between self-reported sleep duration and false memories and the effect of 24 hr of total sleep deprivation on susceptibility to false memories. We found that under certain conditions, sleep deprivation can increase the risk of developing false memories. Specifically, sleep deprivation increased false memories in a misinformation task when participants were sleep deprived during event encoding, but did not have a significant effect when the deprivation occurred after event encoding. These experiments are the first to investigate the effect of sleep deprivation on susceptibility to false memories, which can have dire consequences.",
+      "url": "https://openalex.org/W2114469406",
+      "_adapter": "openalex",
+      "authors": [
+        "Steven J. Frenda",
+        "Lawrence Patihis",
+        "Elizabeth F. Loftus",
+        "Holly C. Lewis",
+        "Kimberly M. Fenn"
+      ],
+      "venue": "Psychological Science",
+      "publication_date": "2014",
+      "doi": "10.1177/0956797614534694",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Fetal Sleep: A Cross-Species Review of Physiology, Measurement, and Classification",
+      "snippet": "Study Objectives: Fetal sleep is a vital yet underexplored aspect of prenatal neurodevelopment. Its cyclic organization reflects the maturation of central neural circuits, and disturbances in these patterns may offer some of the earliest detectable signs of neurological compromise. This is the first review to integrate more than seven decades of research into a unified, cross-species synthesis of fetal sleep. We examine: (i) Physiology and Ontogeny-comparing human fetuses with animal models; and (ii) Methodological Evolution-transitioning from invasive neurophysiology to non-invasive monitorin",
+      "full_text": "Study Objectives: Fetal sleep is a vital yet underexplored aspect of prenatal neurodevelopment. Its cyclic organization reflects the maturation of central neural circuits, and disturbances in these patterns may offer some of the earliest detectable signs of neurological compromise. This is the first review to integrate more than seven decades of research into a unified, cross-species synthesis of fetal sleep. We examine: (i) Physiology and Ontogeny-comparing human fetuses with animal models; and (ii) Methodological Evolution-transitioning from invasive neurophysiology to non-invasive monitoring and deep learning frameworks. Methods: A structured narrative synthesis was guided by a systematic literature search across four databases (PubMed, Scopus, IEEE Xplore, and Google Scholar). From 2,925 identified records, 171 studies involving fetal sleep-related physiology, sleep-state classification, or signal-based monitoring were included in this review. Results: Across the 171 studies, fetal sleep states become clearly observable as the brain matures. In fetal sheep and baboons, organized cycling between active and quiet sleep emerges at approximately 80%-90% gestation. In humans, this differentiation occurs later, around 95% gestation, with full maturation reached near term. Despite extensive animal research, no unified, clinically validated framework exists for defining fetal sleep states, limiting translation into routine obstetric practice. Conclusions: By integrating evidence across species, methodologies, and clinical contexts, this review provides the scientific foundation for developing objective, multimodal, and non-invasive fetal sleep monitoring technologies-tools that may ultimately support earlier detection of neurological compromise and guide timely prenatal intervention.",
+      "url": "https://arxiv.org/abs/2506.21828v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Weitao Tang",
+        "Johann Vargas-Calixto",
+        "Nasim Katebi",
+        "Robert Galinsky",
+        "Gari D. Clifford",
+        "Faezeh Marzbanrad"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-06-27",
+      "doi": "10.1093/sleep/zsag003",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2506.21828v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Co-sleep: Designing a workplace-based wellness program for sleep deprivation",
+      "snippet": "Sleep deprivation is a public health issue. Awareness of sleep deprivation has not been widely investigated in workplace-based wellness programmes. This study adopted a three-stage design process with nine participants from a local manufacturing company to help raise awareness of sleep deprivation. The common causes of sleep deprivation were identified through the deployment of technology probes and participant interviews. The study contributes smart Internet of things(IoT) workplace-based design concepts for activity tracking that may aid sleep and explore ways of sharing personal sleep data ",
+      "full_text": "Sleep deprivation is a public health issue. Awareness of sleep deprivation has not been widely investigated in workplace-based wellness programmes. This study adopted a three-stage design process with nine participants from a local manufacturing company to help raise awareness of sleep deprivation. The common causes of sleep deprivation were identified through the deployment of technology probes and participant interviews. The study contributes smart Internet of things(IoT) workplace-based design concepts for activity tracking that may aid sleep and explore ways of sharing personal sleep data within the workplace. Through the use of co-design methods, the study also highlights prominent privacy concerns relating to use of personal data from different stakeholders' perspectives, including the unexpected use of sleep data by organisations for fatigue risk management and the evaluation of employee performance. The Actigrahy and sleep diary data can be accessed online through https://github.com/famousgrouse/pervasivehealth/",
+      "url": "https://arxiv.org/abs/1809.09846v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Bing Zhai",
+        "Stuart Nicholson",
+        "Kyle Montague",
+        "Yu Guan",
+        "Patrick Olivier",
+        "Jason Ellis"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2018-09-26",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1809.09846v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Minimizing the Effect of Sleep Deprivation in the Forward-Forward Algorithm",
+      "snippet": "This paper addresses the challenge posed by sleep deprivation in the Forward-Forward algorithm, where separating the two passes in this algorithm and imbalancing the data processing in the passes is considered an imitation of the cognitive processes observed in humans suffering from sleep deprivation. Previous research has demonstrated that sleep deprivation in the Forward-Forward algorithm has a catastrophic effect on learning efficacy. To mitigate this issue, we explore several approaches; these include alternative activation, optimized loss function, and threshold tuning. To simulate period",
+      "full_text": "This paper addresses the challenge posed by sleep deprivation in the Forward-Forward algorithm, where separating the two passes in this algorithm and imbalancing the data processing in the passes is considered an imitation of the cognitive processes observed in humans suffering from sleep deprivation. Previous research has demonstrated that sleep deprivation in the Forward-Forward algorithm has a catastrophic effect on learning efficacy. To mitigate this issue, we explore several approaches; these include alternative activation, optimized loss function, and threshold tuning. To simulate periodic rest, we reduce the number of positive passes in alternating epochs, creating short break phases. We additionally investigate the potential of caffeine-induced stimulation to enhance performance during sleep-deprived conditions. Experimental evaluations conducted on the MNIST and Fashion-MNIST datasets demonstrate that these modifications improve accuracy under the context of sleep deprivation. For example, a 2%-62% accuracy gain is observed in a severe sleep deprivation setting (16 positive or awake periods and 1 negative or sleep period). The approaches also enhance the resilience of the algorithm and its alignment with the adaptive mechanisms of human cognition.",
+      "url": "https://arxiv.org/abs/2609.06042v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Joy Datta",
+        "Puja Saha",
+        "Rawhatur Rabbi",
+        "Nafiz Imtiaz Rafin",
+        "Swakkhar Shatabda",
+        "Md. Golam Rabiul Alam",
+        "Chad Mourning"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-09-05",
+      "doi": "10.1007/978-3-032-31933-3_40",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2609.06042v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sleep Deprivation in the Forward-Forward Algorithm",
+      "snippet": "This paper aims to explore the separation of the two forward passes in the Forward-Forward algorithm from a biological perspective in the context of sleep. We show the size of the gap between the sleep and awake phase influences the learning capabilities of the algorithm and highlight the importance of negative data in diminishing the devastating effects of sleep deprivation.",
+      "full_text": "This paper aims to explore the separation of the two forward passes in the Forward-Forward algorithm from a biological perspective in the context of sleep. We show the size of the gap between the sleep and awake phase influences the learning capabilities of the algorithm and highlight the importance of negative data in diminishing the devastating effects of sleep deprivation.",
+      "url": "https://arxiv.org/abs/2310.18647v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Mircea-Tudor Lică",
+        "David Dinucu-Jianu"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-10-28",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2310.18647v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sleep Staging from Electrocardiography and Respiration with Deep Learning",
+      "snippet": "Study Objective: Sleep is reflected not only in the electroencephalogram but also in heart rhythms and breathing patterns. Therefore, we hypothesize that it is possible to accurately stage sleep based on the electrocardiogram (ECG) and respiratory signals. Methods: Using a dataset including 8,682 polysomnographs, we develop deep neural networks to stage sleep from ECG and respiratory signals. Five deep neural networks consisting of convolutional networks and long short-term memory networks are trained to stage sleep using heart and breathing, including the timing of R peaks from ECG, abdominal",
+      "full_text": "Study Objective: Sleep is reflected not only in the electroencephalogram but also in heart rhythms and breathing patterns. Therefore, we hypothesize that it is possible to accurately stage sleep based on the electrocardiogram (ECG) and respiratory signals. Methods: Using a dataset including 8,682 polysomnographs, we develop deep neural networks to stage sleep from ECG and respiratory signals. Five deep neural networks consisting of convolutional networks and long short-term memory networks are trained to stage sleep using heart and breathing, including the timing of R peaks from ECG, abdominal and chest respiratory effort, and the combinations of these signals. Results: ECG in combination with the abdominal respiratory effort achieve the best performance for staging all five sleep stages with a Cohen's kappa of 0.600 (95% confidence interval 0.599 -- 0.602); and 0.762 (0.760 -- 0.763) for discriminating awake vs. rapid eye movement vs. non-rapid eye movement sleep. The performance is better for young participants and for those with a low apnea-hypopnea index, while it is robust for commonly used outpatient medications. Conclusions: Our results validate that ECG and respiratory effort provide substantial information about sleep stages in a large population. It opens new possibilities in sleep research and applications where electroencephalography is not readily available or may be infeasible, such as in critically ill patients.",
+      "url": "https://arxiv.org/abs/1908.11463v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Haoqi Sun",
+        "Wolfgang Ganglberger",
+        "Ezhil Panneerselvam",
+        "Michael J. Leone",
+        "Syed A. Quadri",
+        "Balaji Goparaju",
+        "Ryan A. Tesh",
+        "Oluwaseun Akeju",
+        "Robert J. Thomas",
+        "M. Brandon Westover"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-08-29",
+      "doi": "10.1093/sleep/zsz306",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1908.11463v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Need for Sleep: the Impact of a Night of Sleep Deprivation on Novice Developers' Performance",
+      "snippet": "We present a quasi-experiment to investigate whether, and to what extent, sleep deprivation impacts the performance of novice software developers using the agile practice of test-first development (TFD). We recruited 45 undergraduates and asked them to tackle a programming task. Among the participants, 23 agreed to stay awake the night before carrying out the task, while 22 slept usually. We analyzed the quality (i.e., the functional correctness) of the implementations delivered by the participants in both groups, their engagement in writing source code (i.e., the amount of activities performe",
+      "full_text": "We present a quasi-experiment to investigate whether, and to what extent, sleep deprivation impacts the performance of novice software developers using the agile practice of test-first development (TFD). We recruited 45 undergraduates and asked them to tackle a programming task. Among the participants, 23 agreed to stay awake the night before carrying out the task, while 22 slept usually. We analyzed the quality (i.e., the functional correctness) of the implementations delivered by the participants in both groups, their engagement in writing source code (i.e., the amount of activities performed in the IDE while tackling the programming task) and ability to apply TFD (i.e., the extent to which a participant can use this practice). By comparing the two groups of participants, we found that a single night of sleep deprivation leads to a reduction of 50% in the quality of the implementations. There is important evidence that the developers' engagement and their prowess to apply TFD are negatively impacted. Our results also show that sleep-deprived developers make more fixes to syntactic mistakes in the source code. We conclude that sleep deprivation has possibly disruptive effects on software development activities. The results open opportunities for improving developers' performance by integrating the study of sleep with other psycho-physiological factors in which the software engineering research community has recently taken an interest in.",
+      "url": "https://arxiv.org/abs/1805.02544v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Davide Fucci",
+        "Giuseppe Scanniello",
+        "Simone Romano",
+        "Natalia Juristo"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2018-05-07",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1805.02544v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ]
+}

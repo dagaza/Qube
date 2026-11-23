@@ -1,0 +1,266 @@
+{
+  "schema_version": 2,
+  "id": "fin_apple_10k",
+  "path": "finance_knowledge",
+  "category": "finance_filings",
+  "description": "",
+  "query_raw": "@[tool:finance] Apple annual report 10-K revenue",
+  "query_clean": "Apple annual report 10-K revenue",
+  "retrieval_query": "Apple annual report 10-K revenue",
+  "standalone_question": "What revenue did Apple report in its latest 10-K annual report?",
+  "gold_subject": "Apple 10-K",
+  "gold_facet": "revenue",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:01:49+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "sec_edgar": 3,
+    "fred": 3,
+    "world_bank": 3,
+    "eurostat": 3,
+    "bls": 3,
+    "oecd": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "sec_edgar": "Apple revenue",
+      "fred": "Apple revenue",
+      "world_bank": "Apple revenue",
+      "eurostat": "Apple revenue",
+      "bls": "Apple revenue",
+      "oecd": "Apple revenue"
+    },
+    "standalone": {
+      "sec_edgar": "What revenue did Apple report in its latest",
+      "fred": "What revenue did Apple report in its latest",
+      "world_bank": "What revenue did Apple report in its latest",
+      "eurostat": "What revenue did Apple report in its latest",
+      "bls": "What revenue did Apple report in its latest",
+      "oecd": "What revenue did Apple report in its latest"
+    }
+  },
+  "candidates": [
+    {
+      "_adapter": "sec_edgar",
+      "title": "10-K — Apple Inc.",
+      "snippet": "10-K filed 2026-11-03 (report period 2026-09-26) for Apple Inc. (CIK 320193).",
+      "url": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000026/aapl-20260926.htm",
+      "document_type": "sec_filing",
+      "publication_date": "2026-11-03",
+      "venue": "SEC EDGAR",
+      "form": "10-K",
+      "company": "Apple Inc.",
+      "cik": "320193",
+      "accession_number": "0000320193-26-000026",
+      "report_date": "2026-09-26",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "sec_edgar",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "sec_edgar",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_DASHBOARD@PROP_TAX_REV — Subnational government recurrent property tax revenue",
+      "snippet": "Subnational government recurrent property tax revenue",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_DASHBOARD@PROP_TAX_REV&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CFE.RDG,DSD_DASHBOARD@PROP_TAX_REV",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "oecd",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_DASHBOARD@REV — Subnational government revenue",
+      "snippet": "Subnational government revenue",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_DASHBOARD@REV&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CFE.RDG,DSD_DASHBOARD@REV",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "oecd",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_DASHBOARD@REVENUE_CAT — Subnational government revenue by category",
+      "snippet": "Subnational government revenue by category",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_DASHBOARD@REVENUE_CAT&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CFE.RDG,DSD_DASHBOARD@REVENUE_CAT",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "oecd",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_DASHBOARD@TAX_REV — Subnational government tax revenue",
+      "snippet": "Subnational government tax revenue",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_DASHBOARD@TAX_REV&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CFE.RDG,DSD_DASHBOARD@TAX_REV",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "oecd",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_SNG_WOFI@DF_FINANCE — SNG-WOFI: Subnational government expenditure, investment, revenue and debt",
+      "snippet": "SNG-WOFI: Subnational government expenditure, investment, revenue and debt",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_SNG_WOFI@DF_FINANCE&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CFE.RDG,DSD_SNG_WOFI@DF_FINANCE",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "oecd",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_NECR@DF_NECRSREVFOR — Revenue forgone and net effective carbon rates",
+      "snippet": "Revenue forgone and net effective carbon rates",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_NECR@DF_NECRSREVFOR&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CTP.TPS,DSD_NECR@DF_NECRSREVFOR",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_FUA_TERR@DF_LAU — Local administrative units - Cities and FUAs",
+      "snippet": "Local administrative units - Cities and FUAs",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_FUA_TERR@DF_LAU&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CFE.EDS,DSD_FUA_TERR@DF_LAU",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "oecd",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

@@ -1,0 +1,1867 @@
+{
+  "schema_version": 2,
+  "id": "kq_ace_hf_single",
+  "path": "scientific_evidence",
+  "category": "biomedical",
+  "description": "Baseline biomedical relevance (also covered by deep-research corpus).",
+  "query_raw": "@[tool:evidence] ACE inhibitors heart failure outcomes randomized trials",
+  "query_clean": "ACE inhibitors heart failure outcomes randomized trials",
+  "retrieval_query": "ACE inhibitors heart failure outcomes randomized trials",
+  "standalone_question": "What do randomized trials show about ACE inhibitor outcomes in heart failure?",
+  "gold_subject": "ACE inhibitors",
+  "gold_facet": "heart failure outcomes",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T16:50:30+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "pubmed": 3,
+    "nice": 3,
+    "cdc": 3,
+    "who": 3,
+    "clinicaltrials_gov": 3,
+    "openfda": 3,
+    "openalex": 3,
+    "europe_pmc": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "pubmed": "ACE inhibitors heart failure",
+      "nice": "ACE inhibitors heart failure outcomes randomized trials",
+      "cdc": "ACE inhibitors heart failure outcomes randomized trials",
+      "who": "ACE inhibitors heart failure outcomes randomized trials",
+      "clinicaltrials_gov": "ACE inhibitors heart failure outcomes randomized trials",
+      "openfda": "ACE inhibitors heart failure outcomes randomized trials",
+      "openalex": "ACE inhibitors heart failure outcomes randomized trials",
+      "europe_pmc": "ACE inhibitors heart failure outcomes randomized trials"
+    },
+    "standalone": {
+      "pubmed": "ACE inhibitors heart failure",
+      "nice": "What do randomized trials show about ACE inhibitor outcomes in heart failure",
+      "cdc": "What do randomized trials show about ACE inhibitor outcomes in heart failure",
+      "who": "What do randomized trials show about ACE inhibitor outcomes in heart failure",
+      "clinicaltrials_gov": "What do randomized trials show about ACE inhibitor outcomes in heart failure",
+      "openfda": "What do randomized trials show about ACE inhibitor outcomes in heart failure",
+      "openalex": "What do randomized trials show about ACE inhibitor outcomes in heart failure",
+      "europe_pmc": "What do randomized trials show about ACE inhibitor outcomes in heart failure"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Dual Pathway Modulation with SGLT2 Inhibitors and Aldosterone Synthase Inhibitors in Cardio-Kidney Disease: Rationale and Trial Design of the EASi Program.",
+      "snippet": "Cardio-kidney diseases share interconnected pathophysiology where renin-angiotensin-aldosterone system (RAAS) overactivation drives pathologic hemodynamic, neurohormonal, inflammatory, and fibrotic changes leading to progressive cardiac and kidney dysfunction. Current RAAS-modulating therapies are limited by residual RAAS risk and aldosterone breakthrough despite angiotensin-converting enzyme inhibitor or angiotensin receptor blocker therapy, incomplete blockade of aldosterone with mineralocorticoid receptor (MR) antagonists, hyperkalemia, and suboptimal implementation. Aldosterone synthase in",
+      "full_text": "Cardio-kidney diseases share interconnected pathophysiology where renin-angiotensin-aldosterone system (RAAS) overactivation drives pathologic hemodynamic, neurohormonal, inflammatory, and fibrotic changes leading to progressive cardiac and kidney dysfunction. Current RAAS-modulating therapies are limited by residual RAAS risk and aldosterone breakthrough despite angiotensin-converting enzyme inhibitor or angiotensin receptor blocker therapy, incomplete blockade of aldosterone with mineralocorticoid receptor (MR) antagonists, hyperkalemia, and suboptimal implementation. Aldosterone synthase inhibitors (ASi) act upstream of the MR to lower aldosterone production, modulating both MR-dependent and MR-independent aldosterone effects without competing for receptor occupancy. Sodium-glucose cotransporter 2 inhibitors (SGLT2i) reduce adverse cardiovascular and kidney events through cellular, hemodynamic and metabolic effects. The complementary mechanisms of SGLT2i/ASi (SASi) may provide improved cardio-kidney protection. The EASi program will determine whether SASi therapy, added to background guideline-directed therapy including an ACE inhibitor, ARB, or ARNI as appropriate, can improve cardiovascular and kidney outcomes beyond SGLT2 inhibitor monotherapy. EASi-PROTKT (∼11,800 participants) evaluates prevention of incident heart failure events or cardiovascular death in patients with hypertension, type 2 diabetes, and established cardiovascular disease. EASi-HF Preserved (∼6,000) and EASi-HF Reduced (∼4,200) evaluate cardiovascular death and first heart failure events across the LVEF spectrum. EASi-KIDNEY (∼11,000) evaluates kidney disease progression and cardiovascular endpoints in chronic kidney disease patients with and without type 2 diabetes. EASi-SYNC (∼500) is a Phase 2 trial comparing SASi versus staggered initiation of SGLT2i and ASi in patients with CKD. Together, these trials will enroll >33,000 participants and test whether SASi can redefine standard of care across the cardio-kidney disease spectrum. © The Author(s) 2026. Published by Oxford University Press on behalf of the European Society of Cardiology.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43070113/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Fioretti, Francesco",
+        "Böhm, Michael",
+        "Bozkurt, Biykem",
+        "Costanzo, Maria Rosa",
+        "Dinh, Wilfried",
+        "Rossello, Xavier",
+        "Lund, Lars H",
+        "Mentz, Robert J",
+        "Petrie, Mark C",
+        "Pitt, Bertram",
+        "Prochaska, Juergen H",
+        "Shah, Sanjiv J",
+        "Taub, Pam R",
+        "Viethen, Thomas",
+        "Butler, Javed"
+      ],
+      "venue": "European journal of heart failure",
+      "publication_date": "2026-Nov",
+      "doi": "10.1093/ejhf/xuag345",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43070113",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Nitric Oxide and Mitochondrial Dysfunction in Chronic Heart Failure: A Narrative Review.",
+      "snippet": "Chronic heart failure (CHF) remains a leading cause of hospital admission, disability, and cardiovascular death despite major advances in guideline-directed therapy. Beyond hemodynamic impairment and neurohormonal activation, CHF is increasingly understood as a disorder of endothelial dysfunction, nitroso-redox imbalance, mitochondrial injury, energetic failure, and regulated cell death. Nitric oxide (NO) signaling and mitochondrial homeostasis are interconnected components of this broader pathophysiologic network. Under physiologic conditions, endothelial NO synthase-derived NO contributes to",
+      "full_text": "Chronic heart failure (CHF) remains a leading cause of hospital admission, disability, and cardiovascular death despite major advances in guideline-directed therapy. Beyond hemodynamic impairment and neurohormonal activation, CHF is increasingly understood as a disorder of endothelial dysfunction, nitroso-redox imbalance, mitochondrial injury, energetic failure, and regulated cell death. Nitric oxide (NO) signaling and mitochondrial homeostasis are interconnected components of this broader pathophysiologic network. Under physiologic conditions, endothelial NO synthase-derived NO contributes to vascular tone, coronary microvascular regulation, and myocardial signaling. In CHF, reduced endothelial NO bioavailability may coexist with increased formation of reactive nitrogen species, particularly in inflammatory and oxidizing conditions. The resulting nitroso-redox imbalance can interact with mitochondrial respiratory dysfunction, altered calcium handling, oxidative stress, and regulated cell death, although the relative contribution of these mechanisms varies across heart failure phenotypes and disease states. Guideline-directed therapies, including angiotensin-converting enzyme inhibitors, angiotensin receptor-neprilysin inhibitors, sodium-glucose cotransporter 2 inhibitors, evidence-based beta-blockers, and mineralocorticoid receptor antagonists, improve clinical outcomes through established neurohormonal, renal, and hemodynamic mechanisms. Experimental and translational evidence suggests that some of these therapies may also influence endothelial, redox, metabolic, or mitochondrial pathways, although the clinical contribution of these secondary effects remains incompletely defined. These mechanistic observations have also motivated investigation of therapies that more directly target endothelial, redox, or mitochondrial abnormalities. Hypertril (1-(beta-phenylethyl)-4-amino-1,2,4-triazolium bromide) is an investigational compound with reported beta-blocking, NO-related, and metabolic effects in experimental models; however, the available evidence remains predominantly preclinical and does not establish clinical efficacy in human CHF. This narrative review examines NO dysregulation and mitochondrial dysfunction as interconnected components of CHF pathophysiology, considers their relationship to contemporary pharmacotherapy, and discusses the translational limitations and research priorities associated with targeting these pathways. Copyright © 2026, Belenichev et al.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43066235/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Belenichev, Igor",
+        "Aliyeva, Olena",
+        "Bukhtiyarova, Nina",
+        "Ryzhenko, Victor",
+        "Yi, Kyuho"
+      ],
+      "venue": "Cureus",
+      "publication_date": "2026-Oct",
+      "doi": "10.7759/cureus.118295",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43066235",
+      "publication_types": [
+        "Journal Article",
+        "Review"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Adherence to Guidelines in Patients With Heart Failure and Reduced Ejection Fraction Before Defibrillator Implantation.",
+      "snippet": "Guideline-directed medical therapy (GDMT) improves outcomes in patients with heart failure and reduced ejection fraction (HFrEF). Nonetheless, real-world adherence before implantable cardioverter-defibrillator (ICD) implantation for primary prevention remains suboptimal. Our aims in this study were to evaluate adherence to GDMT among HFrEF patients referred for primary prevention ICD implantation at the Montréal Heart Institute (MHI), identify treatment gaps at time of implantation, and determine whether further optimization occurs afterward. We retrospectively reviewed 364 patients with HFrEF",
+      "full_text": "Guideline-directed medical therapy (GDMT) improves outcomes in patients with heart failure and reduced ejection fraction (HFrEF). Nonetheless, real-world adherence before implantable cardioverter-defibrillator (ICD) implantation for primary prevention remains suboptimal. Our aims in this study were to evaluate adherence to GDMT among HFrEF patients referred for primary prevention ICD implantation at the Montréal Heart Institute (MHI), identify treatment gaps at time of implantation, and determine whether further optimization occurs afterward. We retrospectively reviewed 364 patients with HFrEF who underwent first-time ICD implantation between 2018 and 2020. GDMT optimization was defined as achieving the target or maximally tolerated dose of beta-blockers (BB), mineralocorticoid receptor antagonists (MRA), and renin-angiotensin system inhibitors (angiotensin-converting enzyme inhibitors [ACEI], angiotensin receptor blockers [ARB], or angiotensin-converting enzyme inhibitors [ARNI]). The cohort was predominantly male (80%), with a mean age of 64 years, and most patients had ischemic cardiomyopathy (63%). Although overall GDMT prescription rates were high (BB 94.6%, MRA 71.6%, ACEI/ARB/ARNI 87.6%), only about 10% were at target doses at baseline. After 12 months, optimization improved markedly for BB (96.9%) and MRA (91.4%), whereas rates for ACEI/ARB/ARNI remained unchanged. Arrhythmic events were comparable across groups, but slightly more frequent in patients optimized on ACEI/ARB/ARNI (12.7% vs 5.1%, P = 0.0308). Most patients receive suboptimal GDMT at the time of ICD implantation, yet substantial optimization occurs afterward. Early ICD implantation in undertreated patients did not reduce arrhythmic events, highlighting the need to ensure comprehensive GDMT optimization before device implantation to improve outcomes and avoid unnecessary procedures. © 2026 Published by Elsevier Inc. on behalf of the Canadian Cardiovascular Society.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43042267/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Ba, Diarra Bocar",
+        "Rioux, Mark-Antoine",
+        "Mondésert, Blandine",
+        "Parent, Marie-Claude",
+        "Fortier, Annik",
+        "Todd, Julie",
+        "Jarjour, Marilyne",
+        "O'Meara, Eileen",
+        "Ducharme, Anique"
+      ],
+      "venue": "CJC open",
+      "publication_date": "2026-Nov",
+      "doi": "10.1016/j.cjco.2026.06.014",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43042267",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Likelihood and Outcomes of Heart Failure With Nonreduced Ejection Fraction Among Patients With Negative Cardiac Amyloidosis Screening.",
+      "snippet": "Heart failure with nonreduced ejection fraction (HFnrEF) is a clinically heterogeneous condition leading to diagnostic challenges. Identifying populations with a higher likelihood of HFnrEF may increase diagnostic efficiency and translate into earlier appropriate care. We conducted a retrospective cohort analysis of adult patients with a left ventricular ejection fraction ≥ 40% and negative CA screening (pyrophosphate single-photon emission computed tomography imaging and/or via a dedicated cardiac amyloidosis [CA] clinic) at our center from January 2018 to August 2023. H2FPEF and HFA-PEFF sco",
+      "full_text": "Heart failure with nonreduced ejection fraction (HFnrEF) is a clinically heterogeneous condition leading to diagnostic challenges. Identifying populations with a higher likelihood of HFnrEF may increase diagnostic efficiency and translate into earlier appropriate care. We conducted a retrospective cohort analysis of adult patients with a left ventricular ejection fraction ≥ 40% and negative CA screening (pyrophosphate single-photon emission computed tomography imaging and/or via a dedicated cardiac amyloidosis [CA] clinic) at our center from January 2018 to August 2023. H2FPEF and HFA-PEFF scores were calculated for each patient. Patients were subsequently categorized as high (both H2FPEF ≥ 6 and HFA-PEFF ≥ 5), intermediate (either H2FPEF ≥ 6 or HFA-PEFF ≥ 5), or otherwise indeterminate probability of HFnrEF. Baseline medical management and clinical outcomes at 1 year were recorded. Of the 302 patients included (43% women, mean age 74 years, body mass index 28.7 ± 6.8 kg/m2, N-terminal prohormone brain natriuretic peptide level 4640 ± 7877 ng/L), 25% were classified as high and 42% as intermediate HFnrEF probability. However, only half had a documented clinical diagnosis of HFnrEF. Among patients with high or intermediate probability, 6% were treated with sodium glucose transporter-2 inhibitors, 29% with mineralocorticoid receptor antagonists, and 43% with angiotensin-converting enzyme inhibitors/angiotensin receptor blockers. At 1-year follow-up, the heart failure hospitalization rate was 16% and mortality was 14% in this group. Two thirds of patients with negative CA screening had intermediate or high probability of HFnrEF based on H2FPEF and HFA-PEFF scores, which was also associated with a higher rate of adverse events. Using these scores in combination to prioritize patient referrals to dedicated HFnrEF clinics may lead to improved treatment and outcomes. © 2026 Published by Elsevier Inc. on behalf of the Canadian Cardiovascular Society.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43042256/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Dal Soglio, Solenn",
+        "Beaulieu, Marie-Claude",
+        "Lucinian, Yousif A",
+        "Moazzami, Chloé",
+        "Juneau, Daniel",
+        "Amrouche, Yasmine",
+        "Bouabdallaoui, Nadia",
+        "Fontaine, Valérie",
+        "Matteau, Alexis",
+        "Mansour, Samer",
+        "Tournoux, François",
+        "Potter, Brian J"
+      ],
+      "venue": "CJC open",
+      "publication_date": "2026-Nov",
+      "doi": "10.1016/j.cjco.2026.07.018",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43042256",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "In-hospital outcomes associated with renin-angiotensin system inhibitors, Beta-blockers, and mineralocorticoid receptor antagonists in acute decompensated heart failure: Analysis by chronic kidney disease status and heart failure subtypes.",
+      "snippet": "Associations between early inpatient neurohormonal antagonist prescriptions and outcomes in acute decompensated heart failure (ADHF) remain incompletely characterized across kidney function and heart failure subtypes. In 2208 ADHF admissions, adjusted logistic regression assessed ACE inhibitor/angiotensin receptor blocker (ACEi/ARB), beta-blocker, and mineralocorticoid receptor antagonist (MRA) prescriptions during the first seven days in relation to worsening renal function (WRF), mortality, and their composite, stratified by CKD and ejection fraction. Sensitivity analyses examined a day-7 la",
+      "full_text": "Associations between early inpatient neurohormonal antagonist prescriptions and outcomes in acute decompensated heart failure (ADHF) remain incompletely characterized across kidney function and heart failure subtypes. In 2208 ADHF admissions, adjusted logistic regression assessed ACE inhibitor/angiotensin receptor blocker (ACEi/ARB), beta-blocker, and mineralocorticoid receptor antagonist (MRA) prescriptions during the first seven days in relation to worsening renal function (WRF), mortality, and their composite, stratified by CKD and ejection fraction. Sensitivity analyses examined a day-7 landmark cohort and pre-admission medication history. ACEi/ARB prescriptions were associated with lower adjusted odds of WRF (adjusted odds ratio [aOR] 0.70, 95% confidence interval [CI] 0.57-0.87) and in-hospital mortality (aOR 0.54, 95% CI 0.34-0.86); MRA showed similar associations, whereas beta-blockers showed none. Significant estimates were observed in HFrEF (WRF aOR 0.61 for ACEi/ARB and 0.53 for MRA) but generally not in LVEF >40%, and CKD status did not modify these associations (all P for interaction >0.05). In a day-7 landmark analysis excluding early WRF, first-onset WRF associations were attenuated and no longer significant overall but persisted in HFrEF. New ACEi/ARB and MRA users had lower WRF odds than never users but did not differ from continuing users; continuing beta-blocker users had higher WRF odds than new users. In this ADHF cohort, ACEi/ARB and MRA use was associated with lower odds of WRF, but associations weakened after accounting for onset timing and remained significant only in HFrEF. These observational findings do not establish treatment benefit. © 2026 The Authors. Published by Elsevier Inc.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43041807/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Yang, Shang-Feng",
+        "Liu, I-Fan",
+        "Tsao, Tien-Ping",
+        "Tsai, Shin-Hung"
+      ],
+      "venue": "American heart journal plus : cardiology research and practice",
+      "publication_date": "2026-Dec",
+      "doi": "10.1016/j.ahjo.2026.101017",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43041807",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Cardioprotection and Heart Failure Management in Duchenne and Becker Muscular Dystrophies: A State-of-the-Art Review Across Pediatric and Transitional Age.",
+      "snippet": "Advances in respiratory care have significantly extended the life expectancy of patients with Duchenne and Becker muscular dystrophies (DMD/BMD), making progressive dilated cardiomyopathy the leading cause of mortality in this population. Historically, a conservative \"watch and wait\" approach was often maintained until overt systolic dysfunction became evident. However, the advent of advanced echocardiographic technologies, particularly Global Longitudinal Strain (GLS) imaging, has demonstrated that myocardial impairment begins in early childhood, long before a decline in ejection fraction occ",
+      "full_text": "Advances in respiratory care have significantly extended the life expectancy of patients with Duchenne and Becker muscular dystrophies (DMD/BMD), making progressive dilated cardiomyopathy the leading cause of mortality in this population. Historically, a conservative \"watch and wait\" approach was often maintained until overt systolic dysfunction became evident. However, the advent of advanced echocardiographic technologies, particularly Global Longitudinal Strain (GLS) imaging, has demonstrated that myocardial impairment begins in early childhood, long before a decline in ejection fraction occurs. This critical evidence strongly advocates for a paradigm shift toward early, proactive cardioprotective strategies. As patients progress into the transitional age and adulthood, the pediatric prophylactic approach (traditionally based on ACE inhibitors and beta-blockers) must integrate with evolving adult heart failure guidelines. This comprehensive review critically evaluates the pathophysiological continuum of dystrophic cardiomyopathy. We highlight the prognostic value of early subclinical detection (GLS) and specifically discuss the transition to modern guideline-directed medical therapies (GDMTs), exploring the emerging role of Angiotensin Receptor-Neprilysin Inhibitors (ARNI, e.g., sacubitril/valsartan) and SGLT2 inhibitors (e.g., dapagliflozin) in this specific cohort. Finally, we address the role of advanced device therapies (ICD, CRT, and left ventricular assist devices) in end-stage disease. By bridging pediatric neurology and adult cardiology, this review aims to equip clinicians with an updated, multidisciplinary framework to optimize cardiovascular outcomes in the growing population of transitional-age DMD/BMD patients.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43030698/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Pasquinucci, Mattia",
+        "Derchi, Maria Elena",
+        "Siboldi, Alessandra",
+        "Bondanza, Sara",
+        "Panicucci, Chiara",
+        "Trucco, Federica",
+        "Bruno, Claudio",
+        "Meneghesso, Davide"
+      ],
+      "venue": "Journal of clinical medicine",
+      "publication_date": "2026-Nov",
+      "doi": "10.3390/jcm15218554",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43030698",
+      "publication_types": [
+        "Journal Article",
+        "Review"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 5
+        },
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Association of Second Anti-hypertensive Agent with Outcomes in People with CKD on ACEi/ARB Therapy.",
+      "snippet": "Angiotensin-converting enzyme inhibitors (ACEi) and angiotensin receptor blockers (ARB) are first-line treatment for hypertension in chronic kidney disease (CKD). However, guidelines do not recommend subsequent medication classes if additional blood pressure-lowering effect is desired. This target trial emulation using national outpatient data from the Veterans Health Administration from January 1, 2010, to December 31, 2016, included adults with non-dialysis CKD stages G1-G5 on an ACEi/ARB who initiated treatment with a second antihypertensive medication, classified as a thiazide diuretic, lo",
+      "full_text": "Angiotensin-converting enzyme inhibitors (ACEi) and angiotensin receptor blockers (ARB) are first-line treatment for hypertension in chronic kidney disease (CKD). However, guidelines do not recommend subsequent medication classes if additional blood pressure-lowering effect is desired. This target trial emulation using national outpatient data from the Veterans Health Administration from January 1, 2010, to December 31, 2016, included adults with non-dialysis CKD stages G1-G5 on an ACEi/ARB who initiated treatment with a second antihypertensive medication, classified as a thiazide diuretic, loop diuretic, calcium channel blocker, or β-blocker. Outcomes included composite cardiovascular events (fatal or nonfatal myocardial infarction or stroke, hospitalization for heart failure, coronary revascularization), all-cause death, and composite kidney outcomes (dialysis initiation, kidney transplantation, sustained creatinine doubling). Clinically important characteristics were included as covariates in the analysis. Of 150,369 individuals already on ACEi/ARB treatment, 45,836 (30%) were prescribed a thiazide diuretic, 17,589 (12%) a loop diuretic, 33,172 (22%) a calcium channel blocker, and 53,772 (36%) a β-blocker. Those receiving thiazide diuretics and calcium channel blockers had the highest baseline blood pressure. Those receiving loop diuretics were more likely to have more advanced CKD or heart failure. Over a median (IQR) follow-up of 1282 (621, 1979) days, compared to thiazide diuretics, cardiovascular event risk was higher for calcium channel blockers, aHR 1.18 (95% CI 1.15-1.22), β-blockers, aHR 1.63 (95% CI 1.58-1.67), and loop diuretics, aHR 1.97 (95% CI 1.90-2.04). Composite kidney outcomes were also higher with calcium channel blockers, aHR 1.42 (95% CI 1.33-1.52), β-blockers, aHR 1.13 (95% CI 1.06-1.21), and loop diuretics, aHR 1.98 (95% CI 1.83-2.15). Adding a thiazide diuretic rather than a calcium channel blocker, β-blocker, or loop diuretic on top of ACEi/ARB treatment was associated with favorable clinical outcomes among people with CKD. Copyright © 2026 by the American Society of Nephrology.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43024400/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Gregg, L Parker",
+        "Perkins, Aaron",
+        "Yang, Hui",
+        "Vu, Christine",
+        "Nambi, Vijay",
+        "Winkelmayer, Wolfgang C",
+        "Hedayati, S Susan",
+        "Navaneethan, Sankar D",
+        "Alvarez, Carlos A"
+      ],
+      "venue": "Journal of the American Society of Nephrology : JASN",
+      "publication_date": "2026-Nov",
+      "doi": "10.1681/ASN.0000001313",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43024400",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 6
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Rapid Renin Angiotensin Aldosterone System inhibitor optimisation in patients with chronic kidney disease and heart failure with reduced ejection fraction using potassium binder: a randomised, double-blinded, placebo-controlled trial.",
+      "snippet": "Renin-angiotensin-aldosterone inhibitors (RAASi) improve outcomes in patients with heart failure with reduced ejection fraction (HFrEF), but their use is often limited by hyperkalaemia in chronic kidney disease (CKD) patients. This double-blind, placebo-controlled, randomised trial evaluated whether sodium zirconium cyclosilicate (SZC) enables RAASi up-titration in HFrEF patients with CKD stages 3-5 and serum potassium of 5.0-5.5 mmol/L over 14 weeks. The primary binary outcome was defined as achieving the target dose of RAAS inhibition therapy without reaching hyperkalaemia (serum potassium ≥",
+      "full_text": "Renin-angiotensin-aldosterone inhibitors (RAASi) improve outcomes in patients with heart failure with reduced ejection fraction (HFrEF), but their use is often limited by hyperkalaemia in chronic kidney disease (CKD) patients. This double-blind, placebo-controlled, randomised trial evaluated whether sodium zirconium cyclosilicate (SZC) enables RAASi up-titration in HFrEF patients with CKD stages 3-5 and serum potassium of 5.0-5.5 mmol/L over 14 weeks. The primary binary outcome was defined as achieving the target dose of RAAS inhibition therapy without reaching hyperkalaemia (serum potassium ≥5.6 mmol/L) over 14 weeks or otherwise. Participants (n = 112) were randomised 1:1 to receive sodium zirconium cyclosilicate (SZC) or placebo. The per-protocol (PP) analyses included 43 out of 53 (81%) in the SZC arm and 53 out of 59 participants (90%) in the placebo arm; the intention-to-treat (ITT) analyses included all 112. At the end of the trial, 24 of 43 participants (56%) in the SZC group achieved the target RAASi dose without developing hyperkalaemia compared with 15 of 53 patients (28%) in the placebo group (PP analysis, p = 0.006, ITT analysis, p = 0.007,). Participants in the SZC group were 3 times more likely to reach the target dose without reaching potassium 5.6 mmol/L (OR = 3.16; 95% CI 1.35-7.39; p = 0.008) than in the placebo group (ITT analysis). No significant differences in adverse events between the two groups were observed. SZC appears to safely support rapid RAASi optimisation in HFrEF patients with CKD. This trial was funded by AstraZeneca via Externally Sponsored Scientific Research grant ESR-19-20174. Trial Registration: Clinicaltrials.gov NCT05004363 and EudraCT number 2020-002946-18. © 2026. The Author(s).",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43015282/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Banerjee, Debasish",
+        "Ali, Mahrukh",
+        "Tumelty, Ella",
+        "Murphy, Daniel",
+        "Warrens, Hilary",
+        "Parmar, Simran",
+        "McNally, Thomas",
+        "Lopez, Tony",
+        "Abat, Sharirose",
+        "Paul, Riny",
+        "Hussain, Sabba",
+        "Mookerjee, Souradip",
+        "Chung, Isaac",
+        "Ster, Irina Chis",
+        "Anderson, Lisa"
+      ],
+      "venue": "Nature communications",
+      "publication_date": "2026-Oct",
+      "doi": "10.1038/s41467-026-78377-0",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43015282",
+      "publication_types": [
+        "Journal Article",
+        "Randomized Controlled Trial",
+        "Research Support, Non-U.S. Gov't"
+      ],
+      "mesh_terms": [
+        "Aged",
+        "Female",
+        "Humans",
+        "Male",
+        "Middle Aged",
+        "Angiotensin-Converting Enzyme Inhibitors",
+        "Double-Blind Method",
+        "Heart Failure",
+        "Hyperkalemia",
+        "Potassium",
+        "Renal Insufficiency, Chronic",
+        "Renin-Angiotensin System",
+        "Silicates",
+        "Stroke Volume",
+        "Treatment Outcome"
+      ],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 7
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Dose response of ACE inhibitors: implications of the SECURE trial",
+      "snippet": "The choice of the appropriate dosage of ACE inhibitor in clinical practice is an important one. The available evidence suggests that in chronic heart failure as well as in chronic coronary artery disease, high doses of angiotensin-converting enzyme (ACE) inhibitor are more effective than low ones. The current recommended clinical approach is to target ACE inhibitor dosing regimens to be similar to those used in the clinical trials, which demonstrated mortality and morbidity benefits. When titrated appropriately, ACE inhibitors are generally well tolerated and target doses can be achieved and m",
+      "full_text": "The choice of the appropriate dosage of ACE inhibitor in clinical practice is an important one. The available evidence suggests that in chronic heart failure as well as in chronic coronary artery disease, high doses of angiotensin-converting enzyme (ACE) inhibitor are more effective than low ones. The current recommended clinical approach is to target ACE inhibitor dosing regimens to be similar to those used in the clinical trials, which demonstrated mortality and morbidity benefits. When titrated appropriately, ACE inhibitors are generally well tolerated and target doses can be achieved and maintained in the majority of patients with atherosclerotic vascular disease, with or without heart failure.",
+      "url": "https://data.cdc.gov/d/iyst-v33z",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "iyst-v33z",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How long should angiotensin-converting enzyme inhibitors be given to patients following myocardial infarction: implications of the HOPE trial",
+      "snippet": "Long-term treatment with angiotensin-converting enzyme inhibitors reduces post-infarction morbidity and mortality in patients with left ventricular (LV) systolic dysfunction or symptomatic heart failure. Until recently, the effect of such treatment in patients with preserved LV function has not been known. The results from the Heart Outcome Prevention Evaluation trial have indicated that long-term treatment with ramipril leads to a significant reduction in cardiovascular events in patients with atherosclerotic disease, including those with prior myocardial infarction and preserved LV function.",
+      "full_text": "Long-term treatment with angiotensin-converting enzyme inhibitors reduces post-infarction morbidity and mortality in patients with left ventricular (LV) systolic dysfunction or symptomatic heart failure. Until recently, the effect of such treatment in patients with preserved LV function has not been known. The results from the Heart Outcome Prevention Evaluation trial have indicated that long-term treatment with ramipril leads to a significant reduction in cardiovascular events in patients with atherosclerotic disease, including those with prior myocardial infarction and preserved LV function. These results suggest that long-term angiotensin-converting enzyme inhibition should also be considered in post-infarction patients with normal cardiac function.",
+      "url": "https://data.cdc.gov/d/agcq-d75a",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "agcq-d75a",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Angiotensin receptor blockers in heart failure after the ELITE II trial",
+      "snippet": "Specific blockers of the angiotensin type1 receptor, angiotensin receptor blockers (ARBs), have been introduced as an alternative to angiotensin-converting enzyme inhibitors (ACEi) for the treatment of heart failure. In comparison with ACEi, ARBs are better tolerated and have similar effects on haemodynamics, neurohormones and exercise capacity. Early studies have suggested that ARBs might have a superior effect on mortality. However, the first outcome trial, ELITE II (Losartan Heart Failure Survival Study), did not show any significant difference between losartan and captopril in terms of mor",
+      "full_text": "Specific blockers of the angiotensin type1 receptor, angiotensin receptor blockers (ARBs), have been introduced as an alternative to angiotensin-converting enzyme inhibitors (ACEi) for the treatment of heart failure. In comparison with ACEi, ARBs are better tolerated and have similar effects on haemodynamics, neurohormones and exercise capacity. Early studies have suggested that ARBs might have a superior effect on mortality. However, the first outcome trial, ELITE II (Losartan Heart Failure Survival Study), did not show any significant difference between losartan and captopril in terms of mortality or morbidity. This commentary outlines the role of ARBs in the treatment of heart failure.",
+      "url": "https://data.cdc.gov/d/4kmz-g4wf",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "4kmz-g4wf",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The Carvedilol Prospective Randomized Cumulative Survival (COPERNICUS) trial",
+      "snippet": "Previous trials (Metoprolol CR/XL Randomised Intervention Trial in Congestive Heart Failure [MERIT-HF], Cardiac Insufficiency Bisoprolol Study [CIBIS] II) have demonstrated a mortality benefit of β-adrenergic blockade in patients with mild to moderate heart failure. The recent Carvedilol Prospective Randomized Cumulative Survival (COPERNICUS) trial has extended these results to a more advanced patient population. This trial did not, however, include patients who could not reach compensation, patients with far advanced heart failure symptoms, or a significant number of black patients. Future st",
+      "full_text": "Previous trials (Metoprolol CR/XL Randomised Intervention Trial in Congestive Heart Failure [MERIT-HF], Cardiac Insufficiency Bisoprolol Study [CIBIS] II) have demonstrated a mortality benefit of β-adrenergic blockade in patients with mild to moderate heart failure. The recent Carvedilol Prospective Randomized Cumulative Survival (COPERNICUS) trial has extended these results to a more advanced patient population. This trial did not, however, include patients who could not reach compensation, patients with far advanced heart failure symptoms, or a significant number of black patients. Future studies of β-blockade may focus on these patients or patients with asymptomatic left ventricular dysfunction.",
+      "url": "https://data.cdc.gov/d/4p3q-v5qq",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "4p3q-v5qq",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "New immunosuppressive drugs in heart transplantation",
+      "snippet": "Only a few randomized clinical trials have been performed so far in heart transplant recipients, mainly because of the relatively small number of heart transplants performed worldwide each year. The main focus of the few controlled trials that have been completed has been the prevention and treatment of heart allograft rejection. In the area of pharmacologic immunosuppression, both biological agents and drugs have been the subject of investigation. Among the biological agents, chimeric monoclonal antibodies directed against the interleukin (IL)-2 receptor, which have been found to be safe and ",
+      "full_text": "Only a few randomized clinical trials have been performed so far in heart transplant recipients, mainly because of the relatively small number of heart transplants performed worldwide each year. The main focus of the few controlled trials that have been completed has been the prevention and treatment of heart allograft rejection. In the area of pharmacologic immunosuppression, both biological agents and drugs have been the subject of investigation. Among the biological agents, chimeric monoclonal antibodies directed against the interleukin (IL)-2 receptor, which have been found to be safe and effective in renal transplant recipients, are now undergoing the test of controlled trials in heart transplant recipients. Immunosuppressive drugs that have been studied in controlled trials include calcineurin inhibitors (such as the microemulsion formulation of cyclosporine and tacrolimus) and inhibitors of purine synthesis, such as mycophenolate mofetil. Non-pharmacologic prophylactic immunosuppression with photopheresis has also been tested in a prospective, multicenter, randomized trial. New immunosuppressive regimens, such as mycophenolate mofetil combined with a monoclonal antibody against the IL-2 receptor, are being tested with the aim to reduce or eliminate calcineurin inhibitors or corticosteroids. Although clinical approaches to the induction of tolerance have undergone preliminary clinical evaluation, the ability to induce tolerance to an allograft in humans remains an elusive goal.",
+      "url": "https://data.cdc.gov/d/wz5s-jxw6",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "wz5s-jxw6",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Implications of recent hypertension trials for the generalist physician: whom do we treat, and how?",
+      "snippet": "The publication of the results of the Swedish Trial in Old Patients with Hypertension-2 (STOP-2) and the termination of the doxazocin arm of the Antihypertensive and Lipid Lowering Treatment to Prevent Heart Attack (ALLHAT) study again raise the question of whether all antihypertensives deliver equal cardiovascular outcome benefits. Data from research on congestive heart failure and from the Heart Outcomes Prevention Evaluation (HOPE) trial illuminate the roles and possible mechanisms of humoral mediators of vascular damage, suggesting, first, that some antihypertensives (thiazides, beta-block",
+      "full_text": "The publication of the results of the Swedish Trial in Old Patients with Hypertension-2 (STOP-2) and the termination of the doxazocin arm of the Antihypertensive and Lipid Lowering Treatment to Prevent Heart Attack (ALLHAT) study again raise the question of whether all antihypertensives deliver equal cardiovascular outcome benefits. Data from research on congestive heart failure and from the Heart Outcomes Prevention Evaluation (HOPE) trial illuminate the roles and possible mechanisms of humoral mediators of vascular damage, suggesting, first, that some antihypertensives (thiazides, beta-blockers, and angiotensin-converting enzyme inhibitors) can deliver more improvement in outcomes than other agents and, second, that decisions on whom to treat are best made based on risk appraisal, not merely pressures.",
+      "url": "https://data.cdc.gov/d/a4wy-4vkn",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "a4wy-4vkn",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Appetite suppressants and valvular heart disease – a systematic review",
+      "snippet": "Background\n          Although appetite suppressants have been implicated in the development of valvular heart disease, the exact level of risk is still uncertain. Initial studies suggested that as many as 1 in 3 exposed patients were affected, but subsequent research has yielded substantially different figures. Our objective was to systematically assess the risk of valvular heart disease with appetite suppressants.\n        \n        \n          Methods\n          We accepted studies involving obese patients treated with any of the following appetite suppressants: fenfluramine, dexfenfluramine, an",
+      "full_text": "Background\n          Although appetite suppressants have been implicated in the development of valvular heart disease, the exact level of risk is still uncertain. Initial studies suggested that as many as 1 in 3 exposed patients were affected, but subsequent research has yielded substantially different figures. Our objective was to systematically assess the risk of valvular heart disease with appetite suppressants.\n        \n        \n          Methods\n          We accepted studies involving obese patients treated with any of the following appetite suppressants: fenfluramine, dexfenfluramine, and phentermine. Three types of studies were reviewed: controlled and uncontrolled observational studies, and randomized controlled trials. Outcomes of interest were echocardiographically detectable aortic regurgitation of mild or greater severity, or mitral regurgitation of moderate or greater severity.\n        \n        \n          Results\n          Of the 1279 patients evaluated in seven uncontrolled cohort studies, 236 (18%) and 60 (5%) were found to have aortic and mitral regurgitation, respectively. Pooled data from six controlled cohort studies yielded, for aortic regurgitation, a relative risk ratio of 2.32 (95% confidence intervals 1.79 to 3.01, p < 0.00001) and an attributable rate of 4.9%, and for mitral regurgitation, a relative risk ratio of 1.55 (95% confidence intervals 1.06 to 2.25, p = 0.02) with an attributable rate of 1.0%. Only one case of valvular heart disease was detected in 57 randomized controlled trials, but this was judged unrelated to drug therapy.\n        \n        \n          Conclusions\n          The risk of valvular heart disease is significantly increased by the appetite suppressants reviewed here. Nevertheless, when considering all the evidence, valvulopathy is much less common than suggested by the initial, less methodologically rigorous studies.",
+      "url": "https://data.cdc.gov/d/g45g-6i6h",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "g45g-6i6h",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Why do antioxidants fail to provide clinical benefit?",
+      "snippet": "The results of recent randomized trials to test the influence of antioxidants on coronary-event rates and prognosis in patients with coronary-artery disease were disappointing. In none of these studies did the use of vitamin E improve prognosis. In contrast, treatment of coronary-artery disease with angiotensin-converting-enzyme (ACE) inhibitors reduced coronary-event rates and improved prognosis. ACE inhibition prevents the formation of angiotensin II, which has been shown to be a potent stimulus of superoxide-producing enzymes in atherosclerosis. The findings suggest that inhibition of super",
+      "full_text": "The results of recent randomized trials to test the influence of antioxidants on coronary-event rates and prognosis in patients with coronary-artery disease were disappointing. In none of these studies did the use of vitamin E improve prognosis. In contrast, treatment of coronary-artery disease with angiotensin-converting-enzyme (ACE) inhibitors reduced coronary-event rates and improved prognosis. ACE inhibition prevents the formation of angiotensin II, which has been shown to be a potent stimulus of superoxide-producing enzymes in atherosclerosis. The findings suggest that inhibition of superoxide production at enzymatic levels, rather than symptomatic superoxide scavenging, may be the better choice of treatment.",
+      "url": "https://data.cdc.gov/d/cmkf-jadg",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "cmkf-jadg",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "CCH_SURVEY_AGREEMENT_MOH_OTHERSECTORS — Agreement in place between the Ministry of Health and other sector(s) in relation to health and climate change policy or programs",
+      "snippet": "Agreement in place between the Ministry of Health and other sector(s) in relation to health and climate change policy or programs",
+      "full_text": "Agreement in place between the Ministry of Health and other sector(s) in relation to health and climate change policy or programs",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/CCH_SURVEY_AGREEMENT_MOH_OTHERSECTORS",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "CCH_SURVEY_AGREEMENT_MOH_OTHERSECTORS",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "cpmo — Contraceptive prevalence - modern methods (%)",
+      "snippet": "Contraceptive prevalence - modern methods (%)",
+      "full_text": "Contraceptive prevalence - modern methods (%)",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/cpmo",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "cpmo",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "cpmt — Contraceptive prevalence - modern and traditional methods (%)",
+      "snippet": "Contraceptive prevalence - modern and traditional methods (%)",
+      "full_text": "Contraceptive prevalence - modern and traditional methods (%)",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/cpmt",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "cpmt",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "E_comprehensive_subnat — Subnational bans on advertising, promotion and sponsorship - at least one jurisdiction has a comprehensive ban in place",
+      "snippet": "Subnational bans on advertising, promotion and sponsorship - at least one jurisdiction has a comprehensive ban in place",
+      "full_text": "Subnational bans on advertising, promotion and sponsorship - at least one jurisdiction has a comprehensive ban in place",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/E_comprehensive_subnat",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "E_comprehensive_subnat",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "E13_brand_placement — Ban on appearance of tobacco brands in TV and/or films (product placement)",
+      "snippet": "Ban on appearance of tobacco brands in TV and/or films (product placement)",
+      "full_text": "Ban on appearance of tobacco brands in TV and/or films (product placement)",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/E13_brand_placement",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "E13_brand_placement",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "E13_compliance — Compliance of ban on appearance of tobacco brands in TV and/or films (product placement)",
+      "snippet": "Compliance of ban on appearance of tobacco brands in TV and/or films (product placement)",
+      "full_text": "Compliance of ban on appearance of tobacco brands in TV and/or films (product placement)",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/E13_compliance",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "E13_compliance",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "E23_subnat_complete_bans_exist — Subnational advertising, promotion and sponsorship bans - at least one jurisdiction has a comprehensive ban in place",
+      "snippet": "Subnational advertising, promotion and sponsorship bans - at least one jurisdiction has a comprehensive ban in place",
+      "full_text": "Subnational advertising, promotion and sponsorship bans - at least one jurisdiction has a comprehensive ban in place",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/E23_subnat_complete_bans_exist",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "E23_subnat_complete_bans_exist",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "GDO_q14x2_1 — Existence of dementia-friendly initiative to improve accessibility of public spaces",
+      "snippet": "Existence of dementia-friendly initiative to improve accessibility of public spaces",
+      "full_text": "Existence of dementia-friendly initiative to improve accessibility of public spaces",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/GDO_q14x2_1",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "GDO_q14x2_1",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Comparative Adverse Effects of Angiotensin Receptor-Neprilysin Inhibitors and ACE Inhibitors/ARBs on Kidney and Hemodynamic Outcomes in Chronic Heart Failure: A Systematic Review and Meta-Analysis of Randomized Controlled Trials",
+      "snippet": "Comparative Adverse Effects of Angiotensin Receptor-Neprilysin Inhibitors and ACE Inhibitors/ARBs on Kidney and Hemodynamic Outcomes in Chronic Heart Failure: A Systematic Review and Meta-Analysis of Randomized Controlled Trials",
+      "full_text": null,
+      "url": "https://openalex.org/W7225745931",
+      "_adapter": "openalex",
+      "authors": [
+        "Natee Deepan",
+        "Parinda Ansusinha",
+        "Thanasin Chalermchat",
+        "Thanin Asawaroekwisoot",
+        "Natanon Chamnarnphol",
+        "Nitchanan Kitlertbanchong",
+        "Nathasith Tangprasittichok",
+        "Boonyasit Ngamvirojcharoen",
+        "Katanyu Siwawut",
+        "Brandon Chongthanadon",
+        "Wanprapit Noree",
+        "Urairat Chuenchaem",
+        "Settawut Buadee",
+        "Yodsaphong Kasebuthtaweewat",
+        "Possawat Vutthikraivit",
+        "Issaree Bunyawannukul",
+        "Ekamol Tantisattamo"
+      ],
+      "venue": "Journal of the American Society of Nephrology",
+      "publication_date": "2026",
+      "doi": "10.1681/asn.20268nnzhj3d",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Overview of Randomized Trials of Angiotensin-Converting Enzyme Inhibitors on Mortality and Morbidity in Patients With Heart Failure",
+      "snippet": "OBJECTIVE: To evaluate the effect of angiotensin-converting enzyme (ACE) inhibitors on mortality and morbidity in patients with symptomatic congestive heart failure. DATA SOURCE AND STUDY SELECTION: Data were obtained for all completed, published or unpublished, randomized, placebo-controlled trials of ACE inhibitors that were at least 8 weeks in duration and had determined total mortality by intention to treat, regardless of sample size. Trials were identified based on literature review and correspondence with investigators and pharmaceutical firms. DATA EXTRACTION: Using standard tables, dat",
+      "full_text": "OBJECTIVE: To evaluate the effect of angiotensin-converting enzyme (ACE) inhibitors on mortality and morbidity in patients with symptomatic congestive heart failure. DATA SOURCE AND STUDY SELECTION: Data were obtained for all completed, published or unpublished, randomized, placebo-controlled trials of ACE inhibitors that were at least 8 weeks in duration and had determined total mortality by intention to treat, regardless of sample size. Trials were identified based on literature review and correspondence with investigators and pharmaceutical firms. DATA EXTRACTION: Using standard tables, data were extracted by one author and confirmed where necessary by the other author or the principal investigator of the trial. Unpublished data were obtained by direct correspondence with the principal investigator of each study or pharmaceutical firm. DATA SYNTHESIS: The data for each outcome were combined using the Yusuf-Peto adaptation of the Mantel-Haenszel method. Overall, there was a statistically significant reduction in total mortality (odds ratio [OR], 0.77; 95% confidence interval [CI], 0.67 to 0.88; P < .001) and in the combined endpoint of mortality or hospitalization for congestive heart failure (OR, 0.65; 95% CI, 0.57 to 0.74; P < .001). Similar benefits were observed with several different ACE inhibitors, although the data were largely based on enalapril maleate, captopril, ramipril, quinapril hydrochloride, and lisinopril. Reductions for total mortality and the combined endpoint were similar for various subgroups examined (age, sex, etiology, and New York Heart Association class). However, patients with the lowest ejection fraction appeared to have the greatest benefit. The greatest effect was seen during the first 3 months, but additional benefit was observed during further treatment. The reduction in mortality was primarily due to fewer deaths from progressive heart failure (OR, 0.69; 95% CI, 0.58 to 0.83); point estimates for effects on sudden or presumed arrhythmic deaths (OR, 0.91; 95% CI, 0.73 to 1.12) and fatal myocardial infarction (OR, 0.82; 95% CI, 0.60 to 1.11) were less than 1 but were not significant. CONCLUSIONS: Total mortality and hospitalization for congestive heart failure are significantly reduced by ACE inhibitors with consistent effects in a broad range of patients.",
+      "url": "https://openalex.org/W4230893588",
+      "_adapter": "openalex",
+      "authors": [
+        "R. Garg"
+      ],
+      "venue": "JAMA",
+      "publication_date": "1995",
+      "doi": "10.1001/jama.1995.03520420066040",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Long-term ACE-inhibitor therapy in patients with heart failure or left-ventricular dysfunction: a systematic overview of data from individual patients",
+      "snippet": "Long-term ACE-inhibitor therapy in patients with heart failure or left-ventricular dysfunction: a systematic overview of data from individual patients",
+      "full_text": null,
+      "url": "https://openalex.org/W2055123579",
+      "_adapter": "openalex",
+      "authors": [
+        "Marcus D Flather",
+        "Salim Yusuf",
+        "Lars Køber",
+        "Marc Alan Pfeffer",
+        "Alistair S. Hall",
+        "Gordon D. Murray",
+        "Christian Tobias Torp-Pedersen",
+        "Stephen G. Ball",
+        "Janice M. Pogue",
+        "Lemuel A. Moyé",
+        "Eugene Braunwald"
+      ],
+      "venue": "The Lancet",
+      "publication_date": "2000",
+      "doi": "10.1016/s0140-6736(00)02212-1",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Angiotensin-converting-enzyme inhibitors in stable vascular disease without left ventricular systolic dysfunction or heart failure: a combined analysis of three trials",
+      "snippet": "Angiotensin-converting-enzyme inhibitors in stable vascular disease without left ventricular systolic dysfunction or heart failure: a combined analysis of three trials",
+      "full_text": null,
+      "url": "https://openalex.org/W2023755744",
+      "_adapter": "openalex",
+      "authors": [
+        "Gilles R. Dagenais",
+        "Janice M. Pogue",
+        "Kim Michael Fox",
+        "Marteen L Simoons",
+        "Salim Yusuf"
+      ],
+      "venue": "The Lancet",
+      "publication_date": "2006",
+      "doi": "10.1016/s0140-6736(06)69201-5",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "What is the ideal study design for evaluation of treatment for heart failure?: Insights from trials assessing the effect of ACE inhibitors on exercise capacity",
+      "snippet": "There is a wealth of evidence that angiotensin converting enzyme (ACE) inhibitors improve symptoms, morbidity and mortality in patients with heart failure. In this context the use of ACE inhibitors could be considered a tool with which to assess the effect of trial design and methodology on the ability to detect improvement in symptoms and exercise performance. Thirty-five published, double-blind, randomized placebo-controlled trials, involving a total of 3411 patients, which compared the effect of ACE inhibitors and placebo on exercise capacity in patients with symptomatic chronic heart failu",
+      "full_text": "There is a wealth of evidence that angiotensin converting enzyme (ACE) inhibitors improve symptoms, morbidity and mortality in patients with heart failure. In this context the use of ACE inhibitors could be considered a tool with which to assess the effect of trial design and methodology on the ability to detect improvement in symptoms and exercise performance. Thirty-five published, double-blind, randomized placebo-controlled trials, involving a total of 3411 patients, which compared the effect of ACE inhibitors and placebo on exercise capacity in patients with symptomatic chronic heart failure were identified. Studies were examined in relation to whether they used cross-over or parallel group study design, study size, use of treadmill vs bicycle exercise test, year of publication, patient entry criteria, duration of follow-up and the particular ACE inhibitor used. Exercise duration improved in 23 of the studies, while symptoms improved in 25 of the 33 studies which evaluated this. In the majority of the trials (27 of 33) there was concordance between the effect on symptoms and on exercise capacity. There were six trials which showed discrepant results. Study size, duration of follow-up and method of exercise testing used were found to be major factors affecting the outcome. Trials using treadmill exercise tests were more likely to be positive than those using bicycle ergometry. All nine trials with study size more than 50, follow-up of 3-6 months and using treadmill exercise tests showed improved exercise capacity as well as symptoms. These findings may be useful in designing future trials for evaluating treatment for heart failure.",
+      "url": "https://openalex.org/W2220634303",
+      "_adapter": "openalex",
+      "authors": [
+        "Rajiv Narang",
+        "Karl B Swedberg",
+        "John G.F. Cleland"
+      ],
+      "venue": "European Heart Journal",
+      "publication_date": "1996",
+      "doi": "10.1093/oxfordjournals.eurheartj.a014670",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Effects of valsartan on morbidity and mortality in patients with heart failure not receiving angiotensin-converting enzyme inhibitors",
+      "snippet": "Effects of valsartan on morbidity and mortality in patients with heart failure not receiving angiotensin-converting enzyme inhibitors",
+      "full_text": null,
+      "url": "https://openalex.org/W2110831147",
+      "_adapter": "openalex",
+      "authors": [
+        "Aldo Pietro Maggioni",
+        "Inder S. Anand",
+        "Sidney O. Gottlieb",
+        "Roberto Latini",
+        "Gianni Tognoni",
+        "Jay N. Cohn"
+      ],
+      "venue": "Journal of the American College of Cardiology",
+      "publication_date": "2002",
+      "doi": "10.1016/s0735-1097(02)02304-5",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Influence of diabetes mellitus on heart failure risk and outcome",
+      "snippet": "Our aim is to summarize and discuss the recent literature linking diabetes mellitus with heart failure, and to address the issue of the optimal treatment for diabetic patients with heart failure. THE STUDIES LINKING DIABETES MELLITUS (DM) WITH HEART FAILURE (HF) : The prevalence of diabetes mellitus in heart failure populations is close to 20% compared with 4 to 6% in control populations. Epidemiological studies have demonstrated an increased risk of heart failure in diabetics; moreover, in diabetic populations, poor glycemic control has been associated with an increased risk of heart failure.",
+      "full_text": "Our aim is to summarize and discuss the recent literature linking diabetes mellitus with heart failure, and to address the issue of the optimal treatment for diabetic patients with heart failure. THE STUDIES LINKING DIABETES MELLITUS (DM) WITH HEART FAILURE (HF) : The prevalence of diabetes mellitus in heart failure populations is close to 20% compared with 4 to 6% in control populations. Epidemiological studies have demonstrated an increased risk of heart failure in diabetics; moreover, in diabetic populations, poor glycemic control has been associated with an increased risk of heart failure. Various mechanisms may link diabetes mellitus to heart failure: firstly, associated comorbidities such as hypertension may play a role; secondly, diabetes accelerates the development of coronary atherosclerosis; thirdly, experimental and clinical studies support the existence of a specific diabetic cardiomyopathy related to microangiopathy, metabolic factors or myocardial fibrosis. Subgroup analyses of randomized trials demonstrate that diabetes is also an important prognostic factor in heart failure. In addition, it has been suggested that the deleterious impact of diabetes may be especially marked in patients with ischemic cardiomyopathy. TREATMENT OF HEART FAILURE IN DIABETIC PATIENTS : The knowledge of the diabetic status may help to define the optimal therapeutic strategy for heart failure patients. Cornerstone treatments such as ACE inhibitors or beta-blockers appear to be uniformly beneficial in diabetic and non diabetic populations. However, in ischemic cardiomyopathy, the choice of the revascularization technique may differ according to diabetic status. Finally, clinical studies are needed to determine whether improved metabolic control might favorably influence the outcome of diabetic heart failure patients.",
+      "url": "https://openalex.org/W1607586648",
+      "_adapter": "openalex",
+      "authors": [
+        "Christophe Bauters",
+        "Nicolas Lamblin",
+        "Eugène P. Mc Fadden",
+        "Eric VAN BELLE",
+        "A Millaire",
+        "Pascal de Groote"
+      ],
+      "venue": "Cardiovascular Diabetology",
+      "publication_date": "2003",
+      "doi": "10.1186/1475-2840-2-1",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "SAFETY OF ACE INHIBITORS IN CHILDREN WITH HEART FAILURE",
+      "snippet": "Background ACE inhibitors (ACE-I) are a cornerstone in the treatment of children with heart failure. Little is known on the pharmacokinetics (PK) and pharmacodynamics (PD) of enalapril in children. LENA trials will investigate a novel child-appropriate solid drug formulation of enalapril and obtain PK, PD and safety data. For this study clear safety cut-offs need to determined. Aim To review the literature on safety of ACE-I in paediatric heart failure. Methods We searched electronic databases and reference lists of relevant studies. Inclusion criteria were 1. Randomized Controlled Trials (RCT",
+      "full_text": "Background ACE inhibitors (ACE-I) are a cornerstone in the treatment of children with heart failure. Little is known on the pharmacokinetics (PK) and pharmacodynamics (PD) of enalapril in children. LENA trials will investigate a novel child-appropriate solid drug formulation of enalapril and obtain PK, PD and safety data. For this study clear safety cut-offs need to determined. Aim To review the literature on safety of ACE-I in paediatric heart failure. Methods We searched electronic databases and reference lists of relevant studies. Inclusion criteria were 1. Randomized Controlled Trials (RCT), Controlled trials (CT), case reports or retrospective cohorts. 2. Patients under 18 years with congestive heart failure. 3. Any kind of ACE-I 4. Outcome measures: Mortality, hypotension, renal failure, hyperkalaemia, liver enzyme rise, cough, neutropenia. Results We assessed 12 of 593 articles as relevant: 2 RCTs, 5 CTs, 3 retrospective cohort studies and 2 case reports on a total of 734 children with heart failure. Systematic analyses was hampered by the heterogeneity of the study designs. In summary, we identified renal failure, hypotension and hyperkalemia as the most important side effects. Renal failure was found in 80 patients (11%), hypotension in 33 (4,5%) and hyperkalemia in 5 (0,7%). Five studies (n= 315 children) suggest that young age and low weight increases the risk of renal failure. Conclusions Renal failure, hypotension and hyperkalemia are the most reported adverse events in children on an ACE-I for heart failure. We defined strict adjusting- and stopping rules for enalapril based on an Acute Kidney Injury scale, b. on values of systolic blood pressure and on c. serum levels potassium. The research leading to these results has received funding from the European Union Seventh Framework Programme (FP7/2007–2013) under grant agreement n°602295 (LENA).",
+      "url": "https://openalex.org/W2338147667",
+      "_adapter": "openalex",
+      "authors": [
+        "Marijke van der Meulen",
+        "Stephanie Läer",
+        "Cristina Castro",
+        "Feras Khalil",
+        "Saskia N. de Wildt",
+        "Michiel Dalinghaus",
+        "Ida Jovanović",
+        "Milica Bajčetić",
+        "Florian B. Lagler"
+      ],
+      "venue": "Archives of Disease in Childhood",
+      "publication_date": "2015",
+      "doi": "10.1136/archdischild-2015-310148.30",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 7
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Extrapolation of Adult Evidence to Pediatric Practice: Bridging the Gap in Pediatric Heart Failure Pharmacotherapy.",
+      "snippet": "Heart failure (HF) is a complex clinical syndrome that represents an increasingly relevant health issue, associated with substantial morbidity and mortality in pediatric patients. While considerable therapeutic advances have transformed the prognosis of adult patients with heart failure over the past three decades, progress in pediatric heart failure has been considerably slower. In adult patients, large randomized controlled trials (RCTs) have established angiotensin-converting enzyme inhibitors (ACE inhibitors), beta-blockers, mineralocorticoid receptor antagonists (MRAs), angiotensin recept",
+      "full_text": "Heart failure (HF) is a complex clinical syndrome that represents an increasingly relevant health issue, associated with substantial morbidity and mortality in pediatric patients. While considerable therapeutic advances have transformed the prognosis of adult patients with heart failure over the past three decades, progress in pediatric heart failure has been considerably slower. In adult patients, large randomized controlled trials (RCTs) have established angiotensin-converting enzyme inhibitors (ACE inhibitors), beta-blockers, mineralocorticoid receptor antagonists (MRAs), angiotensin receptor-neprilysin inhibitors (ARNIs), and, more recently, sodium-glucose cotransporter-2 (SGLT2) inhibitors as the cornerstone of guideline-directed medical therapy. Evidence supporting pharmacological therapy in pediatric heart failure remains scarce and frequently inconclusive, with most available studies being limited by small sample sizes and heterogeneous patient populations. Therefore, heart failure treatment in children is mostly extrapolated from adult studies and guidelines. However, developmental differences in myocardial structure and function, neurohormonal signaling, pharmacokinetics and pharmacodynamics may substantially influence therapeutic response. In addition, the rarity and the etiological heterogeneity of pediatric HF create major methodological challenges for adequately powered clinical trials. This review compares the pharmacological management of HF in adult and pediatric populations, examines the strength of evidence for contemporary therapies and discusses the biological and methodological limitations of translating adult evidence into pediatric practice. Multicenter collaborative studies and well-designed pediatric randomized controlled trials are essential for establishing truly evidence-based pharmacological strategies for children with HF.",
+      "url": "https://doi.org/10.3390/children13091223",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Sorescu AM",
+        "Ghiță CIV",
+        "Stoleru S",
+        "Duică G",
+        "Nicolescu AM",
+        "Cinteză EE",
+        "Fulga I",
+        "Coman OA"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-09-10",
+      "doi": "10.3390/children13091223",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42794242",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Cardiorenal Syndrome: From Hemodynamic and Humoral Pathophysiology to New Frontiers in Modulation and Enabling Therapy-Part 2.",
+      "snippet": "The therapeutic landscape of cardiorenal syndrome (CRS) has evolved significantly, transitioning from historical cornerstones like angiotensin-converting enzyme (ACE) inhibitors and angiotensin receptor blockers (ARBs) to modern neurohormonal modulation with angiotensin receptor-neprilysin inhibitors (ARNIs). This second part of this narrative review analyzes the pivotal pharmacological roles of sodium-glucose cotransporter-2 (SGLT2) inhibitors, glucagon-like peptide-1 (GLP-1) receptor agonists, and finerenone, which target the hemodynamic, metabolic, and inflammatory-fibrotic axes, respective",
+      "full_text": "The therapeutic landscape of cardiorenal syndrome (CRS) has evolved significantly, transitioning from historical cornerstones like angiotensin-converting enzyme (ACE) inhibitors and angiotensin receptor blockers (ARBs) to modern neurohormonal modulation with angiotensin receptor-neprilysin inhibitors (ARNIs). This second part of this narrative review analyzes the pivotal pharmacological roles of sodium-glucose cotransporter-2 (SGLT2) inhibitors, glucagon-like peptide-1 (GLP-1) receptor agonists, and finerenone, which target the hemodynamic, metabolic, and inflammatory-fibrotic axes, respectively, alongside the essential utility of novel potassium binders. Ultimately, the management of CRS is shifting toward an integrated cardiovascular-renal-metabolic paradigm, where the future lies in a personalized, biomarker-guided \"quadruple cardiorenal therapy\" that moves beyond a single-organ focus to optimize patient outcomes.",
+      "url": "https://doi.org/10.3390/biomedicines14102257",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Mauriello A",
+        "Cetoretta V",
+        "Del Giudice C",
+        "Correra A",
+        "Maratea AC",
+        "Gioia R",
+        "Liccardo B",
+        "Esposito G",
+        "Russo V",
+        "D'Andrea A"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-10-06",
+      "doi": "10.3390/biomedicines14102257",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42940063",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Impact of angiotensin-converting enzyme inhibitors and angiotensin receptor blockers on cardiovascular and non-cardiovascular outcomes in patients at high/very-high cardiovascular risk without heart failure: a systematic review and meta-analysis of randomized, double-blind, placebo-controlled trials &lt;sup&gt;†&lt;/sup&gt;.",
+      "snippet": "<h4>Aims</h4>To assess the impact of angiotensin-converting enzyme inhibitors (ACE-Is) and angiotensin receptor blockers (ARBs) on all-cause and cardiovascular (CV) mortality, as well as CV, cerebrovascular, and renal outcomes in patients at high/very-high CV risk without heart failure by a systematic review and meta-analysis of placebo-controlled, double-blind, randomized trials.<h4>Methods and results</h4>The CENTRAL, ClinicalTrials.gov, Ovid-MEDLINE, Ovid-Embase, Science Citation Index-Expanded, and WHO-ICTRP databases were searched between August and September 2023. Heart failure trials we",
+      "full_text": "<h4>Aims</h4>To assess the impact of angiotensin-converting enzyme inhibitors (ACE-Is) and angiotensin receptor blockers (ARBs) on all-cause and cardiovascular (CV) mortality, as well as CV, cerebrovascular, and renal outcomes in patients at high/very-high CV risk without heart failure by a systematic review and meta-analysis of placebo-controlled, double-blind, randomized trials.<h4>Methods and results</h4>The CENTRAL, ClinicalTrials.gov, Ovid-MEDLINE, Ovid-Embase, Science Citation Index-Expanded, and WHO-ICTRP databases were searched between August and September 2023. Heart failure trials were excluded. The hypothesis of a homogeneous treatment effect between ACE-Is and ARBs was tested with a Cochran's Q statistic. The protocol for the systematic review was registered on PROSPERO (CRD42023452406) and the study reported as per PRISMA guidelines.17 trials (9 ACE-Is and 8 ARBs, total of 87 908 participants) were included. The event rates for all-cause mortality, CV mortality, and major CV events (MACEs) did not differ in the parallel placebo arms of ACE-I and ARB trials; however, compared to placebo, ACE-Is reduced the rate of CV mortality [hazard ratio (HR) 0.88; 95% confidence interval (CI) 0.78-0.99], all-cause mortality (HR 0.92; 95% CI 0.85-0.99) and myocardial infarction (HR 0.83; 95% CI 0.73-0.94), while ARBs did not. The rates of HF, stroke, and MACEs were significantly reduced by both drug classes. Angiotensin-converting enzyme inhibitors induced a greater reduction of CV mortality than ARBs (<i>Q</i> = 4.59; <i>P</i>-value = 0.03).<h4>Conclusion</h4>In patients at high/very-high CV risk, ACE-Is were more protective against CV mortality than ARBs, supporting their preferential use for CV protection.",
+      "url": "https://doi.org/10.1093/ehjopen/oeag119",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Masi S",
+        "Savarese G",
+        "Orsini N",
+        "Strauss MH"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-07-28",
+      "doi": "10.1093/ehjopen/oeag119",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42524061",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Progress in research on RAAS inhibitors regulating inflammatory responses and oxidative stress: from molecular mechanisms to clinical evidence.",
+      "snippet": "The renin-angiotensin-aldosterone system (RAAS) inhibitors serve as cornerstone pharmacotherapies for chronic conditions including hypertension, heart failure, and chronic kidney disease. Accumulating evidence over recent years has demonstrated that their target organ-protective effects cannot be fully attributed to blood pressure-lowering actions alone; instead, the modulation of inflammatory responses and oxidative stress emerges as a core mechanism underpinning their extra-antihypertensive benefits. However, systematic comparisons of such effects across distinct classes of RAAS inhibitors a",
+      "full_text": "The renin-angiotensin-aldosterone system (RAAS) inhibitors serve as cornerstone pharmacotherapies for chronic conditions including hypertension, heart failure, and chronic kidney disease. Accumulating evidence over recent years has demonstrated that their target organ-protective effects cannot be fully attributed to blood pressure-lowering actions alone; instead, the modulation of inflammatory responses and oxidative stress emerges as a core mechanism underpinning their extra-antihypertensive benefits. However, systematic comparisons of such effects across distinct classes of RAAS inhibitors and integration of the latest evidence remain lacking. This review focuses on the molecular regulatory network of the dual RAAS axes, systematically dissecting the specific molecular mechanisms by which the canonical ACE-AngII-AT1R axis mediates tissue injury-via activation of the NLRP3 inflammasome, NADPH oxidase, and NF-κB signaling pathways-while the protective ACE2-Ang(1-7)-MasR axis exerts anti-inflammatory and antioxidant effects. A cross-class comparison is conducted to evaluate the divergent effects of five clinically prevalent RAAS inhibitor classes (ACE inhibitors [ACEI], angiotensin receptor blockers [ARB], direct renin inhibitors [DRI], angiotensin receptor-neprilysin inhibitors [ARNI], and mineralocorticoid receptor antagonists [MRA]) on the regulation of inflammation and oxidative stress. By synthesizing the latest evidence from basic science and clinical studies over the past decade, we summarize the distinct organ-protective profiles of these agents across various target organs affected by cardiovascular disease, chronic kidney disease, pulmonary disorders, neurological conditions, rheumatoid arthritis, and osteoporosis. Finally, addressing the limitations and inconsistencies within existing literature, this article proposes future research directions, strategies for optimizing combination therapies, and refined clinical trial designs to enhance the clinical application of RAAS inhibitors and facilitate the development of novel organ-protection paradigms.",
+      "url": "https://doi.org/10.3389/fphar.2026.1925933",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Yin H",
+        "Yang M",
+        "Zhang S",
+        "Li Q",
+        "Zhen D",
+        "Tang X"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-10-15",
+      "doi": "10.3389/fphar.2026.1925933",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42959508",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Mechanism-based therapeutic strategies in cardiovascular-kidney-metabolic syndrome: integrating biological pathways with evidence from clinical trials.",
+      "snippet": "Cardiovascular-kidney-metabolic (CKM) syndrome describes the close relationship between metabolic dysfunction, chronic kidney disease, and cardiovascular disease, which share several biological pathways and frequently progress together. This review examines the mechanisms and clinical trial evidence supporting established and emerging therapies relevant to CKM syndrome. Sodium-glucose cotransporter 2 inhibitors, glucagon-like peptide-1 receptor agonists, renin-angiotensin system inhibitors, mineralocorticoid receptor antagonists, and lipid-lowering therapies have shown cardiovascular, kidney, ",
+      "full_text": "Cardiovascular-kidney-metabolic (CKM) syndrome describes the close relationship between metabolic dysfunction, chronic kidney disease, and cardiovascular disease, which share several biological pathways and frequently progress together. This review examines the mechanisms and clinical trial evidence supporting established and emerging therapies relevant to CKM syndrome. Sodium-glucose cotransporter 2 inhibitors, glucagon-like peptide-1 receptor agonists, renin-angiotensin system inhibitors, mineralocorticoid receptor antagonists, and lipid-lowering therapies have shown cardiovascular, kidney, and metabolic benefits across several high-risk populations. However, most evidence comes from trials enrolling patients with individual conditions, such as type 2 diabetes, chronic kidney disease, heart failure, obesity, or atherosclerotic cardiovascular disease, rather than populations defined by CKM stage or phenotype. Evidence for the added clinical benefit of specific treatment combinations also remains limited. Newer therapies targeting aldosterone synthesis, endothelin signaling, inflammation, incretin pathways, and lipid-related pathways may broaden treatment options. In clinical practice, CKM stage and the predominant clinical phenotype may help identify treatment priorities while accounting for coexisting conditions, safety, treatment burden, cost, and access. This approach may provide a practical basis for selecting therapies across the CKM spectrum, although prospective studies are needed to determine whether phenotype-directed treatment improves clinical outcomes.",
+      "url": "https://doi.org/10.3389/fendo.2026.1987811",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Nzobokela J",
+        "Choolwe SC",
+        "Masenga SK"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-10-22",
+      "doi": "10.3389/fendo.2026.1987811",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42991154",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Diabetic kidney disease within the framework of cardio-kidney-metabolic health: a paradigm shift.",
+      "snippet": "Diabetic kidney disease (DKD) is the most common cause of chronic kidney disease (CKD) and kidney failure in addition to determining an elevated risk of cardiovascular (CV) disease. Traditional approaches to DKD management have focused primarily on slowing kidney disease progression through improved glycemic control. However, growing recognition of the complex interplay among metabolic, kidney, and CV dysfunction has led to the emergence of the cardio-kidney-metabolic (CKM) syndrome framework, emphasizing the interconnected pathophysiology and shared risk profiles of these conditions. This evo",
+      "full_text": "Diabetic kidney disease (DKD) is the most common cause of chronic kidney disease (CKD) and kidney failure in addition to determining an elevated risk of cardiovascular (CV) disease. Traditional approaches to DKD management have focused primarily on slowing kidney disease progression through improved glycemic control. However, growing recognition of the complex interplay among metabolic, kidney, and CV dysfunction has led to the emergence of the cardio-kidney-metabolic (CKM) syndrome framework, emphasizing the interconnected pathophysiology and shared risk profiles of these conditions. This evolving paradigm has transformed the understanding and management of DKD from an isolated kidney disorder to a multisystem disease requiring integrated therapeutic strategies. Recent advances have significantly altered the landscape of DKD management. In addition to angiotensin-converting enzyme inhibitors and angiotensin receptor blockers, newer therapies including sodium-glucose cotransporter 2 inhibitors, glucagon-like peptide-1 receptor agonists, and non-steroidal mineralocorticoid receptor antagonists have demonstrated substantial kidney and CV protective effects. Emerging evidence suggests that combination therapy may potentially shift the treatment paradigm from slowing CKD progression toward preservation of kidney function. In this review, we discuss DKD within the broader framework of CKM syndrome, highlighting the epidemiologic, pathophysiologic, prognostic, and therapeutic intersections among diabetes, CKD, and CV disease. We summarize major therapeutic advances, review evidence supporting multidrug combination strategies, and examine current gaps between clinical evidence and real-world implementation. We further propose a phenotype-driven framework for sequencing combination therapy based on each patient's dominant pathophysiologic driver as a hypothesis-generating alternative to uniform add-on strategies. Finally, we discuss the future direction of DKD management and the need for integrated multidisciplinary approaches aimed at improving outcomes.",
+      "url": "https://doi.org/10.3389/fphar.2026.1907928",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Braga JR",
+        "Ayub F",
+        "Vallurupalli S",
+        "Karakala N",
+        "Holthoff JH"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-09-08",
+      "doi": "10.3389/fphar.2026.1907928",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42774501",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Clinical and Biochemical Responses to SGLT2 (Sodium-Glucose Cotransporter-2) Inhibitors in Patients With Rheumatic Heart Disease and Heart Failure.",
+      "snippet": "<h4>Background</h4> Rheumatic heart disease (RHD) remains the third most common cause of heart failure in India, which bears the highest global burden of RHD. Left untreated or poorly managed, RHD culminates in heart failure, posing substantial challenges for clinical management. Despite advances in interventional management, the therapeutic landscape for heart failure in patients with RHD remains inadequately explored, particularly with respect to sodium-glucose cotransporter-2 (SGLT2) inhibitors.<h4>Methods</h4>This hospital-based study enrolled 90 patients with chronic RHD and New York Hear",
+      "full_text": "<h4>Background</h4> Rheumatic heart disease (RHD) remains the third most common cause of heart failure in India, which bears the highest global burden of RHD. Left untreated or poorly managed, RHD culminates in heart failure, posing substantial challenges for clinical management. Despite advances in interventional management, the therapeutic landscape for heart failure in patients with RHD remains inadequately explored, particularly with respect to sodium-glucose cotransporter-2 (SGLT2) inhibitors.<h4>Methods</h4>This hospital-based study enrolled 90 patients with chronic RHD and New York Heart Association (NYHA) functional class II-IV heart failure. All patients received standard heart failure therapy, with SGLT2 inhibitors added according to the study protocol. Baseline evaluation included clinical assessment and measurement of serum N-terminal pro-B-type natriuretic peptide (NT-proBNP) levels. Patients were followed for three months, and changes in NYHA functional class and serum NT-proBNP levels were assessed.<h4>Results</h4>At three months following initiation of SGLT2 inhibitor therapy, significant improvements were observed in both clinical and biochemical parameters. The mean serum NT-proBNP level decreased significantly from 1,687.0 ± 897.8 pg/mL at baseline to 1,212.6 ± 606.6 pg/mL at follow-up (p < 0.001). Improvement in NYHA functional class was noted in 44 (48.9%) patients, while 41 (45.6%) patients remained clinically stable with no change in functional class. Five (5.6%) patients experienced worsening of NYHA functional class during follow-up. Overall, the change in NYHA functional class was statistically significant (p < 0.001).<h4>Conclusion</h4>Our findings suggest that the addition of SGLT2 inhibitors to standard heart failure therapy was associated with significant improvement in NYHA functional class and a significant reduction in NT-proBNP levels over three months.",
+      "url": "https://doi.org/10.7759/cureus.116770",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Asthana A",
+        "Buragohain D",
+        "Caleb Harris P",
+        "Shikoh A",
+        "Malviya A",
+        "Mishra A"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-09-23",
+      "doi": "10.7759/cureus.116770",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42921474",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Cellular cardiomyoplasty with autologous skeletal myoblasts for ischemic heart disease and heart failure",
+      "snippet": "Cell transplantation to repair or regenerate injured myocardium is a new frontier in the treatment of cardiovascular disease. Even though it is based on many years of pre-clinical studies, much remains to be understood about this methodology, even as it progresses to the clinic. For example, controversies exist over the specific cells to be used, the dosages needed for tissue repair, how cells will affect the electrical activity of the myocardium, and even whether the cells can improve myocardial function after transplantation — all of which are briefly reviewed here. Autologous skeletal myobl",
+      "full_text": "Cell transplantation to repair or regenerate injured myocardium is a new frontier in the treatment of cardiovascular disease. Even though it is based on many years of pre-clinical studies, much remains to be understood about this methodology, even as it progresses to the clinic. For example, controversies exist over the specific cells to be used, the dosages needed for tissue repair, how cells will affect the electrical activity of the myocardium, and even whether the cells can improve myocardial function after transplantation — all of which are briefly reviewed here. Autologous skeletal myoblasts appear to be the most well studied and best first generation cells for cardiac repair. Yet cardiocytes and, more recently, stem cells have been proposed as cell sources for this technology. Their advantages and limitations are also discussed. Although cellular cardiomyoplasty (cell transplantation for cardiac repair) shows great pre-clinical promise, its future will heavily depend on conducting carefully controlled, randomized clinical trials with appropriate endpoints. Utilizing biologically active cells provides both an opportunity for tissue repair and the potential for not yet understood outcomes. As with any frontier, many pioneers will attempt to conquer it. But also as with any frontier, there are pitfalls and consequences to be considered that may surpass those of previous endeavors. The future thus requires careful consideration and well-designed trials rather than haste. The promise for cell transplantation is too great to be spoiled by ill-designed attempts that forget to account for the biology of both the cells and the myocardium.",
+      "url": "https://data.cdc.gov/d/u9gs-kg63",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "u9gs-kg63",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multisystem Inflammatory Syndrome in Children (MIS-C) National Surveillance - (February 2020 - December 2022)",
+      "snippet": "\"This public use dataset includes case-level data from confirmed MIS-C cases with illness onset February 2020 through December 2022 that were reported to CDC’s National MIS-C Surveillance system. Reports are from 55 U.S. jurisdictions (all 50 states plus New York City, Guam, Puerto Rico, US Virgin Islands, and Washington DC). All cases meet the 2020 CDC MIS-C case definition. U.S. jurisdictions voluntarily report potential MIS-C cases to CDC using a standardized case report form. \n\nTo protect patient privacy, location information has been consolidated to census region, illness onset dates have",
+      "full_text": "\"This public use dataset includes case-level data from confirmed MIS-C cases with illness onset February 2020 through December 2022 that were reported to CDC’s National MIS-C Surveillance system. Reports are from 55 U.S. jurisdictions (all 50 states plus New York City, Guam, Puerto Rico, US Virgin Islands, and Washington DC). All cases meet the 2020 CDC MIS-C case definition. U.S. jurisdictions voluntarily report potential MIS-C cases to CDC using a standardized case report form. \n\nTo protect patient privacy, location information has been consolidated to census region, illness onset dates have been abbreviated to month-year, and age ranges are provided. The dataset was further deidentified by implementing a k-anonymity threshold of k=3, and suppressing data for Census Region using primary and complementary suppression to protect patient privacy. The following data are included: patient demographics, timing of illness onset, outcomes, organ system involvement, SARS CoV-2 testing, comorbidities, treatment, and COVID-19 vaccination information. “Case definition” organ system involvement is defined according to 2020 CDC MIS-C case definition criteria. “Severe organ involvement” is a subset of case definition organ involvement composed of more severe MIS-C organ manifestations. This definition has been used in several prior publications and is written out in supplemental materials.\"",
+      "url": "https://data.cdc.gov/d/qgfq-p8ib",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-09-22",
+      "document_type": "government_publication",
+      "dataset_id": "qgfq-p8ib",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ACE inhibitors for heart failure: a question of dose",
+      "snippet": "Brief periods of suppression of angiotensin",
+      "full_text": "Brief periods of suppression of angiotensin",
+      "url": "https://openalex.org/W2016424925",
+      "_adapter": "openalex",
+      "authors": [
+        "John G.F. Cleland",
+        "Philip Alexander Poole-Wilson"
+      ],
+      "venue": "Heart",
+      "publication_date": "1994",
+      "doi": "10.1136/hrt.72.3_suppl.s106",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Improving outcomes in heart failure: a personal perspective",
+      "snippet": "When I was a medical student and junior doctor in the early 1980s I saw many patients on the wards in hospital with this terrible illness for which we could do little. When the heart fails as a pump one of the main manifestations is accumulation of fluid due to retention of sodium and water by the kidneys which also malfunction as a result of reduced blood flow and other mechanisms. Fluid accumulation in the legs and lungs leads to swelling (peripheral oedema) and breathlessness. Reduced blood flow to the muscles also causes intense fatigue. Back in these early days diuretics which caused the ",
+      "full_text": "When I was a medical student and junior doctor in the early 1980s I saw many patients on the wards in hospital with this terrible illness for which we could do little. When the heart fails as a pump one of the main manifestations is accumulation of fluid due to retention of sodium and water by the kidneys which also malfunction as a result of reduced blood flow and other mechanisms. Fluid accumulation in the legs and lungs leads to swelling (peripheral oedema) and breathlessness. Reduced blood flow to the muscles also causes intense fatigue. Back in these early days diuretics which caused the kidneys to produce more urine and relieve fluid intention) and digoxin, a 200 year old plant-extract thought to stimulate contraction of the failing heart, were the only two treatments we had, except for the rare, young, patient who was lucky enough to get a transplant. Otherwise, I knew that around 7 out of 10 of those men and women I saw would be dead within a year. Even worse the last months of their lives were characterized by disabling symptoms and exercise intolerance making even ordinary everyday activities a struggle, if not impossible. Often patients were also readmitted to hospital because of acute worsening of their symptoms. Around the time I graduated from medical school USA and European investigators such as Jay Cohn, Gary Francis, Peter Harris, and Philip Pool-Wilson were beginning to unravel the pathophysiology—the disease mechanisms—of heart failure and starting to explore the possibility of finding new treatments for this condition.1,2 The picture that emerged was remarkable. Although the primary problem was of course weakness and failing of the contraction of the heart muscle, it was the secondary responses (and their effects on the blood vessels, kidneys, and failing heart) that were key to the understanding of why heart failure progressively worsened over time and to effective new treatments. It was realized that inappropriate activation of a key hormonal pathway, the renin-angiotensin-aldosterone system (RAAS), occurs in patients with heart failure, contributing to the progressive worsening I have mentioned and, ultimately, death. One of my most formative experiences as a young Cardiology trainee was seeing Dr Karl Swedberg, as he was then, from Gothenburg University present the results of the first trial (CONSENSUS) in heart failure to show that we could reduce the risk of death in this terrible illness.3 That trial, conducted in around 250 people with very advanced heart failure, showed that a drug which blocked the RAAS, enalapril, had a dramatic and early effect on mortality. Later another, larger, trial showed that the same drug also improved survival in patients with less severe symptoms; one of the leaders of that trial was Salim Yusuf (Figure 1).4 Another less well publicized discovery around that time was that the heart was not just a mechanical pump but also an endocrine organ that secreted peptide hormones which stimulated the kidneys to excrete sodium and water.5 I was fascinated by this discovery and in 1986 went to work with one of the pioneers studying these newly described hormones in humans, Professor Allan Struthers at the University of Dundee in Scotland. We showed that these natriuretic peptides, as well as promoting urine production by the kidneys, also inhibited the RAAS.6–8 We also hypothesized that because of these actions, boosting natriuretic peptide levels might be a useful way to treat patients with heart failure.8 While working in Dundee I heard that Dr Henry Dargie in Glasgow was working with a new drug that blocked an enzyme (neutral endopeptidase or neprilysin) which breaks down natriuretic peptides (thereby increasing natriuretic peptide levels).9–11 Because of that I moved to Glasgow in 1988 in the hope of becoming involved in the further development of this exciting new compound. Unfortunately, for reasons we did not understand at the time, the effect of this agent was not sustained",
+      "url": "https://openalex.org/W2175757999",
+      "_adapter": "openalex",
+      "authors": [
+        "John J.V. McMurray"
+      ],
+      "venue": "European Heart Journal",
+      "publication_date": "2015",
+      "doi": "10.1093/eurheartj/ehv565",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Neprilysin Inhibitors in Heart Failure",
+      "snippet": "This article provides a contemporary review and a new perspective on the role of neprilysin inhibition in heart failure (HF) in the context of recent clinical trials and addresses potential mechanisms and unanswered questions in certain HF patient populations. Neprilysin is an endopeptidase that cleaves a variety of peptides such as natriuretic peptides, bradykinin, adrenomedullin, substance P, angiotensin I and II, and endothelin. It has a broad role in cardiovascular, renal, pulmonary, gastrointestinal, endocrine, and neurologic functions. The combined angiotensin receptor and neprilysin inh",
+      "full_text": "This article provides a contemporary review and a new perspective on the role of neprilysin inhibition in heart failure (HF) in the context of recent clinical trials and addresses potential mechanisms and unanswered questions in certain HF patient populations. Neprilysin is an endopeptidase that cleaves a variety of peptides such as natriuretic peptides, bradykinin, adrenomedullin, substance P, angiotensin I and II, and endothelin. It has a broad role in cardiovascular, renal, pulmonary, gastrointestinal, endocrine, and neurologic functions. The combined angiotensin receptor and neprilysin inhibitor (ARNi) has been developed with an intent to increase vasodilatory natriuretic peptides and prevent counterregulatory activation of the angiotensin system. ARNi therapy is very effective in reducing the risks of death and hospitalization for HF in patients with HF and New York Heart Association functional class II to III symptoms, but studies failed to show any benefits with ARNi when compared with angiotensin-converting enzyme inhibitors or angiotensin receptor blocker in patients with advanced HF with reduced ejection fraction or in patients following myocardial infarction with left ventricular dysfunction but without HF. These raise the questions about whether the enzymatic breakdown of natriuretic peptides may not be a very effective solution in advanced HF patients when there is downstream blunting of the response to natriuretic peptides or among post-myocardial infarction patients in the absence of HF when there may not be a need for increased natriuretic peptide availability. Furthermore, there is a need for additional studies to determine the long-term effects of ARNi on albuminuria, obesity, glycemic control and lipid profile, blood pressure, and cognitive function in patients with HF.",
+      "url": "https://openalex.org/W4297065629",
+      "_adapter": "openalex",
+      "authors": [
+        "Biykem Bozkurt",
+        "Ajith P. Nair",
+        "Arunima Misra",
+        "Claire Ziemba Scott",
+        "Jamal Hussain Mahar",
+        "Savitri Fedson"
+      ],
+      "venue": "JACC Basic to Translational Science",
+      "publication_date": "2022",
+      "doi": "10.1016/j.jacbts.2022.05.010",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Mobile Phone-Based Telemonitoring for Heart Failure Management: A Randomized Controlled Trial",
+      "snippet": "BACKGROUND: Previous trials of telemonitoring for heart failure management have reported inconsistent results, largely due to diverse intervention and study designs. Mobile phones are becoming ubiquitous and economical, but the feasibility and efficacy of a mobile phone-based telemonitoring system have not been determined. OBJECTIVE: The objective of this trial was to investigate the effects of a mobile phone-based telemonitoring system on heart failure management and outcomes. METHODS: One hundred patients were recruited from a heart function clinic and randomized into telemonitoring and cont",
+      "full_text": "BACKGROUND: Previous trials of telemonitoring for heart failure management have reported inconsistent results, largely due to diverse intervention and study designs. Mobile phones are becoming ubiquitous and economical, but the feasibility and efficacy of a mobile phone-based telemonitoring system have not been determined. OBJECTIVE: The objective of this trial was to investigate the effects of a mobile phone-based telemonitoring system on heart failure management and outcomes. METHODS: One hundred patients were recruited from a heart function clinic and randomized into telemonitoring and control groups. The telemonitoring group (N = 50) took daily weight and blood pressure readings and weekly single-lead ECGs, and answered daily symptom questions on a mobile phone over 6 months. Readings were automatically transmitted wirelessly to the mobile phone and then to data servers. Instructions were sent to the patients' mobile phones and alerts to a cardiologist's mobile phone as required. RESULTS: Baseline questionnaires were completed and returned by 94 patients, and 84 patients returned post-study questionnaires. About 70% of telemonitoring patients completed at least 80% of their possible daily readings. The change in quality of life from baseline to post-study, as measured with the Minnesota Living with Heart Failure Questionnaire, was significantly greater for the telemonitoring group compared to the control group (P = .05). A between-group analysis also found greater post-study self-care maintenance (measured with the Self-Care of Heart Failure Index) for the telemonitoring group (P = .03). Brain natriuretic peptide (BNP) levels, self-care management, and left ventricular ejection fraction (LVEF) improved significantly for both groups from baseline to post-study, but did not show a between-group difference. However, a subgroup within-group analysis using the data from the 63 patients who had attended the heart function clinic for more than 6 months revealed the telemonitoring group had significant improvements from baseline to post-study in BNP (decreased by 150 pg/mL, P = .02), LVEF (increased by 7.4%, P = .005) and self-care maintenance (increased by 7 points, P = .05) and management (increased by 14 points, P = .03), while the control group did not. No differences were found between the telemonitoring and control groups in terms of hospitalization, mortality, or emergency department visits, but the trial was underpowered to detect differences in these metrics. CONCLUSIONS: Our findings provide evidence of improved quality of life through improved self-care and clinical management from a mobile phone-based telemonitoring system. The use of the mobile phone-based system had high adherence and was feasible for patients, including the elderly and those with no experience with mobile phones. TRIAL REGISTRATION: ClinicalTrials.gov NCT00778986.",
+      "url": "https://openalex.org/W1986979602",
+      "_adapter": "openalex",
+      "authors": [
+        "Emily Seto",
+        "Kevin J. Leonard",
+        "Joseph Antony Cafazzo",
+        "Jan M. Barnsley",
+        "Caterina Masino",
+        "Heather Joan Ross"
+      ],
+      "venue": "Journal of Medical Internet Research",
+      "publication_date": "2012",
+      "doi": "10.2196/jmir.1909",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Renal Impairment and Outcomes in Heart Failure",
+      "snippet": "Renal Impairment and Outcomes in Heart Failure",
+      "full_text": null,
+      "url": "https://openalex.org/W1489755771",
+      "_adapter": "openalex",
+      "authors": [
+        "Grace L. Smith",
+        "Judith H. Lichtman",
+        "Michael B. Bracken",
+        "Michael G. Shlipak",
+        "Christopher O. Phillips",
+        "Paul DiCapua",
+        "Harlan M. Krumholz"
+      ],
+      "venue": "Journal of the American College of Cardiology",
+      "publication_date": "2006",
+      "doi": "10.1016/j.jacc.2005.11.084",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What are the costs of heart failure?",
+      "snippet": "Heart failure , a syndrome associated with increasing prevalence, high mortality, and frequent hospital admissions, imposes a significant economic burden on western healthcare systems that is expected to further increase in the future due to the ageing population. Hospitalizations are responsible for the largest part of treatment costs and, thus, the main target for strategies aiming at cost reduction. Current literature suggests that evidence-based therapy with drugs, devices, and modern disease management programmes improves clinical outcomes of the large population of heart failure patients",
+      "full_text": "Heart failure , a syndrome associated with increasing prevalence, high mortality, and frequent hospital admissions, imposes a significant economic burden on western healthcare systems that is expected to further increase in the future due to the ageing population. Hospitalizations are responsible for the largest part of treatment costs and, thus, the main target for strategies aiming at cost reduction. Current literature suggests that evidence-based therapy with drugs, devices, and modern disease management programmes improves clinical outcomes of the large population of heart failure patients in a largely cost-effective manner. However, comprehensive knowledge about the cost of treatment is important to guide clinicians in the responsible allocation of today's limited health-care resources. This review provides information about the total cost of heart failure and the contribution of different treatment components to the overall costs.",
+      "url": "https://openalex.org/W2095812275",
+      "_adapter": "openalex",
+      "authors": [
+        "Frieder Braunschweig",
+        "Martín Cowie",
+        "Angelo Auricchio"
+      ],
+      "venue": "EP Europace",
+      "publication_date": "2011",
+      "doi": "10.1093/europace/eur081",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Efficacy and Safety of Exercise Training in Patients With Chronic Heart Failure: HF-ACTION Randomized Controlled Trial",
+      "snippet": "CONTEXT: Guidelines recommend that exercise training be considered for medically stable outpatients with heart failure. Previous studies have not had adequate statistical power to measure the effects of exercise training on clinical outcomes. OBJECTIVE: To test the efficacy and safety of exercise training among patients with heart failure. DESIGN, SETTING, AND PATIENTS: Multicenter, randomized controlled trial of 2331 medically stable outpatients with heart failure and reduced ejection fraction. Participants in Heart Failure: A Controlled Trial Investigating Outcomes of Exercise Training (HF-A",
+      "full_text": "CONTEXT: Guidelines recommend that exercise training be considered for medically stable outpatients with heart failure. Previous studies have not had adequate statistical power to measure the effects of exercise training on clinical outcomes. OBJECTIVE: To test the efficacy and safety of exercise training among patients with heart failure. DESIGN, SETTING, AND PATIENTS: Multicenter, randomized controlled trial of 2331 medically stable outpatients with heart failure and reduced ejection fraction. Participants in Heart Failure: A Controlled Trial Investigating Outcomes of Exercise Training (HF-ACTION) were randomized from April 2003 through February 2007 at 82 centers within the United States, Canada, and France; median follow-up was 30 months. INTERVENTIONS: Usual care plus aerobic exercise training, consisting of 36 supervised sessions followed by home-based training, or usual care alone. MAIN OUTCOME MEASURES: Composite primary end point of all-cause mortality or hospitalization and prespecified secondary end points of all-cause mortality, cardiovascular mortality or cardiovascular hospitalization, and cardiovascular mortality or heart failure hospitalization. RESULTS: The median age was 59 years, 28% were women, and 37% had New York Heart Association class III or IV symptoms. Heart failure etiology was ischemic in 51%, and median left ventricular ejection fraction was 25%. Exercise adherence decreased from a median of 95 minutes per week during months 4 through 6 of follow-up to 74 minutes per week during months 10 through 12. A total of 759 patients (65%) in the exercise training group died or were hospitalized compared with 796 patients (68%) in the usual care group (hazard ratio [HR], 0.93 [95% confidence interval {CI}, 0.84-1.02]; P = .13). There were nonsignificant reductions in the exercise training group for mortality (189 patients [16%] in the exercise training group vs 198 patients [17%] in the usual care group; HR, 0.96 [95% CI, 0.79-1.17]; P = .70), cardiovascular mortality or cardiovascular hospitalization (632 [55%] in the exercise training group vs 677 [58%] in the usual care group; HR, 0.92 [95% CI, 0.83-1.03]; P = .14), and cardiovascular mortality or heart failure hospitalization (344 [30%] in the exercise training group vs 393 [34%] in the usual care group; HR, 0.87 [95% CI, 0.75-1.00]; P = .06). In prespecified supplementary analyses adjusting for highly prognostic baseline characteristics, the HRs were 0.89 (95% CI, 0.81-0.99; P = .03) for all-cause mortality or hospitalization, 0.91 (95% CI, 0.82-1.01; P = .09) for cardiovascular mortality or cardiovascular hospitalization, and 0.85 (95% CI, 0.74-0.99; P = .03) for cardiovascular mortality or heart failure hospitalization. Other adverse events were similar between the groups. CONCLUSIONS: In the protocol-specified primary analysis, exercise training resulted in nonsignificant reductions in the primary end point of all-cause mortality or hospitalization and in key secondary clinical end points. After adjustment for highly prognostic predictors of the primary end point, exercise training was associated with modest significant reductions for both all-cause mortality or hospitalization and cardiovascular mortality or heart failure hospitalization. TRIAL REGISTRATION: clinicaltrials.gov Identifier: NCT00047437.",
+      "url": "https://openalex.org/W2118634943",
+      "_adapter": "openalex",
+      "authors": [
+        "Christopher M. O’Connor",
+        "David J. Whellan",
+        "Kerry L. Lee",
+        "Steven J. Keteyian",
+        "Lawton S. Cooper",
+        "Stephen J. Ellis",
+        "Eric Leifer",
+        "William E. Kraus",
+        "Dalane W. Kitzman",
+        "James A. Blumenthal",
+        "David S. Rendall",
+        "Nancy Houston Miller",
+        "Jerome L. Fleg",
+        "Kevin Alan Schulman",
+        "Robert Samuel McKelvie",
+        "Faiez M. Zannad",
+        "Ileana L. Piña",
+        "for the HF-ACTION Investigators"
+      ],
+      "venue": "JAMA",
+      "publication_date": "2009",
+      "doi": "10.1001/jama.2009.454",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ACE-inhibitors, Beta-blockers or the Combination in Heart Failure: Is It Just an A–B–C ?",
+      "snippet": "During the last decades, the pharmacotherapy of heart failure (HF) has changed dramatically. Large-scale trials have been conducted that have indisputably shown the efficacy of angiotensin-converting enzyme inhibitors (ACE-I) and betaadrenergic receptor blockers (β-blockers). These and other therapies have improved the overall outcome of patients with HF, although prognosis remains bleak. To identify patients with high risk for suffering a cardiovascular event or death, numerous (bio)markers have been put to test. (Serial) B-type natriuretic peptide (BNP) has emerged as a powerful surrogate pa",
+      "full_text": "During the last decades, the pharmacotherapy of heart failure (HF) has changed dramatically. Large-scale trials have been conducted that have indisputably shown the efficacy of angiotensin-converting enzyme inhibitors (ACE-I) and betaadrenergic receptor blockers (β-blockers). These and other therapies have improved the overall outcome of patients with HF, although prognosis remains bleak. To identify patients with high risk for suffering a cardiovascular event or death, numerous (bio)markers have been put to test. (Serial) B-type natriuretic peptide (BNP) has emerged as a powerful surrogate parameter to monitor the severity of heart failure [1]. BNP can be measured easily and reliably [2] and currently, BNP is generally accepted as one of the strongest predictors for future events, death, and its use is advocated to monitor treatment [1]. In order for us to use BNP as a surrogate parameter at the full range of HF patients, we need to understand how BNP is regulated and what effects different drugs exert on BNP expression, production, and release. BNP is expressed by ventricular, and to a lesser extent, atrial cardiomyocytes upon stretch [1]. On a clinical level, this is paralleled by mRNA levels that are directly related to parameters of severity of HF and to LV geometry [3]. On a molecular level, angiotensin II directly increases mRNA levels of BNP via posttranscriptional control of BNP [4, 5]. This in part mediated by a GATA element in the BNP promoter [6]. GATA elements are necessary and sufficient to confer transcriptional activation of BNP gene in response R. A. de Boer: D. J. van Veldhuisen (*)",
+      "url": "https://openalex.org/W2198184043",
+      "_adapter": "openalex",
+      "authors": [
+        "Rudolf A. de Boer",
+        "Dirk Jan van Veldhuisen"
+      ],
+      "venue": "Cardiovascular Drugs and Therapy",
+      "publication_date": "2008",
+      "doi": "10.1007/s10557-008-6107-x",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sex-specific mechanisms and therapeutics in heart failure: translating biology into personalized care.",
+      "snippet": "Sex is one of the most consistent, yet clinically underexploited, determinants of heart failure (HF) phenotype, mechanism, and outcome. Building on landmark reviews and the 2024 scientific statement of the Heart Failure Association, which documented well-recognized phenotypic differences but noted that their mechanisms remain only partially defined, this review examines how sex differences in HF arise and how firmly they should guide practice. Epidemiologically, female predominance in HF with preserved ejection fraction (EF) is age- and menopause-dependent rather than lifelong. Mechanistically",
+      "full_text": "Sex is one of the most consistent, yet clinically underexploited, determinants of heart failure (HF) phenotype, mechanism, and outcome. Building on landmark reviews and the 2024 scientific statement of the Heart Failure Association, which documented well-recognized phenotypic differences but noted that their mechanisms remain only partially defined, this review examines how sex differences in HF arise and how firmly they should guide practice. Epidemiologically, female predominance in HF with preserved ejection fraction (EF) is age- and menopause-dependent rather than lifelong. Mechanistically, sex-divergent hormonal signalling, autonomic tone, coronary microvascular dysfunction and myocardial fibrosis often produce similar phenotypes through different mechanisms: microvascular dysfunction is similarly prevalent in both sexes but linked to fibrosis in women and atherosclerotic risk factors in men, and oestradiol regulates collagen synthesis in opposite directions in female and male cardiac fibroblasts. Clinically, comorbidities carry divergent prognostic weight by sex. Graded against the strength of evidence, sodium-glucose cotransporter 2 inhibitors show established sex-neutral efficacy, whereas the greater benefit of angiotensin receptor-neprilysin inhibition and mineralocorticoid receptor antagonism in women rests on subgroup signals that await confirmation. Natriuretic peptide concentrations are substantially sex-dependent, yet diagnostic thresholds remain sex-neutral, although sex-specific calibration is methodologically achievable. Women remain underrepresented in HF trials and less often referred to specialized care. HF is therefore best understood as a sex-differentiated syndrome whose frameworks were built largely around male-pattern disease. Sex-calibrated trial enrolment, sex-specific biomarker and EF thresholds, and stratification by menopausal stage are concrete next steps towards personalized care.",
+      "url": "https://doi.org/10.1093/eschf/xvag274",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Papp Z",
+        "von Haehling S",
+        "Biegus J",
+        "Bódi B",
+        "Vágó RR",
+        "Pólik Z",
+        "Borbély A"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-11-01",
+      "doi": "10.1093/eschf/xvag274",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42961949",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "europe_pmc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Cardiorenal Syndrome: Pathophysiology, Management, and the Challenge of Therapeutic Inertia.",
+      "snippet": "Cardiorenal syndrome describes the clinical consequences of the bidirectional influence that cardiac and renal dysfunction exert on each other-a domain in which single-organ care proves insufficient. A 2024 meta-analysis estimated the pooled prevalence of chronic kidney disease among patients with heart failure at 49%. Across individual cohorts, this figure ranges between 30% and 60%, with the spread reflecting the population studied and the threshold used to define kidney disease. Among acute heart failure admissions, 64% of cases have an estimated glomerular filtration rate below 60 mL/min/1",
+      "full_text": "Cardiorenal syndrome describes the clinical consequences of the bidirectional influence that cardiac and renal dysfunction exert on each other-a domain in which single-organ care proves insufficient. A 2024 meta-analysis estimated the pooled prevalence of chronic kidney disease among patients with heart failure at 49%. Across individual cohorts, this figure ranges between 30% and 60%, with the spread reflecting the population studied and the threshold used to define kidney disease. Among acute heart failure admissions, 64% of cases have an estimated glomerular filtration rate below 60 mL/min/1.73 m<sup>2</sup>, and mortality reaches 7.6% once it falls into the severe range (15-29 mL/min/1.73 m<sup>2</sup>). The same can be described in the other \"direction\": congestive heart failure is reported in 28% of adults aged 66 years or older with chronic kidney disease, compared to 6% of those without. The Acute Dialysis Quality Initiative distinguishes a five-subtype framework by direction and chronicity of organ injury, and each subtype shows characteristic prescribing failure patterns. In types 1 and 2, the dominant problem is premature de-escalation of neurohormonal therapy at the first creatinine rise. In type 4, the failure is upstream in the cascade: cardiovascular surveillance lags behind the increasing rate of chronic kidney disease. Randomized trials over the past decade have expanded the therapeutic options. Sodium-glucose cotransporter 2 inhibitors showed cardiorenal benefit across every ejection fraction studied and at estimated glomerular filtration rate values down to 20 mL/min/1.73 m<sup>2</sup>. These findings have expanded treatment eligibility to patients with advanced CKD. The FINE-HEART pooled analysis of finerenone suggested a nominal reduction in all-cause mortality, alongside fewer heart failure hospitalizations and improvement in the kidney composite outcome. In the FLOW trial, semaglutide showed a reduction in the composite of major kidney events and cardiovascular death in diabetic adults with chronic kidney disease. In this cohort, the estimated glomerular filtration rate slope was slower in the active arm and secondary outcomes showed reductions in major adverse cardiovascular events and in all-cause mortality. However, observational registries show that these classes of drugs are less used in patients with the highest baseline risk, with advancing renal disease identified as an independent predictor of under-prescription. Therapeutic inertia in this setting reflects determinants at the patient, clinician, and system levels, which is compounded because each prescribing decision must be justified for both the heart and the kidney. The primary objective of the present narrative review is the therapeutic inertia that separates this evidence from routine prescribing: the sections on pathophysiology, imaging and biomarker tools, and subtype-specific pharmacotherapy supply the clinical rationale, and the closing sections cover the implementation strategies and the multidisciplinary framework required to act on the trial findings.",
+      "url": "https://doi.org/10.3390/medicina62101855",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Gembillo G",
+        "Calabrese V",
+        "Soraci L",
+        "Lo Cicero L",
+        "Scapellato M",
+        "Messina R",
+        "Ricca MF",
+        "Stancanelli MR",
+        "Corsonello A",
+        "Santoro D"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-09-25",
+      "doi": "10.3390/medicina62101855",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42942386",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "europe_pmc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Observational studies on the association of outpatient antidiabetic medication use and COVID-19 outcomes: are the findings more relevant to diabetes management than to COVID-19 pathology? A mini-review.",
+      "snippet": "At the start of the COVID-19 pandemic, there were concerns that some antidiabetic medications might worsen outcomes, though anti-inflammatory properties suggested possible benefits. Many observational studies examined antidiabetic medications use and COVID-19 outcomes. Meta-analyses showed that insulin was linked to worse outcomes, while metformin, sodium-glucose cotransporter 2 (SGLT-2) inhibitors, and glucagon-like peptide-1 (GLP-1) agonists were associated with better outcomes. Findings on dipeptidyl peptidase-4 (DPP-4) inhibitors, pioglitazone, and sulfonylureas were mixed-showing neutral,",
+      "full_text": "At the start of the COVID-19 pandemic, there were concerns that some antidiabetic medications might worsen outcomes, though anti-inflammatory properties suggested possible benefits. Many observational studies examined antidiabetic medications use and COVID-19 outcomes. Meta-analyses showed that insulin was linked to worse outcomes, while metformin, sodium-glucose cotransporter 2 (SGLT-2) inhibitors, and glucagon-like peptide-1 (GLP-1) agonists were associated with better outcomes. Findings on dipeptidyl peptidase-4 (DPP-4) inhibitors, pioglitazone, and sulfonylureas were mixed-showing neutral, beneficial, or negative effects. However, randomized controlled trials (RCTs) testing these medications after SARS-CoV-2 infection found no effect on COVID-19 outcomes, implying that their anti-inflammatory effects do not translate into meaningful clinical benefits during acute infection. This discrepancy prompts questioning what observational studies actually measured. Given that many studies applied robust statistical methods, their results are unlikely solely due to confounding or indication bias. We hypothesize that these studies reveal broader cardiovascular effects and illuminate diabetes management more than they inform COVID-19 pathology. Their findings align with current 2022 American Diabetes Association/European Association for the Study of Diabetes (ADA/EASD) consensus guidelines for the management of type 2 diabetes mellitus endorsing metformin, SGLT-2 inhibitors, and GLP-1 agonists as first-line therapies, recommending cautious early insulin use, and reserving DPP-4 inhibitors, sulfonylureas, and pioglitazone for selective cases. This is applicable regardless of COVID-19 status. Further research should determine whether infection-related clinical endpoints, such as mortality or hospitalization from COVID-19 or other infections, might serve as valid surrogate markers for cardiovascular outcomes.",
+      "url": "https://doi.org/10.3389/fcdhc.2026.1760695",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Dimnjaković J",
+        "Buble T",
+        "Brborović O"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-04-14",
+      "doi": "10.3389/fcdhc.2026.1760695",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42058503",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "europe_pmc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Drug-Induced Electrolyte Disturbances in Older Adults Presenting to the Emergency Department: Mechanisms, Recognition and Prevention.",
+      "snippet": "Many older adults attending the emergency department (ED) take medications that interfere with water and electrolyte balance. This narrative review, based on a structured PubMed/MEDLINE search covering January 2016 to September 2026, summarizes evidence on drug-associated disorders of sodium, potassium, magnesium and calcium in older ED patients. Thiazides, antidepressants, antiepileptic drugs, antipsychotics, proton pump inhibitors and desmopressin are associated with hyponatremia; with thiazides, the risk peaks in the first weeks of treatment and is highest in women aged 80 years or older. L",
+      "full_text": "Many older adults attending the emergency department (ED) take medications that interfere with water and electrolyte balance. This narrative review, based on a structured PubMed/MEDLINE search covering January 2016 to September 2026, summarizes evidence on drug-associated disorders of sodium, potassium, magnesium and calcium in older ED patients. Thiazides, antidepressants, antiepileptic drugs, antipsychotics, proton pump inhibitors and desmopressin are associated with hyponatremia; with thiazides, the risk peaks in the first weeks of treatment and is highest in women aged 80 years or older. Lithium can cause nephrogenic diabetes insipidus, which may persist after discontinuation and cause hypernatremia when water intake is inadequate. Renin-angiotensin-aldosterone system inhibitors, mineralocorticoid receptor antagonists, trimethoprim and non-steroidal anti-inflammatory drugs predispose to hyperkalemia, particularly in chronic kidney disease; diuretics and proton pump inhibitors are associated with hypokalemia and hypomagnesemia; and denosumab can cause severe hypocalcemia in advanced kidney disease. Most of this evidence is observational, and drugs usually act together with comorbidities, acute illness and other medications. We propose a severity-based ED algorithm integrating medication history, laboratory, electrocardiographic and volume assessment (including point-of-care ultrasound) to guide stabilization, drug adjustment, safe correction and disposition. ED-based medication safety programs reduce inappropriate prescribing, but their effect on electrolyte-related outcomes remains unproven.",
+      "url": "https://doi.org/10.3390/jcm15218719",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Brici AC",
+        "Murariu MO",
+        "Manole A",
+        "Patrascu R",
+        "Ciocan V",
+        "Novacescu D",
+        "Cut TG",
+        "Petrica A",
+        "Manole F",
+        "Zara F",
+        "Dumitru CS",
+        "Moise ML"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-11-08",
+      "doi": "10.3390/jcm15218719",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "43030861",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "europe_pmc",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Treatment and practical considerations of IgA nephropathy.",
+      "snippet": "IgA nephropathy is a common cause of glomerular disease that may result in kidney failure. Until recently, angiotensin blockade using angiotensin converting enzyme (ACE) inhibitors and angiotensin receptor blockers (ARB) were the main treatment options for patients with IgA nephropathy. Newer drugs such as sodium-glucose co-transporter 2 (SGLT2) inhibitors, endothelin angiotensin receptor antagonists (DEARA), endothelin receptor antagonists (ERA), complement inhibitors, targeted release formulation glucocorticoids, and a proliferation-inducing ligand (APRIL) and B cell activation factor (BAFF)",
+      "full_text": "IgA nephropathy is a common cause of glomerular disease that may result in kidney failure. Until recently, angiotensin blockade using angiotensin converting enzyme (ACE) inhibitors and angiotensin receptor blockers (ARB) were the main treatment options for patients with IgA nephropathy. Newer drugs such as sodium-glucose co-transporter 2 (SGLT2) inhibitors, endothelin angiotensin receptor antagonists (DEARA), endothelin receptor antagonists (ERA), complement inhibitors, targeted release formulation glucocorticoids, and a proliferation-inducing ligand (APRIL) and B cell activation factor (BAFF) inhibitors have shown promise in reducing proteinuria and delaying the progression of IgA nephropathy. In this review, we will explore the latest pharmacological options, their efficacy, and when they should be considered in adult patients with IgA nephropathy.",
+      "url": "https://doi.org/10.3389/fmed.2026.1911077",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Sawaf H",
+        "Kim J",
+        "Mehdi A",
+        "Cavanaugh C",
+        "Taliercio JJ"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-10-14",
+      "doi": "10.3389/fmed.2026.1911077",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42953388",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "europe_pmc",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Top developments in clinical cardiac electrophysiology-2025.",
+      "snippet": "Top developments in clinical cardiac electrophysiology-2025.",
+      "full_text": null,
+      "url": "https://doi.org/10.1016/j.hroo.2026.03.039",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Olshansky B"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-06-08",
+      "doi": "10.1016/j.hroo.2026.03.039",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42774403",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "europe_pmc",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Angiotensinogen as a molecular hub in interorgan communication.",
+      "snippet": "Angiotensinogen (AGT) is the sole precursor of angiotensin peptides, its physiological relevance is not determined solely by precursor abundance. Although the liver supplies the bulk of circulating AGT, the protein detected in peripheral tissues may arise from local synthesis, vascular retention, glomerular filtration, barrier crossing, or receptor-mediated uptake. Moreover, the molecular form in which AGT exists carries functional implications: intact AGT and des(Ang I)AGT produce effects that are distinct from-and under certain conditions, opposing to-those of angiotensin II (Ang II). This r",
+      "full_text": "Angiotensinogen (AGT) is the sole precursor of angiotensin peptides, its physiological relevance is not determined solely by precursor abundance. Although the liver supplies the bulk of circulating AGT, the protein detected in peripheral tissues may arise from local synthesis, vascular retention, glomerular filtration, barrier crossing, or receptor-mediated uptake. Moreover, the molecular form in which AGT exists carries functional implications: intact AGT and des(Ang I)AGT produce effects that are distinct from-and under certain conditions, opposing to-those of angiotensin II (Ang II). This review repositions AGT as a context-sensitive mediator of interorgan crosstalk, with a clear demarcation between preclinical models and human data. Studies using source-specific knockout and lineage tracing in mice offer the strongest causal evidence for liver-to-kidney AGT trafficking; most other proposed axes lack such granular resolution. Human genetic loss-of-function studies have definitively established AGT's indispensability for renal morphogenesis and blood-pressure regulation, while observational cohorts and biomarker studies rarely determine its tissue origin or delivery route. Ultimately, the functional output of AGT across organ systems depends on its source, molecular state, local accessibility, enzymatic processing, and the receptor environment. Therapeutic agents that target hepatocytes, such as zilebesiran and tonlamarsen, produce durable AGT suppression and could potentially ease treatment burden relative to conventional daily angiotensin-converting enzyme (ACE) inhibitors or angiotensin receptor blockers (ARBs). Their slow offset of action, combined with a current lack of solid cardiovascular and renal outcome data, raises an unresolved but critical question: what is the safety margin for AGT reduction before renal self-regulation, fluid-electrolyte balance, or pressor responses to physiological stress become compromised? Overall, AGT does not function as a ubiquitous interorgan signaling molecule; instead, it functions as an upstream determinant whose impact is highly context-dependent, shaped by its site of production, route of dissemination, and mode of processing. This review systematically differentiates experimentally established source-to-target circuits from plausible but as-yet-unconfirmed pathways and outlines the mechanistic and clinical benchmarks that must be met for the safe, tissue-selective application of AGT-targeted therapy.",
+      "url": "https://doi.org/10.1186/s12967-026-09074-1",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Zhou J",
+        "Ye X",
+        "Wang Y",
+        "Hong M",
+        "Rong J",
+        "Wang J",
+        "Xu Y"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-10-21",
+      "doi": "10.1186/s12967-026-09074-1",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42958536",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "europe_pmc",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "GLP-1 receptor agonists beyond glycemic control: integrated cardio-renal-metabolic protection across the cardiovascular kidney metabolic continuum.",
+      "snippet": "Glucagon-like peptide-1 receptor agonists (GLP-1RAs) have undergone a fundamental repositioning, once defined by their glycemic effects, they are now established as multi-organ protective agents operating across the cardiovascular-kidney-metabolic (CKM) continuum with benefits that extend substantially beyond glucose lowering, though the precise contribution of glycemic versus non-glycemic mechanisms varies by outcome and population. Major cardiovascular and renal outcome trials; LEADER, REWIND, AMPLITUDE-O, SELECT, FLOW, and SOUL, collectively demonstrate 13-20% reductions in major adverse ca",
+      "full_text": "Glucagon-like peptide-1 receptor agonists (GLP-1RAs) have undergone a fundamental repositioning, once defined by their glycemic effects, they are now established as multi-organ protective agents operating across the cardiovascular-kidney-metabolic (CKM) continuum with benefits that extend substantially beyond glucose lowering, though the precise contribution of glycemic versus non-glycemic mechanisms varies by outcome and population. Major cardiovascular and renal outcome trials; LEADER, REWIND, AMPLITUDE-O, SELECT, FLOW, and SOUL, collectively demonstrate 13-20% reductions in major adverse cardiovascular events (MACE) and meaningful attenuation of chronic kidney disease (CKD) progression in both diabetic and non-diabetic populations. Exploratory mediation analyses from SELECT suggest that a substantial fraction of cardiovascular benefit is not explained by measured cardiometabolic risk factor changes, a finding that is hypothesis-generating and informs ongoing mechanistic investigation. This narrative review synthesizes mechanistic and clinical evidence for integrated GLP-1RA CKM protection, evaluates combination strategies with Sodium-Glucose Cotransporter 2 (SGLT2) inhibitors, and confronts the implementation gap that separates extraordinary trial efficacy from modest real-world uptake, with rigorous distinction between RCT-level evidence, observational findings, and mechanistic hypotheses. We propose a CKM Disease-Modification Framework as a conceptual scaffold for clinical decision-making, rather than treating cardiovascular, renal, and metabolic risk as separate targets requiring sequential intervention. This framework positions GLP-1RAs as upstream disease-modifying agents whose early deployment across the continuum, guided by dominant comorbidity rather than glycemic status, offers the greatest opportunity for organ protection. Taken together, the evidence positions GLP-1RAs not as adjuncts to standard cardiometabolic care, but as a foundational pillar of it, one whose population-level impact is currently constrained not by biology but by cost, access, and awareness.",
+      "url": "https://doi.org/10.1186/s40842-026-00322-3",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Elsayed A",
+        "Ayoub WJ",
+        "Elsayed N",
+        "Stephens J",
+        "Udongwo N",
+        "Elsayed Y",
+        "Ghali JK"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-09-07",
+      "doi": "10.1186/s40842-026-00322-3",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42702727",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "europe_pmc",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

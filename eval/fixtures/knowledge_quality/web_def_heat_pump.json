@@ -1,0 +1,194 @@
+{
+  "schema_version": 2,
+  "id": "web_def_heat_pump",
+  "path": "general_web",
+  "category": "definition",
+  "description": "",
+  "query_raw": "@[tool:internet] how does a heat pump work",
+  "query_clean": "how does a heat pump work",
+  "retrieval_query": "how does a heat pump work",
+  "standalone_question": "How does a heat pump work?",
+  "gold_subject": "heat pump",
+  "gold_facet": "how it works",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:22:26+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "how does a heat pump work"
+    },
+    "standalone": {
+      "duckduckgo": "How does a heat pump work?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "How Heat Pumps Work | HowStuffWorks",
+      "snippet": "One of the biggest advantages of a heat pump over a standard heating, ventilating and air conditioning (HVAC) unit is that there's no need to install separate systems to heat and cool your home. Heat pumps also work extremely efficiently, because they simply transfer heat rather than burn fuel to create it.",
+      "url": "https://home.howstuffworks.com/home-improvement/heating-and-cooling/heat-pump.htm",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What Is A Heat Pump And How Does It Work? | Carrier",
+      "snippet": "Learn what a heat pump is and how it works to provide energy-efficient heating and cooling for your home. Explore types, benefits, and how to choose the right system.",
+      "url": "https://www.carrier.com/us/en/residential/hvac-resources/heat-pumps/what-is-a-heat-pump-how-does-it-work/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Heat pump - Wikipedia",
+      "snippet": "A heat pump is a device that uses mechanical or thermal energy to transfer heat from one space to another. The mechanical heat pump uses electric power to transfer heat by compression. Specifically, it transfers thermal energy by means of a heat pump and refrigeration cycle, cooling one space and warming the other. [1]",
+      "url": "https://en.wikipedia.org/wiki/Heat_pump",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Does a Heat Pump Work? Diagram and Info by Heat Pump Type - Modernize",
+      "snippet": "Learn how geothermal and air source heat pumps work. See an illustration of heat pump parts, and learn about the benefits of these systems.",
+      "url": "https://modernize.com/homeowner-resources/hvac/how-do-heat-pumps-work",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Understanding How Heat Pumps Work - This Old House",
+      "snippet": "A heat pump will take heat from within the home during the summer and let it dissipate outside, allowing the air conditioning system to work more efficiently. In the winter, a heat pump can scavenge heat from the outdoors (even in temperatures as low as zero degrees) and pump it into the home for comfort. The only requirement?",
+      "url": "https://www.thisoldhouse.com/heating-cooling/understanding-heat-pumps",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How do heat pumps work? An illustrated guide - Scientific American",
+      "snippet": "Heat pumps can take even supercold outside air and, using an even colder liquid refrigerant, set off a reaction that turns the refrigerant into hot, compressed gas and pumps warm air in. They do ...",
+      "url": "https://www.scientificamerican.com/article/how-do-heat-pumps-work-an-illustrated-guide/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What Is a Heat Pump, and How Does It Work? - Carrier",
+      "snippet": "By Travis Baugh So, what is a heat pump and how does a heat pump work? A heat pump is part of a home heating and cooling system and is installed outside your home. Like an air conditioner such as central air, it can cool your home, but it's also capable of providing heat. In cooler months, a heat pump pulls heat from the cold outdoor air and transfers it indoors, and in warmer months, it ...",
+      "url": "https://www.carrier.com/residential/en/ca/products/heat-pumps/what-is-a-heat-pump-how-does-it-work/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How a heat pump works - The Future of Heat Pumps - IEA",
+      "snippet": "Heat pumps can be combined with other heating systems, commonly gas, in hybrid configurations. The heat pump itself consists of a compressor, which moves a refrigerant through a refrigeration cycle, and a heat exchanger, which extracts heat from the source.",
+      "url": "https://www.iea.org/reports/the-future-of-heat-pumps/how-a-heat-pump-works",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

@@ -1,0 +1,274 @@
+{
+  "schema_version": 2,
+  "id": "web_abstain_fictional_product",
+  "path": "general_web",
+  "category": "abstain",
+  "description": "Fictional product: no source can answer; expect abstention.",
+  "query_raw": "@[tool:internet] Zorblax 9000 smart toaster firmware update instructions",
+  "query_clean": "Zorblax 9000 smart toaster firmware update instructions",
+  "retrieval_query": "Zorblax 9000 smart toaster firmware update instructions",
+  "standalone_question": "How do I update the firmware on a Zorblax 9000 smart toaster?",
+  "gold_subject": "Zorblax 9000 smart toaster",
+  "gold_facet": "firmware update",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T19:49:21+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "Zorblax 9000 smart toaster firmware update instructions"
+    },
+    "standalone": {
+      "duckduckgo": "How do I update the firmware on a Zorblax 9000 smart toaster?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Manually Update Firmware on Toast Flex",
+      "snippet": "When the firmware update is complete, you'll be prompted to complete a brief setup workflow on the device. To confirm the update was successful, repeat steps 1-5 to ensure the current version reads 3.0.47 or higher. If the firmware update continues to fail or you're unable to update, kindly reach out to Customer Care for additional support.",
+      "url": "https://support.toasttab.com/en/article/Manually-Updating-Firmware-on-Toast-Flex",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Zyxel Download Library MyZyxelPortal - Where can I download Firmwares ...",
+      "snippet": "Zyxel Download Library Download the latest firmware, User's manual, Datasheet, Quick Start Guide, Declaration, and Certification here: Zyxel Download Library Additional Firmware Updates Weekly Firmware / Support Version / Lab Version This update section, which you can find on our forum, is intended for firewall updates.",
+      "url": "https://mysupport.zyxel.com/hc/en-us/articles/360002868600-Zyxel-Download-Library-MyZyxelPortal-Where-can-I-download-Firmwares-Datasheets-User-guides-for-my-Zyxel-device",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WIFI 9000 COLOR TOUCHSCREEN THERMOSTAT Manual & Support",
+      "snippet": "Get support for your WIFI 9000 COLOR TOUCHSCREEN THERMOSTAT, from installation and manuals to troubleshooting tips and replacement information.",
+      "url": "https://www.honeywellhome.com/pages/support-9000-smart-color-touchscreen-thermostat-th9320wf5003-u",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Firmware Update for STB-9000-675 Set-Top Box : Laser Corporation",
+      "snippet": "Learn how to update the firmware on your STB-9000-675 Set-Top Box, including necessary steps and setup instructions for optimal performance.",
+      "url": "https://help.laserco.com.au/support/solutions/articles/51000435636-stb-9000-675-firmware-update-guide",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Check for and Install DiamondClean 9000 Firmware Updates",
+      "snippet": "The Philips Sonicare DiamondClean 9000 is a smart toothbrush that receives periodic software updates to enhance its functionality. These firmware updates are specifically designed to improve the device's performance, including its charging capabilities and connectivity features.",
+      "url": "https://www.manualslib.com/answers/4489047/how-to-check-for-and-install-diamondclean-9000-firmware-updates.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Dash Cam Manuals & Firmware Support | BlackboxMyCar",
+      "snippet": "Find BlackboxMyCar product manuals and official dash cam update, manual and viewer resources. Match the exact model before updating firmware.",
+      "url": "https://www.blackboxmycar.com/pages/manuals-and-firmwares",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Honeywell Home Thermostat Software Updates | Resideo Pro",
+      "snippet": "Thermostat installs made easier. Download the latest software for the Honeywell Home Prestige or VisionPRO Thermostats today.",
+      "url": "https://www.resideo.com/us/en/pro/thermostat-setup/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Product FAQs & Support | Revolution Cooking",
+      "snippet": "Open the Settings menu on the toaster touchscreen, select the Wi-Fi option, choose your home network, and follow the on-screen instructions to connect. Once connected, the toaster can automatically set the time and date, display local weather, and receive software updates.",
+      "url": "https://revcook.com/pages/faqs",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Ultimate Guide to Smart Appliance Firmware Updates 2025",
+      "snippet": "Stay ahead with our 2025 smart appliance firmware update guide. Learn easy steps to enhance performance, boost security, and ensure your devices operate smoothly.",
+      "url": "https://smartbuy.alibaba.com/tips/smart-appliance-firmware-update-guide",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Update the Firmware on Your Connected Kitchen Hub",
+      "snippet": "Regularly Repeat the Update Routine Schedule firmware checks periodically. Routine updates patch security flaws and improve performance. I set monthly reminders on my phone to review firmware updates for all nested devices, keeping my kitchen tech current and running smoothly.",
+      "url": "https://kitchentechhq.com/how-to-update-the-firmware-on-your-connected-kitchen-hub/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Drivers Operating Systems Firmware | Zebra",
+      "snippet": "Drivers, operating systems, and firmware are all found on each device's support page in the Downloads tab. Device-compatible software applications and developer tools can also be found on a device's support page in the Software Applications tab.",
+      "url": "https://www.zebra.com/ap/en/support-downloads/drivers-operating-systems-firmware.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How do I update the firmware on my smart thermostat?",
+      "snippet": "As we delve into the nuances of 'How do I update the firmware on my smart thermostat?', our content is structured to foster learning and understanding.",
+      "url": "https://www.youtube.com/watch?v=M6h2voH7Km4",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Latest Firmware for SLC 9000 Series - Lantronix Tech Support - Confluence",
+      "snippet": "The current released version of firmware for the SLC 9000 Series is 9.7.0.2R1 NOTE: The Percepxion users are advised to use this SLC 9000 firmware version or later.",
+      "url": "https://ltrxdev.atlassian.net/wiki/spaces/LTRXTS/pages/4420075527/Latest+Firmware+for+SLC+9000+Series",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Update Smart Thermostat Firmware: A Step-by-Step Guide for 2026",
+      "snippet": "Learn how to update smart thermostat firmware safely, avoid common errors, and keep your device secure, stable, and energy-efficient.",
+      "url": "https://roihacks.com/how-to-update-smart-thermostat-firmware/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Update Router Firmware: An Easy Step-by-Step Guide",
+      "snippet": "Quick Router Firmware Update Guide Most popular ISPs and router manufacturers offer a mobile app that manages the router. All you need to do is open the app and tap the \"New firmware update\" banner to download and install the update automatically. Otherwise, log into your router, navigate to the \"Update\" page and install the update.",
+      "url": "https://www.wikihow.com/Update-Router-Firmware",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How do I update my Smart-UPS firmware using the command line interface ...",
+      "snippet": "Use the <about> command to display the Network Management Card firmware version: Step 4 - IMPORTANT: For Smart-UPS Ultra models with ID 1226 & 1227, the firmware of the Network Management Card must be updated to version 2.5.4.4 or later before updating the UPS firmware. Refer to FA156047 to update the firmware of the Network Management Card.",
+      "url": "https://www.se.com/us/en/faqs/FAQ000242942/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

@@ -1,0 +1,782 @@
+{
+  "schema_version": 2,
+  "id": "sci_homograph_python_everglades",
+  "path": "scientific_evidence",
+  "category": "acronym_homograph",
+  "description": "Homograph: snake vs programming language.",
+  "query_raw": "@[tool:evidence] Burmese python impact on Everglades mammals",
+  "query_clean": "Burmese python impact on Everglades mammals",
+  "retrieval_query": "Burmese python impact on Everglades mammals",
+  "standalone_question": "What is the impact of invasive Burmese pythons on mammals in the Everglades?",
+  "gold_subject": "Burmese python",
+  "gold_facet": "Everglades mammal decline",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:05:24+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "Burmese python impact on Everglades mammals",
+      "arxiv": "Burmese python impact on Everglades mammals"
+    },
+    "standalone": {
+      "openalex": "What is the impact of invasive Burmese pythons on mammals in the Everglades",
+      "arxiv": "What is the impact of invasive Burmese pythons on mammals in the Everglades"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Marsh rabbit mortalities tie pythons to the precipitous decline of mammals in the Everglades",
+      "snippet": "To address the ongoing debate over the impact of invasive species on native terrestrial wildlife, we conducted a large-scale experiment to test the hypothesis that invasive Burmese pythons (Python molurus bivittatus) were a cause of the precipitous decline of mammals in Everglades National Park (ENP). Evidence linking pythons to mammal declines has been indirect and there are reasons to question whether pythons, or any predator, could have caused the precipitous declines seen across a range of mammalian functional groups. Experimentally manipulating marsh rabbits, we found that pythons account",
+      "full_text": "To address the ongoing debate over the impact of invasive species on native terrestrial wildlife, we conducted a large-scale experiment to test the hypothesis that invasive Burmese pythons (Python molurus bivittatus) were a cause of the precipitous decline of mammals in Everglades National Park (ENP). Evidence linking pythons to mammal declines has been indirect and there are reasons to question whether pythons, or any predator, could have caused the precipitous declines seen across a range of mammalian functional groups. Experimentally manipulating marsh rabbits, we found that pythons accounted for 77% of rabbit mortalities within 11 months of their translocation to ENP and that python predation appeared to preclude the persistence of rabbit populations in ENP. On control sites, outside of the park, no rabbits were killed by pythons and 71% of attributable marsh rabbit mortalities were classified as mammal predations. Burmese pythons pose a serious threat to the faunal communities and ecological functioning of the Greater Everglades Ecosystem, which will probably spread as python populations expand their range.",
+      "url": "https://openalex.org/W2071186544",
+      "_adapter": "openalex",
+      "authors": [
+        "Robert A. McCleery",
+        "Adia R. Sovie",
+        "Robert N. Reed",
+        "Mark W. Cunningham",
+        "Margaret E. Hunter",
+        "Kristen M. Hart"
+      ],
+      "venue": "Proceedings of the Royal Society B Biological Sciences",
+      "publication_date": "2015",
+      "doi": "10.1098/rspb.2015.0120",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Severe mammal declines coincide with proliferation of invasive Burmese pythons in Everglades National Park",
+      "snippet": "Invasive species represent a significant threat to global biodiversity and a substantial economic burden. Burmese pythons, giant constricting snakes native to Asia, now are found throughout much of southern Florida, including all of Everglades National Park (ENP). Pythons have increased dramatically in both abundance and geographic range since 2000 and consume a wide variety of mammals and birds. Here we report severe apparent declines in mammal populations that coincide temporally and spatially with the proliferation of pythons in ENP. Before 2000, mammals were encountered frequently during n",
+      "full_text": "Invasive species represent a significant threat to global biodiversity and a substantial economic burden. Burmese pythons, giant constricting snakes native to Asia, now are found throughout much of southern Florida, including all of Everglades National Park (ENP). Pythons have increased dramatically in both abundance and geographic range since 2000 and consume a wide variety of mammals and birds. Here we report severe apparent declines in mammal populations that coincide temporally and spatially with the proliferation of pythons in ENP. Before 2000, mammals were encountered frequently during nocturnal road surveys within ENP. In contrast, road surveys totaling 56,971 km from 2003-2011 documented a 99.3% decrease in the frequency of raccoon observations, decreases of 98.9% and 87.5% for opossum and bobcat observations, respectively, and failed to detect rabbits. Road surveys also revealed that these species are more common in areas where pythons have been discovered only recently and are most abundant outside the python's current introduced range. These findings suggest that predation by pythons has resulted in dramatic declines in mammals within ENP and that introduced apex predators, such as giant constrictors, can exert significant top-down pressure on prey populations. Severe declines in easily observed and/or common mammals, such as raccoons and bobcats, bode poorly for species of conservation concern, which often are more difficult to sample and occur at lower densities.",
+      "url": "https://openalex.org/W2137786798",
+      "_adapter": "openalex",
+      "authors": [
+        "Michael E. Dorcas",
+        "John Willson",
+        "Robert N. Reed",
+        "Ray W. Snow",
+        "Michael R. Rochford",
+        "Melissa A. Miller",
+        "Walter E. Meshaka",
+        "Paul T. Andreadis",
+        "Frank J. Mazzotti",
+        "Christina Margarita Romagosa",
+        "Kristen M. Hart"
+      ],
+      "venue": "Proceedings of the National Academy of Sciences",
+      "publication_date": "2012",
+      "doi": "10.1073/pnas.1115226109",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Indirect effects of invasive Burmese pythons on ecosystems in southern Florida",
+      "snippet": "Summary Invasive predators can dramatically alter ecosystems through both direct predation and indirect effects such as tropic cascades. However, most examples of top‐down effects of invasive predators in terrestrial systems stem from islands or similar low‐diversity ecosystems. Snakes are an emerging guild of damaging invasive predators, but demonstration of ecosystem‐level impacts of invasive snakes are limited to the single case of the brown treesnake on Guam. Invasive Burmese pythons are firmly established in southern Florida and have been linked to severe (80–100%) declines of several pre",
+      "full_text": "Summary Invasive predators can dramatically alter ecosystems through both direct predation and indirect effects such as tropic cascades. However, most examples of top‐down effects of invasive predators in terrestrial systems stem from islands or similar low‐diversity ecosystems. Snakes are an emerging guild of damaging invasive predators, but demonstration of ecosystem‐level impacts of invasive snakes are limited to the single case of the brown treesnake on Guam. Invasive Burmese pythons are firmly established in southern Florida and have been linked to severe (80–100%) declines of several previously common mammal species (e.g. raccoons, opossums and rabbits). Specifically, spatiotemporal patterns of mammal declines in the Everglades mirror the spread of pythons and experimental reintroductions of rabbits to areas where they had been extirpated failed due to high (77% of mortalities) rates of predation by pythons. I evaluated the potential indirect effects of pythons on the nesting success of oviparous species by monitoring artificial turtle nests (N = 183) at 13 sites across the expanding range of the python population. I documented few mammals and low rates of nest predation (average score = 1·5 on a 1–5 scale) in the southern Everglades where pythons have been established the longest, intermediate (average score = 2·3) rates of nest predation at recently invaded sites, and very high (average score = 4·6) rates of nest predation at sites with few or no pythons. These findings represent the first documentation of potential indirect effects of pythons on non‐prey species, and suggest that loss or decline of mammals is resulting in trophic cascades that threaten the Everglades ecosystem. Synthesis and applications. My results suggest that an introduction of non‐native apex predators can result in trophic cascades that alter even complex, continental ecosystems. The Burmese python invasion of South Florida shows remarkable parallels with the catastrophic case of the brown treesnake in Guam, but in some ways is even more worrisome. Documentation of both strong direct impacts on prey and potential indirect effects on Everglades’ ecosystems within 15 years after being recognized as established emphasizes the need to integrate python management into restoration of the Greater Everglades Ecosystem. More broadly, non‐native snakes warrant significant attention for their potential to become damaging invasive species.",
+      "url": "https://openalex.org/W2568379757",
+      "_adapter": "openalex",
+      "authors": [
+        "John D. Willson"
+      ],
+      "venue": "Journal of Applied Ecology",
+      "publication_date": "2017",
+      "doi": "10.1111/1365-2664.12844",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Mammal decline, linked to invasive Burmese python, shifts host use of vector mosquito towards reservoir hosts of a zoonotic disease",
+      "snippet": "Invasive apex predators have profound impacts on natural communities, yet the consequences of these impacts on the transmission of zoonotic pathogens are unexplored. Collapse of large- and medium-sized mammal populations in the Florida Everglades has been linked to the invasive Burmese python, Python bivittatus Kuhl. We used historic and current data to investigate potential impacts of these community effects on contact between the reservoir hosts (certain rodents) and vectors of Everglades virus, a zoonotic mosquito-borne pathogen that circulates in southern Florida. The percentage of blood m",
+      "full_text": "Invasive apex predators have profound impacts on natural communities, yet the consequences of these impacts on the transmission of zoonotic pathogens are unexplored. Collapse of large- and medium-sized mammal populations in the Florida Everglades has been linked to the invasive Burmese python, Python bivittatus Kuhl. We used historic and current data to investigate potential impacts of these community effects on contact between the reservoir hosts (certain rodents) and vectors of Everglades virus, a zoonotic mosquito-borne pathogen that circulates in southern Florida. The percentage of blood meals taken from the primary reservoir host, the hispid cotton rat, Sigmodon hispidus Say and Ord, increased dramatically (422.2%) from 1979 (14.7%) to 2016 (76.8%), while blood meals from deer, raccoons and opossums decreased by 98.2%, reflecting precipitous declines in relative abundance of these larger mammals, attributed to python predation. Overall species diversity of hosts detected in Culex cedecei blood meals from the Everglades declined by 40.2% over the same period ( H (1979) = 1.68, H (2016) = 1.01). Predictions based upon the dilution effect theory suggest that increased relative feedings upon reservoir hosts translate into increased abundance of infectious vectors, and a corresponding upsurge of Everglades virus occurrence and risk of human exposure, although this was not tested in the current study. This work constitutes the first indication that an invasive predator can increase contact between vectors and reservoirs of a human pathogen and highlights unrecognized indirect impacts of invasive predators.",
+      "url": "https://openalex.org/W2755818301",
+      "_adapter": "openalex",
+      "authors": [
+        "Isaiah J. Hoyer",
+        "Erik M. Blosser",
+        "Carolina Acevedo",
+        "Anna Carels Thompson",
+        "Lawrence E. Reeves",
+        "Nathan Daniel Burkett-Cadena"
+      ],
+      "venue": "Biology Letters",
+      "publication_date": "2017",
+      "doi": "10.1098/rsbl.2017.0353",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Documenting Changes in Mammal Communities in the Northern Everglades",
+      "snippet": "Restoration of the Everglades is an ambitious endeavor to revitalize its communities and ecosystem health, but there remain gaps in our understanding of mammal communities due to lack of long-term data synthesis. Using secondary data from long-term surveys, this study examines the potential impacts of changes in hydrological management on mammal communities within a state wildlife management area in the northern Everglades. The installation of a pump station in 1991 began a 15-year period of active water management associated with hydrological restoration. Infrastructural damage in late 2005 r",
+      "full_text": "Restoration of the Everglades is an ambitious endeavor to revitalize its communities and ecosystem health, but there remain gaps in our understanding of mammal communities due to lack of long-term data synthesis. Using secondary data from long-term surveys, this study examines the potential impacts of changes in hydrological management on mammal communities within a state wildlife management area in the northern Everglades. The installation of a pump station in 1991 began a 15-year period of active water management associated with hydrological restoration. Infrastructural damage in late 2005 resulted in 9 years of no significant active inflows. I calculated non-cervid mammal encounter rates from data gathered during perimeter levee surveys over a 10-year period. Mammal encounter rates showed a strong declining trend during the time after the pump failure. A similar analysis for an adjacent management area, which did not suffer an interruption in pump inflows, also showed a decline in mammal encounter rates. In addition, I replicated a small-mammal trapping survey conducted in the mid 1990s. Results showed a decline in diversity of small mammals in the focal area. Recent confirmation of Python molurus (Burmese Python) in the area and the expansion of Canis latrans (Coyote) are likely to have played a role in these apparent declines. Thus, establishing baseline estimates of relative abundance are critical for conservation efforts. With increasingly limited resources, it is important to maximize the utility of data that has already been collected.",
+      "url": "https://openalex.org/W3013695055",
+      "_adapter": "openalex",
+      "authors": [
+        "Sergio C. Gonzalez"
+      ],
+      "venue": "Southeastern Naturalist",
+      "publication_date": "2019",
+      "doi": "10.1656/058.018.0413",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Bobcat occupancy, tree islands, and invasive Burmese pythons in an Everglades conservation area",
+      "snippet": "Bobcats ( Lynx rufus ) are terrestrial mammals that also inhabit tree islands (i.e., topographically elevated patches of forested land) embedded in the subtropical Everglades wetlands, which serve as a dry refuge habitat during the wet season in this region of Florida, USA. The Comprehensive Everglades Restoration Plan seeks to restore Everglades water flow to pre‐drainage conditions, but little is known about how water levels or other landscape‐level factors may influence mammalian occurrence, such as bobcats, on the tree islands in this ecosystem. We used game camera records and occupancy mo",
+      "full_text": "Bobcats ( Lynx rufus ) are terrestrial mammals that also inhabit tree islands (i.e., topographically elevated patches of forested land) embedded in the subtropical Everglades wetlands, which serve as a dry refuge habitat during the wet season in this region of Florida, USA. The Comprehensive Everglades Restoration Plan seeks to restore Everglades water flow to pre‐drainage conditions, but little is known about how water levels or other landscape‐level factors may influence mammalian occurrence, such as bobcats, on the tree islands in this ecosystem. We used game camera records and occupancy modeling to test for effects of static habitat variables and dynamic hydrologic variables. We hypothesized that deep water levels would limit the accessibility of tree islands to bobcats; therefore, we predicted that bobcat occupancy would decline with higher water levels. We also tested for the effect of an expanding invasive snake (i.e., Burmese python [ Python molarus bivittatus ]) using output from a model constructed to predict density and spread of Burmese pythons across southern Florida. We hypothesized that increases in Burmese pythons on the landscape would influence the food resources of bobcats, resulting in reduced bobcat occupancy at higher predicted densities of pythons. We built detection histories using 1,855 bobcat images from game cameras set on 87 tree islands in an Everglades conservation area from 2005–2019. Bobcat occupancy was significantly diminished when predicted Burmese python densities exceeded approximately 3 Burmese pythons/km 2 . Bobcat occupancy probability also increased with tree‐island density around the focal tree island. Although water depth and hydroperiod surrounding tree islands appeared in our top 3 candidate models, the hydrologic variables had weak effects on bobcat occupancy. Our results suggest that while hydrologic dynamics may play a role, the invasive Burmese python has stronger influences on bobcat occupancy of tree islands in this Everglades conservation area.",
+      "url": "https://openalex.org/W4389547734",
+      "_adapter": "openalex",
+      "authors": [
+        "Katherine M. Buckman",
+        "Laura E. D’Acunto",
+        "Stephanie S. Romañach",
+        "Rachel M. Taylor",
+        "Nathan J. Dorn"
+      ],
+      "venue": "Journal of Wildlife Management",
+      "publication_date": "2023",
+      "doi": "10.1002/jwmg.22529",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ArcadeDB in Python: An In-Process Multi-Model Database",
+      "snippet": "Some Python workflows need transactional reads and writes over documents, traversals over a graph, and similarity search over vector embeddings. In practice these are split across separate systems (a document store, a graph engine, and a vector index), and the data is copied between them and kept consistent by application code. ArcadeDB is an open-source multi-model database engine, written in Java, that supports all three access patterns and can be embedded in a host process. We present arcadedb-embedded, a Python package that runs ArcadeDB inside the Python process via JPype, using a Java Ru",
+      "full_text": "Some Python workflows need transactional reads and writes over documents, traversals over a graph, and similarity search over vector embeddings. In practice these are split across separate systems (a document store, a graph engine, and a vector index), and the data is copied between them and kept consistent by application code. ArcadeDB is an open-source multi-model database engine, written in Java, that supports all three access patterns and can be embedded in a host process. We present arcadedb-embedded, a Python package that runs ArcadeDB inside the Python process via JPype, using a Java Runtime Environment bundled in the wheel. One pip install gives a database with documents, a property graph, and vector search, and needs no Java installation. Query results can be returned as Python lists, NumPy arrays, pandas DataFrames, or Arrow tables. We demonstrate a hybrid retrieval workflow that chains vector search, SQL filtering, and graph traversal over one dataset. We benchmark arcadedb-embedded against SQLite, DuckDB, LadybugDB, and Chroma, and report its costs.",
+      "url": "https://arxiv.org/abs/2611.07971v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Taewoon Kim"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-11-05",
+      "doi": "10.25080/fwvt2525",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2611.07971v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ePython: An implementation of Python for the many-core Epiphany coprocessor",
+      "snippet": "The Epiphany is a many-core, low power, low on-chip memory architecture and one can very cheaply gain access to a number of parallel cores which is beneficial for HPC education and prototyping. The very low power nature of these architectures also means that there is potential for their use in future HPC machines, however there is a high barrier to entry in programming them due to the associated complexities and immaturity of supporting tools. In this paper we present our work on ePython, a subset of Python for the Epiphany and similar many-core co-processors. Due to the limited on-chip memory",
+      "full_text": "The Epiphany is a many-core, low power, low on-chip memory architecture and one can very cheaply gain access to a number of parallel cores which is beneficial for HPC education and prototyping. The very low power nature of these architectures also means that there is potential for their use in future HPC machines, however there is a high barrier to entry in programming them due to the associated complexities and immaturity of supporting tools. In this paper we present our work on ePython, a subset of Python for the Epiphany and similar many-core co-processors. Due to the limited on-chip memory per core we have developed a new Python interpreter and this, combined with additional support for parallelism, has meant that novices can take advantage of Python to very quickly write parallel codes on the Epiphany and explore concepts of HPC using a smaller scale parallel machine. The high level nature of Python opens up new possibilities on the Epiphany, we examine a computationally intensive Gauss-Seidel code from the programmability and performance perspective, discuss running Python hybrid on both the host CPU and Epiphany, and interoperability between a full Python interpreter on the CPU and ePython on the Epiphany. The result of this work is support for developing Python on the Epiphany, which can be applied to other similar architectures, that the community have already started to adopt and use to explore concepts of parallelism and HPC.",
+      "url": "https://arxiv.org/abs/2010.14827v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Nick Brown"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2020-10-28",
+      "doi": "10.1109/PyHPC.2016.012",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2010.14827v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Social Network Analysis: From Graph Theory to Applications with Python",
+      "snippet": "Social network analysis is the process of investigating social structures through the use of networks and graph theory. It combines a variety of techniques for analyzing the structure of social networks as well as theories that aim at explaining the underlying dynamics and patterns observed in these structures. It is an inherently interdisciplinary field which originally emerged from the fields of social psychology, statistics and graph theory. This talk will covers the theory of social network analysis, with a short introduction to graph theory and information spread. Then we will deep dive i",
+      "full_text": "Social network analysis is the process of investigating social structures through the use of networks and graph theory. It combines a variety of techniques for analyzing the structure of social networks as well as theories that aim at explaining the underlying dynamics and patterns observed in these structures. It is an inherently interdisciplinary field which originally emerged from the fields of social psychology, statistics and graph theory. This talk will covers the theory of social network analysis, with a short introduction to graph theory and information spread. Then we will deep dive into Python code with NetworkX to get a better understanding of the network components, followed-up by constructing and implying social networks from real Pandas and textual datasets. Finally we will go over code examples of practical use-cases such as visualization with matplotlib, social-centrality analysis and influence maximization for information spread.",
+      "url": "https://arxiv.org/abs/2102.10014v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Dmitri Goldenberg"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2021-02-05",
+      "doi": "10.13140/RG.2.2.36809.77925/1",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2102.10014v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "atoMEC: An open-source average-atom Python code",
+      "snippet": "Average-atom models are an important tool in studying matter under extreme conditions, such as those conditions experienced in planetary cores, brown and white dwarfs, and during inertial confinement fusion. In the right context, average-atom models can yield results with similar accuracy to simulations which require orders of magnitude more computing time, and thus can greatly reduce financial and environmental costs. Unfortunately, due to the wide range of possible models and approximations, and the lack of open-source codes, average-atom models can at times appear inaccessible. In this pape",
+      "full_text": "Average-atom models are an important tool in studying matter under extreme conditions, such as those conditions experienced in planetary cores, brown and white dwarfs, and during inertial confinement fusion. In the right context, average-atom models can yield results with similar accuracy to simulations which require orders of magnitude more computing time, and thus can greatly reduce financial and environmental costs. Unfortunately, due to the wide range of possible models and approximations, and the lack of open-source codes, average-atom models can at times appear inaccessible. In this paper, we present our open-source average-atom code, atoMEC. We explain the aims and structure of atoMEC to illuminate the different stages and options in an average-atom calculation, and to facilitate community contributions. We also discuss the use of various open-source Python packages in atoMEC, which have expedited its development.",
+      "url": "https://arxiv.org/abs/2206.01074v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Timothy J. Callow",
+        "Daniel Kotik",
+        "Eli Kraisler",
+        "Attila Cangi"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-06-02",
+      "doi": "10.25080/majora-212e5952-006",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2206.01074v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Postprandial morphological response of the intestinal epithelium of the Burmese python (Python molurus)",
+      "snippet": "The postprandial morphological changes of the intestinal epithelium of Burmese pythons were examined using fasting pythons and at eight time points after feeding. In fasting pythons, tightly packed enterocytes possess very short microvilli and are arranged in a pseudostratified fashion. Enterocyte width increases by 23% within 24 h postfeeding, inducing significant increases in villus length and intestinal mass. By 6 days postfeeding, enterocyte volume had peaked, following as much as an 80% increase. Contributing to enterocyte hypertrophy is the cellular accumulation of lipid droplets at the ",
+      "full_text": "The postprandial morphological changes of the intestinal epithelium of Burmese pythons were examined using fasting pythons and at eight time points after feeding. In fasting pythons, tightly packed enterocytes possess very short microvilli and are arranged in a pseudostratified fashion. Enterocyte width increases by 23% within 24 h postfeeding, inducing significant increases in villus length and intestinal mass. By 6 days postfeeding, enterocyte volume had peaked, following as much as an 80% increase. Contributing to enterocyte hypertrophy is the cellular accumulation of lipid droplets at the tips and edges of the villi of the proximal and middle small intestine, but which were absent in the distal small intestine. At 3 days postfeeding, conventional and environmental scanning electron microscopy revealed cracks and lipid extrusion along the narrow edges of the villi and at the villus tips. Transmission electron microscopy demonstrated the rapid postprandial lengthening of enterocyte microvilli, increasing 4.8-fold in length within 24 h, and the maintaining of that length through digestion. Beginning at 24 h postfeeding, spherical particles were found embedded apically within enterocytes of the proximal and middle small intestine. These particles possessed an annular-like construction and were stained with the calcium-stain Alizarine red S suggesting that they were bone in origin. Following the completion of digestion, many of the postprandial responses were reversed, as observed by the atrophy of enterocytes, the shortening of villi, and the retraction of the microvilli. Further exploration of the python intestine will reveal the underlying mechanisms of these trophic responses and the origin and fate of the engulfed particles.",
+      "url": "https://arxiv.org/abs/q-bio/0611019v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Jean-Hervé Lignot",
+        "Cécile Helmstetter",
+        "Stephen M Secor"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2006-11-06",
+      "doi": "10.1016/j.cbpb.2005.05.005",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "q-bio/0611019v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "BURMESE-SAN: Burmese NLP Benchmark for Evaluating Large Language Models",
+      "snippet": "We introduce BURMESE-SAN, the first holistic benchmark that systematically evaluates large language models (LLMs) for Burmese across three core NLP competencies: understanding (NLU), reasoning (NLR), and generation (NLG). BURMESE-SAN consolidates seven subtasks spanning these competencies, including Question Answering, Sentiment Analysis, Toxicity Detection, Causal Reasoning, Natural Language Inference, Abstractive Summarization, and Machine Translation, several of which were previously unavailable for Burmese. The benchmark is constructed through a rigorous native-speaker-driven process to en",
+      "full_text": "We introduce BURMESE-SAN, the first holistic benchmark that systematically evaluates large language models (LLMs) for Burmese across three core NLP competencies: understanding (NLU), reasoning (NLR), and generation (NLG). BURMESE-SAN consolidates seven subtasks spanning these competencies, including Question Answering, Sentiment Analysis, Toxicity Detection, Causal Reasoning, Natural Language Inference, Abstractive Summarization, and Machine Translation, several of which were previously unavailable for Burmese. The benchmark is constructed through a rigorous native-speaker-driven process to ensure linguistic naturalness, fluency, and cultural authenticity while minimizing translation-induced artifacts. We conduct a large-scale evaluation of both open-weight and commercial LLMs to examine challenges in Burmese modeling arising from limited pretraining coverage, rich morphology, and syntactic variation. Our results show that Burmese performance depends more on architectural design, language representation, and instruction tuning than on model scale alone. In particular, Southeast Asia regional fine-tuning and newer model generations yield substantial gains. Finally, we release BURMESE-SAN as a public leaderboard to support systematic evaluation and sustained progress in Burmese and other low-resource languages. https://leaderboard.sea-lion.ai/detailed/MY",
+      "url": "https://arxiv.org/abs/2602.18788v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Thura Aung",
+        "Jann Railey Montalan",
+        "Jian Gang Ngui",
+        "Peerat Limkonchotiwat"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-02-21",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2602.18788v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Cytonuclear discordance in the Florida Everglades invasive Burmese python (Python bivittatus) population reveals possible hybridization with the Indian python (P. molurus)",
+      "snippet": "The invasive Burmese python (Python bivittatus) has been reproducing in the Florida Everglades since the 1980s. These giant constrictor snakes have caused a precipitous decline in small mammal populations in southern Florida following escapes or releases from the commercial pet trade. To better understand the invasion pathway and genetic composition of the population, two mitochondrial (mtDNA) loci across 1,398 base pairs were sequenced on 426 snakes and 22 microsatellites were assessed on 389 snakes. Concatenated mtDNA sequences produced six haplotypes with an average nucleotide and haplotype",
+      "full_text": "The invasive Burmese python (Python bivittatus) has been reproducing in the Florida Everglades since the 1980s. These giant constrictor snakes have caused a precipitous decline in small mammal populations in southern Florida following escapes or releases from the commercial pet trade. To better understand the invasion pathway and genetic composition of the population, two mitochondrial (mtDNA) loci across 1,398 base pairs were sequenced on 426 snakes and 22 microsatellites were assessed on 389 snakes. Concatenated mtDNA sequences produced six haplotypes with an average nucleotide and haplotype diversity of π = 0.002 and h = 0.097, respectively. Samples collected in Florida from morphologically identified P. bivittatus snakes were similar to published cytochrome oxidase 1 and cytochrome b sequences from both P. bivittatus and Python molurus and were highly divergent (genetic distances of 5.4% and 4.3%, respectively). The average number of microsatellite alleles and expected heterozygosity were NA = 5.50 and HE = 0.60, respectively. Nuclear Bayesian assignment tests supported two genetically distinct groups and an admixed group, not geographically differentiated. The effective population size (NE = 315.1) was lower than expected for a population this large, but reflected the low genetic diversity overall. The patterns of genetic diversity between mtDNA and microsatellites were disparate, indicating nuclear introgression of separate mtDNA lineages corresponding to cytonuclear discordance. The introgression likely occurred prior to the invasion, but genetic information on the native range and commercial trade is needed for verification. Our finding that the Florida python population is comprised of distinct lineages suggests greater standing variation for adaptation and the potential for broader areas of suitable habitat in the invaded range.",
+      "url": "https://openalex.org/W2888078510",
+      "_adapter": "openalex",
+      "authors": [
+        "Margaret E. Hunter",
+        "Nathan A. Johnson",
+        "Brian J. Smith",
+        "Michelle C. Davis",
+        "John S. S. Butterfield",
+        "Ray W. Snow",
+        "Kristen M. Hart"
+      ],
+      "venue": "Ecology and Evolution",
+      "publication_date": "2018",
+      "doi": "10.1002/ece3.4423",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Environmental DNA (eDNA) Sampling Improves Occurrence and Detection Estimates of Invasive Burmese Pythons",
+      "snippet": "Environmental DNA (eDNA) methods are used to detect DNA that is shed into the aquatic environment by cryptic or low density species. Applied in eDNA studies, occupancy models can be used to estimate occurrence and detection probabilities and thereby account for imperfect detection. However, occupancy terminology has been applied inconsistently in eDNA studies, and many have calculated occurrence probabilities while not considering the effects of imperfect detection. Low detection of invasive giant constrictors using visual surveys and traps has hampered the estimation of occupancy and detectio",
+      "full_text": "Environmental DNA (eDNA) methods are used to detect DNA that is shed into the aquatic environment by cryptic or low density species. Applied in eDNA studies, occupancy models can be used to estimate occurrence and detection probabilities and thereby account for imperfect detection. However, occupancy terminology has been applied inconsistently in eDNA studies, and many have calculated occurrence probabilities while not considering the effects of imperfect detection. Low detection of invasive giant constrictors using visual surveys and traps has hampered the estimation of occupancy and detection estimates needed for population management in southern Florida, USA. Giant constrictor snakes pose a threat to native species and the ecological restoration of the Florida Everglades. To assist with detection, we developed species-specific eDNA assays using quantitative PCR (qPCR) for the Burmese python (Python molurus bivittatus), Northern African python (P. sebae), boa constrictor (Boa constrictor), and the green (Eunectes murinus) and yellow anaconda (E. notaeus). Burmese pythons, Northern African pythons, and boa constrictors are established and reproducing, while the green and yellow anaconda have the potential to become established. We validated the python and boa constrictor assays using laboratory trials and tested all species in 21 field locations distributed in eight southern Florida regions. Burmese python eDNA was detected in 37 of 63 field sampling events; however, the other species were not detected. Although eDNA was heterogeneously distributed in the environment, occupancy models were able to provide the first estimates of detection probabilities, which were greater than 91%. Burmese python eDNA was detected along the leading northern edge of the known population boundary. The development of informative detection tools and eDNA occupancy models can improve conservation efforts in southern Florida and support more extensive studies of invasive constrictors. Generic sampling design and terminology are proposed to standardize and clarify interpretations of eDNA-based occupancy models.",
+      "url": "https://openalex.org/W2043180486",
+      "_adapter": "openalex",
+      "authors": [
+        "Margaret E. Hunter",
+        "Sara J. Oyler‐McCance",
+        "Robert M. Dorazio",
+        "Jennifer A. Fike",
+        "Brian J. Smith",
+        "Charles T. Hunter",
+        "Robert N. Reed",
+        "Kristen M. Hart"
+      ],
+      "venue": "PLoS ONE",
+      "publication_date": "2015",
+      "doi": "10.1371/journal.pone.0121655",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Parasite spillover: indirect effects of invasive Burmese pythons",
+      "snippet": "Identification of the origin of parasites of nonindigenous species ( NIS ) can be complex. NIS may introduce parasites from their native range and acquire parasites from within their invaded range. Determination of whether parasites are non‐native or native can be complicated when parasite genera occur within both the NIS ’ native range and its introduced range. We explored potential for spillover and spillback of lung parasites infecting Burmese pythons ( Python bivittatus ) in their invasive range (Florida). We collected 498 indigenous snakes of 26 species and 805 Burmese pythons during 2004",
+      "full_text": "Identification of the origin of parasites of nonindigenous species ( NIS ) can be complex. NIS may introduce parasites from their native range and acquire parasites from within their invaded range. Determination of whether parasites are non‐native or native can be complicated when parasite genera occur within both the NIS ’ native range and its introduced range. We explored potential for spillover and spillback of lung parasites infecting Burmese pythons ( Python bivittatus ) in their invasive range (Florida). We collected 498 indigenous snakes of 26 species and 805 Burmese pythons during 2004–2016 and examined them for lung parasites. We used morphology to identify three genera of pentastome parasites, Raillietiella , a cosmopolitan form, and Porocephalus and Kiricephalus , both New World forms. We sequenced these parasites at one mitochondrial and one nuclear locus and showed that each genus is represented by a single species, R. orientalis , P. crotali , and K. coarctatus . Pythons are host to R. orientalis and P. crotali , but not K. coarctatus ; native snakes are host to all three species. Sequence data show that pythons introduced R. orientalis to North America, where this parasite now infects native snakes. Additionally, our data suggest that pythons are competent hosts to P. crotali , a widespread parasite native to North and South America that was previously hypothesized to infect only viperid snakes. Our results indicate invasive Burmese pythons have affected parasite‐host dynamics of native snakes in ways that are consistent with parasite spillover and demonstrate the potential for indirect effects during invasions. Additionally, we show that pythons have acquired a parasite native to their introduced range, which is the initial condition necessary for parasite spillback.",
+      "url": "https://openalex.org/W2772527481",
+      "_adapter": "openalex",
+      "authors": [
+        "Melissa A. Miller",
+        "John M. Kinsella",
+        "Ray W. Snow",
+        "Malorie M. Hayes",
+        "Bryan G. Falk",
+        "Robert N. Reed",
+        "Frank J. Mazzotti",
+        "Craig Guyer",
+        "Christina Margarita Romagosa"
+      ],
+      "venue": "Ecology and Evolution",
+      "publication_date": "2017",
+      "doi": "10.1002/ece3.3557",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Cold-induced mortality of invasive Burmese pythons in south Florida",
+      "snippet": "A recent record cold spell in southern Florida (2–11 January 2010) provided an opportunity to evaluate responses of an established population of Burmese pythons ( Python molurus bivittatus ) to a prolonged period of unusually cold weather. We observed behavior, characterized thermal biology, determined fate of radio-telemetered ( n = 10) and non-telemetered ( n = 104) Burmese pythons, and analyzed habitat and environmental conditions experienced by pythons during and after a historic cold spell. Telemetered pythons had been implanted with radio-transmitters and temperature-recording data logge",
+      "full_text": "A recent record cold spell in southern Florida (2–11 January 2010) provided an opportunity to evaluate responses of an established population of Burmese pythons ( Python molurus bivittatus ) to a prolonged period of unusually cold weather. We observed behavior, characterized thermal biology, determined fate of radio-telemetered ( n = 10) and non-telemetered ( n = 104) Burmese pythons, and analyzed habitat and environmental conditions experienced by pythons during and after a historic cold spell. Telemetered pythons had been implanted with radio-transmitters and temperature-recording data loggers prior to the cold snap. Only one of 10 telemetered pythons survived the cold snap, whereas 59 of 99 (60%) non-telemetered pythons for which we determined fate survived. Body temperatures of eight dead telemetered pythons fluctuated regularly prior to 9 January 2010, then declined substantially during the cold period (9–11 January) and exhibited no further evidence of active thermoregulation indicating they were likely dead. Unusually cold temperatures in January 2010 were clearly associated with mortality of Burmese pythons in the Everglades. Some radio-telemetered pythons appeared to exhibit maladaptive behavior during the cold spell, including attempting to bask instead of retreating to sheltered refugia. We discuss implications of our findings for persistence and spread of introduced Burmese pythons in the United States and for maximizing their rate of removal.",
+      "url": "https://openalex.org/W2059695480",
+      "_adapter": "openalex",
+      "authors": [
+        "Frank J. Mazzotti",
+        "Michael S. Cherkiss",
+        "Kristen M. Hart",
+        "Ray W. Snow",
+        "Michael R. Rochford",
+        "Michael E. Dorcas",
+        "Robert N. Reed"
+      ],
+      "venue": "Biological Invasions",
+      "publication_date": "2010",
+      "doi": "10.1007/s10530-010-9797-5",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Spatial ecology of invasive Burmese pythons in southwestern Florida",
+      "snippet": "Understanding the spatial ecology of an invasive species is critical for designing effective control programs. Determining and quantifying home range estimates and habitat associations can streamline targeted removal efforts for wide‐ranging, cryptic animals. The Burmese python ( Python bivittatus ) is a large‐bodied constrictor snake with an established and expanding invasive population in southern Florida. This apex predator has severely impacted native wildlife across the Greater Everglades ecosystem. However, limited ecological information exists on this invasive species at the landscape l",
+      "full_text": "Understanding the spatial ecology of an invasive species is critical for designing effective control programs. Determining and quantifying home range estimates and habitat associations can streamline targeted removal efforts for wide‐ranging, cryptic animals. The Burmese python ( Python bivittatus ) is a large‐bodied constrictor snake with an established and expanding invasive population in southern Florida. This apex predator has severely impacted native wildlife across the Greater Everglades ecosystem. However, limited ecological information exists on this invasive species at the landscape level. Here, we present results from a study using radiotelemetry to quantify movements and habitat use patterns of 25 adult Burmese pythons in southwestern Florida, USA, for average periods of 814 d (range: 288–1809). Our objective was to quantify home range size, movement rates, and second‐ and third‐order habitat selection. Mean annual home range size was 7.5 km 2 ± 2.9 km 2 (95% kernel density estimate), and pythons moved at a maximum mean daily rate of 0.52 km/d. Burmese pythons selected agriculture, freshwater wetland, saline wetland, and upland land cover classes but avoided open water and urban land cover classes. Nest site selection was highest for pythons at an elevation of 1.7 m with nesting hotspots concentrated on the borders of urban and agricultural areas or in sandy forested upland habitats. A broader understanding of the spatial utilization of Burmese pythons will enhance the utility of emerging control strategies across their invaded range.",
+      "url": "https://openalex.org/W3169083447",
+      "_adapter": "openalex",
+      "authors": [
+        "Ian A. Bartoszek",
+        "Brian J. Smith",
+        "Robert N. Reed",
+        "Kristen M. Hart"
+      ],
+      "venue": "Ecosphere",
+      "publication_date": "2021",
+      "doi": "10.1002/ecs2.3564",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multi-messenger Observations of a Binary Neutron Star Merger",
+      "snippet": "On 2017 August 17 a binary neutron star coalescence candidate (later designated GW170817) with merger time 12:41:04 UTC was observed through gravitational waves by the Advanced LIGO and Advanced Virgo detectors. The Fermi Gamma-ray Burst Monitor independently detected a gamma-ray burst (GRB 170817A) with a time delay of $\\sim$1.7 s with respect to the merger time. From the gravitational-wave signal, the source was initially localized to a sky region of 31 deg$^2$ at a luminosity distance of $40^{+8}_{-8}$ Mpc and with component masses consistent with neutron stars. The component masses were la",
+      "full_text": "On 2017 August 17 a binary neutron star coalescence candidate (later designated GW170817) with merger time 12:41:04 UTC was observed through gravitational waves by the Advanced LIGO and Advanced Virgo detectors. The Fermi Gamma-ray Burst Monitor independently detected a gamma-ray burst (GRB 170817A) with a time delay of $\\sim$1.7 s with respect to the merger time. From the gravitational-wave signal, the source was initially localized to a sky region of 31 deg$^2$ at a luminosity distance of $40^{+8}_{-8}$ Mpc and with component masses consistent with neutron stars. The component masses were later measured to be in the range 0.86 to 2.26 Msun. An extensive observing campaign was launched across the electromagnetic spectrum leading to the discovery of a bright optical transient (SSS17a, now with the IAU identification of AT 2017gfo) in NGC 4993 (at $\\sim$40 Mpc) less than 11 hours after the merger by the One-Meter, Two Hemisphere (1M2H) team using the 1 m Swope Telescope. The optical transient was independently detected by multiple teams within an hour. Subsequent observations targeted the object and its environment. Early ultraviolet observations revealed a blue transient that faded within 48 hours. Optical and infrared observations showed a redward evolution over $\\sim$10 days. Following early non-detections, X-ray and radio emission were discovered at the transient's position $\\sim$9 and $\\sim$16 days, respectively, after the merger. Both the X-ray and radio emission likely arise from a physical process that is distinct from the one that generates the UV/optical/near-infrared emission. No ultra-high-energy gamma-rays and no neutrino candidates consistent with the source were found in follow-up searches. (Abridged)",
+      "url": "https://arxiv.org/abs/1710.05833v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "LIGO Scientific Collaboration",
+        "Virgo Collaboration",
+        "Fermi GBM",
+        "INTEGRAL",
+        "IceCube Collaboration",
+        "AstroSat Cadmium Zinc Telluride Imager Team",
+        "IPN Collaboration",
+        "The Insight-Hxmt Collaboration",
+        "ANTARES Collaboration",
+        "The Swift Collaboration",
+        "AGILE Team",
+        "The 1M2H Team",
+        "The Dark Energy Camera GW-EM Collaboration",
+        "the DES Collaboration",
+        "The DLT40 Collaboration",
+        "GRAWITA",
+        ":",
+        "GRAvitational Wave Inaf TeAm",
+        "The Fermi Large Area Telescope Collaboration",
+        "ATCA",
+        ":",
+        "Australia Telescope Compact Array",
+        "ASKAP",
+        ":",
+        "Australian SKA Pathfinder",
+        "Las Cumbres Observatory Group",
+        "OzGrav",
+        "DWF",
+        "AST3",
+        "CAASTRO Collaborations",
+        "The VINROUGE Collaboration",
+        "MASTER Collaboration",
+        "J-GEM",
+        "GROWTH",
+        "JAGWAR",
+        "Caltech- NRAO",
+        "TTU-NRAO",
+        "NuSTAR Collaborations",
+        "Pan-STARRS",
+        "The MAXI Team",
+        "TZAC Consortium",
+        "KU Collaboration",
+        "Nordic Optical Telescope",
+        "ePESSTO",
+        "GROND",
+        "Texas Tech University",
+        "SALT Group",
+        "TOROS",
+        ":",
+        "Transient Robotic Observatory of the South Collaboration",
+        "The BOOTES Collaboration",
+        "MWA",
+        ":",
+        "Murchison Widefield Array",
+        "The CALET Collaboration",
+        "IKI-GW Follow-up Collaboration",
+        "H. E. S. S. Collaboration",
+        "LOFAR Collaboration",
+        "LWA",
+        ":",
+        "Long Wavelength Array",
+        "HAWC Collaboration",
+        "The Pierre Auger Collaboration",
+        "ALMA Collaboration",
+        "Euro VLBI Team",
+        "Pi of the Sky Collaboration",
+        "The Chandra Team at McGill University",
+        "DFN",
+        ":",
+        "Desert Fireball Network",
+        "ATLAS",
+        "High Time Resolution Universe Survey",
+        "RIMAS",
+        "RATIR",
+        "SKA South Africa/MeerKAT"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-10-16",
+      "doi": "10.3847/2041-8213/aa91c9",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1710.05833v2",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Galactic Chemical Evolution of phosphorus observed with IGRINS",
+      "snippet": "Phosphorus (P) is considered to be one of the key elements for life, making it an important element to look for in the abundance analysis of spectra of stellar systems. Yet, there exists only a handful of spectroscopic studies to estimate the P abundances and investigate its trend across a range of metallicities. We have observed full HK band spectra at a spectral resolving power of R=45,000 with IGRINS instrument. Abundances are determined using SME in combination with 1D MARCS stellar atmosphere models. The investigated sample of stars have reliable stellar parameters estimated using optical",
+      "full_text": "Phosphorus (P) is considered to be one of the key elements for life, making it an important element to look for in the abundance analysis of spectra of stellar systems. Yet, there exists only a handful of spectroscopic studies to estimate the P abundances and investigate its trend across a range of metallicities. We have observed full HK band spectra at a spectral resolving power of R=45,000 with IGRINS instrument. Abundances are determined using SME in combination with 1D MARCS stellar atmosphere models. The investigated sample of stars have reliable stellar parameters estimated using optical FIES spectra (GILD; Jönsson et al. in prep.). In order to determine the P abundances from the 16482.92 Angstrom P line, we take special care of the CO($ν=7-4$) blend. We determine the C, N, O abundances from atomic carbon and a range of non-blended molecular lines (CO, CN, OH) which are aplenty in the H band region of K giant stars, assuring an appropriate modelling of the blending CO($ν=7-4$) line. We present [P/Fe] vs [Fe/H] trend for 38 K giant stars in the metallicity range of -1.2 dex $<$ [Fe/H] $<$ 0.4 dex. We find that our trend matches well with the compiled literature sample of prominently dwarf stars and limited number of giant stars. Our trend is found to be higher by $\\sim$ 0.05 - 0.1 dex compared to the theoretical chemical evolution trend in Cescutti et al. 2012 resulting from core collapse supernova (type II) of massive stars with the P yields from Kobayashi et al. (2006) arbitrarily increased by a factor of 2.75. Thus the enhancement factor might need to be $\\sim$ 0.05 - 0.1 dex higher to match our trend. We also find an empirically determined primary behaviour for phosphorus. Furthermore, the phosphorus abundance is found to be elevated by $\\sim$ 0.6 - 0.9 dex in two metal poor s-enriched stars compared to the theoretical chemical evolution trend.",
+      "url": "https://arxiv.org/abs/2210.04940v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "G. Nandakumar",
+        "N. Ryde",
+        "M. Montelius",
+        "B. Thorsbro",
+        "H. Jönsson",
+        "G. Mace",
+        "Lund Observatory",
+        "Department of Astronomy",
+        "Theoretical Physics",
+        "Lund University",
+        "Box 43",
+        "SE-221 00 Lund",
+        "Sweden",
+        "Kapteyn Astronomical Institute",
+        "University of Groningen",
+        "Landleven 12",
+        "NL-9747 AD Groningen",
+        "the Netherlands",
+        "Department of Astronomy",
+        "School of Science",
+        "The University of Tokyo",
+        "7-3-1 Hongo",
+        "Bunkyo-ku",
+        "Tokyo 113-0033",
+        "Japan",
+        "Materials Science",
+        "Applied Mathematics",
+        "Malmö University",
+        "SE-205 06 Malmö",
+        "Sweden",
+        "Department of Astronomy",
+        "McDonald Observatory",
+        "The University of Texas",
+        "Austin",
+        "TX 78712",
+        "USA"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-10-10",
+      "doi": "10.1051/0004-6361/202244724",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2210.04940v1",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Precision Electroweak Measurements on the Z Resonance",
+      "snippet": "We report on the final electroweak measurements performed with data taken at the Z resonance by the experiments operating at the electron-positron colliders SLC and LEP. The data consist of 17 million Z decays accumulated by the ALEPH, DELPHI, L3 and OPAL experiments at LEP, and 600 thousand Z decays by the SLD experiment using a polarised beam at SLC. The measurements include cross-sections, forward-backward asymmetries and polarised asymmetries. The mass and width of the Z boson, $\\MZ$ and $\\GZ$, and its couplings to fermions, for example the $ρ$ parameter and the effective electroweak mixin",
+      "full_text": "We report on the final electroweak measurements performed with data taken at the Z resonance by the experiments operating at the electron-positron colliders SLC and LEP. The data consist of 17 million Z decays accumulated by the ALEPH, DELPHI, L3 and OPAL experiments at LEP, and 600 thousand Z decays by the SLD experiment using a polarised beam at SLC. The measurements include cross-sections, forward-backward asymmetries and polarised asymmetries. The mass and width of the Z boson, $\\MZ$ and $\\GZ$, and its couplings to fermions, for example the $ρ$ parameter and the effective electroweak mixing angle, are precisely measured. The number of light neutrino species is determined to be 2.9840+/-0.0082. The results are compared to the predictions of the Standard Model. Electroweak radiative corrections beyond the running of the QED and QCD coupling constants are observed with a significance of five standard deviations, and in agreement with the Standard Model. Of the many Z-pole measurements, the forward-backward asymmetry in b-quark production shows the largest difference with respect to its Standard Model expectation, at the level of 2.8 standard deviations. Through radiative corrections evaluated in the framework of the Standard Model, the masses of the top quark and the W Boson are predicted. These indirect constraints are compared to the direct measurements, providing a stringent test of the Standard Model. Using in addition the direct measurements of $\\Mt$ and $\\MW$, the mass of the as yet unobserved Standard Model Higgs boson is predicted.",
+      "url": "https://arxiv.org/abs/hep-ex/0509008v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "The ALEPH Collaboration",
+        "the DELPHI Collaboration",
+        "the L3 Collaboration",
+        "the OPAL Collaboration",
+        "the SLD Collaboration",
+        "the LEP Electroweak Working Group",
+        "the SLD electroweak",
+        "heavy flavour groups"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2005-09-07",
+      "doi": "10.1016/j.physrep.2005.12.006",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "hep-ex/0509008v3",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Transliteration of Foreign Words in Burmese",
+      "snippet": "This manuscript provides general descriptions on transliteration of foreign words in the Burmese language. Phenomena caused by phonetic and orthographic issues are discussed. Based on this work, we expect to gradually establish prescriptive guidelines to normalize the transliteration on modern words in Burmese.",
+      "full_text": "This manuscript provides general descriptions on transliteration of foreign words in the Burmese language. Phenomena caused by phonetic and orthographic issues are discussed. Based on this work, we expect to gradually establish prescriptive guidelines to normalize the transliteration on modern words in Burmese.",
+      "url": "https://arxiv.org/abs/2110.03163v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Chenchen Ding"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2021-10-07",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2110.03163v2",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

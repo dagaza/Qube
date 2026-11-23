@@ -1,0 +1,390 @@
+{
+  "schema_version": 2,
+  "id": "sci_cs_rust_ownership",
+  "path": "scientific_evidence",
+  "category": "cs_engineering",
+  "description": "",
+  "query_raw": "@[tool:evidence] How does Rust's ownership model prevent memory safety bugs?",
+  "query_clean": "How does Rust's ownership model prevent memory safety bugs?",
+  "retrieval_query": "How does Rust's ownership model prevent memory safety bugs?",
+  "standalone_question": "How does Rust's ownership model prevent memory safety bugs?",
+  "gold_subject": "Rust ownership model",
+  "gold_facet": "memory safety",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:05:04+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "How does Rust's ownership model prevent memory safety bugs",
+      "arxiv": "How does Rust's ownership model prevent memory safety bugs"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Rudra: Finding Memory Safety Bugs in Rust at the Ecosystem Scale",
+      "snippet": "Rust is a promising system programming language that guarantees memory safety at compile time. To support diverse requirements for system software such as accessing low-level hardware, Rust allows programmers to perform operations that are not protected by the Rust compiler with the unsafe keyword. However, Rust's safety guarantee relies on the soundness of all unsafe code in the program as well as the standard and external libraries, making it hard to reason about their correctness. In other words, a single bug in any unsafe code breaks the whole program's safety guarantee. In this paper, we ",
+      "full_text": "Rust is a promising system programming language that guarantees memory safety at compile time. To support diverse requirements for system software such as accessing low-level hardware, Rust allows programmers to perform operations that are not protected by the Rust compiler with the unsafe keyword. However, Rust's safety guarantee relies on the soundness of all unsafe code in the program as well as the standard and external libraries, making it hard to reason about their correctness. In other words, a single bug in any unsafe code breaks the whole program's safety guarantee. In this paper, we introduce RUDRA, a program that analyzes and reports potential memory safety bugs in unsafe Rust. Since a bug in unsafe code threatens the foundation of Rust's safety guarantee, our primary focus is to scale our analysis to all the packages hosted in the Rust package registry. RUDRA can scan the entire registry (43k packages) in 6.5 hours and identified 264 previously unknown memory safety bugs---leading to 76 CVEs and 112 RustSec advisories being filed, which represent 51.6% of memory safety bugs reported to RustSec since 2016. The new bugs RUDRA found are non-trivial, subtle, and often made by Rust experts: two in the Rust standard library, one in the official futures library, and one in the Rust compiler. RUDRA is open-source, and part of its algorithm is integrated into the official Rust linter.",
+      "url": "https://openalex.org/W3206881395",
+      "_adapter": "openalex",
+      "authors": [
+        "Yechan Bae",
+        "Young-Suk Kim",
+        "Ammar Askar",
+        "Jungwon Lim",
+        "Taesoo Kim"
+      ],
+      "venue": "ACM SIGOPS Symposium on Operating Systems Principles (SOSP)",
+      "publication_date": "2021",
+      "doi": "10.1145/3477132.3483570",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Memory-Safety Challenge Considered Solved? An In-Depth Study with All Rust CVEs",
+      "snippet": "Rust is an emerging programming language that aims at preventing memory-safety bugs without sacrificing much efficiency. The claimed property is very attractive to developers, and many projects start using the language. However, can Rust achieve the memory-safety promise? This article studies the question by surveying 186 real-world bug reports collected from several origins, which contain all existing Rust common vulnerability and exposures (CVEs) of memory-safety issues by 2020-12-31. We manually analyze each bug and extract their culprit patterns. Our analysis result shows that Rust can kee",
+      "full_text": "Rust is an emerging programming language that aims at preventing memory-safety bugs without sacrificing much efficiency. The claimed property is very attractive to developers, and many projects start using the language. However, can Rust achieve the memory-safety promise? This article studies the question by surveying 186 real-world bug reports collected from several origins, which contain all existing Rust common vulnerability and exposures (CVEs) of memory-safety issues by 2020-12-31. We manually analyze each bug and extract their culprit patterns. Our analysis result shows that Rust can keep its promise that all memory-safety bugs require unsafe code, and many memory-safety bugs in our dataset are mild soundness issues that only leave a possibility to write memory-safety bugs without unsafe code. Furthermore, we summarize three typical categories of memory-safety bugs, including automatic memory reclaim, unsound function, and unsound generic or trait. While automatic memory claim bugs are related to the side effect of Rust newly-adopted ownership-based resource management scheme, unsound function reveals the essential challenge of Rust development for avoiding unsound code, and unsound generic or trait intensifies the risk of introducing unsoundness. Based on these findings, we propose two promising directions toward improving the security of Rust development, including several best practices of using specific APIs and methods to detect particular bugs involving unsafe code. Our work intends to raise more discussions regarding the memory-safety issues of Rust and facilitate the maturity of the language.",
+      "url": "https://openalex.org/W3202751128",
+      "_adapter": "openalex",
+      "authors": [
+        "Hui Xu",
+        "Zhuangbin Chen",
+        "Mingshen Sun",
+        "Yangfan Zhou",
+        "Michael Rung-Tsong Lyu"
+      ],
+      "venue": "ACM Transactions on Software Engineering and Methodology",
+      "publication_date": "2021",
+      "doi": "10.1145/3466642",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "SafeDrop: Detecting Memory Deallocation Bugs of Rust Programs via Static Data-flow Analysis",
+      "snippet": "Rust is an emerging programming language that aims to prevent memory-safety bugs. However, the current design of Rust also brings side effects, which may increase the risk of memory-safety issues. In particular, it employs ownership-based resource management and enforces automatic deallocation of unused resources without using the garbage collector. It may therefore falsely deallocate reclaimed memory and lead to use-after-free or double-free issues. In this article, we study the problem of invalid memory deallocation and propose SafeDrop , a static path-sensitive data-flow analysis approach t",
+      "full_text": "Rust is an emerging programming language that aims to prevent memory-safety bugs. However, the current design of Rust also brings side effects, which may increase the risk of memory-safety issues. In particular, it employs ownership-based resource management and enforces automatic deallocation of unused resources without using the garbage collector. It may therefore falsely deallocate reclaimed memory and lead to use-after-free or double-free issues. In this article, we study the problem of invalid memory deallocation and propose SafeDrop , a static path-sensitive data-flow analysis approach to detect such bugs. Our approach analyzes each function of a Rust crate iteratively in a flow-sensitive and field-sensitive way. It leverages a modified Tarjan algorithm to achieve scalable path-sensitive analysis and a cache-based strategy for efficient inter-procedural analysis. We have implemented our approach and integrated it into the Rust compiler. Experiment results show that the approach can successfully detect all such bugs in our experiments with a limited number of false positives and incurs a very small overhead compared to the original compilation time.",
+      "url": "https://openalex.org/W3151648723",
+      "_adapter": "openalex",
+      "authors": [
+        "Mohan Cui",
+        "Chengjun Chen",
+        "Hui Xu",
+        "Yangfan Zhou"
+      ],
+      "venue": "ACM Transactions on Software Engineering and Methodology",
+      "publication_date": "2023",
+      "doi": "10.1145/3542948",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "A Grounded Conceptual Model for Ownership Types in Rust",
+      "snippet": "Programmers learning Rust struggle to understand ownership types, Rust’s core mechanism for ensuring memory safety without garbage collection. This paper describes our attempt to systematically design a pedagogy for ownership types. First, we studied Rust developers’ misconceptions of ownership to create the Ownership Inventory, a new instrument for measuring a person’s knowledge of ownership. We found that Rust learners could not connect Rust’s static and dynamic semantics, such as determining why an ill-typed program would (or would not) exhibit undefined behavior. Second, we created a conce",
+      "full_text": "Programmers learning Rust struggle to understand ownership types, Rust’s core mechanism for ensuring memory safety without garbage collection. This paper describes our attempt to systematically design a pedagogy for ownership types. First, we studied Rust developers’ misconceptions of ownership to create the Ownership Inventory, a new instrument for measuring a person’s knowledge of ownership. We found that Rust learners could not connect Rust’s static and dynamic semantics, such as determining why an ill-typed program would (or would not) exhibit undefined behavior. Second, we created a conceptual model of Rust’s semantics that explains borrow checking in terms of flow-sensitive permissions on paths into memory. Third, we implemented a Rust compiler plugin that visualizes programs under the model. Fourth, we integrated the permissions model and visualizations into a broader pedagogy of ownership by writing a new ownership chapter for The Rust Programming Language , a popular Rust textbook. Fifth, we evaluated an initial deployment of our pedagogy against the original version, using reader responses to the Ownership Inventory as a point of comparison. Thus far, the new pedagogy has improved learner scores on the Ownership Inventory by an average of 9",
+      "url": "https://openalex.org/W4386614515",
+      "_adapter": "openalex",
+      "authors": [
+        "Will Crichton",
+        "Gavin Gray",
+        "Shriram Krishnamurthi"
+      ],
+      "venue": "Communications of the ACM",
+      "publication_date": "2023",
+      "doi": "10.1145/3796537",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Yuga: Automatically Detecting Lifetime Annotation Bugs in the Rust Language",
+      "snippet": "The Rust programming language is becoming increasingly popular among systems programmers due to its efficient performance and robust memory safety guarantees. Rust employs an ownership model to ensure these guarantees by allowing each value to be owned by only one identifier at a time. It uses the concept of borrowing and lifetimes to enable other variables to temporarily borrow values. Despite its benefits, security vulnerabilities have been reported in Rust projects, often attributed to the use of “unsafe” Rust code. These vulnerabilities, in part, arise from incorrect lifetime annotations o",
+      "full_text": "The Rust programming language is becoming increasingly popular among systems programmers due to its efficient performance and robust memory safety guarantees. Rust employs an ownership model to ensure these guarantees by allowing each value to be owned by only one identifier at a time. It uses the concept of borrowing and lifetimes to enable other variables to temporarily borrow values. Despite its benefits, security vulnerabilities have been reported in Rust projects, often attributed to the use of “unsafe” Rust code. These vulnerabilities, in part, arise from incorrect lifetime annotations on function signatures. However, existing tools fail to detect these bugs, primarily because such bugs are rare, challenging to detect through dynamic analysis, and require explicit memory models. To overcome these limitations, we characterize incorrect lifetime annotations as a source of memory safety bugs and leverage this understanding to devise a novel static analysis tool,Yuga, to detect potential lifetime annotation bugs.Yugauses a multi-phase analysis approach, starting with a quick pattern-matching algorithm to identify potential buggy components and then conducting a flow and field-sensitive alias analysis to confirm the bugs. We also curate new datasets of lifetime annotation bugs.Yugasuccessfully detects bugs with good precision on these datasets, and we make the code and datasets publicly available.",
+      "url": "https://openalex.org/W4401749796",
+      "_adapter": "openalex",
+      "authors": [
+        "Vikram Nitin",
+        "Anne Mulhern",
+        "Sanjay Arora",
+        "Baishakhi Ray"
+      ],
+      "venue": "IEEE Transactions on Software Engineering",
+      "publication_date": "2024",
+      "doi": "10.1109/tse.2024.3447671",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "LiteRSan: Lightweight Memory Safety Via Rust-specific Program Analysis and Selective Instrumentation",
+      "snippet": "Rust is a memory-safe language, and its strong safety guarantees combined with high performance have been attracting widespread adoption in systems programming and security-critical applications. However, Rust permits the use of unsafe code, which bypasses compiler-enforced safety checks and can introduce memory vulnerabilities. A widely adopted approach for detecting memory safety bugs in Rust is Address Sanitizer (ASan). Optimized versions, such as ERASan and RustSan, have been proposed to selectively apply security checks in order to reduce performance overhead. However, these tools still i",
+      "full_text": "Rust is a memory-safe language, and its strong safety guarantees combined with high performance have been attracting widespread adoption in systems programming and security-critical applications. However, Rust permits the use of unsafe code, which bypasses compiler-enforced safety checks and can introduce memory vulnerabilities. A widely adopted approach for detecting memory safety bugs in Rust is Address Sanitizer (ASan). Optimized versions, such as ERASan and RustSan, have been proposed to selectively apply security checks in order to reduce performance overhead. However, these tools still incur significant performance and memory overhead and fail to detect many classes of memory safety vulnerabilities due to the inherent limitations of ASan. In this paper, we present LiteRSan, a novel memory safety sanitizer that addresses the limitations of prior approaches. By leveraging Rust's unique ownership model, LiteRSan performs Rust-specific static analysis that is aware of pointer lifetimes to identify risky pointers. It then selectively instruments risky pointers to enforce only the necessary spatial or temporal memory safety checks. Consequently, LiteRSan introduces significantly lower runtime overhead (18.84% versus 152.05% and 183.50%) and negligible memory overhead (0.81% versus 739.27% and 861.98%) compared with existing ASan-based sanitizers while being capable of detecting memory safety bugs that prior techniques miss.",
+      "url": "https://openalex.org/W4414744258",
+      "_adapter": "openalex",
+      "authors": [
+        "Xia, Tianrou",
+        "Kaiming Huang",
+        "Dongyeon Yu",
+        "Yuseok Jeon",
+        "Jie Zhou",
+        "Dinghao Wu",
+        "Taegyu Kim"
+      ],
+      "venue": "arXiv (Cornell University)",
+      "publication_date": "2025",
+      "doi": "10.48550/arxiv.2509.16389",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "A Grounded Conceptual Model for Ownership Types in Rust",
+      "snippet": "Programmers learning Rust struggle to understand ownership types, Rust's core mechanism for ensuring memory safety without garbage collection. This paper describes our attempt to systematically design a pedagogy for ownership types. First, we studied Rust developers' misconceptions of ownership to create the Ownership Inventory, a new instrument for measuring a person's knowledge of ownership. We found that Rust learners could not connect Rust's static and dynamic semantics, such as determining why an ill-typed program would (or would not) exhibit undefined behavior. Second, we created a conce",
+      "full_text": "Programmers learning Rust struggle to understand ownership types, Rust's core mechanism for ensuring memory safety without garbage collection. This paper describes our attempt to systematically design a pedagogy for ownership types. First, we studied Rust developers' misconceptions of ownership to create the Ownership Inventory, a new instrument for measuring a person's knowledge of ownership. We found that Rust learners could not connect Rust's static and dynamic semantics, such as determining why an ill-typed program would (or would not) exhibit undefined behavior. Second, we created a conceptual model of Rust's semantics that explains borrow checking in terms of flow-sensitive permissions on paths into memory. Third, we implemented a Rust compiler plugin that visualizes programs under the model. Fourth, we integrated the permissions model and visualizations into a broader pedagogy of ownership by writing a new ownership chapter for The Rust Programming Language, a popular Rust textbook. Fifth, we evaluated an initial deployment of our pedagogy against the original version, using reader responses to the Ownership Inventory as a point of comparison. Thus far, the new pedagogy has improved learner scores on the Ownership Inventory by an average of 9% ($N = 342, d = 0.56$).",
+      "url": "https://arxiv.org/abs/2309.04134v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Will Crichton",
+        "Gavin Gray",
+        "Shriram Krishnamurthi"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-09-08",
+      "doi": "10.1145/3622841",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2309.04134v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PanicFI: An Infrastructure for Fixing Panic Bugs in Real-World Rust Programs",
+      "snippet": "The Rust programming language has garnered significant attention due to its robust safety features and memory management capabilities. Despite its guaranteed memory safety, Rust programs suffer from runtime errors that are unmanageable, i.e., panic errors. Notably, traditional memory issues such as null pointer dereferences, which are prevalent in other languages, are less likely to be triggered in Rust due to its strict ownership rules. However, the unique nature of Rust's panic bugs, which arise from the language's stringent safety and ownership paradigms, presents a distinct challenge. Over",
+      "full_text": "The Rust programming language has garnered significant attention due to its robust safety features and memory management capabilities. Despite its guaranteed memory safety, Rust programs suffer from runtime errors that are unmanageable, i.e., panic errors. Notably, traditional memory issues such as null pointer dereferences, which are prevalent in other languages, are less likely to be triggered in Rust due to its strict ownership rules. However, the unique nature of Rust's panic bugs, which arise from the language's stringent safety and ownership paradigms, presents a distinct challenge. Over half of the bugs in rustc, Rust's own compiler, are attributable to crash stemming from panic errors. However, addressing Rust panic bugs is challenging and requires significant effort, as existing fix patterns are not directly applicable due to the design and feature of Rust language.Therefore, developing foundational infrastructure, including datasets, fixing patterns, and automated repair tools, is both critical and urgent. This paper introduces a comprehensive infrastructure, namely PanicFI, aimed at providing supports for understanding Rust panic bugs and developing automated techniques. In PanicFI, we construct a dataset, Panic4R, comprising 102 real panic bugs and their fixes from the top 500 most-downloaded open-source crates.Then, through an analysis of the Rust compiler implementation , we identify Rust-specific patterns for fixing panic bugs, providing insights and guidance for generating patches. Moreover, we develop PanicKiller, the first automated tool for fixing Rust panic bugs, which has already contributed to the resolution of 28 panic bugs in open-source projects.The practicality and efficiency of PanicKiller confirm the effectiveness of the patterns mined within PanicFI.",
+      "url": "https://arxiv.org/abs/2408.03262v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Yunbo Ni",
+        "Yang Feng",
+        "Zixi Liu",
+        "Runtao Chen",
+        "Baowen Xu"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-08-06",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2408.03262v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "LiteRSan: Lightweight Memory Safety Via Rust-specific Program Analysis and Selective Instrumentation",
+      "snippet": "Rust is a memory-safe language, and its strong safety guarantees combined with high performance have been attracting widespread adoption in systems programming and security-critical applications. However, Rust permits the use of unsafe code, which bypasses compiler-enforced safety checks and can introduce memory vulnerabilities. A widely adopted approach for detecting memory safety bugs in Rust is Address Sanitizer (ASan). Optimized versions, such as ERASan and RustSan, have been proposed to selectively apply security checks in order to reduce performance overhead. However, these tools still i",
+      "full_text": "Rust is a memory-safe language, and its strong safety guarantees combined with high performance have been attracting widespread adoption in systems programming and security-critical applications. However, Rust permits the use of unsafe code, which bypasses compiler-enforced safety checks and can introduce memory vulnerabilities. A widely adopted approach for detecting memory safety bugs in Rust is Address Sanitizer (ASan). Optimized versions, such as ERASan and RustSan, have been proposed to selectively apply security checks in order to reduce performance overhead. However, these tools still incur significant performance and memory overhead and fail to detect many classes of memory safety vulnerabilities due to the inherent limitations of ASan. In this paper, we present LiteRSan, a novel memory safety sanitizer that addresses the limitations of prior approaches. By leveraging Rust's unique ownership model, LiteRSan performs Rust-specific static analysis that is aware of pointer lifetimes to identify risky pointers. It then selectively instruments risky pointers to enforce only the necessary spatial or temporal memory safety checks. Consequently, LiteRSan introduces significantly lower runtime overhead (18.84% versus 152.05% and 183.50%) and negligible memory overhead (0.81% versus 739.27% and 861.98%) compared with existing ASan-based sanitizers while being capable of detecting memory safety bugs that prior techniques miss.",
+      "url": "https://arxiv.org/abs/2509.16389v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Tianrou Xia",
+        "Kaiming Huang",
+        "Dongyeon Yu",
+        "Yuseok Jeon",
+        "Jie Zhou",
+        "Dinghao Wu",
+        "Taegyu Kim"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-09-19",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2509.16389v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "RustGo: Fairly Directed Greybox Fuzzing for Enforcing Rust Memory Safety",
+      "snippet": "Rust is a popular systems programming language that provides strong memory safety and introduces low-performance overhead. While Rust guarantees memory safety through strict security policies, such as ownership, memory bugs can still occur in unsafe-related Rust codes where these policies are not fully enforced. Although such unsafe Rust code accounts for only a small portion of the entire code (e.g., 10%), existing approaches fuzz the entire code-including safe Rust, whose memory safety is already enforced by the Rust compiler-resulting in inefficient use of fuzzing resources. In this paper, ",
+      "full_text": "Rust is a popular systems programming language that provides strong memory safety and introduces low-performance overhead. While Rust guarantees memory safety through strict security policies, such as ownership, memory bugs can still occur in unsafe-related Rust codes where these policies are not fully enforced. Although such unsafe Rust code accounts for only a small portion of the entire code (e.g., 10%), existing approaches fuzz the entire code-including safe Rust, whose memory safety is already enforced by the Rust compiler-resulting in inefficient use of fuzzing resources. In this paper, we propose RustGo, the new Rust-directed greybox fuzzer that effectively and fairly focuses on code regions potentially containing memory bugs. For this, RustGo automatically identifies potential memory bug targets and accurately prunes the paths irrelevant to each target by leveraging Rust-specific static analysis. For each identified target, RustGo includes a new fuzzing approach that maintains an independent state and applies dynamic pruning to maximize balanced and focused fuzzing. We evaluate RustGo on various real-world Rust applications. On average, RustGo prunes 78.49% of irrelevant paths, reaches targets x 2.09 to x 5.08 faster than existing fuzzers, and identifies 13 unknown bugs (six assigned RUSTSEC IDs and one assigned CVE ID).",
+      "url": "https://arxiv.org/abs/2608.05870v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Dongyeon Yu",
+        "Jiun Min",
+        "Yewan Na",
+        "Mijung Kim",
+        "Taegyu Kim",
+        "Yuseok Jeon"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-08-06",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2608.05870v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Petri Nets-based Methods on Automatically Detecting for Concurrency Bugs in Rust Programs",
+      "snippet": "Rust's memory safety guarantees, notably ownership and lifetime systems, have driven its widespread adoption. Concurrency bugs still occur in Rust programs, and existing detection approaches exhibit significant limitations: static analyzers suffer from context insensitivity and high false positives, while dynamic methods incur prohibitive runtime costs due to exponential path exploration. This paper presents a Petri net-based method for efficient, precise detection of Rust concurrency bugs. The method rests on three pillars: (1) A syntax-preserving program-to-Petri-net transformation tailored ",
+      "full_text": "Rust's memory safety guarantees, notably ownership and lifetime systems, have driven its widespread adoption. Concurrency bugs still occur in Rust programs, and existing detection approaches exhibit significant limitations: static analyzers suffer from context insensitivity and high false positives, while dynamic methods incur prohibitive runtime costs due to exponential path exploration. This paper presents a Petri net-based method for efficient, precise detection of Rust concurrency bugs. The method rests on three pillars: (1) A syntax-preserving program-to-Petri-net transformation tailored for target bug classes; (2) Semantics-preserving state compression via context-aware slicing; (3) Bug detection through efficient Petri net reachability analysis. The core innovation is its rigorous, control-flow-driven modeling of Rust's ownership semantics and synchronization primitives within the Petri net structure, with data operations represented as token movements. Integrated pointer analysis automates alias identification during transformation. Experiments on standard Rust concurrency benchmarks demonstrate that our method outperforms the state-of-the-art methods LockBud and Miri that are both tools of detecting concurrency bugs of Rust programs. Compared to LockBud, our approach reduces false positives by 35.7\\% and false negatives by 28.3\\% , which is obtained through our precise flow-sensitive pointer analysis. Compared with Miri that is a dynamic analysis tool, although Miri can obtain the same detection results, our method achieves 100% faster verification speed since our method takes a state reduce algorithm.",
+      "url": "https://arxiv.org/abs/2212.02754v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Kaiwen Zhang",
+        "Guanjun Liu"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-12-06",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2212.02754v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "SafeDrop: Detecting Memory Deallocation Bugs of Rust Programs via Static Data-Flow Analysis",
+      "snippet": "Rust is an emerging programming language that aims to prevent memory-safety bugs. However, the current design of Rust also brings side effects which may increase the risk of memory-safety issues. In particular, it employs OBRM (ownership-based resource management) and enforces automatic deallocation of unused resources without the garbage collector. It may therefore falsely deallocate reclaimed memory and lead to use-after-free or double-free issues. In this paper, we study the problem of invalid memory deallocation and propose SafeDrop, a static path-sensitive data-flow analysis approach to d",
+      "full_text": "Rust is an emerging programming language that aims to prevent memory-safety bugs. However, the current design of Rust also brings side effects which may increase the risk of memory-safety issues. In particular, it employs OBRM (ownership-based resource management) and enforces automatic deallocation of unused resources without the garbage collector. It may therefore falsely deallocate reclaimed memory and lead to use-after-free or double-free issues. In this paper, we study the problem of invalid memory deallocation and propose SafeDrop, a static path-sensitive data-flow analysis approach to detect such bugs. Our approach analyzes each API of a Rust crate iteratively by traversing the control-flow graph and extracting all aliases of each data-flow. To guarantee precision and scalability, we leverage a modified Tarjan algorithm to achieve scalable path-sensitive analysis, and a cache-based strategy to achieve efficient inter-procedural analysis. Our experiment results show that our approach can successfully detect all existing CVEs of such issues with a limited number of false positives. The analysis overhead ranges from 1.0% to 110.7% in comparison with the original compilation time. We further apply our tool to several real-world Rust crates and find 8 Rust crates involved with invalid memory deallocation issues.",
+      "url": "https://arxiv.org/abs/2103.15420v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Mohan Cui",
+        "Chengjun Chen",
+        "Hui Xu",
+        "Yangfan Zhou"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2021-03-29",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2103.15420v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ]
+}

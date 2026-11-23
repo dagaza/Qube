@@ -6,7 +6,7 @@ JSON query sets for live validation of Qube's external knowledge platform. Used 
 
 | File | Service | Purpose |
 |------|---------|---------|
-| `v1_knowledge_quality.json` | multi-tool | **Phase 0/1, S1** — multi-turn composer follow-ups, abstention, offline replay fixtures under `eval/fixtures/knowledge_quality/` (schema v2: `path`, `category`, `expect`, graded `label`, `synthetic`). Run `.venv/bin/python tools/evaluate_knowledge_quality.py [--ranker token\|embed] [--query-mode production\|standalone] [--json] [--compare baseline.json]` |
+| `v1_knowledge_quality.json` | multi-path | **Phase 0/1, S1–S2** — 48 cases over `general_web`, `trusted_knowledge`, `finance_knowledge` and `scientific_evidence` (definitions, how-to, entity lookup, recency, homographs, multi-turn follow-ups, abstention). Live candidates are captured into `eval/fixtures/knowledge_quality/` with `tools/capture_knowledge_fixture.py` (production and standalone query variants, per-row `retrieved` provenance, `production_depth`, no scores, `label: null`; `--redo-degraded` re-captures web cases whose discovery fell back from DuckDuckGo) and then labelled blind. Evaluate with `.venv/bin/python tools/evaluate_knowledge_quality.py [--ranker token\|embed] [--query-mode production\|standalone] [--pool-mode production\|full] [--json] [--compare baseline.json]` |
 | `v1_scientific.json` | `scientific_evidence` | **Phase 6c** — 12 discipline-tagged scholarly queries (`discipline` + `primary_adapter`) |
 | `v1_trusted.json` | `trusted_knowledge` | Phase 6 Slice 1 `@trusted` — Wikipedia-first, authority tiers |
 | `v1_finance.json` | `finance_knowledge` | Phase 6 Slice 5a `@finance` — SEC EDGAR filings |

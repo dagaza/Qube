@@ -1,0 +1,224 @@
+{
+  "schema_version": 2,
+  "id": "web_entity_bled_castle",
+  "path": "general_web",
+  "category": "entity_lookup",
+  "description": "",
+  "query_raw": "@[tool:internet] Bled Castle opening hours",
+  "query_clean": "Bled Castle opening hours",
+  "retrieval_query": "Bled Castle opening hours",
+  "standalone_question": "What are the opening hours of Bled Castle in Slovenia?",
+  "gold_subject": "Bled Castle",
+  "gold_facet": "opening hours",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T18:27:30+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "Bled Castle opening hours"
+    },
+    "standalone": {
+      "duckduckgo": "What are the opening hours of Bled Castle in Slovenia?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Blejski grad - Opening hours",
+      "snippet": "Check the opening hours for Bled Castle, the restaurant, castle café, and beehive for 2025 and plan your visit according to availability and activities.",
+      "url": "https://www.blejski-grad.si/en/plan-your-visit/opening-hours/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Bled Castle Opening Hours - Times, Seasons & Key Info",
+      "snippet": "Check the latest Bled Castle opening hours before your visit. Find seasonal schedules, last admission times, and tips to plan your day combining the castle with Lake Bled, the island church, and the surrounding Julian Alps landscape.",
+      "url": "https://bledcastletickets.com/opening-hours",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Blejski grad - Plan your visit",
+      "snippet": "Find all the information for your visit to Bled Castle: opening hours, parking, entrance fees, and contact details, so you can plan your visit with ease.",
+      "url": "https://www.blejski-grad.si/en/plan-your-visit/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Bled Castle Visitor Guide: Hours, Tickets & Tips",
+      "snippet": "A visitor guide to Bled Castle: opening hours, how to get there, what you will see inside, accessibility, photography rules and common questions.",
+      "url": "https://bledcastle.net/visitor-guide/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Official Bled Castle Guide: Tickets, Hours & Visitor Info",
+      "snippet": "Plan your Bled Castle visit with up to date details on tickets, opening hours, parking, access, and what to expect once you are inside.",
+      "url": "https://www.thetraveler.org/official-bled-castle-guide-tickets-hours-visitor-info/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Bled Castle Tickets FAQ: Hours, Entry & Booking",
+      "snippet": "Answers about Bled Castle tickets: opening hours, entry rules, what is included, children, accessibility, and our booking and 24/7 support.",
+      "url": "https://bledcastle.net/faq/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Bled Castle 2026: Tickets, Opening Hours and Views",
+      "snippet": "Bled Castle in 2026: adult ticket €19, opening hours by season, the new museum exhibition, the printing press and wine cellar, and the view over the lake.",
+      "url": "https://lake-bled.org/bled-castle/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Bled Castle: opening hours, €19 tickets and what's inside",
+      "snippet": "Bled Castle, first recorded in 1011, opens every day of the year. Adult entry is €19, 8:00-20:00 from April to October, with a museum, print shop and cellar.",
+      "url": "https://naveguia.com/en/slovenia/bled-castle/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Bled Castle Slovenia 2026 — Tickets, Hours, Visitor Guide",
+      "snippet": "Learn what Bled Castle is, how to visit from Ljubljana, entrance fees, opening hours, and tips for touring Slovenia's oldest castle overlooking Lake Bled.",
+      "url": "https://visitslovenia.com/slovenia/travel-guides/heritage-and-culture/what-is-bled-castle-and-how-do-i-visit",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Bled Castle Guide: Tickets, Hours, Tips (2026) | Bled Trips",
+      "snippet": "Bled Castle visitor guide: 2026 ticket prices, opening hours, how to get up, what to see inside and whether the restaurant is worth it.",
+      "url": "https://bledtrips.com/guides/bled-castle-guide",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Bled Castle - Ljubljana Bus Station",
+      "snippet": "Bled Castle Enjoy beautiful views over Bled lake. Oldest castle in Slovenia - visit the museum, wine cellar, printing works and the restaurant. Opening hours 8 a.m. - 8 p.m. from April until the end of October and 8 a.m. - 6 p.m. from November until the end of March. The vouchers are valid for 30 days.",
+      "url": "https://www.ap-ljubljana.si/en/tourism/bled/castle",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ]
+}

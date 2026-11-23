@@ -382,6 +382,10 @@ Measured on the dev laptop (Ryzen 7 7840HS, 8C/16T, 28 GB, CPU-only, normal desk
 | **V10** | The planner strips conversational filler | `plan_scientific_query` leaves `"Yes, please tell me how ANT analyzes Artificial Inteligence for example"` unchanged for **every** adapter, and OpenAlex always receives `semantic_query`, the raw sentence (`adapter_query_for`). `actor-network theory` scores zero for every discipline and falls back to `general_science`. | S5 fixes filler and acronyms before any adapter call. STS vocabulary goes into S8. |
 | **V11** | Dropping weak sources is a pure ranking change | If the gate drops every source, the worker falls into `explicit_web_empty_results` (`workers/llm_worker.py` ~4061). The model is then told the *web search did not return usable results*. That is false when retrieval succeeded and nothing was relevant. | S4 adds a distinct `retrieval_insufficient` state (prompt suffix + UI hint). |
 | **V12** | A reranker is easy to ship | `TextCrossEncoder(model_name, specific_model_path=…, threads=N)` loads with `HF_HUB_OFFLINE=1`, the same pattern as `rag/backends/fastembed_backend.py`. MiniLM-L-6 is ~80 MB, Apache-2.0. Rejected alternatives: `jina-reranker-v2-base-multilingual` (CC-BY-NC) and `bge-reranker-base` (MIT, but 1 GB). | Ship it through the existing preset download path (`core/bootstrap_search_download.py`), never via a runtime HF fetch. The model is **English-only**, so non-English queries use the `UNSCORED` fallback (S3). |
+| **V13** | Every path applies a relevance gate | **No.** `pipeline_trusted` keeps Wikipedia rows (up to `min(2, budget)`) with **no relevance check**. Only allowlisted SERP rows are gated. `pipeline_finance` gates only when rows exceed the budget, and never with embeddings. *(Found in S2 while writing path-faithful eval rankers.)* | S7 must cover the Wikipedia rows on the trusted path, not only the SERP rows. |
+| **V14** | Web pools are a reasonable size | At the Balanced profile `pipeline_general_web._discovery_max_results` asks for **3** SERP rows, and only the top survivor is fetched into the prompt. Scholarly fan-out is wide instead: these preferences resolve 8 adapters for a medical query (PubMed, NICE, CDC, WHO, ClinicalTrials, openFDA, OpenAlex, Europe PMC), 3 rows each. Tiered retrieval is off by default (`QUBE_TIERED_SCIENTIFIC_RETRIEVAL`). | S8: a wider web pool (e.g. 8 rows) comes from the **same single SERP request**, so it costs no extra DuckDuckGo load. The earlier "never widen DuckDuckGo" rule only applies to *extra* requests. |
+| **V15** | DuckDuckGo is the web provider | On 2026-11-23 the first DuckDuckGo request from this network got a bot challenge (HTTP 202 anomaly page). Discovery paused DuckDuckGo for 30 min and fell back to **Wikipedia** for every web query. Users see no clear signal that their web search silently became a Wikipedia search. | S12: surface degraded discovery in the sufficiency rationale / UI. S2: web fixtures record their `discovery_provider`, and fallback-provider captures are not used as production baselines. Also: Qube's own burst budget (`session_budget.py`, 6 live DuckDuckGo queries per 10 min, 30 per session) trips silently into the same Wikipedia fallback, and the discovery log reports it as `outcome=bot_challenge`. Discovery telemetry cannot tell "we throttled ourselves" from "DuckDuckGo challenged us". S12 must report the two separately. |
+| **V16** | ANT is the only multi-turn failure | **No.** Running `build_discourse_resolution` on the 7 S2 multi-turn cases, **6 send the raw follow-up** ("Yes, please.", "and what about 3.14?", "And how much does it cost to install one?", "Yes, tell me how MS is treated", the ANT turn). The statins case gets the **wrong anchor**: "Regarding Evidence: what about side effects in that group?", where "Evidence" was taken from the assistant's reply. Only the true topic switch (ethanol) is correct, and only because it is self-contained. | Confirms S5 as the highest-leverage stage for multi-turn, and it is not ANT-specific. S5 tests must include the statins wrong-anchor case. |
 
 Also found: the WIP commit raised `MAX_TOTAL_RETRIEVAL_CHARS` from 4500 to 8000 (`workers/llm_worker.py:344`). This was missing from the progress log and is added below.
 
@@ -513,6 +517,27 @@ flowchart LR
   - ≥ 6 multi-turn cases with gold slots
   - a **per-category** baseline table in the log
 - **Dependencies:** S1.
+
+- **As built (2026-11-23):**
+  - **Corpus:** 48 cases. 20 `general_web`, 21 `scientific_evidence`, 5 `trusted_knowledge`, 2 `finance_knowledge`; 15 categories, 7 multi-turn cases (6 of them `multi_turn`), 5 `abstain`, 4 recency. 672 captured candidates, **all labelled** (`label_source: model`).
+  - **Capture** (`tools/capture_knowledge_fixture.py`):
+    - calls the same adapter and discovery entry points as each path's pipeline, for the **production** query (from `build_discourse_resolution` for multi-turn cases) and the gold **standalone** query
+    - captures 8 rows per adapter, deeper than production uses; each row records `retrieved` (variant, adapter, rank), and the fixture records `production_depth`
+    - writes no scores; does not write `~/.qube/evidence_cache`
+    - records `discovery_provider` per variant and flags `capture_degraded` when discovery fell back from DuckDuckGo, was challenged, or failed to parse
+    - stops the run on the first degraded web capture; `--redo-degraded` resumes
+    - paces web discovery at 110 s, under Qube's own burst budget (V15)
+  - **Eval changes:**
+    - `fixture_pool(query_mode=, pool_mode="production"|"full")` rebuilds the pool production would actually see; `full` is the whole capture, for S8
+    - `expect` is derived from labels when not given (`derive_expect`: ≥ 2 relevant → `sufficient`; ≥ 1 useful → `partial`; else `insufficient`). An unlabelled pool gives no verdict.
+    - path-faithful rankers in `production_rank` (scientific / general_web / trusted / finance)
+    - a missing fixture file or a degraded capture fails the CLI
+  - **Baselines:** saved in `eval/retrieval_corpus/baselines/kq_s2_{token,embed}_{production,standalone}.json` for `--compare`.
+  - **Labelling rubric:**
+    - *relevant*: addresses the subject and the facet
+    - *partial*: on the subject and supports part of an answer
+    - *irrelevant*: everything else, including the wrong entity that matches only on the facet (another drug, another device, another product model)
+  - **Plan deviation (none weakening):** ANT has 3 cases, not 2 (the v1 fixture, a live multi-turn re-capture, and the LLM-deployment abstain case). The "found but not relevant" corpus share is therefore slightly higher than planned.
 
 #### S3 — Reranker module, provisioning, shadow scoring
 
@@ -736,7 +761,7 @@ flowchart LR
 - **Risks:**
   - noisy DuckDuckGo snippets cause over-rejection
   - recency/news queries: the CE has no notion of freshness
-  - Wikipedia pages on the trusted path
+  - Wikipedia pages on the trusted path: today they are kept with no relevance check (V13), so the gate must cover them
 - **Tests:** extend `tests/test_web_relevance_gate.py`; add captured DuckDuckGo and trusted fixtures.
 - **Acceptance:**
   - web fixtures: `irrelevant_kept_rate` ≤ 10% and abstain precision ≥ 0.85
@@ -762,7 +787,7 @@ flowchart LR
 - **Risks:**
   - rate limits: arXiv's 3-second politeness interval, PubMed's 3 rps without a key, the OpenAlex polite pool
   - added latency
-  - widening must **not** be applied to DuckDuckGo
+  - no **extra** DuckDuckGo requests. Widening the web pool within the single SERP page already fetched (3 → up to 8 rows) is allowed and costs nothing in requests (V14)
   - touch only the new profile field; leave the `materialize_budget` min clamp alone
 - **Tests:** deadline handling with fake slow adapters; a cache-key test; a live corpus run (not in CI).
 - **Acceptance (live corpus):**
@@ -826,7 +851,7 @@ flowchart LR
 
 - **Verify each §3.7 audit claim before fixing it.** Then:
   - `@research` uses the same rerank/gate in `core/knowledge/deep_research_merge.py`, and non-scholarly sub-questions route to trusted/web
-  - DuckDuckGo 429/403 handling and backoff mapping
+  - DuckDuckGo 429/403 handling and backoff mapping, and a visible signal when a bot challenge silently degrades web search to Wikipedia (V15)
   - bounded `Retry-After`
   - adapter failures surfaced in the sufficiency rationale
   - `@trusted` `site:` scoping
@@ -962,6 +987,12 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 | 2026-11-23 | S1 | Fixture schema v2 + ANT fixture upgraded | Done | `eval/fixtures/knowledge_quality/ant_ai_candidates.json`: `path`, `category`, `expect: insufficient`, gold standalone question / subject / facet, `budget`, `label_source: model`; example.org row flagged `synthetic: true`; change verified additive | Real ANT/STS pool from `~/.qube/evidence_cache` added in S2 |
 | 2026-11-23 | S1 | Eval CLI rewrite | Done | `tools/evaluate_knowledge_quality.py`: `--ranker`, `--query-mode production\|standalone`, `--include-synthetic`, `--k`, `--min-*` / `--max-irrelevant-kept-rate` gates, `--compare` per-category regression check, schema validation; contract-flag exit gate unchanged; README entry in `eval/retrieval_corpus/README.md` | Still only 1 of 6 corpus cases has a fixture (S2) |
 | 2026-11-23 | S1 | Tests | Done | `tests/test_knowledge_quality_eval.py`, 41 tests: metric conventions, schema (incl. every repo fixture), synthetic exclusion, stub-ranker eval, production token ranker, ANT baseline, aggregation, baseline compare, CLI smoke. Full suite: **3860 passed**, the same 8 pre-existing failures, no new failures | — |
+| 2026-11-23 | S2 | Capture tool | Done | `tools/capture_knowledge_fixture.py`: per-path capture, production + standalone variants, `retrieved` provenance, `production_depth`, degraded-discovery detection and stop, `--redo-degraded`, `--from-evidence-cache`, `--keep-labels` | — |
+| 2026-11-23 | S2 | Corpus + fixtures | Done | `eval/retrieval_corpus/v1_knowledge_quality.json`: 48 cases; 48 fixtures under `eval/fixtures/knowledge_quality/`; 672 candidates, all labelled; borderline labels listed below | — |
+| 2026-11-23 | S2 | Eval: production pool rebuild, derived `expect`, path-faithful rankers | Done | `core/knowledge/quality_eval.py`: `fixture_pool(pool_mode=)`, `pool_variant`, `derive_expect`, `production_rank`; CLI `--pool-mode`; degraded capture fails validation | Existing assertion updated on purpose: a fixture with no `expect` now derives one from its labels |
+| 2026-11-23 | S2 | Findings V13–V16 | Done | §12.1: trusted path keeps Wikipedia unchecked (V13); web pool is 3 rows (V14); DuckDuckGo challenge / burst budget silently degrades web search to Wikipedia and is logged as a bot challenge (V15); 6 of 7 multi-turn cases send the raw follow-up (V16) | S5, S7, S8, S12 updated |
+| 2026-11-23 | S2 | Tests | Done | `tests/test_knowledge_quality_eval.py`: +19 tests. Covers captured-pool rebuild (depth, adapter order, variants, fallback), derived `expect` (including an unlabelled pool giving no verdict and an empty pool expecting abstention), degraded-capture validation, path-faithful rankers, and S2 corpus-composition acceptance (≥ 45 cases, ≥ 12 `general_web`, ≥ 4 recency, ≥ 6 multi-turn with gold slots, every production pool fully labelled, ≥ 400 labels, ≥ 8 `insufficient`). Full suite (verbose): **3879 passed** (3860 + 19). The 8 failures are **identical** to the S1 baseline set; one of them is order-dependent and passes in isolation. The suite still aborts at Qt teardown (pre-existing). | — |
+| 2026-11-23 | S2 | Baselines | Done | Per-path and per-category tables below; JSON in `eval/retrieval_corpus/baselines/` | — |
 | 2026-11-23 | — | **R4** sufficiency gate / drop weak sources before prompt | Not done | — | **S4** |
 | 2026-11-23 | — | **R3** cross-encoder reranker (fastembed `TextCrossEncoder`) | Not done | Feasibility validated (§12.1 V1, V2, V5, V12) | **S3** (shadow) → S4 / S7 |
 | 2026-11-23 | — | **R1** QueryPlan / multi-query / subject+facet discourse | Not done | LLM plan latency measured: 3–21 s on CPU (§12.1 V6) | Deterministic first: **S5, S6**; gated LLM fallback: **S9** |
@@ -1011,6 +1042,92 @@ How to read this:
 - Today's ranking never abstains on a pool with nothing relevant, and still reports "adequate" coverage.
 - With embeddings on, every irrelevant row clears the 0.12 floor (§12.1 V4).
 - This is the gap S3 + S4 must close.
+
+**S2 baseline: 48 fixtures, production pool, budget 3, synthetic rows excluded.**
+
+Columns:
+- **P@3**: useful (relevant or partial) share of the kept top 3
+- **nDCG**: nDCG@5
+- **irrK**: irrelevant_kept_rate
+- **aOK**: abstain_correct (did it abstain exactly when the pool had nothing useful?)
+
+Small groups are noisy, so regressions use the tolerance max(0.05, 1/n) (§12.5 rule 7).
+
+| Group | n | token / production<br>P@3 · nDCG · irrK · aOK | embed / production | token / standalone | embed / standalone |
+|-------|---|------|------|------|------|
+| **all** | 48 | 0.71 · 0.75 · 0.29 · 0.83 | 0.72 · 0.75 · 0.28 · 0.83 | 0.77 · 0.76 · 0.23 · 0.90 | 0.77 · 0.75 · 0.23 · 0.90 |
+| `general_web` | 20 | 0.81 · 0.92 · 0.19 · 0.85 | 0.81 · 0.92 · 0.19 · 0.85 | 0.93 · 0.95 · 0.07 · 0.95 | 0.93 · 0.95 · 0.07 · 0.95 |
+| `scientific_evidence` | 21 | 0.62 · 0.66 · 0.38 · 0.76 | 0.63 · 0.65 · 0.37 · 0.76 | 0.65 · 0.64 · 0.35 · 0.86 | 0.67 · 0.64 · 0.33 · 0.86 |
+| `trusted_knowledge` | 5 | 0.75 · 0.34 · 0.25 · 1.00 | 0.75 · 0.34 · 0.25 · 1.00 | 0.71 · 0.32 · 0.29 · 1.00 | 0.71 · 0.32 · 0.29 · 1.00 |
+| `finance_knowledge` | 2 | 0.67 · 1.00 · 0.33 · 1.00 | 0.67 · 1.00 · 0.33 · 1.00 | 0.50 · 1.00 · 0.50 · 0.50 | 0.50 · 1.00 · 0.50 · 0.50 |
+
+| Category | n | token / production | embed / production | token / standalone | embed / standalone |
+|----------|---|------|------|------|------|
+| multi_turn | 6 | 0.27 · 0.58 · 0.73 · 0.50 | 0.27 · 0.58 · 0.73 · 0.50 | 0.94 · 0.85 · 0.06 · 1.00 | 0.94 · 0.85 · 0.06 · 1.00 |
+| abstain | 5 | 0.08 · 0.17 · 0.92 · 0.40 | 0.08 · 0.17 · 0.92 · 0.40 | 0.08 · 0.17 · 0.92 · 0.40 | 0.08 · 0.17 · 0.92 · 0.40 |
+| sts_humanities | 4 | 0.33 · 0.53 · 0.67 · 0.50 | 0.25 · 0.28 · 0.75 · 0.50 | 0.58 · 0.68 · 0.42 · 0.75 | 0.50 · 0.52 · 0.50 · 0.75 |
+| recency | 4 | 0.83 · 0.88 · 0.17 · 1.00 | 0.83 · 0.88 · 0.17 · 1.00 | 0.88 · 0.85 · 0.12 · 1.00 | 0.88 · 0.85 · 0.12 · 1.00 |
+| biomedical | 3 | 0.67 · 0.58 · 0.33 · 1.00 | 0.78 · 0.72 · 0.22 · 1.00 | 0.44 · 0.45 · 0.56 · 1.00 | 0.56 · 0.59 · 0.44 · 1.00 |
+| cs_engineering | 3 | 0.78 · 0.48 · 0.22 · 1.00 | 0.89 · 0.47 · 0.11 · 1.00 | 0.78 · 0.48 · 0.22 · 1.00 | 0.89 · 0.47 · 0.11 · 1.00 |
+| social_science | 3 | 1.00 · 1.00 · 0.00 · 1.00 | 1.00 · 1.00 · 0.00 · 1.00 | 1.00 · 0.94 · 0.00 · 1.00 | 1.00 · 0.94 · 0.00 · 1.00 |
+| physical_econ | 3 | 1.00 · 0.71 · 0.00 · 1.00 | 1.00 · 0.71 · 0.00 · 1.00 | 1.00 · 0.68 · 0.00 · 1.00 | 1.00 · 0.68 · 0.00 · 1.00 |
+| definition | 3 | 1.00 · 0.98 · 0.00 · 1.00 | 1.00 · 0.98 · 0.00 · 1.00 | 1.00 · 1.00 · 0.00 · 1.00 | 1.00 · 1.00 · 0.00 · 1.00 |
+| how_to | 3 | 1.00 · 0.84 · 0.00 · 1.00 | 1.00 · 0.84 · 0.00 · 1.00 | 1.00 · 0.88 · 0.00 · 1.00 | 1.00 · 0.88 · 0.00 · 1.00 |
+| entity_lookup | 3 | 1.00 · 0.94 · 0.00 · 1.00 | 1.00 · 0.94 · 0.00 · 1.00 | 1.00 · 1.00 · 0.00 · 1.00 | 1.00 · 1.00 · 0.00 · 1.00 |
+| acronym_homograph | 3 | 1.00 · 1.00 · 0.00 · 1.00 | 1.00 · 1.00 · 0.00 · 1.00 | 0.89 · 0.99 · 0.11 · 1.00 | 0.89 · 0.99 · 0.11 · 1.00 |
+| health_official | 2 | 1.00 · 0.45 · 0.00 · 1.00 | 1.00 · 0.45 · 0.00 · 1.00 | 0.58 · 0.25 · 0.42 · 1.00 | 0.58 · 0.25 · 0.42 · 1.00 |
+| finance_filings | 2 | 0.67 · 1.00 · 0.33 · 1.00 | 0.67 · 1.00 · 0.33 · 1.00 | 0.50 · 1.00 · 0.50 · 0.50 | 0.50 · 1.00 · 0.50 · 0.50 |
+| official_statistics | 1 | 0.67 · 0.26 · 0.33 · 1.00 | 0.67 · 0.26 · 0.33 · 1.00 | 0.67 · 0.28 · 0.33 · 1.00 | 0.67 · 0.28 · 0.33 · 1.00 |
+
+What the baseline says, in priority order:
+1. **Query resolution is the biggest lever (S5/S6), and not only for ANT.** On multi-turn cases, swapping today's query for the standalone question takes P@3 from 0.27 to 0.94 and irrelevant_kept from 0.73 to 0.06. Real examples from the captures: "Yes, please." returned dictionary entries and a cocktail bar; "and what about 3.14?" returned pages about π; "And how much does it cost to install one?" returned EV-charger prices; on the trusted path "Yes, tell me how MS is treated" returned Wikipedia pages on Jennifer Garner and Orgasm.
+2. **Nothing abstains (S3/S4/S7).** On the 5 abstain cases 92 % of kept rows are irrelevant and abstain_correct is 0.40. Neither correct verdict comes from a relevance judgement:
+   - `kq_no_good_sources` has partial rows, so not abstaining is right.
+   - The fictional-implant trusted case abstains only because Wikipedia returned nothing and no SERP row passed the allowlist plus token gate.
+
+   The fictional toaster, fictional drug and city-council cases each keep 2–3 irrelevant rows. A better query does not help here (identical numbers in standalone mode), so this has to be fixed by the gate.
+3. **Today's embedding ranker is not a relevance filter.** embed ≈ token almost everywhere (V4: thresholds are below every observed score). The only differences are small, and they go both ways: biomedical/CS improve, sts_humanities gets worse.
+4. **Trusted ordering is poor** (nDCG 0.34): Wikipedia rows are placed first unconditionally (V13), ahead of the relevant WHO/CDC pages.
+5. **Single-turn general_web is already good** (definitions, how-to, entities: P@3 = 1.00). S3/S4 must not regress it; it is the largest no-regression group.
+6. **Where standalone does worse** (biomedical, health_official, finance): the standalone wording retrieves a different pool, not a worse ranking. S5 must keep the user's own key terms and not paraphrase them away; the S5 acceptance criteria compare against both columns.
+
+**S2 borderline labels (D3 safeguard).** Every other label follows the rubric in §12.4 S2 "As built" without judgement calls.
+
+- kq_ace_hf_single #34: ACE-I/ARB meta-analysis in patients *without* heart failure -> partial (drug class matches, population excluded).
+- kq_ace_hf_single #42: personal-perspective essay on heart-failure outcomes -> partial.
+- kq_no_good_sources #6/#17/#18: ANT applied to microblogs/music/accounting -> partial (explains ANT method, not LLM deployment).
+- kq_no_good_sources #11: "LLMs as SocioTechnical Systems" -> partial (sociotechnical lens on LLMs, not ANT-specific).
+- sci_abstain_city_council #2: pop-up bike lanes in European cities -> irrelevant (cannot answer a specific council decision).
+- sci_abstain_fictional_drug #1: rimegepant migraine RCT -> irrelevant (different drug; citing it would mislead).
+- sci_bio_microplastics #5: environmental/aquatic effects review -> partial.
+- sci_soc_social_media_depression #7: social media and adolescent well-being (not depression) -> partial.
+- sci_psych_sleep_memory #2: sleep deprivation and memory in honeybees -> partial (non-human model).
+- sci_hum_printing_press_reformation #1: causes and consequences of the Reformation -> partial.
+- sci_cs_oauth_flow #0/#6/#7: OAuth 2.0 + blockchain extensions -> irrelevant (would not explain the code flow); #1/#2/#8 -> partial.
+- sci_cs_self_attention #6: positional encodings in transformers -> partial.
+- sci_econ_minimum_wage #1: Korean-language study (China) -> partial (on-topic but not usable for an English answer without translation).
+- sci_homograph_python_everglades #13: eDNA detection of pythons -> irrelevant (on-subject, cannot support the mammal-impact answer).
+- mt_pronoun_statins #28: statin muscle/skeletal side effects (not age-specific) -> relevant.
+- fin_apple_10k #0 / fin_tesla_10q #0: SEC filing index rows (metadata snippet only, no figures) -> relevant (correct filing; the figure needs the fetched document).
+- kq_ace_hf_single #29: valsartan in HF patients not on ACE-I (Val-HeFT) -> partial (comparator context).
+- mt_ant_followup_live #11: management-literature review of AI (posthuman framing) -> partial.
+- sci_soc_social_media_depression #10: social media and adolescent identity development -> partial.
+- sci_psych_sleep_memory #11: one night of sleep deprivation and developer performance -> partial (performance, not consolidation).
+- sci_hum_printing_press_reformation #9: printing press as an analogy for datafication/AI -> partial.
+- sci_cs_self_attention #21: multiscale visualization of transformer attention -> partial (not a mechanism explainer).
+- sci_homograph_python_everglades #4: mammal communities in the northern Everglades (python not central) -> partial.
+- mt_pronoun_statins #30: statin therapy for prevention in older adults (review covers harms) -> relevant.
+- web_howto_git_undo_commit #9: "how to revert to last commit" (discards changes) -> partial.
+- web_howto_python_venv #0/#1/#3: generic venv guides not Windows-specific -> partial.
+- web_entity_framework_laptop #0/#2/#3/#7/#9: reviews of the Framework Laptop 13 **Pro** (a different model) -> partial.
+- kq_recency_news #6: Fed PCE inflation page (different measure) -> partial; #9: CPI forecast -> partial.
+- web_recency_python_release #3/#8: 3.14 notes / 3.15.0 announcement (superseded by 3.15.2) -> partial (stale for "latest").
+- web_recency_iphone_latest #5: iPhone 17 lineup guide (superseded) -> partial; #0/#1/#8: carrier/Amazon shopping ads -> irrelevant.
+- web_abstain_fictional_product #7 (Revolution smart toaster FAQ) / #8 (generic smart-appliance firmware guide) -> irrelevant (wrong entity; would mislead about a product that does not exist).
+- kq_trusted_who #7: correct WHO IRIS record but the captured snippet is a "500 Service Unavailable" page -> irrelevant (no usable content); #3 Particulate matter (Wikipedia) -> partial.
+- trusted_cdc_mmr_doses #2/#12: Polio / HPV vaccine (Wikipedia, kept unconditionally today) -> irrelevant; #3 Vaccines and autism -> irrelevant.
+- trusted_census_texas_population #0 Collin County / #3 United States (Wikipedia; kept unconditionally today) -> irrelevant; #1 Demographics of the US -> partial; #13 2020 decennial figure (not latest estimate) -> relevant.
+- trusted_abstain_fictional #3/#8–#14: real Latera nasal-implant guidance/policies -> irrelevant (different device; Varnex-7 is fictional).
 
 ### Git reference
 

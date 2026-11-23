@@ -1,0 +1,262 @@
+{
+  "schema_version": 2,
+  "id": "sci_abstain_city_council",
+  "path": "scientific_evidence",
+  "category": "abstain",
+  "description": "Local news via scholarly indexes: expect abstention.",
+  "query_raw": "@[tool:evidence] What did the Cluj-Napoca city council decide about bike lanes in October 2026?",
+  "query_clean": "What did the Cluj-Napoca city council decide about bike lanes in October 2026?",
+  "retrieval_query": "What did the Cluj-Napoca city council decide about bike lanes in October 2026?",
+  "standalone_question": "What did the Cluj-Napoca city council decide about bike lanes in October 2026?",
+  "gold_subject": "Cluj-Napoca city council",
+  "gold_facet": "bike lane decision",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:06:01+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "What did the Cluj-Napoca city council decide about bike lanes in October 2026",
+      "arxiv": "What did the Cluj-Napoca city council decide about bike lanes in October 2026"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Research of the Smart City Concept in Romanian Cities",
+      "snippet": "The Smart City concept has emerged in the last decade as a fusion of ideas about how information and communication technologies could improve the functioning of cities. A new concept, that of a sustainable Smart City, is already under discussion. This article aims at analyzing the Smart City concept in Romania. The resulting advantages, but also the difficulties and obstacles that need to be confronted, are considered when becoming a Smart City. When a city wants to become smart, it must consider both the advantages and the difficulties it will face in this endeavor. This paper has been able t",
+      "full_text": "The Smart City concept has emerged in the last decade as a fusion of ideas about how information and communication technologies could improve the functioning of cities. A new concept, that of a sustainable Smart City, is already under discussion. This article aims at analyzing the Smart City concept in Romania. The resulting advantages, but also the difficulties and obstacles that need to be confronted, are considered when becoming a Smart City. When a city wants to become smart, it must consider both the advantages and the difficulties it will face in this endeavor. This paper has been able to take into account and group the four key features of a sustainable Smart City. The authors conducted research in two parts. The first consisted of conducting a comparative analysis of the most important results of Smart City projects implemented in the four reference cities in Romania compared to London. The second, a quantitative analysis, aimed to analyze the opinions and attitudes of Romanians regarding the Smart City concept in relation to sustainability. An important finding of the study shows that over half of the respondents are familiar with the Smart City concept and 41.9% consider health as a priority for investment in technology. The authors of the article propose clearer highlighting and division of cities from the point of view of creating a Smart City.",
+      "url": "https://openalex.org/W4293064096",
+      "_adapter": "openalex",
+      "authors": [
+        "Simona Bălășescu",
+        "Nicoleta Andreea Neacșu",
+        "Anca Madar",
+        "Alexandra Zamfirache",
+        "Marius Bălăşescu"
+      ],
+      "venue": "Sustainability",
+      "publication_date": "2022",
+      "doi": "10.3390/su141610004",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Simulation-Based Analysis of Device Availability under Three Maintenance Strategies",
+      "snippet": "Simulation-Based Analysis of Device Availability under Three Maintenance Strategies",
+      "full_text": null,
+      "url": "https://openalex.org/W7135640077",
+      "_adapter": "openalex",
+      "authors": [
+        "Alexander Prosser",
+        "Lakshika Dilshan Wijayalath"
+      ],
+      "venue": "WU Research",
+      "publication_date": "2018",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": false,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Effect of pop-up bike lanes on cycling in European cities",
+      "snippet": "The bicycle is a low-cost means of transport linked to low risk of COVID-19 transmission. Governments have incentivized cycling by redistributing street space as part of their post-lockdown strategies. Here, we evaluate the impact of provisional bicycle infrastructure on cycling traffic in European cities. We scrape daily bicycle counts spanning over a decade from 736 bicycle counters in 106 European cities. We combine this with data on announced and completed pop-up bike lane road work projects. On average 11.5 kilometers of provisional pop-up bike lanes have been built per city. Each kilomet",
+      "full_text": "The bicycle is a low-cost means of transport linked to low risk of COVID-19 transmission. Governments have incentivized cycling by redistributing street space as part of their post-lockdown strategies. Here, we evaluate the impact of provisional bicycle infrastructure on cycling traffic in European cities. We scrape daily bicycle counts spanning over a decade from 736 bicycle counters in 106 European cities. We combine this with data on announced and completed pop-up bike lane road work projects. On average 11.5 kilometers of provisional pop-up bike lanes have been built per city. Each kilometer has increased cycling in a city by 0.6%. We calculate that the new infrastructure will generate $2.3 billion in health benefits per year, if cycling habits are sticky.",
+      "url": "https://arxiv.org/abs/2008.05883v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Sebastian Kraus",
+        "Nicolas Koch"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2020-08-06",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2008.05883v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Refined CMA-ES for CEC 2026 Bound-Constrained Single-Objective Optimization",
+      "snippet": "We present a simplified and parameter-adjusted variant of CMA-ES designed for the CEC 2026 Bound-Constrained Single-Objective Optimization competition. Unlike typical algorithmic developments that increase complexity by adding mechanisms, Refined CMA-ES systematically removes components that do not improve performance, such as the flat-land escape, while retaining standard features that provide measurable benefits. Adjusting key parameters (population size and initial step-size) yields substantial gains, outperforming the baseline CMA-ES and several state-of-the-art competitors. The paper high",
+      "full_text": "We present a simplified and parameter-adjusted variant of CMA-ES designed for the CEC 2026 Bound-Constrained Single-Objective Optimization competition. Unlike typical algorithmic developments that increase complexity by adding mechanisms, Refined CMA-ES systematically removes components that do not improve performance, such as the flat-land escape, while retaining standard features that provide measurable benefits. Adjusting key parameters (population size and initial step-size) yields substantial gains, outperforming the baseline CMA-ES and several state-of-the-art competitors. The paper highlights the practical relevance of individual CMA-ES components under the CEC 2026 ranking, which equally weights solution accuracy and convergence speed, demonstrating that simplification combined with improved parameter settings can lead to superior performance.",
+      "url": "https://arxiv.org/abs/2611.04620v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Adam Stelmaszczyk",
+        "Rafał Biedrzycki",
+        "Jarosław Arabas"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-11-03",
+      "doi": "10.1109/CEC69861.2026.11727142",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2611.04620v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "LA City Bike Lane Infrastructure and its Effects on Business Closures From 2016-2021",
+      "snippet": "This paper analyzes the presence of bike lanes within the city of Los Angeles and how their presence could offer positive economic benefits to businesses. City wide shutdowns initiated in March of 2020 acted as a demand shock to local businesses. Over the next two years, businesses struggled to keep the doors open. We explored the possibility of bicycle infrastructure playing a role in supporting/insulating local businesses from closure and positive economic impacts. Our analysis shows that the businesses along bike lane in Los Angeles runs positively, and that COVID-19 is not related to, sign",
+      "full_text": "This paper analyzes the presence of bike lanes within the city of Los Angeles and how their presence could offer positive economic benefits to businesses. City wide shutdowns initiated in March of 2020 acted as a demand shock to local businesses. Over the next two years, businesses struggled to keep the doors open. We explored the possibility of bicycle infrastructure playing a role in supporting/insulating local businesses from closure and positive economic impacts. Our analysis shows that the businesses along bike lane in Los Angeles runs positively, and that COVID-19 is not related to, significantly.",
+      "url": "https://arxiv.org/abs/2205.04536v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Jeff Block",
+        "Yocelyne Gomez",
+        "Carolina Gonzalez",
+        "Miguel Magana",
+        "Marco Rodas",
+        "Academic Advisor",
+        "Mentor",
+        "Jongwook Woo"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-04-27",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2205.04536v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Proceedings of the CSCW 2026 Workshop on Women's Health as Cooperative Work: Participatory AI Across Care, Community, and Policy",
+      "snippet": "This submission indexes contributions to the CSCW 2026 workshop, \"Women's Health as Cooperative Work: Participatory AI Across Care, Community, and Policy,\" held on October 11, 2026. The workshop examines women's health as cooperative work spanning patients, caregivers, clinicians, communities, institutions, and digital technologies. Contributions explore participatory AI, coordination breakdowns, the distribution of care labor, governance, decision-making authority, and accountability across care, community, and policy contexts. The index provides paper titles, authors, affiliations, thematic ",
+      "full_text": "This submission indexes contributions to the CSCW 2026 workshop, \"Women's Health as Cooperative Work: Participatory AI Across Care, Community, and Policy,\" held on October 11, 2026. The workshop examines women's health as cooperative work spanning patients, caregivers, clinicians, communities, institutions, and digital technologies. Contributions explore participatory AI, coordination breakdowns, the distribution of care labor, governance, decision-making authority, and accountability across care, community, and policy contexts. The index provides paper titles, authors, affiliations, thematic areas, and unique report numbers to support discovery of the corresponding individual arXiv submissions. The workshop proposal is separately published under DOI 10.1145/3785651.3818821.",
+      "url": "https://arxiv.org/abs/2611.03776v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Sherilyn Francis"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-11-02",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2611.03776v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "TTLab at Daleel 2026: STAR-Ar, Sequence Tagging for Argument Recognition in Arabic",
+      "snippet": "Argument Mining (AM) is a critical NLP task that remains significantly under-resourced in Arabic. This paper presents $\\testtt{STAR-Ar}$, a BERT-BiLSTM-CRF architecture for argument discourse detection and classification, as our system for Daleel 2026, the inaugural Arabic argument mining shared task. The task requires the identification and classification of argumentative discourse units (ADUs) in debate and editorial texts.We jointly model these two objectives as a token-level sequence labeling task using a BERT-BiLSTM-CRF architecture that combines contextual transformer embeddings with str",
+      "full_text": "Argument Mining (AM) is a critical NLP task that remains significantly under-resourced in Arabic. This paper presents $\\testtt{STAR-Ar}$, a BERT-BiLSTM-CRF architecture for argument discourse detection and classification, as our system for Daleel 2026, the inaugural Arabic argument mining shared task. The task requires the identification and classification of argumentative discourse units (ADUs) in debate and editorial texts.We jointly model these two objectives as a token-level sequence labeling task using a BERT-BiLSTM-CRF architecture that combines contextual transformer embeddings with structural transition constraints to support accurate span detection. $\\testtt{STAR-Ar}$ achieves an F1-score of 72.69 on validation and 73.7 on test data. Our domain-specific analysis shows that models trained exclusively on editorials underperform those trained on debates, a disparity we primarily attribute to the smaller size of the editorial dataset. The code for $\\testtt{STAR-Ar}$ is available at ${\\href{https://github.com/ENTAILab/daleel_2026_Arabic-Argumentative-Discourse-Mining}{\\faGithub~TTLab at Daleel 2026}}$",
+      "url": "https://arxiv.org/abs/2609.39385v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Bhuvanesh Verma",
+        "Ali Abusaleh",
+        "Alexander Mehler"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-09-30",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2609.39385v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Urban Bike Lane Planning with Bike Trajectories: Models, Algorithms, and a Real-World Case Study",
+      "snippet": "We study an urban bike lane planning problem based on the fine-grained bike trajectory data, which is made available by smart city infrastructure such as bike-sharing systems. The key decision is where to build bike lanes in the existing road network. As bike-sharing systems become widespread in the metropolitan areas over the world, bike lanes are being planned and constructed by many municipal governments to promote cycling and protect cyclists. Traditional bike lane planning approaches often rely on surveys and heuristics. We develop a general and novel optimization framework to guide the b",
+      "full_text": "We study an urban bike lane planning problem based on the fine-grained bike trajectory data, which is made available by smart city infrastructure such as bike-sharing systems. The key decision is where to build bike lanes in the existing road network. As bike-sharing systems become widespread in the metropolitan areas over the world, bike lanes are being planned and constructed by many municipal governments to promote cycling and protect cyclists. Traditional bike lane planning approaches often rely on surveys and heuristics. We develop a general and novel optimization framework to guide the bike lane planning from bike trajectories. We formalize the bike lane planning problem in view of the cyclists' utility functions and derive an integer optimization model to maximize the utility. To capture cyclists' route choices, we develop a bilevel program based on the Multinomial Logit model. We derive structural properties about the base model and prove that the Lagrangian dual of the bike lane planning model is polynomial-time solvable. Furthermore, we reformulate the route choice based planning model as a mixed integer linear program using a linear approximation scheme. We develop tractable formulations and efficient algorithms to solve the large-scale optimization problem. Via a real-world case study with a city government, we demonstrate the efficiency of the proposed algorithms and quantify the trade-off between the coverage of bike trips and continuity of bike lanes. We show how the network topology evolves according to the utility functions and highlight the importance of understanding cyclists' route choices. The proposed framework drives the data-driven urban planning scheme in smart city operations management.",
+      "url": "https://arxiv.org/abs/2008.09645v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Sheng Liu",
+        "Zuo-Jun Max Shen",
+        "Xiang Ji"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2020-08-21",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2008.09645v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

@@ -1,0 +1,444 @@
+{
+  "schema_version": 2,
+  "id": "sci_chem_perovskite_degradation",
+  "path": "scientific_evidence",
+  "category": "physical_econ",
+  "description": "",
+  "query_raw": "@[tool:evidence] Why do perovskite solar cells degrade?",
+  "query_clean": "Why do perovskite solar cells degrade?",
+  "retrieval_query": "Why do perovskite solar cells degrade?",
+  "standalone_question": "Why do perovskite solar cells degrade?",
+  "gold_subject": "perovskite solar cells",
+  "gold_facet": "degradation",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:05:10+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "Why do perovskite solar cells degrade",
+      "arxiv": "Why do perovskite solar cells degrade"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Trapped charge-driven degradation of perovskite solar cells",
+      "snippet": "Perovskite solar cells have shown unprecedent performance increase up to 22% efficiency. However, their photovoltaic performance has shown fast deterioration under light illumination in the presence of humid air even with encapulation. The stability of perovskite materials has been unsolved and its mechanism has been elusive. Here we uncover a mechanism for irreversible degradation of perovskite materials in which trapped charges, regardless of the polarity, play a decisive role. An experimental setup using different polarity ions revealed that the moisture-induced irreversible dissociation of",
+      "full_text": "Perovskite solar cells have shown unprecedent performance increase up to 22% efficiency. However, their photovoltaic performance has shown fast deterioration under light illumination in the presence of humid air even with encapulation. The stability of perovskite materials has been unsolved and its mechanism has been elusive. Here we uncover a mechanism for irreversible degradation of perovskite materials in which trapped charges, regardless of the polarity, play a decisive role. An experimental setup using different polarity ions revealed that the moisture-induced irreversible dissociation of perovskite materials is triggered by charges trapped along grain boundaries. We also identified the synergetic effect of oxygen on the process of moisture-induced degradation. The deprotonation of organic cations by trapped charge-induced local electric field would be attributed to the initiation of irreversible decomposition.",
+      "url": "https://openalex.org/W2343155643",
+      "_adapter": "openalex",
+      "authors": [
+        "Namyoung Ahn",
+        "Kwisung Kwak",
+        "Min Seok Jang",
+        "Heetae Yoon",
+        "Byung Yang Lee",
+        "Jong Kwon Lee",
+        "Peter V. Pikhitsa",
+        "Junseop Byun",
+        "Mansoo Choi"
+      ],
+      "venue": "Nature Communications",
+      "publication_date": "2016",
+      "doi": "10.1038/ncomms13422",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Role of the Interfaces in Perovskite Solar Cells",
+      "snippet": "Organic–inorganic hybrid perovskite solar cells (HPSCs) have achieved an impressive power conversion efficiency (PCE) of 25.2% in 2019. At this stage, it is of paramount importance to understand in detail the working mechanism of these devices and which physical and chemical processes govern not only their power conversion efficiency but also their long‐term stability. The interfaces between the perovskite film and the charge transport layers are among the most important factors in determining both the PCE and stability of HPSCs. Herein, an overview is provided on the recent advances in the fu",
+      "full_text": "Organic–inorganic hybrid perovskite solar cells (HPSCs) have achieved an impressive power conversion efficiency (PCE) of 25.2% in 2019. At this stage, it is of paramount importance to understand in detail the working mechanism of these devices and which physical and chemical processes govern not only their power conversion efficiency but also their long‐term stability. The interfaces between the perovskite film and the charge transport layers are among the most important factors in determining both the PCE and stability of HPSCs. Herein, an overview is provided on the recent advances in the fundamental understanding of how these interfaces influence the performance of HPSCs. Firstly, it is discussed how the surface energy of the charge transport layer, the energy level alignment at the interfaces, the charge transport in interfacial layers, defects and mobile ions in the perovskite film, and interfacial layers or at the interfaces affect the charge recombination as well as hysteresis and light soaking phenomenon. Then it is discussed how the interfaces and interfacial materials influence the stability of HPSCs. At the same time, an overview is also provided on the various design strategies for the interfaces and the interfacial materials. At the end, the outlook for the development of highly efficient and stable HPSCs is provided.",
+      "url": "https://openalex.org/W2990870787",
+      "_adapter": "openalex",
+      "authors": [
+        "Shuyan Shao",
+        "Maria Antonietta Loi"
+      ],
+      "venue": "Advanced Materials Interfaces",
+      "publication_date": "2019",
+      "doi": "10.1002/admi.201901469",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Stability of perovskite solar cells: issues and prospects",
+      "snippet": "Even though power conversion efficiency has already reached 25.8%, poor stability is one of the major challenges hindering the commercialization of perovskite solar cells (PSCs). Several initiatives, such as structural modification and fabrication techniques by numerous ways, have been employed by researchers around the world to achieve the desired level of stability. The goal of this review is to address the recent improvements in PSCs in terms of structural modification and fabrication procedures. Perovskite films are used to provide a broad range of stability and to lose up to 20% of their ",
+      "full_text": "Even though power conversion efficiency has already reached 25.8%, poor stability is one of the major challenges hindering the commercialization of perovskite solar cells (PSCs). Several initiatives, such as structural modification and fabrication techniques by numerous ways, have been employed by researchers around the world to achieve the desired level of stability. The goal of this review is to address the recent improvements in PSCs in terms of structural modification and fabrication procedures. Perovskite films are used to provide a broad range of stability and to lose up to 20% of their initial performance. A thorough comprehension of the effect of the fabrication process on the device's stability is considered to be crucial in order to provide the foundation for future attempts. We summarize several commonly used fabrication techniques - spin coating, doctor blade, sequential deposition, hybrid chemical vapor, and alternating layer-by-layer. The evolution of device structure from regular to inverted, HTL free, and ETL including the changes in material utilization from organic to inorganic, as well as the perovskite material are presented in a systematic manner. We also aimed to gain insight into the functioning stability of PSCs, as well as practical information on how to increase their operational longevity through sensible device fabrication and materials processing, to promote PSC commercialization at the end.",
+      "url": "https://openalex.org/W4313893985",
+      "_adapter": "openalex",
+      "authors": [
+        "Tanzi Ahmed Chowdhury",
+        "Md. Arafat Bin Zafar",
+        "Md. Sajjad-Ul Islam",
+        "Mohammad Shahinuzzaman",
+        "Mohammad Aminul Islam",
+        "Mayeen Uddin Khandaker"
+      ],
+      "venue": "RSC Advances",
+      "publication_date": "2023",
+      "doi": "10.1039/d2ra05903g",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Perovskite Solar Cells: Progress and Advancements",
+      "snippet": "Organic–inorganic hybrid perovskite solar cells (PSCs) have emerged as a new class of optoelectronic semiconductors that revolutionized the photovoltaic research in the recent years. The perovskite solar cells present numerous advantages include unique electronic structure, bandgap tunability, superior charge transport properties, facile processing, and low cost. Perovskite solar cells have demonstrated unprecedented progress in efficiency and its architecture evolved over the period of the last 5–6 years, achieving a high power conversion efficiency of about 22% in 2016, serving as a promisin",
+      "full_text": "Organic–inorganic hybrid perovskite solar cells (PSCs) have emerged as a new class of optoelectronic semiconductors that revolutionized the photovoltaic research in the recent years. The perovskite solar cells present numerous advantages include unique electronic structure, bandgap tunability, superior charge transport properties, facile processing, and low cost. Perovskite solar cells have demonstrated unprecedented progress in efficiency and its architecture evolved over the period of the last 5–6 years, achieving a high power conversion efficiency of about 22% in 2016, serving as a promising candidate with the potential to replace the existing commercial PV technologies. This review discusses the progress of perovskite solar cells focusing on aspects such as superior electronic properties and unique features of halide perovskite materials compared to that of conventional light absorbing semiconductors. The review also presents a brief overview of device architectures, fabrication methods, and interface engineering of perovskite solar cells. The last part of the review elaborates on the major challenges such as hysteresis and stability issues in perovskite solar cells that serve as a bottleneck for successful commercialization of this promising PV technology.",
+      "url": "https://openalex.org/W2532572772",
+      "_adapter": "openalex",
+      "authors": [
+        "Naveen Kumar Elumalai",
+        "Md Arafat Mahmud",
+        "Dian Wang",
+        "Ashraf Uddin"
+      ],
+      "venue": "Energies",
+      "publication_date": "2016",
+      "doi": "10.3390/en9110861",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Strong-bonding hole-transport layers reduce ultraviolet degradation of perovskite solar cells",
+      "snippet": "The light-emitting diodes (LEDs) used in indoor testing of perovskite solar cells do not expose them to the levels of ultraviolet (UV) radiation that they would receive in actual outdoor use. We report degradation mechanisms of p-i-n-structured perovskite solar cells under unfiltered sunlight and with LEDs. Weak chemical bonding between perovskites and polymer hole-transporting materials (HTMs) and transparent conducting oxides (TCOs) dominate the accelerated A-site cation migration, rather than direct degradation of HTMs. An aromatic phosphonic acid, [2-(9-ethyl-9H-carbazol-3-yl)ethyl]phospho",
+      "full_text": "The light-emitting diodes (LEDs) used in indoor testing of perovskite solar cells do not expose them to the levels of ultraviolet (UV) radiation that they would receive in actual outdoor use. We report degradation mechanisms of p-i-n-structured perovskite solar cells under unfiltered sunlight and with LEDs. Weak chemical bonding between perovskites and polymer hole-transporting materials (HTMs) and transparent conducting oxides (TCOs) dominate the accelerated A-site cation migration, rather than direct degradation of HTMs. An aromatic phosphonic acid, [2-(9-ethyl-9H-carbazol-3-yl)ethyl]phosphonic acid (EtCz3EPA), enhanced bonding at the perovskite/HTM/TCO region with a phosphonic acid group bonded to TCOs and a nitrogen group interacting with lead in perovskites. A hybrid HTM of EtCz3EPA with strong hole-extraction polymers retained high efficiency and improved the UV stability of perovskite devices, and a champion perovskite minimodule-independently measured by the Perovskite PV Accelerator for Commercializing Technologies (PACT) center-retained operational efficiency of >16% after 29 weeks of outdoor testing.",
+      "url": "https://openalex.org/W4399394697",
+      "_adapter": "openalex",
+      "authors": [
+        "Chengbin Fei",
+        "Anastasia Kuvayskaya",
+        "Xiaoqiang Shi",
+        "Mengru Wang",
+        "Zhifang Shi",
+        "Haoyang Jiao",
+        "Timothy J. Silverman",
+        "Michael Owen‐Bellini",
+        "Yifan Dong",
+        "Yeming Xian",
+        "Rebecca Scheidt",
+        "Xiaoming Wang",
+        "Guang Yang",
+        "Hangyu Gu",
+        "Nengxu Li",
+        "Connor J. Dolan",
+        "Zhewen J. D. Deng",
+        "Deniz N. Cakan",
+        "David P. Fenning",
+        "Yanfa Yan",
+        "Matthew C. Beard",
+        "Laura T. Schelhas",
+        "Alan Sellinger",
+        "Jinsong Huang"
+      ],
+      "venue": "Science",
+      "publication_date": "2024",
+      "doi": "10.1126/science.adi4531",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Hydrogen bonding in perovskite solar cells",
+      "snippet": "Hydrogen bonding in perovskite solar cells",
+      "full_text": null,
+      "url": "https://openalex.org/W4388557393",
+      "_adapter": "openalex",
+      "authors": [
+        "Liangyou Lin",
+        "Timothy W. Jones",
+        "Terry Chien‐Jen Yang",
+        "Xinyu Li",
+        "Congcong Wu",
+        "Zichen Xiao",
+        "Haijin Li",
+        "Jinhua Li",
+        "Jingwen Qian",
+        "Lin Lin",
+        "Qinfeng Shi",
+        "Samuel D. Stranks",
+        "Gregory J. Wilson",
+        "Xianbao Wang"
+      ],
+      "venue": "Matter",
+      "publication_date": "2023",
+      "doi": "10.1016/j.matt.2023.10.013",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Dynamic electrical behavior of halide perovskite based solar cells",
+      "snippet": "A dynamic electrical model is introduced to investigate the hysteretic effects in the I-V characteristics of perovskite based solar cells. By making a simple ansatz for the polarization relaxation, our model is able to reproduce qualitatively and quantitatively detailed features of measured I-V characteristics. Pre-poling effects are discussed, pointing out the differences between initially over- and under-polarized samples. In particular, the presence of the current over-shoot observed in the reverse characteristics is correlated with the solar cell pre-conditioning. Furthermore, the dynamic ",
+      "full_text": "A dynamic electrical model is introduced to investigate the hysteretic effects in the I-V characteristics of perovskite based solar cells. By making a simple ansatz for the polarization relaxation, our model is able to reproduce qualitatively and quantitatively detailed features of measured I-V characteristics. Pre-poling effects are discussed, pointing out the differences between initially over- and under-polarized samples. In particular, the presence of the current over-shoot observed in the reverse characteristics is correlated with the solar cell pre-conditioning. Furthermore, the dynamic hysteresis is analyzed with respect to changing the bias scan rate, the obtained results being consistent with experimentally reported data: the hysteresis amplitude is maximum at intermediate scan rates, while at very slow and very fast ones it becomes negligible. The effects induced by different relaxation time scales are assessed. The proposed dynamic electrical model offers a comprehensive view of the solar cell operation, being a practical tool for future calibration of tentative microscopic descriptions.",
+      "url": "https://arxiv.org/abs/1606.00335v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "George Alexandru Nemnes",
+        "Cristina Besleaga",
+        "Andrei Gabriel Tomulescu",
+        "Ioana Pintilie",
+        "Lucian Pintilie",
+        "Kristinn Torfason",
+        "Andrei Manolescu"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2016-06-01",
+      "doi": "10.1016/j.solmat.2016.09.012",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1606.00335v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Radiation hardness and post irradiation regeneration behavior of GaInAsP solar cells",
+      "snippet": "Recent developments have renewed the demand for solar cells with increased tolerance to radiation damage. To investigate the specific irradiation damage of 1 MeV electron irradiation in GaInAsP lattice matched to InP for varying In and P contents, a simulation based analysis is employed: by fitting the quantum efficiency and open-circuit voltage simultaneously before and after irradiation, the induced changes in lifetime are detected. Furthermore, the reduction of irradiation damage during regeneration under typical satellite operating conditions for GEO missions (60°C and AM0 illumination) is",
+      "full_text": "Recent developments have renewed the demand for solar cells with increased tolerance to radiation damage. To investigate the specific irradiation damage of 1 MeV electron irradiation in GaInAsP lattice matched to InP for varying In and P contents, a simulation based analysis is employed: by fitting the quantum efficiency and open-circuit voltage simultaneously before and after irradiation, the induced changes in lifetime are detected. Furthermore, the reduction of irradiation damage during regeneration under typical satellite operating conditions for GEO missions (60°C and AM0 illumination) is investigated. A clear decrease of the radiation damage is observed after post irradiation regeneration. This regeneration effect is stronger for increasing InP-fraction. It is demonstrated that the irradiation induced defect recombination coefficient for irradiation with 1 MeV electrons after regeneration for 216 hours can be described with a linear function of InP-fraction between 1*10$^{-5}$ cm$^2$/s for GaAs and 7*10$^{-7}$ cm$^2$/s for InP. The results show that GaInAsP is a promising material for radiation hard space solar cells.",
+      "url": "https://arxiv.org/abs/2004.00308v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "R. Lang",
+        "J. Schön",
+        "J. Lefèvre",
+        "B. Boizot",
+        "F. Dimroth",
+        "D. Lackner"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2020-04-01",
+      "doi": "10.1016/j.solmat.2020.110551",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2004.00308v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Unraveling the defect landscape of wide-bandgap perovskites from electrical and photoelectrical characterization of thin films and solar cells",
+      "snippet": "Understanding and controlling defect states in halide perovskites is critical to advancing their performance in solar cells, yet their complex defect landscape remains elusive. Charged defects in perovskites can migrate under an applied electric field, complicating their characterization by conventional approaches. Here, we integrate current-voltage (IV) and thermal admittance spectroscopy (TAS) with lateral photocurrent methods, including thermal steady-state photocurrent (SSPC) and steady-state photocarrier grating (SSPG), to probe the kinetic and electrical properties of defects in thin fil",
+      "full_text": "Understanding and controlling defect states in halide perovskites is critical to advancing their performance in solar cells, yet their complex defect landscape remains elusive. Charged defects in perovskites can migrate under an applied electric field, complicating their characterization by conventional approaches. Here, we integrate current-voltage (IV) and thermal admittance spectroscopy (TAS) with lateral photocurrent methods, including thermal steady-state photocurrent (SSPC) and steady-state photocarrier grating (SSPG), to probe the kinetic and electrical properties of defects in thin films of vacuum-deposited FA$_{0.7}$Cs$_{0.3}$Pb(I$_{0.9}$Br$_{0.1}$)$_3$ perovskite. The experimental results are interpreted with advanced numerical simulations to account not only for the energy positions of defects in the bandgap but also for their mobilities. The low activation energies observed in the capacitance steps rule out free-carrier trapping and emission as their origin, pointing instead to charged-defect (or ionic) migration. We estimate the free-carrier mobilities and the defect distribution inside the bandgap, along with their capture coefficients. Our results reveal exponential bandtail states arising from dynamic lattice disorder and identify a Gaussian-like defect distribution 0.21~eV from the band edge, which dominates recombination. Donors and acceptors are present at nearly equal concentrations ($\\sim 2 \\times 10^{18}$~cm$^{-3}$). The mobile species responsible for the capacitance steps is one of the dopants, exhibiting an average mobility of $10^{-8}$~cm$^2$~V$^{-1}$~s$^{-1}$ at 300~K with a thermal activation energy of around 0.34~eV.",
+      "url": "https://arxiv.org/abs/2510.19712v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "L. Kopprio",
+        "J. Caram",
+        "S. Le Gall",
+        "F. Ventosinos",
+        "L. Gil-Escrig",
+        "H. J. Bolink",
+        "J. Alvarez",
+        "C. Longeaud",
+        "J-P. Kleider",
+        "J. Schmidt"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-10-22",
+      "doi": "10.1016/j.solmat.2026.114557",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2510.19712v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Efficient indoor p-i-n hybrid perovskite solar cells using low temperature solution processed NiO as hole extraction layers",
+      "snippet": "Hybrid perovskites have received tremendous attention due to their exceptional photovoltaic and optoelectronic properties. Among the two widely used perovskite solar cell device architectures of n-ip and p-i-n, the latter is interesting in terms of its simplicity of fabrication and lower energy input. However this structure mostly uses PEDOT:PSS as a hole transporting layer which can accelerate the perovskite solar cell degradation. Hence the development of stable, inorganic hole extraction layers (HEL), without compromising the simplicity of device fabrication is crucial in this fast-growing ",
+      "full_text": "Hybrid perovskites have received tremendous attention due to their exceptional photovoltaic and optoelectronic properties. Among the two widely used perovskite solar cell device architectures of n-ip and p-i-n, the latter is interesting in terms of its simplicity of fabrication and lower energy input. However this structure mostly uses PEDOT:PSS as a hole transporting layer which can accelerate the perovskite solar cell degradation. Hence the development of stable, inorganic hole extraction layers (HEL), without compromising the simplicity of device fabrication is crucial in this fast-growing photovoltaic field. Here we demonstrate a low temperature (~100 oC) solution - processed and ultrathin (~ 6 nm) NiO nanoparticle thin films as an efficient HEL for CH3NH3PbI3 based perovskite solar cells. We measure a power conversion efficiency (PCE) of 13.3 % on rigid glass substrates and 8.5 % on flexible substrates. A comparison with PEDOT:PSS based MAPbI3 solar cells (PCE ~ 7.9 %) shows that NiO based solar cells have higher short circuit current density and improved open circuit voltage (1.03V). Apart from the photovoltaic performance under 1 Sun, the efficient hole extraction property of NiO is demonstrated for indoor lighting as well with a PCE of 23.0 % for NiO based CH3NH3PbI2.9Cl0.1 p-i-n solar cells under compact fluorescent lighting. Compared to the perovskite solar cells fabricated on PEDOT:PSS HEL, better shelf-life stability is observed for perovskite solar cells fabricated on NiO HEL. Detailed microstructural and photophysical investigations imply uniform morphology, lower recombination losses, and improved charge transfer properties for CH3NH3PbI3 grown on NiO HEL.",
+      "url": "https://arxiv.org/abs/1909.03838v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Lethy Krishnan Jagadamma",
+        "Oskar Blaszczyk",
+        "Muhammad T. Sajjad",
+        "Arvydas Ruseckas",
+        "Ifor D. W. Samuel"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-09-09",
+      "doi": "10.1016/j.solmat.2019.110071",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1909.03838v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Organic and perovskite solar cells for space applications",
+      "snippet": "For almost sixty years, solar energy for space applications has relied on inorganic photovoltaics, evolving from solar cells made of single crystalline silicon to triple junctions based on germanium and III-V alloys. The class of organic-based photovoltaics, which ranges from all-organic to hybrid perovskites, has the potential of becoming a disruptive technology in space applications, thanks to the unique combination of appealing intrinsic properties (e.g. record high specific power, tunable absorption window) and processing possibilities. Here, we report on the launch of the stratospheric mi",
+      "full_text": "For almost sixty years, solar energy for space applications has relied on inorganic photovoltaics, evolving from solar cells made of single crystalline silicon to triple junctions based on germanium and III-V alloys. The class of organic-based photovoltaics, which ranges from all-organic to hybrid perovskites, has the potential of becoming a disruptive technology in space applications, thanks to the unique combination of appealing intrinsic properties (e.g. record high specific power, tunable absorption window) and processing possibilities. Here, we report on the launch of the stratospheric mission OSCAR, which demonstrated for the first time organic-based solar cell operation in extra-terrestrial conditions. This successful maiden flight for organic-based photovoltaics opens a new paradigm for solar electricity in space, from satellites to orbital and planetary space stations.",
+      "url": "https://arxiv.org/abs/1709.01787v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Ilaria Cardinaletti",
+        "Tim Vangerven",
+        "Steven Nagels",
+        "Rob Cornelissen",
+        "Dieter Schreurs",
+        "Jaroslav Hruby",
+        "Jelle Vodnik",
+        "Dries Devisscher",
+        "Jurgen Kesters",
+        "Jan DHaen",
+        "Alexis Franquet",
+        "Valentina Spampinato",
+        "Thierry Conard",
+        "Wouter Maes",
+        "Wim Deferme",
+        "Jean V. Manca"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-08-28",
+      "doi": "10.1016/j.solmat.2018.03.024",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1709.01787v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "CH3NH3PbI3/GeSe bilayer heterojunction solar cell with high performance",
+      "snippet": "Perovskite (CH3NH3PbI3) solar cells have made significant advances recently. In this paper, we propose a bilayer heterojunction solar cell comprised of a perovskite layer combining with a IV-VI group semiconductor layer, which can give a conversion efficiency even higher than the conventional perovskite solar cell. Such a scheme uses a property that the semiconductor layer with a direct band gap can be better in absorption of long wavelength light and is complementary to the perovskite layer. We studied the semiconducting layers such as GeSe, SnSe, GeS, and SnS, respectively, and found that Ge",
+      "full_text": "Perovskite (CH3NH3PbI3) solar cells have made significant advances recently. In this paper, we propose a bilayer heterojunction solar cell comprised of a perovskite layer combining with a IV-VI group semiconductor layer, which can give a conversion efficiency even higher than the conventional perovskite solar cell. Such a scheme uses a property that the semiconductor layer with a direct band gap can be better in absorption of long wavelength light and is complementary to the perovskite layer. We studied the semiconducting layers such as GeSe, SnSe, GeS, and SnS, respectively, and found that GeSe is the best, where the optical absorption efficiency in the perovskite/GeSe solar cell is dramatically increased. It turns out that the short circuit current density is enhanced 100% and the power conversion efficiency is promoted 42.7% (to a high value of 23.77%) larger than that in a solar cell with only single perovskite layer. The power conversion efficiency can be further promoted so long as the fill factor and open-circuit voltage are improved. This strategy opens a new way on developing the solar cells with high performance and practical applications.",
+      "url": "https://arxiv.org/abs/1712.01369v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Guo-Jiao Hou",
+        "Dong-Lin Wang",
+        "Roshan Ali",
+        "Yu-Rong Zhou",
+        "Zhen-Gang Zhu",
+        "Gang Su"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-10-24",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1712.01369v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

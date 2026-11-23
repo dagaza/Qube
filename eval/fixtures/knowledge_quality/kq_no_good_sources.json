@@ -1,0 +1,720 @@
+{
+  "schema_version": 2,
+  "id": "kq_no_good_sources",
+  "path": "scientific_evidence",
+  "category": "abstain",
+  "description": "If only swarm/XAI papers are returned, the model must be allowed to abstain.",
+  "query_raw": "@[tool:evidence] How does actor-network theory analyze large language model deployment?",
+  "query_clean": "How does actor-network theory analyze large language model deployment?",
+  "retrieval_query": "How does actor-network theory analyze large language model deployment?",
+  "standalone_question": "How does actor-network theory analyze large language model deployment?",
+  "gold_subject": "actor-network theory",
+  "gold_facet": "LLM deployment",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:05:59+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "arxiv": 3,
+    "dblp": 3,
+    "openreview": 3,
+    "acl_anthology": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "arxiv": "How does actor-network theory analyze large language model deployment",
+      "dblp": "How does actor-network theory analyze large language model deployment",
+      "openreview": "How does actor-network theory analyze large language model deployment",
+      "acl_anthology": "How does actor-network theory analyze large language model deployment",
+      "openalex": "How does actor-network theory analyze large language model deployment"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Learning From Failure: Integrating Negative Examples when Fine-tuning Large Language Models as Agents",
+      "snippet": "Large language models (LLMs) have achieved success in acting as agents, which interact with environments through tools such as search engines. However, LLMs are optimized for language generation instead of tool use during training or alignment, limiting their effectiveness as agents. To resolve this problem, previous work has first collected interaction trajectories between LLMs and environments, using only trajectories that successfully finished the task to fine-tune smaller models, making fine-tuning data scarce and acquiring it both difficult and costly. Discarding failed trajectories also ",
+      "full_text": "Large language models (LLMs) have achieved success in acting as agents, which interact with environments through tools such as search engines. However, LLMs are optimized for language generation instead of tool use during training or alignment, limiting their effectiveness as agents. To resolve this problem, previous work has first collected interaction trajectories between LLMs and environments, using only trajectories that successfully finished the task to fine-tune smaller models, making fine-tuning data scarce and acquiring it both difficult and costly. Discarding failed trajectories also leads to significant wastage of data and resources and limits the possible optimization paths during fine-tuning. In this paper, we argue that unsuccessful trajectories offer valuable insights, and LLMs can learn from these trajectories through appropriate quality control and fine-tuning strategies. By simply adding a prefix or suffix that tells the model whether to generate a successful trajectory during training, we improve model performance by a large margin on mathematical reasoning, multi-hop question answering, and strategic question answering tasks. We further analyze the inference results and find that our method provides a better trade-off between valuable information and errors in unsuccessful trajectories. To our knowledge, we are the first to demonstrate the value of negative trajectories and their application in agent-tunning scenarios. Our findings offer guidance for developing better agent-tuning methods and low-resource data usage techniques.",
+      "url": "https://arxiv.org/abs/2402.11651v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Renxi Wang",
+        "Haonan Li",
+        "Xudong Han",
+        "Yixuan Zhang",
+        "Timothy Baldwin"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-02-18",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2402.11651v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WizardLM: Empowering large pre-trained language models to follow complex instructions",
+      "snippet": "Training large language models (LLMs) with open-domain instruction following data brings colossal success. However, manually creating such instruction data is very time-consuming and labor-intensive. Moreover, humans may struggle to produce high-complexity instructions. In this paper, we show an avenue for creating large amounts of instruction data with varying levels of complexity using LLM instead of humans. Starting with an initial set of instructions, we use our proposed Evol-Instruct to rewrite them step by step into more complex instructions. Then, we mix all generated instruction data t",
+      "full_text": "Training large language models (LLMs) with open-domain instruction following data brings colossal success. However, manually creating such instruction data is very time-consuming and labor-intensive. Moreover, humans may struggle to produce high-complexity instructions. In this paper, we show an avenue for creating large amounts of instruction data with varying levels of complexity using LLM instead of humans. Starting with an initial set of instructions, we use our proposed Evol-Instruct to rewrite them step by step into more complex instructions. Then, we mix all generated instruction data to fine-tune LLaMA. We call the resulting model WizardLM. Human evaluations on a complexity-balanced test bed and Vicuna's testset show that instructions from Evol-Instruct are superior to human-created ones. By analyzing the human evaluation results of the high complexity part, we demonstrate that outputs from our WizardLM are preferred to outputs from OpenAI ChatGPT. In GPT-4 automatic evaluation, WizardLM achieves more than 90\\% capacity of ChatGPT on 17 out of 29 skills. Even though WizardLM still lags behind ChatGPT in some aspects, our findings suggest that fine-tuning with AI-evolved instructions is a promising direction for enhancing LLMs. Our code and data are public at https://github.com/nlpxucan/WizardLM",
+      "url": "https://arxiv.org/abs/2304.12244v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Can Xu",
+        "Qingfeng Sun",
+        "Kai Zheng",
+        "Xiubo Geng",
+        "Pu Zhao",
+        "Jiazhan Feng",
+        "Chongyang Tao",
+        "Qingwei Lin",
+        "Daxin Jiang"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-04-24",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2304.12244v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Demystifying Instruction Mixing for Fine-tuning Large Language Models",
+      "snippet": "Instruction tuning significantly enhances the performance of large language models (LLMs) across various tasks. However, the procedure to optimizing the mixing of instruction datasets for LLM fine-tuning is still poorly understood. This study categorizes instructions into three primary types: NLP downstream tasks, coding, and general chat. We explore the effects of instruction tuning on different combinations of datasets on LLM performance, and find that certain instruction types are more advantageous for specific applications but can negatively impact other areas. This work provides insights ",
+      "full_text": "Instruction tuning significantly enhances the performance of large language models (LLMs) across various tasks. However, the procedure to optimizing the mixing of instruction datasets for LLM fine-tuning is still poorly understood. This study categorizes instructions into three primary types: NLP downstream tasks, coding, and general chat. We explore the effects of instruction tuning on different combinations of datasets on LLM performance, and find that certain instruction types are more advantageous for specific applications but can negatively impact other areas. This work provides insights into instruction mixtures, laying the foundations for future research.",
+      "url": "https://arxiv.org/abs/2312.10793v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Renxi Wang",
+        "Haonan Li",
+        "Minghao Wu",
+        "Yuxia Wang",
+        "Xudong Han",
+        "Chiyu Zhang",
+        "Timothy Baldwin"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-12-17",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2312.10793v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PB-LLM: Partially Binarized Large Language Models",
+      "snippet": "This paper explores network binarization, a radical form of quantization, compressing model weights to a single bit, specifically for Large Language Models (LLMs) compression. Due to previous binarization methods collapsing LLMs, we propose a novel approach, Partially-Binarized LLM (PB-LLM), which can achieve extreme low-bit quantization while maintaining the linguistic reasoning capacity of quantized LLMs. Specifically, our exploration first uncovers the ineffectiveness of naive applications of existing binarization algorithms and highlights the imperative role of salient weights in achieving",
+      "full_text": "This paper explores network binarization, a radical form of quantization, compressing model weights to a single bit, specifically for Large Language Models (LLMs) compression. Due to previous binarization methods collapsing LLMs, we propose a novel approach, Partially-Binarized LLM (PB-LLM), which can achieve extreme low-bit quantization while maintaining the linguistic reasoning capacity of quantized LLMs. Specifically, our exploration first uncovers the ineffectiveness of naive applications of existing binarization algorithms and highlights the imperative role of salient weights in achieving low-bit quantization. Thus, PB-LLM filters a small ratio of salient weights during binarization, allocating them to higher-bit storage, i.e., partially-binarization. PB-LLM is extended to recover the capacities of quantized LMMs, by analyzing from the perspective of post-training quantization (PTQ) and quantization-aware training (QAT). Under PTQ, combining the concepts from GPTQ, we reconstruct the binarized weight matrix guided by the Hessian matrix and successfully recover the reasoning capacity of PB-LLM in low-bit. Under QAT, we freeze the salient weights during training, explore the derivation of optimal scaling factors crucial for minimizing the quantization error, and propose a scaling mechanism based on this derived scaling strategy for residual binarized weights. Those explorations and the developed methodologies significantly contribute to rejuvenating the performance of low-bit quantized LLMs and present substantial advancements in the field of network binarization for LLMs.The code is available at https://github.com/hahnyuan/BinaryLLM.",
+      "url": "https://arxiv.org/abs/2310.00034v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Yuzhang Shang",
+        "Zhihang Yuan",
+        "Qiang Wu",
+        "Zhen Dong"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-09-29",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2310.00034v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Large Language Models Lack Understanding of Character Composition of Words",
+      "snippet": "Large language models (LLMs) have demonstrated remarkable performances on a wide range of natural language tasks. Yet, LLMs' successes have been largely restricted to tasks concerning words, sentences, or documents, and it remains questionable how much they understand the minimal units of text, namely characters. In this paper, we examine contemporary LLMs regarding their ability to understand character composition of words, and show that most of them fail to reliably carry out even the simple tasks that can be handled by humans with perfection. We analyze their behaviors with comparison to to",
+      "full_text": "Large language models (LLMs) have demonstrated remarkable performances on a wide range of natural language tasks. Yet, LLMs' successes have been largely restricted to tasks concerning words, sentences, or documents, and it remains questionable how much they understand the minimal units of text, namely characters. In this paper, we examine contemporary LLMs regarding their ability to understand character composition of words, and show that most of them fail to reliably carry out even the simple tasks that can be handled by humans with perfection. We analyze their behaviors with comparison to token level performances, and discuss the potential directions for future research.",
+      "url": "https://arxiv.org/abs/2405.11357v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Andrew Shin",
+        "Kunitake Kaneko"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-05-18",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2405.11357v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "A Holistic Assessment of the Carbon Footprint of Noor, a Very Large Arabic Language Model",
+      "snippet": "As ever larger language models grow more ubiquitous, it is crucial to consider their environmental impact. Characterised by extreme size and resource use, recent generations of models have been criticised for their voracious appetite for compute, and thus significant carbon footprint. Although reporting of carbon impact has grown more common in machine learning papers, this reporting is usually limited to compute resources used strictly for training. In this work, we propose a holistic assessment of the footprint of an extreme-scale language model, Noor. Noor is an ongoing project aiming to de",
+      "full_text": "As ever larger language models grow more ubiquitous, it is crucial to consider their environmental impact. Characterised by extreme size and resource use, recent generations of models have been criticised for their voracious appetite for compute, and thus significant carbon footprint. Although reporting of carbon impact has grown more common in machine learning papers, this reporting is usually limited to compute resources used strictly for training. In this work, we propose a holistic assessment of the footprint of an extreme-scale language model, Noor. Noor is an ongoing project aiming to develop the largest multi-task Arabic language models -- with up to 13B parameters -- leveraging zero-shot generalisation to enable a wide range of downstream tasks via natural language instructions. We assess the total carbon bill of the entire project: starting with data collection and storage costs, including research and development budgets, pretraining costs, future serving estimates, and other exogenous costs necessary for this international cooperation. Notably, we find that inference costs and exogenous factors can have a significant impact on total budget. Finally, we discuss pathways to reduce the carbon footprint of extreme-scale models.",
+      "url": "https://arxiv.org/abs/2610.00223v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Imad Lakim",
+        "Ebtesam Almazrouei",
+        "Ibrahim Abu Alhaol",
+        "Merouane Debbah",
+        "Julien Launay"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-09-22",
+      "doi": "10.18653/v1/2022.bigscience-1.8",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2610.00223v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Measuring domain-specific user influence in microblogs: An Actor-Network Theory based approach",
+      "snippet": "As Sina Weibo is becoming one of the most popular online social networking platforms in China, there is growing need in extracting knowledge and analyzing user behavior out of it. Influential user discovery has been quickly identified as an important application for better marketing and advertising purposes. In order to analyze user influence, we construct a user influence actor-network based on Actor-Network Theory, in which both users and users' microblogs are seen as actors and their interactions are treated as networks. User influence is then evolved into network effects caused by both mic",
+      "full_text": "As Sina Weibo is becoming one of the most popular online social networking platforms in China, there is growing need in extracting knowledge and analyzing user behavior out of it. Influential user discovery has been quickly identified as an important application for better marketing and advertising purposes. In order to analyze user influence, we construct a user influence actor-network based on Actor-Network Theory, in which both users and users' microblogs are seen as actors and their interactions are treated as networks. User influence is then evolved into network effects caused by both microblogs and interactions, which are characterized as the Quality Index and Popularity Index of microblog respectively that can be well evaluated through models proposed in this paper. Furthermore, by observing that one user may show distinctive influence in different domains, we build our model domain specifically. With full consideration to quality, popularity and domain categories of users' microblogs, we propose a novel domain-specific user influence measurement, ANTRank, in Sina Weibo based on Actor-Network Theory. Experimental results show that the ANTRank performs well with the user influence evaluation.",
+      "url": "https://ieeexplore.ieee.org/iel7/7194213/7230917/07230978.pdf",
+      "_adapter": "openreview",
+      "authors": [
+        "Bo Tang",
+        "Tun Lu",
+        "Hansu Gu",
+        "Xianghua Ding",
+        "Ning Gu"
+      ],
+      "venue": "CSCWD 2015",
+      "publication_date": "1420",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "openreview_forum_id": "YdPnum3Y5b",
+      "retrieval_method": "openreview_note_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "When Does Critique Improve AI-Assisted Theoretical Physics? SCALAR: Structured Critic--Actor Loop for Agentic Reasoning",
+      "snippet": "As large language models (LLMs) show increasing promise on research-level physics reasoning tasks and agentic AI becomes more common, a practical question emerges: How does the interaction between researchers and agents affect the results?\nWe study this using SCALAR (Structured Critic--Actor Loop for Agentic Reasoning), an Actor--Critic--Judge pipeline applied to quantum field theory and string theory problems. The Actor proposes solutions, the Critic provides iterative feedback, and an independent Judge evaluates the transcript against reference solutions. We vary the Actor persona, the Criti",
+      "full_text": "As large language models (LLMs) show increasing promise on research-level physics reasoning tasks and agentic AI becomes more common, a practical question emerges: How does the interaction between researchers and agents affect the results?\nWe study this using SCALAR (Structured Critic--Actor Loop for Agentic Reasoning), an Actor--Critic--Judge pipeline applied to quantum field theory and string theory problems. The Actor proposes solutions, the Critic provides iterative feedback, and an independent Judge evaluates the transcript against reference solutions. We vary the Actor persona, the Critic feedback strategy, and the Actor model family and scale. Multi-turn dialogue improves over single-shot attempts throughout, but both the mechanism of improvement and the value of different prompting choices depend strongly on the Actor--Critic pairing. Increasing the scale within one model family (e.g. from the 8B-parameter DeepSeek-R1 variant to DeepSeek-R1 70B) improves some easier-problem behavior, but does not remove the hardest bottleneck we observe. Critic feedback strategy matters most clearly in the asymmetric Actor--Critic setting (e.g., a lightweight  Haiku Actor guided by a stronger Sonnet Critic), where constructive feedback improves mean-score outcomes. In same-family Actor--Critic settings, strategy effects are weaker: lenient feedback is sometimes favored, while strict and adversarial feedback are not beneficial. Taken together, SCALAR provides a controlled testbed for evaluating which interaction structures help or hinder AI-driven scientific discovery.",
+      "url": "https://openreview.net/forum?id=pDQoUjLrZ0",
+      "_adapter": "openreview",
+      "authors": [
+        "Vasilis Niarchos",
+        "Constantinos Papageorgakis",
+        "Alexander G. Stapleton",
+        "Sokratis Trifinopoulos"
+      ],
+      "venue": "AI4Physics",
+      "publication_date": "1780",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "openreview_forum_id": "pDQoUjLrZ0",
+      "retrieval_method": "openreview_note_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How does information diffuse in large recommendation social networks?",
+      "snippet": "This article investigates how information diffuses in Douban, an online social network. First, we analyze properties of the user relationships in Douban, observing its degree distribution, network reciprocity, and degree of separation. Second, we propose a method that infers how the information diffuses through this network. Subsequently, using this method we rebuild possible information diffusion graphs, and make statistical observations of the disconnected properties, size distributions, and diffusion patterns in Douban. Based on our empirical analysis, we found that in most cases, informati",
+      "full_text": "This article investigates how information diffuses in Douban, an online social network. First, we analyze properties of the user relationships in Douban, observing its degree distribution, network reciprocity, and degree of separation. Second, we propose a method that infers how the information diffuses through this network. Subsequently, using this method we rebuild possible information diffusion graphs, and make statistical observations of the disconnected properties, size distributions, and diffusion patterns in Douban. Based on our empirical analysis, we found that in most cases, information diffuses with multiple origins in Douban. We attribute this to the two different kinds of influence that lead to the diffusion: internal and external influence. Finally, based on the observations, we propose a novel SID model to formulate the diffusions in online social network environments. In the model, there are n iterations. On each iteration, each non-infected node can be infected, either externally with probability P ex , or internally with probability P in from each of the nodes it follows that were already infected. Our simulation results reveal that the SID model can flexibly portray the diffusion processes in Douban through adjusting these two probabilities.",
+      "url": "https://ieeexplore.ieee.org/iel7/65/7513853/07513861.pdf",
+      "_adapter": "openreview",
+      "authors": [
+        "Jianwei Niu",
+        "Danning Wang",
+        "Milica Stojmenovic"
+      ],
+      "venue": "IEEE Netw. 2016",
+      "publication_date": "1451",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "openreview_forum_id": "2xuhyBm27f",
+      "retrieval_method": "openreview_note_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Robust Language Identification for Romansh Varieties",
+      "snippet": "The Romansh language has several regional varieties, called idioms, which sometimes have limited mutual intelligibility. This linguistic diversity motivates the need for a language identification (LID) system that can distinguish between these idioms, yet to date there has been no well-documented effort to build one. Since Romansh LID should also be able to recognize Rumantsch Grischun, a supra-regional variety that combines elements of several idioms, this makes for a novel and interesting classification problem. In this paper, we present a LID system for Romansh idioms based on an SVM approa",
+      "full_text": "The Romansh language has several regional varieties, called idioms, which sometimes have limited mutual intelligibility. This linguistic diversity motivates the need for a language identification (LID) system that can distinguish between these idioms, yet to date there has been no well-documented effort to build one. Since Romansh LID should also be able to recognize Rumantsch Grischun, a supra-regional variety that combines elements of several idioms, this makes for a novel and interesting classification problem. In this paper, we present a LID system for Romansh idioms based on an SVM approach. We evaluate our model on a newly curated benchmark across two domains and find that it reaches an average in-domain accuracy of 97%, enabling applications such as idiom-aware spell checking or machine translation. Our classifier is publicly available.",
+      "url": "https://openreview.net/forum?id=cANYgbA6bb",
+      "_adapter": "openreview",
+      "authors": [
+        "Charlotte Model",
+        "Sina Ahmadi",
+        "Jannis Vamvas"
+      ],
+      "venue": "SwissText 2026 Conference Submission",
+      "publication_date": "1773",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "openreview_forum_id": "cANYgbA6bb",
+      "retrieval_method": "openreview_note_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "An Actor-Critic Approach to Boosting Text-to-SQL Large Language Model",
+      "snippet": "Text-To-SQL (T2S) conversion based on large language models (LLMs) has found a wide range of applications, by leveraging the capabilities of LLMs in interpreting the query intent expressed in natural language. Existing research focuses on suitable representations for data schema and/or questions, task-specific instructions and representative examples, and complicated inference pipelines. All these methods are empirical and task specific, without a theoretical bound on performance. In this paper, we propose a simple, general, and performance guaranteed T2S enhancement approach called Actor-Crit",
+      "full_text": "Text-To-SQL (T2S) conversion based on large language models (LLMs) has found a wide range of applications, by leveraging the capabilities of LLMs in interpreting the query intent expressed in natural language. Existing research focuses on suitable representations for data schema and/or questions, task-specific instructions and representative examples, and complicated inference pipelines. All these methods are empirical and task specific, without a theoretical bound on performance. In this paper, we propose a simple, general, and performance guaranteed T2S enhancement approach called Actor-Critic (AC). Specifically, we design two roles using the same LLM: an Actor to produce SQL queries and a Critic to evaluate the produced SQL. If the Critic believes the produced SQL is wrong, it notifies the Actor to reproduce the SQL and perform evaluation again. By this simple iterative process, expected performance can be derived in theory. We conducted extensive experiments on the Spider and related datasets with eleven LLMs, and demonstrated that the Actor-Critic method consistently improves the performance of T2S, thus serving as a general enhancement approach for T2S conversion.",
+      "url": "http://arxiv.org/pdf/2410.22082v1",
+      "_adapter": "openreview",
+      "authors": [
+        "Ziyang Zheng",
+        "Haipeng Jing",
+        "Canyu Rui",
+        "Askar Hamdulla",
+        "Dong Wang"
+      ],
+      "venue": "CoRR 2024",
+      "publication_date": "1704",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "openreview_forum_id": "NGEaLAqiuM",
+      "retrieval_method": "openreview_note_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 4
+        },
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Large Language Models as SocioTechnical Systems",
+      "snippet": "Amanda Dsouza, Ambrose Slone, Ameet Rahane, Anantharaman S. Iyer, Anders Andreassen, Andrea Madotto, Andrea Santilli, Andreas Stuhlmüller, Andrew Dai, Andrew La, Andrew Lampinen, Andy Zou, Angela Jiang, Angelica Chen, Anh Vuong, Animesh Gupta, Anna Gottardi, Antonio Norelli, Anu Venkatesh, Arash Gholamidavoodi, Arfa Tabassum, Arul Menezes, Arun Kirubarajan, Asher Mullokandov, Ashish Sabharwal, Austin Herrick, Avia Efrat, Aykut Erdem, Ayla Karaka¸ s, B. Ryan Roberts, Bao Sheng Loe, Barret Zoph,",
+      "full_text": "Amanda Dsouza, Ambrose Slone, Ameet Rahane, Anantharaman S. Iyer, Anders Andreassen, Andrea Madotto, Andrea Santilli, Andreas Stuhlmüller, Andrew Dai, Andrew La, Andrew Lampinen, Andy Zou, Angela Jiang, Angelica Chen, Anh Vuong, Animesh Gupta, Anna Gottardi, Antonio Norelli, Anu Venkatesh, Arash Gholamidavoodi, Arfa Tabassum, Arul Menezes, Arun Kirubarajan, Asher Mullokandov, Ashish Sabharwal, Austin Herrick, Avia Efrat, Aykut Erdem, Ayla Karaka¸ s, B. Ryan Roberts, Bao Sheng Loe, Barret Zoph,",
+      "url": "https://aclanthology.org/2023.bigpicture-1.6/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Kaustubh Dhole"
+      ],
+      "venue": "Proceedings of the Big Picture Workshop",
+      "publication_date": "2023",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "2023.bigpicture-1.6",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Can Large Language Models Transform Computational Social Science?",
+      "snippet": "- Egami, Naoki, Musashi Jacobs-Harukawa, Brandon M. Stewart, and Hanying Wei. 2023. Using large language model annotations for valid downstream statistical inference in social science: Design-based semi-supervised learning. ArXiv preprint , abs/2306.04746.\n- Eisenstein, Jacob. 2012. Mapping the geographical diffusion of new words. ArXiv preprint , abs/1210.5268.\n- Eisenstein, Jacob, Brendan O'Connor, Noah A. Smith, and Eric P. Xing. 2014. Diffusion of lexical change in social media. PloS One ,",
+      "full_text": "- Egami, Naoki, Musashi Jacobs-Harukawa, Brandon M. Stewart, and Hanying Wei. 2023. Using large language model annotations for valid downstream statistical inference in social science: Design-based semi-supervised learning. ArXiv preprint , abs/2306.04746.\n- Eisenstein, Jacob. 2012. Mapping the geographical diffusion of new words. ArXiv preprint , abs/1210.5268.\n- Eisenstein, Jacob, Brendan O'Connor, Noah A. Smith, and Eric P. Xing. 2014. Diffusion of lexical change in social media. PloS One ,",
+      "url": "https://aclanthology.org/2024.cl-1.8/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Caleb Ziems",
+        "William Held",
+        "Omar Shaikh",
+        "Jiaao Chen",
+        "Zhehao Zhang",
+        "Diyi Yang"
+      ],
+      "venue": "Computational Linguistics, Volume 50, Issue 1 - March 2024",
+      "publication_date": "2024",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "2024.cl-1.8",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Operationalizing AI for Good: Spotlight on Deployment and Integration of AI Models in Humanitarian Work",
+      "snippet": "## 1 Introduction\n\nThe last ten years have seen a surge in AI and Natural Language Processing research to address real world problems that have a social good impact (Adauto et al., 2023). Many of these problems align with the United Nations Sustainable Development Goals (UNSDG) 1 . This has also led to a surge in publications in this space to the point that even prominent AI research conferences have special tracks and themes related to social good (ie. AAAI, ACL-IJCNLP in 2021 (Zong et al., 202",
+      "full_text": "## 1 Introduction\n\nThe last ten years have seen a surge in AI and Natural Language Processing research to address real world problems that have a social good impact (Adauto et al., 2023). Many of these problems align with the United Nations Sustainable Development Goals (UNSDG) 1 . This has also led to a surge in publications in this space to the point that even prominent AI research conferences have special tracks and themes related to social good (ie. AAAI, ACL-IJCNLP in 2021 (Zong et al., 202",
+      "url": "https://aclanthology.org/2025.nlp4pi-1.16/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Anton Abilov",
+        "Ke Zhang",
+        "Hemank Lamba",
+        "Elizabeth M. Olson",
+        "Joel Tetreault",
+        "Alex Jaimes"
+      ],
+      "venue": "Proceedings of the Fourth Workshop on NLP for Positive Impact (NLP4PI)",
+      "publication_date": "2025",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "2025.nlp4pi-1.16",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Everything you need to know about Multilingual LLMs: Towards fair, performant and reliable models for languages of the world",
+      "snippet": "Deploying to language communities : LLMs today are trained using billions of parameters, making them infeasible to be used in low-memory footprint devices. Language communities (particularly those that speak under-resourced languages) that may benefit the most from Speech and NLP technologies may not have good enough connectivity to be able to use models hosted on the cloud. This necessitates the development or distillation of lightweight models for low-resource languages, and in this section,",
+      "full_text": "Deploying to language communities : LLMs today are trained using billions of parameters, making them infeasible to be used in low-memory footprint devices. Language communities (particularly those that speak under-resourced languages) that may benefit the most from Speech and NLP technologies may not have good enough connectivity to be able to use models hosted on the cloud. This necessitates the development or distillation of lightweight models for low-resource languages, and in this section,",
+      "url": "https://aclanthology.org/2023.acl-tutorials.3/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Sunayana Sitaram",
+        "Monojit Choudhury",
+        "Barun Patra",
+        "Vishrav Chaudhary",
+        "Kabir Ahuja",
+        "Kalika Bali"
+      ],
+      "venue": "Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 6: Tutorial Abstracts)",
+      "publication_date": "2023",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "2023.acl-tutorials.3",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Large Language Models Threaten Language’s Epistemic and Communicative Foundations",
+      "snippet": "- Betsy Sparrow, Jenny Liu, and Daniel M. Wegner. 2011. Google effects on memory: Cognitive consequences of having information at our fingertips. Science , 333(6043):776-778.\n- Dan Sperber and Deirdre Wilson. 1986. Relevance: Communication and Cognition . Harvard University Press.\n- Efstathios Stamatatos. 2009. A survey of modern authorship attribution methods. Journal of the American Society for Information Science and Technology , 60(3):538-556.\n- Stanford University. 2023. Curriculum Resour",
+      "full_text": "- Betsy Sparrow, Jenny Liu, and Daniel M. Wegner. 2011. Google effects on memory: Cognitive consequences of having information at our fingertips. Science , 333(6043):776-778.\n- Dan Sperber and Deirdre Wilson. 1986. Relevance: Communication and Cognition . Harvard University Press.\n- Efstathios Stamatatos. 2009. A survey of modern authorship attribution methods. Journal of the American Society for Information Science and Technology , 60(3):538-556.\n- Stanford University. 2023. Curriculum Resour",
+      "url": "https://aclanthology.org/2025.emnlp-main.1457/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Shashank Srivastava"
+      ],
+      "venue": "Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing",
+      "publication_date": "2025",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "2025.emnlp-main.1457",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Tracking the perspectives of interacting language models",
+      "snippet": "## 1 Introduction\n\nThe success of large pre-trained models in natural language processing (Devlin et al., 2018), computer vision (Oquab et al., 2023), signal processing (Radford et al., 2023), among other domains (Jumper et al., 2021; Singer et al., 2022) across various computing and human benchmarks has brought them to the forefront of the technology-centric world. Given their ability to produce human-expert level responses for a large set of knowledge-based questions (Touvron et al., 2023; Ach",
+      "full_text": "## 1 Introduction\n\nThe success of large pre-trained models in natural language processing (Devlin et al., 2018), computer vision (Oquab et al., 2023), signal processing (Radford et al., 2023), among other domains (Jumper et al., 2021; Singer et al., 2022) across various computing and human benchmarks has brought them to the forefront of the technology-centric world. Given their ability to produce human-expert level responses for a large set of knowledge-based questions (Touvron et al., 2023; Ach",
+      "url": "https://aclanthology.org/2024.emnlp-main.90/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Hayden Helm",
+        "Brandon Duderstadt",
+        "Youngser Park",
+        "Carey Priebe"
+      ],
+      "venue": "Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing",
+      "publication_date": "2024",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "2024.emnlp-main.90",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Music, Mediation Theories and Actor-Network Theory",
+      "snippet": "In this double issue of the Contemporary Music Review we focus not on Adorno but on theories of music’s mediation that have emerged in the last two decades, offering some systematic reflection. The impetus for the issue came from the research programme ‘Music, Digitisation, Mediation: Towards Interdisciplinary Music Studies’ (or MusDig). MusDig received funding from the European Research Council Advanced Grants scheme under the EU’s Seventh Framework Programme, ERC grant no. 249598. The MusDig programme was directed by Georgina Born and ran from 2010–15 based at the Faculty of Music, Universit",
+      "full_text": "In this double issue of the Contemporary Music Review we focus not on Adorno but on theories of music’s mediation that have emerged in the last two decades, offering some systematic reflection. The impetus for the issue came from the research programme ‘Music, Digitisation, Mediation: Towards Interdisciplinary Music Studies’ (or MusDig). MusDig received funding from the European Research Council Advanced Grants scheme under the EU’s Seventh Framework Programme, ERC grant no. 249598. The MusDig programme was directed by Georgina Born and ran from 2010–15 based at the Faculty of Music, University of Oxford. MusDig consisted of a series of comparative ethnographic studies that each addressed, in different ways, how music is being transformed around the world by digitisation and digital media. Studies were located in Cuba, India, Kenya, Argentina, Canada and the UK, but the programme also encompassed ethnographies of music’s online consumption and circulation, of internet-mediated music genres, and of the software platform, Max. As the title announces, questions of music’s mediation were central to MusDig from its inception; a core theoretical ambition was, through the combined ethnographic, historical and conceptual work engaged in by the researchers, to further develop those mediation theories that have been emerging in recent years in relation to music. This issue is one of the main vehicles for attaining that goal. It interweaves research from the MusDig programme (articles by Christopher Haworth and Patrick Valiquet, and this introduction) with that of colleagues also working broadly with these ideas.",
+      "url": "https://openalex.org/W2924786310",
+      "_adapter": "openalex",
+      "authors": [
+        "Georgina Born",
+        "Andrew Barry"
+      ],
+      "venue": "Contemporary Music Review",
+      "publication_date": "2018",
+      "doi": "10.1080/07494467.2018.1578107",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "On the virtues and vices of combining theories: The case of institutional and actor-network theories in accounting research",
+      "snippet": "On the virtues and vices of combining theories: The case of institutional and actor-network theories in accounting research",
+      "full_text": null,
+      "url": "https://openalex.org/W2650906626",
+      "_adapter": "openalex",
+      "authors": [
+        "Sven Modell",
+        "Eija M. Vinnari",
+        "Kari Lukka"
+      ],
+      "venue": "Accounting Organizations and Society",
+      "publication_date": "2017",
+      "doi": "10.1016/j.aos.2017.06.005",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Actor-Network Theory",
+      "snippet": "Four Nails in the CoffinIn a lecture delivered in 1997 Bruno Latour identified the \"things that do not work with actor-network theory.\"These were four: the word actor, the word network, the word theory, and, last but not least, the deceptively unobtrusive hyphen.These four inadequacies represented, Latour argued, \"four nails in the coffin\" of actor-network theory (ANT) and revealed the design flaws that had been built into this \"careless experiment\" in empirical metaphysics (Latour 1999).Latour's diagnosis was perceptive, for those are, if not conceptual weak points, deliberately undertheorize",
+      "full_text": "Four Nails in the CoffinIn a lecture delivered in 1997 Bruno Latour identified the \"things that do not work with actor-network theory.\"These were four: the word actor, the word network, the word theory, and, last but not least, the deceptively unobtrusive hyphen.These four inadequacies represented, Latour argued, \"four nails in the coffin\" of actor-network theory (ANT) and revealed the design flaws that had been built into this \"careless experiment\" in empirical metaphysics (Latour 1999).Latour's diagnosis was perceptive, for those are, if not conceptual weak points, deliberately undertheorized concepts in ANT.Yet the corpse (if indeed there was a body in that box) has proved to be livelier than the image suggested.In the last two decades, ANT has traveled far and wide, insinuating itself into a variety of disciplines in the social sciences and beyond and becoming a powerful counterpoint to mainstream understandings of the nature and purposes of social theory. 1 This is in fact what Latour hoped would happen.It was already too late, he suggested in 1997, to recall ANT and fix its obvious shortcomings.\"The only solution,\" he argued, \"is to do what Victor Frankenstein did not do, that is, not to abandon the creature to its fate but continue all the way in developing its strange potential\" (Latour 1999, 24).This strange potential has been developed to such an extent that today ANT no longer appears to us as a misshapen monster to be banned to the outer reaches of the sociological canon.Quite the contrary, ANT has begun to look like a companionable sort of fellow, a recognizable intellectual project sharing many of the features of conventional social theorizing.This is paradoxical, or at least ironic, because ANT started as an attempt to dissolve any received notion of \"the social\" as a distinct domain or dimension of human action.In its origins ANT embraced, admittedly tongue in cheek, the Thatcherite slogan, \"Society does not exist.\"Over time, however,",
+      "url": "https://openalex.org/W7225208838",
+      "_adapter": "openalex",
+      "authors": [
+        "J Lezaun"
+      ],
+      "venue": "Oxford University Research Archive (ORA) (University of Oxford)",
+      "publication_date": "2017",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Large Language Models (LLMs) Assisted Wireless Network Deployment in Urban Settings",
+      "snippet": "The advent of Large Language Models (LLMs) has revolutionized language understanding and human-like text generation, drawing interest from many other fields with this question in mind: What else are the LLMs capable of? Despite their widespread adoption, ongoing research continues to explore new ways to integrate LLMs into diverse systems.This paper explores new techniques to harness the power of LLMs for 6G (6th Generation) wireless communication technologies, a domain where automation and intelligent systems are pivotal. The inherent adaptability of LLMs to domain-specific tasks positions th",
+      "full_text": "The advent of Large Language Models (LLMs) has revolutionized language understanding and human-like text generation, drawing interest from many other fields with this question in mind: What else are the LLMs capable of? Despite their widespread adoption, ongoing research continues to explore new ways to integrate LLMs into diverse systems.This paper explores new techniques to harness the power of LLMs for 6G (6th Generation) wireless communication technologies, a domain where automation and intelligent systems are pivotal. The inherent adaptability of LLMs to domain-specific tasks positions them as prime candidates for enhancing wireless systems in the 6G landscape.We introduce a novel Reinforcement Learning (RL) based framework that leverages LLMs for network deployment in wireless communications. Our approach involves training an RL agent, utilizing LLMs as its core, in an urban setting to maximize coverage. The agent’s objective is to navigate the complexities of urban environments and identify the network parameters for optimal area coverage. Additionally, we integrate LLMs with Convolutional Neural Networks (CNNs) to capitalize on their strengths while mitigating their limitations. The Deep Deterministic Policy Gradient (DDPG) algorithm is employed for training purposes. The results suggest that LLM-assisted models can outperform CNN-based models in some cases while performing at least as well in others.",
+      "url": "https://openalex.org/W4406266118",
+      "_adapter": "openalex",
+      "authors": [
+        "Nurullah Sevim",
+        "Mostafa İbrahim",
+        "Sabit Ekin"
+      ],
+      "venue": "IEEE Vehicular Technology Conference",
+      "publication_date": "2024",
+      "doi": "10.1109/vtc2024-fall63153.2024.10757657",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "A study using a graphical syntax for actor-network theory",
+      "snippet": "Purpose – Actor-network theory (ANT) is considered to be both a theoretical position and a methodology. ANT has been the centre of vigorous debates regarding its ontological viewpoint but has also been found to have some drawbacks as a methodology. The purpose of this paper is to use a graphical syntax for ANT to describe the development and implementation of a health information system (IS) in order to assess whether the graphical syntax improves the use of ANT as a methodology. Design/methodology/approach – An extensive example derived from a case study, describing the development and implem",
+      "full_text": "Purpose – Actor-network theory (ANT) is considered to be both a theoretical position and a methodology. ANT has been the centre of vigorous debates regarding its ontological viewpoint but has also been found to have some drawbacks as a methodology. The purpose of this paper is to use a graphical syntax for ANT to describe the development and implementation of a health information system (IS) in order to assess whether the graphical syntax improves the use of ANT as a methodology. Design/methodology/approach – An extensive example derived from a case study, describing the development and implementation of an electronic patients’ records system, is illustrated using this graphical syntax. This serves to makes the actors, translations and black boxes in the case visible. Findings – The syntax is found to help the researcher to conceptualise the research, to highlight assumptions as black boxes and to follow the actor but above all it encourages the researcher to understand the translations being made between actors and to make them explicit. Hence the syntax is found to assist at the analytical phases of a research project. The graphic syntax found to address the criticisms identified for ANT as an IS research methodology. Research limitations/implications – The proposed graphical syntax assists researchers who use ANT as a methodology. Use of the syntax in education is also foreseen to be practical. The evaluation of ANT-gs in the paper provides an argument for its use but a more reliable argument would be made by collating and analysing feedback from independent modellers who actually use the graphical syntax. This is an important part of future research. Practical implications – The visualisation of the actor-network provided by ANT-gs provides a relatively simple representation while at the same time it makes key ANT concepts explicit. This is expected to address the issue of superficial understanding of ANT and selective use of its constructs; it makes the actor-network boundaries immediately visible. Thus the paper proposes that ANT-gs will be useful both by IS researchers and as an educational tool but future research is required to verify both these practical implications. The development of a computer-based modelling tool based on this syntax is proposed to facilitate effective and efficient modelling. Originality/value – This paper proposes a unique tool to support ANT as a methodology. Its use encourages the researcher to focus on constructs that are essential elements of ANT and, by making each of the translation instances explicit, it strengthens the analysis in a way that is true to the view of ANT as a sociology of translation.",
+      "url": "https://openalex.org/W2083175284",
+      "_adapter": "openalex",
+      "authors": [
+        "Emile Silvis",
+        "Patricia M Alexander"
+      ],
+      "venue": "Information Technology and People",
+      "publication_date": "2014",
+      "doi": "10.1108/itp-06-2013-0101",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Exploring actor-network theory and CAQDAS",
+      "snippet": "This paper explores how ideas from actor-network theory (ANT) can be drawn on to inform ways of using computer assisted qualitative data analysis software (CAQDAS) in an ANT-oriented project. Through this it explores some of the challenges ANT poses to conventional uses of such tools, and the resources ANT provides for re-considering their agency in research practices and possibilities for future developments. CAQDAS is often associated with particular approaches to engaging with data (e.g., coding data and retrieving the codes, abstracting and reducing data to themes etc.). These approaches h",
+      "full_text": "This paper explores how ideas from actor-network theory (ANT) can be drawn on to inform ways of using computer assisted qualitative data analysis software (CAQDAS) in an ANT-oriented project. Through this it explores some of the challenges ANT poses to conventional uses of such tools, and the resources ANT provides for re-considering their agency in research practices and possibilities for future developments. CAQDAS is often associated with particular approaches to engaging with data (e.g., coding data and retrieving the codes, abstracting and reducing data to themes etc.). These approaches have become dominant enough such that they are often presented and/or interpreted as the right, or only way to work qualitatively with qualitative data. In opposition to this orthodoxy some orienting principles are proposed from the ANT literature along with its intellectual antecedent ethnomethodology. The proposed principles are: freedom of movement and data, logging the inquiry using Latour's four notebooks, coding and following heterogeneous actants as cases, supporting contextual exploration of fluid and multiple ontologies, staying close to the words of the actants and working in a scale-free manner that enables shifting magnifications and assemblages to preserve detail rather than abstract it into themes. A final principle concerns the intentions of ANT-informed approaches to assemble a detailed description, which are contrasted with the intentions of approaches aligned with Grounded Theory to abstract data in order to construct an explanation. These principles are explored and illustrated with detailed descriptions that draw on examples from a multi-modal ethnographic PhD research project. The project used heterogeneous data to explore the information infrastructures and classification systems used in craft beer judging. Examples of how that diverse dataset was coded and connected are used along with excerpts from a reflective journal of the struggles and ideas for using CAQDAS to illustrate ways of effectively using ATLAS.ti in ANT-oriented research projects.",
+      "url": "https://openalex.org/W2527206574",
+      "_adapter": "openalex",
+      "authors": [
+        "S. Wright"
+      ],
+      "venue": "DepositOnce",
+      "publication_date": "2016",
+      "doi": "10.14279/depositonce-5153",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ]
+}
