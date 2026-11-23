@@ -6,8 +6,8 @@ import json
 from typing import Any
 
 from PyQt6.QtCore import QEvent, Qt, QTimer
-from PyQt6.QtGui import QPainter, QPixmap
-from PyQt6.QtWidgets import QVBoxLayout, QWidget
+from PyQt6.QtGui import QImage, QPainter, QPixmap
+from PyQt6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from core.surface_fill.constants import SURFACE_CHAT_TRANSCRIPT
 from core.surface_fill.models import SurfaceProfile
@@ -16,6 +16,7 @@ from core.surface_fill.serialization import surface_profile_to_dict, wallpaper_t
 from core.theme.tokens import ResolvedTheme
 from core.theme.view_theme import view_resolved_theme
 from core.ui_perf_probe import ui_perf_count, ui_perf_enabled, ui_perf_measure
+from ui.surface_fill.background_build import BackgroundBuildBridge, BackgroundBuildRequest
 
 
 class TranscriptWallpaperHost(QWidget):
@@ -49,8 +50,12 @@ class TranscriptWallpaperHost(QWidget):
         self._resize_debounce.timeout.connect(self._on_resize_debounced)
         self._expensive_resize_paused = False
         self._pending_resize_work = False
+        self._background_build_generation = 0
+        self._async_build_bridge = BackgroundBuildBridge(self)
+        self._async_build_bridge.build_finished.connect(self._on_async_background_built)
 
         self.setObjectName("TranscriptWallpaperHost")
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -76,7 +81,7 @@ class TranscriptWallpaperHost(QWidget):
         if self.width() <= 0 or self.height() <= 0:
             return
         self._resize_debounce.stop()
-        self._on_resize_debounced()
+        self._rebuild_background_cache_for_size_change()
         self.update()
 
     def set_overlay_boost(self, boost: int) -> None:
@@ -119,7 +124,13 @@ class TranscriptWallpaperHost(QWidget):
         self._register_theme_refresh()
         self._schedule_background_cache_build()
 
+    def _resize_builds_blocked(self) -> bool:
+        return bool(self._expensive_resize_paused)
+
     def _schedule_background_cache_build(self) -> None:
+        if self._resize_builds_blocked():
+            self._pending_resize_work = True
+            return
         if self._cache_build_pending:
             return
         if self._background_cache_is_current():
@@ -128,12 +139,89 @@ class TranscriptWallpaperHost(QWidget):
         QTimer.singleShot(0, self._build_background_cache_deferred)
 
     def _build_background_cache_deferred(self) -> None:
+        if self._resize_builds_blocked():
+            self._cache_build_pending = False
+            self._pending_resize_work = True
+            return
+        if self.width() <= 0 or self.height() <= 0:
+            self._cache_build_pending = False
+            return
+        if self._background_cache_is_current():
+            self._cache_build_pending = False
+            return
+
+        context = self._paint_context()
+        if context is None:
+            self._cache_build_pending = False
+            return
+        theme, profile, resolved_wallpaper = context
+        cache_key = self._background_cache_key_for(
+            theme, profile, resolved_wallpaper
+        )
+        if (
+            self._background_cache is not None
+            and not self._background_cache.isNull()
+            and cache_key == self._background_cache_key
+        ):
+            self._cache_build_pending = False
+            return
+
+        self._background_build_generation += 1
+        generation = self._background_build_generation
+        ui_perf_count("wallpaper.background_cache_build_async")
+        request = BackgroundBuildRequest(
+            generation=generation,
+            width=self.width(),
+            height=self.height(),
+            cache_key=cache_key,
+            theme=theme,
+            profile=profile,
+            resolved_wallpaper=resolved_wallpaper,
+            overlay_boost=self._overlay_boost,
+            suppressed=self._suppressed,
+        )
+        self._async_build_bridge.start(request, renderer=self._renderer)
+
+    def _on_async_background_built(
+        self,
+        generation: int,
+        image: QImage,
+        cache_key: tuple[Any, ...],
+    ) -> None:
         self._cache_build_pending = False
+        if self._resize_builds_blocked():
+            self._pending_resize_work = True
+            ui_perf_count("wallpaper.background_cache_build_deferred_apply")
+            return
+        if generation != self._background_build_generation:
+            ui_perf_count("wallpaper.background_cache_build_stale_drop")
+            return
+        if image is None or image.isNull():
+            return
         if self.width() <= 0 or self.height() <= 0:
             return
-        ui_perf_count("wallpaper.background_cache_build")
-        with ui_perf_measure("wallpaper.background_pixmap_build"):
-            self._background_pixmap()
+
+        context = self._paint_context()
+        if context is None:
+            return
+        theme, profile, resolved_wallpaper = context
+        expected_key = self._background_cache_key_for(
+            theme, profile, resolved_wallpaper
+        )
+        if cache_key != expected_key:
+            ui_perf_count("wallpaper.background_cache_build_stale_drop")
+            return
+        if image.width() != self.width() or image.height() != self.height():
+            ui_perf_count("wallpaper.background_cache_build_stale_drop")
+            self._schedule_background_cache_build()
+            return
+
+        with ui_perf_measure("wallpaper.background_pixmap_apply"):
+            pixmap = QPixmap.fromImage(image)
+        if pixmap.isNull():
+            return
+        self._background_cache = pixmap
+        self._background_cache_key = cache_key
         self.update()
 
     def resizeEvent(self, event) -> None:
@@ -141,8 +229,9 @@ class TranscriptWallpaperHost(QWidget):
         if event.size() == event.oldSize():
             return
         ui_perf_count("wallpaper.resize")
-        if self._expensive_resize_paused:
+        if self._resize_builds_blocked():
             self._pending_resize_work = True
+            self.update()
             return
         self._resize_debounce.start()
         self.update()
@@ -152,17 +241,32 @@ class TranscriptWallpaperHost(QWidget):
             cached_w, cached_h = self._background_cache_key[0], self._background_cache_key[1]
             if cached_w == self.width() and cached_h == self.height():
                 return
-        ui_perf_count("wallpaper.debounced_cache_invalidate")
+        ui_perf_count("wallpaper.debounced_rebuild_schedule")
+        self._rebuild_background_cache_for_size_change()
+
+    def _rebuild_background_cache_for_size_change(self) -> None:
+        """Schedule a new cache at the current size without clearing the stale pixmap."""
+        if self._resize_builds_blocked():
+            self._pending_resize_work = True
+            return
+        if self._background_cache_is_current():
+            return
         with ui_perf_measure("wallpaper.debounced_rebuild_schedule"):
-            self._invalidate_background_cache()
+            self._background_build_generation += 1
+            self._cache_build_pending = False
             self._schedule_background_cache_build()
 
     def paintEvent(self, event) -> None:
         perf = ui_perf_enabled()
         if perf:
             ui_perf_count("wallpaper.paint")
+        resizing = self._resize_builds_blocked()
         painter = QPainter(self)
         try:
+            if resizing:
+                painter.setRenderHint(
+                    QPainter.RenderHint.SmoothPixmapTransform, False
+                )
             pixmap = self._background_cache
             if pixmap is not None and not pixmap.isNull():
                 if pixmap.width() == self.width() and pixmap.height() == self.height():
@@ -172,38 +276,29 @@ class TranscriptWallpaperHost(QWidget):
                     else:
                         painter.drawPixmap(0, 0, pixmap)
                     return
-                # Stale cache from a prior size — cover the host immediately, then rebuild.
                 if perf:
                     ui_perf_count("wallpaper.paint_stale_stretch")
                 if perf:
                     with ui_perf_measure("wallpaper.paint_stale_stretch"):
                         painter.drawPixmap(self.rect(), pixmap)
-                        if self._expensive_resize_paused:
-                            self._pending_resize_work = True
-                        else:
-                            self._schedule_background_cache_build()
                 else:
                     painter.drawPixmap(self.rect(), pixmap)
-                    if self._expensive_resize_paused:
-                        self._pending_resize_work = True
-                    else:
-                        self._schedule_background_cache_build()
+                if resizing:
+                    self._pending_resize_work = True
+                else:
+                    self._schedule_background_cache_build()
                 return
             if perf:
                 ui_perf_count("wallpaper.paint_fast_fallback")
             if perf:
                 with ui_perf_measure("wallpaper.paint_fast_fallback"):
                     self._paint_fast_fallback(painter)
-                    if not self._expensive_resize_paused:
-                        self._schedule_background_cache_build()
-                    else:
-                        self._pending_resize_work = True
             else:
                 self._paint_fast_fallback(painter)
-                if not self._expensive_resize_paused:
-                    self._schedule_background_cache_build()
-                else:
-                    self._pending_resize_work = True
+            if resizing:
+                self._pending_resize_work = True
+            else:
+                self._schedule_background_cache_build()
         finally:
             painter.end()
 
@@ -223,6 +318,7 @@ class TranscriptWallpaperHost(QWidget):
         )
 
     def _invalidate_background_cache(self) -> None:
+        self._background_build_generation += 1
         self._background_cache = None
         self._background_cache_key = None
         self._cache_build_pending = False
@@ -239,6 +335,7 @@ class TranscriptWallpaperHost(QWidget):
         return cached_w == self.width() and cached_h == self.height()
 
     def _background_pixmap(self) -> QPixmap | None:
+        """Synchronous cache build (tests and diagnostics)."""
         context = self._paint_context()
         if context is None:
             return None
@@ -256,21 +353,17 @@ class TranscriptWallpaperHost(QWidget):
         if self.width() <= 0 or self.height() <= 0:
             return None
 
-        pixmap = QPixmap(self.size())
-        pixmap.fill(Qt.GlobalColor.transparent)
-        bg_painter = QPainter(pixmap)
-        try:
-            self._renderer.paint(
-                bg_painter,
-                pixmap.rect(),
+        ui_perf_count("wallpaper.background_cache_build_sync")
+        with ui_perf_measure("wallpaper.background_pixmap_build"):
+            image = self._renderer.render_to_image(
+                self.size(),
                 profile,
                 theme=theme,
                 overlay_boost=self._overlay_boost,
                 suppressed=self._suppressed,
                 resolved_wallpaper=resolved_wallpaper,
             )
-        finally:
-            bg_painter.end()
+            pixmap = QPixmap.fromImage(image)
 
         self._background_cache = pixmap
         self._background_cache_key = cache_key

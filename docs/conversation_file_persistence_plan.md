@@ -1,6 +1,6 @@
 # Conversation file scope — product note & implementation plan
 
-**Status:** Phase 1 implemented (composer sticky file chip after send); Phase 2+ proposed  
+**Status:** Phases 1–3 shipped (composer + session sticky, worker/voice merge, help/FAQ, scope hint, settings toggles, missing-file toast)  
 **Audience:** Product, maintainers  
 **Related:** [Add document from Conversations](../assets/help/en/workflows/add-document-from-conversations.md) · [Chat with a library document](../assets/help/en/workflows/chat-with-a-library-document.md) · `core/composer_draft.py` · `workers/llm_worker.py` (`attachment_file`, `_turn_source_filter`)
 

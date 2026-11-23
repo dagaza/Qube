@@ -1904,7 +1904,13 @@ class LLMWorker(QThread):
         )
         self.prompt = prompt
         self._persist_content = (persist_content or self.prompt).strip()
-        self._turn_attachments = list(attachments or [])
+        from core.session_file_scope import merge_session_sticky_file_into_attachments
+
+        self._turn_attachments = merge_session_sticky_file_into_attachments(
+            list(attachments or []),
+            str(session_id or ""),
+            db=self.db,
+        )
         self._turn_enforced_skills = tuple(enforced_skills or ())
         self.session_id = session_id
         self._debug_exchange_id = next_exchange_id()

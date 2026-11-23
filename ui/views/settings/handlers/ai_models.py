@@ -844,6 +844,20 @@ class AiModelsHandlersMixin:
 
         set_composer_bare_mention_routing_enabled(enabled)
 
+    def _on_composer_keep_document_attached_toggled(self, enabled: bool) -> None:
+        from core.app_settings import set_composer_keep_document_attached_for_chat
+
+        set_composer_keep_document_attached_for_chat(enabled)
+
+    def _on_composer_show_sticky_document_scope_hint_toggled(self, enabled: bool) -> None:
+        from core.app_settings import set_composer_show_sticky_document_scope_hint
+
+        set_composer_show_sticky_document_scope_hint(enabled)
+        win = self.window()
+        conv = getattr(win, "conversations_view", None) if win is not None else None
+        if conv is not None and hasattr(conv, "_refresh_composer_chip_strip"):
+            conv._refresh_composer_chip_strip()
+
     def _on_chat_personality_toggled(self, checked: bool) -> None:
         set_enable_chat_personality_nudge(checked)
 

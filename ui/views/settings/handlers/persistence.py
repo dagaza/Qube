@@ -63,6 +63,8 @@ from core.app_settings import (
     get_model_manager_hardware_suggestions,
     set_model_manager_hardware_suggestions,
     get_composer_bare_mention_routing_enabled,
+    get_composer_keep_document_attached_for_chat,
+    get_composer_show_sticky_document_scope_hint,
     get_audio_input_device_index,
     set_audio_input_device_index,
     get_audio_output_device_index,
@@ -570,6 +572,20 @@ class PersistenceHandlersMixin:
                 get_composer_bare_mention_routing_enabled()
             )
             self.composer_bare_mention_routing_cb.blockSignals(False)
+
+        if hasattr(self, "composer_keep_document_attached_cb"):
+            self.composer_keep_document_attached_cb.blockSignals(True)
+            self.composer_keep_document_attached_cb.setChecked(
+                get_composer_keep_document_attached_for_chat()
+            )
+            self.composer_keep_document_attached_cb.blockSignals(False)
+
+        if hasattr(self, "composer_show_sticky_document_scope_hint_cb"):
+            self.composer_show_sticky_document_scope_hint_cb.blockSignals(True)
+            self.composer_show_sticky_document_scope_hint_cb.setChecked(
+                get_composer_show_sticky_document_scope_hint()
+            )
+            self.composer_show_sticky_document_scope_hint_cb.blockSignals(False)
 
         gpu_val = get_internal_n_gpu_layers()
         self.gpu_layers_slider.blockSignals(True)

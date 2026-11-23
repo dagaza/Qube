@@ -1,4 +1,4 @@
-# What's new in Qube Help (v1.0.34)
+# What's new in Qube Help (v1.0.35)
 
 ## Common questions
 
@@ -11,6 +11,8 @@
 This page summarizes the **v English help corpus** shipped with Qube. The corpus lives in **Library → Qube** and powers **`@[tool:help]`** in **Conversations**.
 
 **Current app builds** can **add documents from Conversations** — composer upload button, **@ → Files → Upload new document…**, and drag-and-drop into chat, with the same indexing pipeline as Library. See [Add a document from Conversations](../workflows/add-document-from-conversations.md).
+
+**v1.0.35** documents **sticky library document scope per chat** — file chip persistence, voice follow-ups, session restore, composer hint, and **Settings → General → Composer** toggles. See [Sticky library document for one chat](../faq/sticky-library-document-chat.md) and [Chat with a library document](../workflows/chat-with-a-library-document.md).
 
 **v1.0.34** documents **read-only** built-in **Library → Qube** help (no delete/rename/move) and automatic help re-index when articles are missing.
 

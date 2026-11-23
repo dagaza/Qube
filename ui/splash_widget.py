@@ -13,7 +13,7 @@ from ui.qube_wireframe_cube import (
     paint_qube_wireframe_cube,
 )
 from PyQt6.QtCore import Qt, QPointF, QRectF
-from PyQt6.QtGui import QColor, QFont, QMouseEvent, QPainter, QPainterPath, QPen, QPixmap
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QMouseEvent, QPainter, QPainterPath, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -61,6 +61,41 @@ _SPLASH_CHUNK_PROGRESS_TEXT_PAD_V = 2
 _SPLASH_CHUNK_PROGRESS_HEIGHT = (
     _SPLASH_CHUNK_PROGRESS_TEXT_PX + 2 * _SPLASH_CHUNK_PROGRESS_TEXT_PAD_V
 )
+_SPLASH_STEP_ROW_FONT_PX = 11
+_SPLASH_DETAIL_FONT_PX = 10
+_SPLASH_DETAIL_MAX_LINES = 3
+_SPLASH_DETAIL_LINE_HEIGHT = 1.35
+_SPLASH_LAYOUT_HEIGHT_SLACK_PX = 2
+
+
+def reserve_splash_detail_height(
+    label: QLabel,
+    *,
+    text_width: int,
+    max_lines: int = _SPLASH_DETAIL_MAX_LINES,
+) -> None:
+    """Keep the detail band in the layout so show/hide does not resize the splash shell."""
+    if text_width < 1:
+        return
+    del text_width  # width informs line count choice at call sites; height is line-based
+    font = QFont()
+    font.setPixelSize(_SPLASH_DETAIL_FONT_PX)
+    fm = QFontMetrics(font)
+    line_px = math.ceil(fm.height() * _SPLASH_DETAIL_LINE_HEIGHT)
+    label.setMinimumHeight(line_px * max_lines)
+    label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+
+
+def set_splash_download_detail(detail: QLabel, text: str) -> None:
+    detail.setText(text.strip())
+
+
+def freeze_splash_surface_height(surface: QWidget) -> None:
+    """Pin a splash card height after the startup layout has been computed."""
+    surface.updateGeometry()
+    hint = surface.sizeHint()
+    if hint.height() > 0:
+        surface.setFixedHeight(hint.height())
 
 
 class _SplashChunkProgressBar(QProgressBar):
@@ -250,6 +285,23 @@ class SplashStepList(QWidget):
     def _apply_row_styles(self) -> None:
         for row in self._rows:
             self._paint_row(row, "pending")
+
+    def stabilize_minimum_height(self, *, text_width: int) -> None:
+        """Reserve height for active-row (semibold) wrap so the splash shell does not resize."""
+        if text_width < 1 or not self._labels:
+            return
+        font = QFont()
+        font.setPixelSize(_SPLASH_STEP_ROW_FONT_PX)
+        font.setWeight(QFont.Weight.DemiBold)
+        fm = QFontMetrics(font)
+        layout = self.layout()
+        spacing = layout.spacing() if layout is not None else 4
+        flags = int(Qt.TextFlag.TextWordWrap)
+        total = 0
+        for text in self._labels:
+            bounds = fm.boundingRect(0, 0, text_width, 10_000, flags, text)
+            total += max(bounds.height(), fm.height()) + spacing
+        self.setMinimumHeight(max(0, total - spacing) + _SPLASH_LAYOUT_HEIGHT_SLACK_PX)
 
 
 # Tutorial uses glRotatef(1, 3, 1, 1) with ~10ms waits (~0.1 deg/ms). Splash is slower.
@@ -514,10 +566,6 @@ class QubeFirstRunSplitSplash(QWidget):
         self.title = QLabel("Qube")
         self.title.setObjectName("QubeSplashTitle")
         self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_font = QFont(self.title.font())
-        title_font.setPointSize(22)
-        title_font.setWeight(QFont.Weight.ExtraBold)
-        self.title.setFont(title_font)
         self._left_layout.addWidget(self.title)
 
         self.hint = QLabel("Choose models on the right to begin.")
@@ -534,7 +582,8 @@ class QubeFirstRunSplitSplash(QWidget):
         load_layout.setSpacing(8)
 
         self.steps = SplashStepList(SPLASH_STEP_LABELS)
-        self.steps.hide()
+        step_text_width = self._PROCESSING_LEFT_WIDTH - 24 - 20
+        self.steps.stabilize_minimum_height(text_width=step_text_width)
         load_layout.addWidget(self.steps)
 
         self.progress = _SplashChunkProgressBar()
@@ -544,7 +593,7 @@ class QubeFirstRunSplitSplash(QWidget):
         self.detail.setObjectName("QubeSplashDetail")
         self.detail.setWordWrap(True)
         self.detail.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.detail.hide()
+        reserve_splash_detail_height(self.detail, text_width=step_text_width)
         load_layout.addWidget(self.detail)
 
         self._left_layout.addWidget(self._load_section)
@@ -620,21 +669,18 @@ class QubeFirstRunSplitSplash(QWidget):
 
     def set_active_step(self, index: int) -> None:
         if 0 <= index < len(SPLASH_STEP_LABELS):
-            self.steps.show()
             self.steps.set_active(index)
 
     def complete_step(self, index: int) -> None:
         if 0 <= index < len(SPLASH_STEP_LABELS):
-            self.steps.show()
             self.steps.mark_done_through(index)
 
     def set_download_detail(self, text: str) -> None:
-        if text.strip():
-            self.detail.setText(text)
-            self.detail.show()
-        else:
-            self.detail.clear()
-            self.detail.hide()
+        set_splash_download_detail(self.detail, text)
+
+    def freeze_layout_height(self) -> None:
+        freeze_splash_surface_height(self.card)
+        freeze_splash_surface_height(self)
 
     def _apply_styles(self) -> None:
         self.setStyleSheet(splash_split_card_qss())
@@ -681,16 +727,15 @@ class QubeSplashCard(QWidget):
                 self.logo.setPixmap(
                     pix.scaledToWidth(logo_width, Qt.TransformationMode.SmoothTransformation)
                 )
+        logo_h = self.logo.sizeHint().height()
+        if logo_h > 0:
+            self.logo.setMinimumHeight(logo_h)
         card_layout.addWidget(self.logo)
         card_layout.addSpacing(10)
 
         self.title = QLabel("Qube")
         self.title.setObjectName("QubeSplashTitle")
         self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_font = QFont(self.title.font())
-        title_font.setPointSize(22)
-        title_font.setWeight(QFont.Weight.ExtraBold)
-        self.title.setFont(title_font)
         card_layout.addWidget(self.title)
         card_layout.addSpacing(16)
 
@@ -701,6 +746,9 @@ class QubeSplashCard(QWidget):
         load_row.addWidget(self.spinner, 0, Qt.AlignmentFlag.AlignTop)
 
         self.steps = SplashStepList(SPLASH_STEP_LABELS)
+        card_width = 440 if compact else 720
+        step_text_width = card_width - 28 - 28 - self.spinner.width() - load_row.spacing()
+        self.steps.stabilize_minimum_height(text_width=step_text_width)
         load_row.addWidget(self.steps, 1)
         card_layout.addLayout(load_row)
         card_layout.addSpacing(14)
@@ -713,11 +761,16 @@ class QubeSplashCard(QWidget):
         self.detail.setObjectName("QubeSplashDetail")
         self.detail.setWordWrap(True)
         self.detail.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.detail.hide()
+        reserve_splash_detail_height(self.detail, text_width=card_width - 28 - 28)
         card_layout.addWidget(self.detail)
 
         outer.addWidget(self.card)
         self._apply_styles()
+        self.freeze_layout_height()
+
+    def freeze_layout_height(self) -> None:
+        freeze_splash_surface_height(self.card)
+        freeze_splash_surface_height(self)
 
     def set_progress_percent(self, percent: int) -> None:
         self.progress.setValue(max(0, min(100, int(percent))))
@@ -731,12 +784,7 @@ class QubeSplashCard(QWidget):
             self.steps.mark_done_through(index)
 
     def set_download_detail(self, text: str) -> None:
-        if text.strip():
-            self.detail.setText(text)
-            self.detail.show()
-        else:
-            self.detail.clear()
-            self.detail.hide()
+        set_splash_download_detail(self.detail, text)
 
     def _apply_styles(self) -> None:
         self.setStyleSheet(splash_compact_card_qss())

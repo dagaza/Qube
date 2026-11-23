@@ -1,7 +1,7 @@
 {
   "schema": "qube.help_corpus_manifest.v1",
   "locale": "en",
-  "corpus_version": "1.0.34",
+  "corpus_version": "1.0.35",
   "min_app_version": "1.0.0",
   "max_app_version": null,
   "collection_id": "qube.documentation",
@@ -1049,7 +1049,35 @@
         "ask about my document"
       ],
       "related": [
-        "index"
+        "index",
+        "faq.sticky_library_document_chat",
+        "workflows.add_document_from_conversations"
+      ]
+    },
+    {
+      "id": "faq.sticky_library_document_chat",
+      "path": "faq/sticky-library-document-chat.md",
+      "title": "Sticky library document for one chat",
+      "type": "faq",
+      "tags": [
+        "conversations",
+        "library",
+        "file-attachment",
+        "rag"
+      ],
+      "synonyms": [
+        "attach file every turn",
+        "file chip after send",
+        "document scope per chat",
+        "sticky document",
+        "voice follow up document"
+      ],
+      "related": [
+        "index",
+        "workflows.chat_with_document",
+        "workflows.add_document_from_conversations",
+        "faq.at_mentions",
+        "faq.live_sources_vs_library"
       ]
     },
     {

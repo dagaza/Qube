@@ -1953,12 +1953,16 @@ class ConversationsView(QWidget):
 
     def _host_defers_resize_layout(self) -> bool:
         win = self.window()
-        if win is None or not hasattr(win, "tools_pane_layout_animating"):
+        if win is None:
             return False
         try:
-            return bool(win.tools_pane_layout_animating())
+            if hasattr(win, "workspace_geometry_busy"):
+                return bool(win.workspace_geometry_busy())
+            if hasattr(win, "tools_pane_layout_animating"):
+                return bool(win.tools_pane_layout_animating())
         except RuntimeError:
             return False
+        return False
 
     def flush_deferred_host_resize_layout(self) -> None:
         """Run transcript relayout deferred during MainWindow tools-pane width animation."""
@@ -3920,8 +3924,22 @@ class ConversationsView(QWidget):
     def _refresh_composer_chip_strip(self) -> None:
         if not hasattr(self, "composer_chip_strip"):
             return
+        from core.app_settings import (
+            get_composer_show_sticky_document_scope_hint,
+        )
+        from core.session_file_scope import sticky_filename_from_routing
+
         is_dark = getattr(self.window(), "_is_dark_theme", True)
-        self.composer_chip_strip.set_draft(self._composer_draft, editable=True)
+        scope_hint: str | None = None
+        if get_composer_show_sticky_document_scope_hint():
+            sticky_name = sticky_filename_from_routing(self._composer_draft.routing)
+            if sticky_name:
+                scope_hint = f"Scoped to this document for this chat: {sticky_name}"
+        self.composer_chip_strip.set_draft(
+            self._composer_draft,
+            editable=True,
+            sticky_scope_hint=scope_hint,
+        )
         self.composer_chip_strip.apply_theme(is_dark)
         self._refresh_composer_recent_mentions()
 
@@ -3937,7 +3955,14 @@ class ConversationsView(QWidget):
 
     def _reset_composer_after_send(self) -> None:
         """Clear message body after send; keep file attachment chip for follow-up turns."""
-        self._composer_draft = draft_after_send_preserving_sticky_file(self._composer_draft)
+        from core.app_settings import get_composer_keep_document_attached_for_chat
+
+        if get_composer_keep_document_attached_for_chat():
+            self._composer_draft = draft_after_send_preserving_sticky_file(
+                self._composer_draft
+            )
+        else:
+            self._composer_draft = ComposerDraft()
         if hasattr(self, "text_input"):
             self.text_input.blockSignals(True)
             self.text_input.clear()
@@ -3945,6 +3970,115 @@ class ConversationsView(QWidget):
             if hasattr(self.text_input, "_schedule_height_sync"):
                 self.text_input._schedule_height_sync()
         self._refresh_composer_chip_strip()
+        self._sync_session_sticky_file_from_draft()
+
+    def _sync_session_sticky_file_from_draft(self) -> None:
+        from core.app_settings import get_composer_keep_document_attached_for_chat
+        from core.session_file_scope import (
+            clear_sticky_library_filename,
+            set_sticky_library_filename,
+            sticky_filename_from_routing,
+        )
+
+        if not get_composer_keep_document_attached_for_chat():
+            return
+        sid = str(getattr(self, "active_session_id", "") or "")
+        if not sid:
+            return
+        name = sticky_filename_from_routing(self._composer_draft.routing)
+        if name:
+            set_sticky_library_filename(sid, name, db=self.db)
+        else:
+            clear_sticky_library_filename(sid, db=self.db)
+
+    def _restore_session_sticky_file_chip(self) -> None:
+        from core.app_settings import get_composer_keep_document_attached_for_chat
+        from core.composer_attachments import ComposerAttachment
+        from core.session_file_scope import (
+            clear_sticky_library_filename,
+            get_sticky_library_filename,
+        )
+
+        if not get_composer_keep_document_attached_for_chat():
+            return
+        if self._composer_draft.routing:
+            return
+        sid = str(getattr(self, "active_session_id", "") or "")
+        if not sid:
+            return
+        name = get_sticky_library_filename(sid, db=self.db)
+        if not name or not validate_file_token(name):
+            if name:
+                clear_sticky_library_filename(sid, db=self.db)
+            return
+        if not self.db.library_document_filename_exists(name):
+            clear_sticky_library_filename(sid, db=self.db)
+            self._notify_missing_sticky_library_file(name)
+            return
+        updated, added, _reason = add_routing_attachment(
+            self._composer_draft,
+            ComposerAttachment(kind="file", id=name, label=name),
+            skip_redundant_tools_when_sticky_knowledge=self._composer_skip_redundant_knowledge_chips(),
+        )
+        if added:
+            self._composer_draft = updated
+            self._refresh_composer_chip_strip()
+
+    def _clear_session_sticky_file(self) -> None:
+        from core.session_file_scope import clear_sticky_library_filename
+
+        sid = str(getattr(self, "active_session_id", "") or "")
+        if sid:
+            clear_sticky_library_filename(sid, db=self.db)
+
+    def _notify_missing_sticky_library_file(self, filename: str) -> None:
+        from core.app_notification_types import AppNotificationRequest
+
+        self._notify_composer_toast(
+            AppNotificationRequest(
+                title="Document no longer in Library",
+                body=(
+                    f"«{filename}» was removed from Library. "
+                    "Document scope for this chat was cleared."
+                ),
+                severity="warning",
+            )
+        )
+
+    def _prune_missing_composer_library_files_before_send(self) -> bool:
+        """Clear stale file chips; return False when send should be aborted."""
+        from core.session_file_scope import (
+            clear_sticky_library_filename,
+            sticky_filename_from_routing,
+        )
+
+        stale: list[str] = []
+        for att in self._composer_draft.routing:
+            if att.kind == "file" and not self.db.library_document_filename_exists(
+                att.id
+            ):
+                stale.append(att.id)
+        if not stale:
+            return True
+        routing = list(self._composer_draft.routing)
+        self._composer_draft = ComposerDraft(
+            body=self._composer_draft.body,
+            routing=[
+                att
+                for att in routing
+                if not (att.kind == "file" and att.id in stale)
+            ],
+            skills=list(self._composer_draft.skills),
+        )
+        sid = str(getattr(self, "active_session_id", "") or "")
+        if sid and sticky_filename_from_routing(routing) in stale:
+            clear_sticky_library_filename(sid, db=self.db)
+        self._refresh_composer_chip_strip()
+        for name in stale:
+            self._notify_missing_sticky_library_file(name)
+        if self._composer_draft.routing_requires_body():
+            return False
+        return True
 
     def _apply_composer_prefill(self, text: str) -> None:
         prefill = (text or "").strip()
@@ -4100,6 +4234,8 @@ class ConversationsView(QWidget):
         self._composer_draft = updated
         record_recent_attachment(attachment)
         self._refresh_composer_chip_strip()
+        if attachment.kind == "file":
+            self._sync_session_sticky_file_from_draft()
         if hasattr(self, "text_input"):
             self.text_input.setFocus()
 
@@ -4132,8 +4268,15 @@ class ConversationsView(QWidget):
             self.add_composer_attachment(resolved)
 
     def _on_composer_routing_removed(self, index: int) -> None:
+        removed = (
+            self._composer_draft.routing[index]
+            if 0 <= index < len(self._composer_draft.routing)
+            else None
+        )
         self._composer_draft = remove_routing_at(self._composer_draft, index)
         self._refresh_composer_chip_strip()
+        if removed is not None and removed.kind == "file":
+            self._clear_session_sticky_file()
 
     def _on_composer_skill_removed(self, index: int) -> None:
         self._composer_draft = remove_skill_at(self._composer_draft, index)
@@ -4303,6 +4446,7 @@ class ConversationsView(QWidget):
             )
             return
         self._refresh_composer_chip_strip()
+        self._sync_session_sticky_file_from_draft()
         if hasattr(self, "text_input"):
             self.text_input.setFocus()
 
@@ -4362,6 +4506,8 @@ class ConversationsView(QWidget):
             return
         if self.conversation_ingest_blocks_send():
             return
+        if not self._prune_missing_composer_library_files_before_send():
+            return
         before_send = self._before_send_callback
         if callable(before_send) and not before_send():
             return
@@ -4419,6 +4565,7 @@ class ConversationsView(QWidget):
                     [item.urn for item in pending_caps],
                 )
         if routing and routing.get("route") == "deep_research":
+            self._clear_session_sticky_file()
             self._reset_composer_draft()
             self._submit_deep_research(
                 raw=raw,
@@ -4432,6 +4579,7 @@ class ConversationsView(QWidget):
             and getattr(self, "_sticky_deep_research", False)
             and (clean or "").strip()
         ):
+            self._clear_session_sticky_file()
             self._reset_composer_draft()
             self._submit_deep_research(
                 raw=clean,
@@ -5067,6 +5215,7 @@ class ConversationsView(QWidget):
         self._notify_llm_active_session_changed()
         if hasattr(self, "text_input") and hasattr(self.text_input, "_sync_mention_context"):
             self.text_input._sync_mention_context()
+        self._restore_session_sticky_file_chip()
 
         self._clear_transcript()
         self._is_agent_typing = False
