@@ -29,6 +29,7 @@ from core.knowledge.search_outcome import (
 )
 from core.knowledge.types import EvidenceBundle, RetrievalContext
 from core.knowledge.web_fetch_context import resolve_web_fetch_options, resolve_web_relevance_options
+from core.retrieval_query_cleanup import strip_request_frames
 from core.retrieval_relevance import filter_web_results
 
 
@@ -238,14 +239,16 @@ def run_general_web_evidence_pipeline(
     """Discover URLs, optionally fetch pages, and assemble an EvidenceBundle."""
     t0 = time.time()
     query = ctx.query
-    semantic = ctx.semantic_query or query
+    # Search and gate on the question, not its request frame (plan S5).
+    search_query = strip_request_frames(query)
+    semantic = strip_request_frames(ctx.semantic_query or query)
     fetch_options = resolve_web_fetch_options(ctx)
     fetch_url_count = fetch_options.fetch_url_count
     relevance_options = resolve_web_relevance_options(ctx, fetch_options)
 
     discovery_limit = _discovery_max_results(ctx, fetch_url_count)
     discovery = discover_full(
-        query,
+        search_query,
         max_results=discovery_limit,
         site_bias=fetch_options.site_bias,
         retrieval_profile=ctx.retrieval_profile,
@@ -263,7 +266,7 @@ def run_general_web_evidence_pipeline(
             latency_ms = (time.time() - t0) * 1000
             bundle = build_empty_bundle(
                 query_raw=query,
-                query_resolved=query,
+                query_resolved=search_query,
                 latency_ms=latency_ms,
                 stop_reason="failure_sentinel",
             )
@@ -320,7 +323,7 @@ def run_general_web_evidence_pipeline(
         )
         bundle = build_empty_bundle(
             query_raw=query,
-            query_resolved=query,
+            query_resolved=search_query,
             latency_ms=latency_ms,
             rejected_count=rejected_count,
             stop_reason="relevance_filtered",
@@ -336,7 +339,7 @@ def run_general_web_evidence_pipeline(
         )
         bundle = build_general_web_bundle(
             query_raw=query,
-            query_resolved=query,
+            query_resolved=search_query,
             kept_rows=filtered,
             rejected_count=rejected_count,
             latency_ms=latency_ms,
@@ -390,7 +393,7 @@ def run_general_web_evidence_pipeline(
     if evidence:
         bundle = build_fetched_general_web_bundle(
             query_raw=query,
-            query_resolved=query,
+            query_resolved=search_query,
             sources=evidence,
             rejected_count=rejected_count,
             latency_ms=latency_ms,
@@ -422,7 +425,7 @@ def run_general_web_evidence_pipeline(
     )
     bundle = build_general_web_bundle(
         query_raw=query,
-        query_resolved=query,
+        query_resolved=search_query,
         kept_rows=filtered,
         rejected_count=rejected_count,
         latency_ms=latency_ms,

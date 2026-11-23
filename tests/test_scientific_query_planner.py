@@ -63,6 +63,27 @@ class TestScientificQueryPlanner(unittest.TestCase):
         self.assertEqual(adapter_query_for(plan, "inspire_hep"), plan.keyword_query)
         self.assertEqual(adapter_query_for(plan, "openalex"), plan.semantic_query)
 
+    def test_request_frames_stripped_from_both_queries(self) -> None:
+        # Plan S5: OpenAlex (semantic) no longer receives the raw sentence.
+        plan = plan_scientific_query(
+            "Yes, please tell me how actor-network theory (ANT) analyzes "
+            "Artificial Inteligence for example."
+        )
+        expected = "how actor-network theory (ANT) analyzes Artificial Inteligence"
+        self.assertEqual(plan.semantic_query, expected)
+        self.assertEqual(plan.keyword_query, expected)
+        self.assertEqual(adapter_query_for(plan, "openalex"), expected)
+        self.assertEqual(adapter_query_for(plan, "arxiv"), expected)
+
+    def test_semantic_query_keeps_scientific_framing(self) -> None:
+        # Only request frames are shared; topic framing stays for embeddings.
+        plan = plan_scientific_query("Can you explain what the literature says about statins?")
+        self.assertEqual(plan.semantic_query, "what the literature says about statins")
+
+    def test_frame_only_query_is_unchanged(self) -> None:
+        plan = plan_scientific_query("Yes, please.")
+        self.assertEqual(plan.semantic_query, "Yes, please")
+
     def test_non_medical_query_skips_entity_keywords(self) -> None:
         plan = plan_scientific_query(
             "transformer attention mechanism neural machine translation"

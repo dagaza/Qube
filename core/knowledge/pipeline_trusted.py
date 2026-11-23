@@ -14,6 +14,7 @@ from core.knowledge.discovery.types import CandidateUrl
 from core.knowledge.ranking.authority import is_allowlisted_url
 from core.knowledge.search_outcome import attach_search_outcome
 from core.knowledge.types import EvidenceBundle, RetrievalContext, SERVICE_TRUSTED_KNOWLEDGE
+from core.retrieval_query_cleanup import strip_request_frames
 from core.retrieval_relevance import filter_web_results
 
 
@@ -42,14 +43,16 @@ class TrustedEvidencePipeline:
     ) -> tuple[EvidenceBundle, dict[str, Any] | None, list[dict[str, Any]]]:
         t0 = time.time()
         query = ctx.query
-        semantic = ctx.semantic_query or query
+        # Search and gate on the question, not its request frame (plan S5).
+        search_query = strip_request_frames(query)
+        semantic = strip_request_frames(ctx.semantic_query or query)
         budget = ctx.budget.max_results
         adapter_calls: list[str] = []
         raw_audit: list[dict[str, Any]] = []
         rejected_count = 0
         rel_diag: dict[str, Any] | None = None
 
-        wiki_rows = search_wikipedia(query, max_results=min(2, budget))
+        wiki_rows = search_wikipedia(search_query, max_results=min(2, budget))
         if wiki_rows:
             adapter_calls.append(WIKI_ADAPTER)
             raw_audit.extend(dict(r) for r in wiki_rows)
@@ -58,7 +61,7 @@ class TrustedEvidencePipeline:
 
         if len(kept) < budget:
             discovery = discover_full_with_fallback(
-                query,
+                search_query,
                 max_results=max(5, budget * 2),
                 retrieval_profile=ctx.retrieval_profile,
             )
@@ -113,7 +116,7 @@ class TrustedEvidencePipeline:
         if not kept:
             bundle = build_empty_bundle(
                 query_raw=query,
-                query_resolved=query,
+                query_resolved=search_query,
                 latency_ms=latency_ms,
                 rejected_count=rejected_count,
                 stop_reason="no_evidence",
@@ -128,7 +131,7 @@ class TrustedEvidencePipeline:
         )
         bundle = build_trusted_knowledge_bundle(
             query_raw=query,
-            query_resolved=query,
+            query_resolved=search_query,
             kept_rows=kept,
             rejected_count=rejected_count,
             latency_ms=latency_ms,

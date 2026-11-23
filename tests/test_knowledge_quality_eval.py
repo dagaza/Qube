@@ -30,6 +30,7 @@ from core.knowledge.quality_eval import (  # noqa: E402
     evaluate_fixture,
     fixture_pool,
     fixture_ranking_query,
+    subject_in_query,
     get_fixture_ranker,
     irrelevant_kept_rate,
     load_json,
@@ -268,6 +269,27 @@ class PoolAndQueryTests(unittest.TestCase):
         self.assertEqual(
             fixture_ranking_query({"query_clean": "clean"}, query_mode="standalone"), "clean"
         )
+
+    def test_production_query_is_rebuilt_by_current_code(self) -> None:
+        # S5: production mode re-resolves the turn (acronyms from history, request
+        # frames); captured mode keeps the S2-era recorded string.
+        fx = {
+            "path": "scientific_evidence",
+            "query_clean": "Yes, please tell me how ANT analyzes AI for example.",
+            "retrieval_query": "Yes, please tell me how ANT analyzes AI for example.",
+            "history": [
+                {"role": "assistant", "content": "Actor-network theory (ANT) is an approach."}
+            ],
+            "gold_subject": "actor-network theory",
+        }
+        production = fixture_ranking_query(fx)
+        self.assertEqual(production, "how Actor-network theory (ANT) analyzes AI")
+        self.assertEqual(fixture_ranking_query(fx, query_mode="captured"), fx["retrieval_query"])
+        self.assertTrue(subject_in_query(fx, production))
+        self.assertFalse(subject_in_query(fx, fx["retrieval_query"]))
+        self.assertIsNone(subject_in_query({"gold_subject": "x"}, "x"))  # single-turn
+        web = dict(fx, path="general_web", history=[])
+        self.assertEqual(fixture_ranking_query(web), "how ANT analyzes AI")
 
 
 def _stub_ranker(keep_titles: list[str], state: str = "unscored"):

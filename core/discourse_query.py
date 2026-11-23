@@ -9,6 +9,7 @@ from typing import Any
 
 from core.composer_attachments import is_web_composer_tool
 from core.composer_skills import substantive_composer_prompt
+from core.discourse_acronyms import expand_acronyms, extract_acronym_definitions
 from core.discourse_intent import FOLLOW_UP_SUPPRESS_THRESHOLD, FollowUpClassification
 from core.discourse_patterns import (
     has_possessive_anaphor,
@@ -59,7 +60,7 @@ class SearchTargetResult:
     """Resolved search/retrieval string plus how it was derived (not user-visible)."""
 
     query: str
-    rewrite_reason: str  # topic_expansion | meta_prior_turn | none
+    rewrite_reason: str  # topic_expansion | referent_expansion | meta_prior_turn | none
 
     @property
     def rewritten(self) -> bool:
@@ -83,6 +84,11 @@ class ResolvedRetrievalQuery:
     web_rewrite_reason: str = "none"
     inference_rewrite_reason: str = "none"
     inference_confidence: float = 0.0
+    # (acronym, long form) pairs expanded into ``web_text`` from definitions
+    # earlier in the conversation (plan S5). ``web_rewrite_reason`` is
+    # ``"acronym_expansion"`` when that was the only rewrite; otherwise it keeps
+    # the discourse reason and this field records the expansion.
+    acronym_expansions: tuple[tuple[str, str], ...] = ()
 
     @property
     def web_rewritten(self) -> bool:
@@ -102,6 +108,10 @@ class ResolvedRetrievalQuery:
             "resolved_query_web": self.web_text,
             "web_query_rewrite_reason": self.web_rewrite_reason,
         }
+        if self.acronym_expansions:
+            out["web_query_acronym_expansions"] = [
+                f"{acronym}={long_form}" for acronym, long_form in self.acronym_expansions
+            ]
         if self.inference_rewritten:
             out["inference_rewrite_reason"] = self.inference_rewrite_reason
             out["inference_rewrite_confidence"] = round(self.inference_confidence, 3)
@@ -123,7 +133,8 @@ def build_resolved_retrieval_query(
 
     ``inference_text`` is the post-``resolve_ambiguous_user_query`` string.
     Web search uses the same base plus ``history`` for meta-web prior-turn
-    fallback (``meta_prior_turn``), detected on ``raw_text``.
+    fallback (``meta_prior_turn``), detected on ``raw_text``, and for acronyms
+    defined earlier in ``history`` (``acronym_expansion``, plan S5).
     """
     raw = (raw_text or "").strip()
     inference = (inference_text or raw).strip()
@@ -135,6 +146,14 @@ def build_resolved_retrieval_query(
         meta_prompt=raw,
         web_tool_attached=web_tool_attached,
     )
+    # An acronym defined earlier in the conversation is a safe signal on its
+    # own, so this runs whether or not the turn was classified as a follow-up.
+    web_text, expansions = expand_acronyms(
+        web_target.query, extract_acronym_definitions(history)
+    )
+    web_reason = web_target.rewrite_reason
+    if expansions and web_reason == "none":
+        web_reason = "acronym_expansion"
     inf_reason = "none"
     inf_conf = 0.0
     if resolved_query is not None and resolved_query.succeeded:
@@ -145,10 +164,11 @@ def build_resolved_retrieval_query(
         inference_text=inference,
         routing_text=resolve_routing_query(inference, follow_up, discourse),
         retrieval_text=resolve_retrieval_query(inference, follow_up, discourse),
-        web_text=web_target.query,
-        web_rewrite_reason=web_target.rewrite_reason,
+        web_text=web_text,
+        web_rewrite_reason=web_reason,
         inference_rewrite_reason=inf_reason,
         inference_confidence=inf_conf,
+        acronym_expansions=tuple(expansions),
     )
 
 

@@ -58,7 +58,10 @@ LABEL_GAINS: dict[str, int] = {"relevant": 2, "partial": 1, "irrelevant": 0}
 EXPECT_STATES: tuple[str, ...] = ("sufficient", "partial", "insufficient")
 LABEL_SOURCES: tuple[str, ...] = ("human", "model")
 DEFAULT_FIXTURE_BUDGET = 3  # balanced profile max_results
-QUERY_MODES: tuple[str, ...] = ("production", "standalone")
+# production — the query today's code builds from the turn and history;
+# standalone — the gold standalone question (what S5/S6 aim for);
+# captured — the query string recorded at capture time (S2–S4 baselines).
+QUERY_MODES: tuple[str, ...] = ("production", "standalone", "captured")
 
 # Metrics where larger is better / smaller is better (used by baseline compare).
 HIGHER_IS_BETTER: tuple[str, ...] = (
@@ -66,6 +69,7 @@ HIGHER_IS_BETTER: tuple[str, ...] = (
     "ndcg_at_5",
     "relevant_recall",
     "abstain_correct",
+    "subject_in_query",
 )
 LOWER_IS_BETTER: tuple[str, ...] = ("irrelevant_kept_rate",)
 
@@ -590,23 +594,62 @@ def get_fixture_ranker(name: str) -> RankerFn:
 # ---------------------------------------------------------------------------
 
 
-def fixture_ranking_query(fixture: dict[str, Any], *, query_mode: str = "production") -> str:
-    """Query the ranker scores against.
-
-    ``production`` — what today's pipeline would rank with (the cleaned turn
-    text; composer tokens already stripped). ``standalone`` — the gold
-    standalone question, i.e. what S5/S6 query resolution aims to produce.
-    Falls back to the production query when no standalone question exists.
-    """
-    production = str(
+def _captured_query(fixture: dict[str, Any]) -> str:
+    return str(
         fixture.get("retrieval_query")
         or fixture.get("query_clean")
         or fixture.get("query_raw")
         or ""
     ).strip()
+
+
+def resolved_production_query(fixture: dict[str, Any]) -> str:
+    """The ranking query the current code would build for this turn.
+
+    Mirrors the worker: discourse resolution of the turn against its history
+    (``build_discourse_resolution``; acronym expansion since S5) gives the web
+    text, then the path's own cleanup — the scientific planner's semantic
+    query, or request-frame stripping for general web / trusted.
+    """
+    turn = str(fixture.get("query_clean") or "").strip()
+    if not turn:
+        return _captured_query(fixture)
+    from core.query_resolution_evaluation import build_discourse_resolution
+
+    _fu, _state, resolved = build_discourse_resolution(turn, list(fixture.get("history") or []))
+    query = (resolved.web_text or turn).strip()
+    path = _normalize_path(fixture.get("path"))
+    if path == "scientific_evidence":
+        from core.knowledge.scientific_query_planner import plan_scientific_query
+
+        return plan_scientific_query(query, semantic_query=query).semantic_query or query
+    if path in ("general_web", "trusted_knowledge"):
+        from core.retrieval_query_cleanup import strip_request_frames
+
+        return strip_request_frames(query)
+    return query
+
+
+def fixture_ranking_query(fixture: dict[str, Any], *, query_mode: str = "production") -> str:
+    """Query the ranker scores against (see ``QUERY_MODES``).
+
+    ``standalone`` falls back to the production query when no standalone
+    question exists.
+    """
+    if query_mode == "captured":
+        return _captured_query(fixture)
+    production = resolved_production_query(fixture)
     if query_mode == "standalone":
         return str(fixture.get("standalone_question") or production).strip()
     return production
+
+
+def subject_in_query(fixture: dict[str, Any], query: str) -> bool | None:
+    """Multi-turn fixtures only: does the query name the gold subject?"""
+    subject = str(fixture.get("gold_subject") or "").strip().lower()
+    if not subject or not fixture.get("history"):
+        return None
+    return subject in (query or "").lower()
 
 
 def evaluate_fixture(
@@ -678,6 +721,7 @@ def evaluate_fixture(
         "irrelevant_kept_rate": irrelevant_kept_rate(kept),
         "relevant_recall": relevant_recall(kept, pool, budget=budget),
         "abstain_correct": abstain_correct(expect, did_abstain),
+        "subject_in_query": subject_in_query(fixture, query),
     }
 
 
@@ -715,6 +759,7 @@ def aggregate_reports(
             "irrelevant_kept_rate": _mean(r.get("irrelevant_kept_rate") for r in reps),
             "relevant_recall": _mean(r.get("relevant_recall") for r in reps),
             "abstain_correct": _mean(r.get("abstain_correct") for r in reps),
+            "subject_in_query": _mean(r.get("subject_in_query") for r in reps),
             "abstain_precision": (tp / (tp + fp)) if (tp + fp) else None,
             "abstain_recall": (tp / (tp + fn)) if (tp + fn) else None,
         }

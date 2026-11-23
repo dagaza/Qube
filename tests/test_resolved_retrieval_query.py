@@ -1,9 +1,11 @@
 """Canonical ResolvedRetrievalQuery builder and web inference alignment."""
 from __future__ import annotations
 
+import json
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 _WS_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _WS_ROOT not in sys.path:
@@ -11,9 +13,11 @@ if _WS_ROOT not in sys.path:
 
 from core.discourse_intent import classify_follow_up  # noqa: E402
 from core.discourse_query import (  # noqa: E402
+    SearchTargetResult,
     build_resolved_retrieval_query,
     resolve_search_target,
 )
+from core.query_resolution_evaluation import build_discourse_resolution  # noqa: E402
 from core.discourse_query_rewrite import (  # noqa: E402
     REWRITE_CONFIDENCE_MIN,
     resolve_ambiguous_user_query,
@@ -123,6 +127,79 @@ class TestResolvedRetrievalQuery(unittest.TestCase):
         self.assertEqual(telemetry["resolved_query_raw"], raw)
         self.assertIn("Kathmandu", telemetry["resolved_query_web"])
         self.assertEqual(telemetry["inference_rewrite_reason"], resolved_query.rewrite_reason)
+        self.assertNotIn("web_query_acronym_expansions", telemetry)
+
+
+_ANT_HISTORY = [
+    {"role": "user", "content": "What is actor-network theory?>"},
+    {
+        "role": "assistant",
+        "content": (
+            "Actor-network theory (ANT) is a sociological approach that treats human "
+            "and non-human entities as actors. Would you like an example of how ANT "
+            "analyzes a specific technology?"
+        ),
+    },
+]
+_ANT_TURN = "Yes, please tell me how ANT analyzes Artificial Inteligence for example."
+_FIXTURES = os.path.join(_WS_ROOT, "eval", "fixtures", "knowledge_quality")
+
+
+class TestAcronymExpansion(unittest.TestCase):
+    """Plan S5: acronyms defined earlier expand into the web/retrieval query."""
+
+    def test_ant_follow_up_expands_without_follow_up_classification(self) -> None:
+        follow_up, _state, canonical = build_discourse_resolution(_ANT_TURN, _ANT_HISTORY)
+        # The production failure: the turn is not classified as a follow-up at all.
+        self.assertFalse(follow_up.active)
+        self.assertIn("Actor-network theory (ANT)", canonical.web_text)
+        self.assertEqual(canonical.web_rewrite_reason, "acronym_expansion")
+        self.assertTrue(canonical.web_rewritten)
+        self.assertEqual(canonical.acronym_expansions, (("ANT", "Actor-network theory"),))
+        telemetry = canonical.to_telemetry_dict()
+        self.assertEqual(telemetry["web_query_rewrite_reason"], "acronym_expansion")
+        self.assertEqual(telemetry["web_query_acronym_expansions"], ["ANT=Actor-network theory"])
+
+    def test_only_web_text_is_expanded(self) -> None:
+        _fu, _state, canonical = build_discourse_resolution(_ANT_TURN, _ANT_HISTORY)
+        self.assertEqual(canonical.raw_text, _ANT_TURN)
+        self.assertNotIn("Actor-network", canonical.retrieval_text)
+        self.assertNotIn("Actor-network", canonical.routing_text)
+
+    def test_topic_switch_is_untouched(self) -> None:
+        q = "What is the boiling point of ethanol?"
+        _fu, _state, canonical = build_discourse_resolution(q, _ANT_HISTORY)
+        self.assertEqual(canonical.web_text, q)
+        self.assertEqual(canonical.web_rewrite_reason, "none")
+        self.assertEqual(canonical.acronym_expansions, ())
+
+    def test_undefined_acronym_is_untouched(self) -> None:
+        q = "What does the WHO say about ANT?"
+        _fu, _state, canonical = build_discourse_resolution(q, [])
+        self.assertEqual(canonical.web_text, q)
+        self.assertEqual(canonical.web_rewrite_reason, "none")
+
+    def test_discourse_rewrite_reason_is_kept_alongside_expansion(self) -> None:
+        # The worker keys flags on "topic_expansion" / "meta_prior_turn"; an
+        # acronym expansion on top must not hide them.
+        with patch(
+            "core.discourse_query.resolve_search_target",
+            return_value=SearchTargetResult("Regarding sociology: how ANT works", "topic_expansion"),
+        ):
+            _fu, _state, canonical = build_discourse_resolution("how ANT works", _ANT_HISTORY)
+        self.assertEqual(canonical.web_text, "Regarding sociology: how Actor-network theory (ANT) works")
+        self.assertEqual(canonical.web_rewrite_reason, "topic_expansion")
+        self.assertEqual(canonical.acronym_expansions, (("ANT", "Actor-network theory"),))
+
+    def test_multi_turn_acronym_fixtures_contain_gold_subject(self) -> None:
+        for name in ("mt_ant_followup_live.json", "ant_ai_candidates.json", "mt_acronym_ms_treatment.json"):
+            with self.subTest(fixture=name):
+                with open(os.path.join(_FIXTURES, name), encoding="utf-8") as fh:
+                    fixture = json.load(fh)
+                _fu, _state, canonical = build_discourse_resolution(
+                    fixture["query_clean"], fixture["history"]
+                )
+                self.assertIn(fixture["gold_subject"].lower(), canonical.web_text.lower())
 
 
 if __name__ == "__main__":

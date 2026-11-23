@@ -75,8 +75,9 @@ def _print_table(title: str, groups: dict[str, dict]) -> None:
         "abstain_correct",
         "abstain_precision",
         "abstain_recall",
+        "subject_in_query",
     )
-    short = ("n", "P@k", "nDCG@5", "irrKept", "relRec", "abstOK", "abstP", "abstR")
+    short = ("n", "P@k", "nDCG@5", "irrKept", "relRec", "abstOK", "abstP", "abstR", "subjQ")
     print(f"\n{title}")
     print(f"  {'group':28} " + " ".join(f"{s:>7}" for s in short))
     for name, row in groups.items():

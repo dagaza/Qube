@@ -762,6 +762,26 @@ flowchart LR
   - zero regressions in existing discourse and planner tests
   - live: the ANT turn yields ≥ 5 candidates with CE > 0 (13 measured for the hand-resolved query)
 - **Dependencies:** S2 for measurement. The code is independent of S3/S4 and can be built in parallel, but it **ships after S4** so the gate guards against wrong expansions.
+- **As built (2026-11-23):**
+  - **`core/discourse_acronyms.py`**: `extract_acronym_definitions(history, max_turns=6)` and `expand_acronyms(text, defs)` as specified.
+    - Long-form initials may skip small function words ("Food **and** Drug Administration (FDA)", "Department **of** Defense (DoD)"). Hyphen parts count as words ("Actor-network theory (ANT)"). A plural acronym's trailing "s" is not a letter ("GANs").
+    - An acronym needs ≥ 2 capitals, so "(ant)" and "(p)" are not definitions. Initials must match exactly, so "Microsoft (MS)" and "deoxyribonucleic acid (DNA)" are **not** treated as definitions: conservative by design.
+    - Expansion is case-sensitive and whole-word ("us", "ant", "ANTs", "MSc", "ANT-based" untouched). It applies to the **first** use only, and is skipped when the long form is already in the text.
+  - **`core/retrieval_query_cleanup.strip_request_frames`**: leading affirmation + punctuation ("Yes,", "Sure!"), "please" (only before a comma or a question/request word, so "Please Please Me" survives), "tell me [more] [about]" before a question word or "about" (so "Tell Me Lies" survives), "can/could/would you [please] explain/tell me/describe/…"; trailing "for example / for instance / please / thanks"; stray "?>"; and a final "." once something was stripped.
+    - If nothing but a frame would remain ("Yes, please.", "OK, thanks."), the original is returned. Bare affirmations are S6's job.
+    - It is applied to the scientific planner's keyword **and** semantic queries (OpenAlex and the reranker question no longer get the raw sentence), and to the general-web and trusted discovery queries and their relevance-gate text.
+    - The scientific-specific prefixes ("what does the literature say about") still apply to the keyword query only; existing planner tests pin that. `bundle.query_resolved` on the web paths now records the query actually searched.
+  - **Hook:** `build_resolved_retrieval_query` expands acronyms in `web_text` regardless of `follow_up.active` (the ANT turn is classified `none`, confidence 0).
+    - `web_rewrite_reason="acronym_expansion"` is set only when nothing else rewrote the query. Otherwise the discourse reason is kept, because the worker keys `discourse_web_query_expanded` / `web_query_rewritten_from_meta` on it.
+    - The pairs go in the new `ResolvedRetrievalQuery.acronym_expansions` and into the decision as `web_query_acronym_expansions`.
+    - `retrieval_text` / `routing_text` (memory, RAG, router) are unchanged, as specified.
+  - **Eval harness:** `production` query mode now **rebuilds** the query with the current code (`quality_eval.resolved_production_query`: `build_discourse_resolution` on turn + history, then the path's cleanup). The S2–S4 meaning is the new `captured` mode, which reproduces `kq_s4_*` exactly.
+    - New metric `subject_in_query`, for multi-turn fixtures with a `gold_subject`.
+    - Side effect, not caused by S5: production scientific ranking always used the planner's sanitised semantic query, which has no trailing "?", and the eval now mirrors that. `sci_cs_rust_ownership` ce recall 1.0 → 0.5 is that difference (scientific/production ce recall 0.86 → 0.82, within tolerance).
+  - **Live checks** (scripts in the session scratchpad):
+    - Trusted, MS follow-up: before, Wikipedia + DDG kept "Jennifer Garner" and "Yes Minister"; after, "Multiple sclerosis", "National Multiple Sclerosis Society", "Inflammatory demyelinating diseases".
+    - General web, "Yes, please tell me how a heat pump works for example.": before, 0 sources; after, "Heat pump" and "Air source heat pump".
+    - DuckDuckGo itself handles request frames well either way, so the gain is in the literal APIs (Wikipedia, OpenAlex, arXiv). The expanded MS query fell back from DDG to Wikipedia in that run; DDG throttling is the likely cause, not confirmed.
 
 #### S6 — Follow-up classification + subject/facet discourse state
 
@@ -833,6 +853,11 @@ flowchart LR
     - per-adapter timeout and an overall deadline (`as_completed` with a timeout)
     - late adapters are recorded as `adapter_timeout` in the trace and the sufficiency rationale
   - Multi-query union: the cleaned raw query plus the resolved query, merged with RRF and DOI/title dedupe, **only** when S5/S6 produced a distinct resolved query.
+  - **Spelling variant (D6):** when the query contains a likely misspelt content word, add a correctly spelt variant to the same union; the user's wording is always searched too.
+    - A correction is offered only for a confident, unique candidate. Names, acronyms, chemical and drug names, and words found in the conversation are left alone.
+    - The variant is recorded in the trace.
+    - Tests: the "Inteligence" case adds an "Intelligence" variant; "statins" is never turned into "stations".
+    - Acceptance: the live ANT turn reaches ≥ 5 candidates with CE > 0 (S5 measured 12 with correct spelling).
   - `core/knowledge/evidence_cache.make_cache_key` includes the pool size and query variant (fixes the §3.7 bug).
 - **Risks:**
   - rate limits: arXiv's 3-second politeness interval, PubMed's 3 rps without a key, the OpenAlex polite pool
@@ -936,6 +961,7 @@ flowchart LR
 | D3 | Do labels need a separate human review? | **Accepted without one.** The owner accepts model-proposed labels (`label_source: "model"`). The ~45-minute review step is dropped. | S2 |
 | D4 | What happens with non-English queries? | **Keep the `UNSCORED` fallback** (today's scorer, no gate). Multilingual coverage is deferred to a future iteration (§12.7). | S3, S4, S7 |
 | D5 | Should Library (`@library`) and plain-chat document/memory retrieval be in scope? | **Deferred until after S1–S13.** Recorded as a follow-on iteration (§12.7); not part of this plan. | §12.7, §12.8 |
+| D6 | How should misspelt query words be handled (S5 live finding: "Inteligence" removes every relevant OpenAlex result)? | **Search a correctly spelt variant alongside the user's wording**, inside S8's multi-query union. The user's word is never replaced. (Recorded 2026-11-23, after S5.) | S8 |
 
 **D3 safeguards** (labelling stays honest without a human pass):
 
@@ -997,7 +1023,7 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 ## Implementation progress log
 
 > **Do not edit sections 1–11 above.** Record shipped work here only.  
-> **Last reviewed:** 2026-11-23, S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
+> **Last reviewed:** 2026-11-23, S5 complete (§12.4 S5, acronyms + request frames); S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
 
 ### Summary
 
@@ -1051,6 +1077,12 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 | 2026-11-23 | S3 | Kept-identical check | Done | `token` / `embed` × production / standalone vs `kq_s2_*` baselines: kept titles identical on all 48 fixtures, aggregates byte-equal, 0 regressions. Pipeline test `ScientificPipelineShadowTests`: identical source ids with shadow on and off. | — |
 | 2026-11-23 | S3 | Latency (dev laptop, 40 × ~794-char docs, 20 runs) | Done | 4 threads: load 159 ms, p50 629 ms, **p95 670 ms** (≤ 1.0 s ✓). 2 threads: p50 1042 ms, p95 1119 ms. | 2-thread hardware exceeds 1 s; S4 may cap at 24–30 rows on low-core machines |
 | 2026-11-23 | S3 | Packaging | Partial | `qube.spec` hidden import `fastembed.rerank.cross_encoder` | **Frozen-build smoke test not run** (no build env here) — do before release |
+| 2026-11-23 | — | D6 recorded: misspellings handled with a correctly spelt variant alongside the user's wording, in S8 | Done | §12.6 D6, §12.4 S8 | — |
+| 2026-11-23 | S5 | Acronym expansion | Done | `core/discourse_acronyms.py`; `build_resolved_retrieval_query` hook (regardless of follow-up); `ResolvedRetrievalQuery.acronym_expansions`; `web_query_acronym_expansions` in the decision | — |
+| 2026-11-23 | S5 | Request-frame stripping | Done | `core/retrieval_query_cleanup.py`; scientific planner (keyword + semantic), general-web and trusted discovery + gate text; changes 3 of 48 corpus queries, all intended | Finance/legal planners keep their own prefix lists (S13) |
+| 2026-11-23 | S5 | Eval harness | Done | `production` mode rebuilt by current code; `captured` mode (= S2–S4 semantics); `subject_in_query` metric; baselines `kq_s5_{token,embed,ce}_{production,standalone}.json` | — |
+| 2026-11-23 | S5 | Tests | Done | `tests/test_discourse_acronyms.py`, `tests/test_retrieval_query_cleanup.py` (incl. negative over-stripping cases and web/trusted discovery receiving the clean query), additions to `tests/test_resolved_retrieval_query.py` (incl. ANT/MS fixture checks), `tests/test_scientific_query_planner.py`, `tests/test_knowledge_quality_eval.py` | — |
+| 2026-11-23 | S5 | Acceptance | **Partial** | Zero regressions in existing discourse/planner tests ✓; 0 eval regressions vs S4 ✓. **Gold subject in query on multi-turn fixtures: 1/8 → 4/8 (12.5 % → 50 %) vs target ≥ 80 % ✗**: S5 fixes all 3 acronym cases; the other 4 (bare "Yes, please.", "and what about 3.14?", "install one", "that group") need S6. **Live ANT: 0 candidates with CE > 0 vs target ≥ 5 ✗**, caused by the user's typo "Inteligence": the identical S5 query with "Intelligence" yields **12** (OpenAlex 10/10), more than the hand-written keyword query (10). Before S5 the raw turn gave 3, the top being an ant-colony paper the gate would have cited; now the gate abstains. | Spelling robustness is not in any stage: proposed as a recorded follow-up (see S5 results) |
 | 2026-11-23 | S4 | Calibration | Done | Sweep of `keep` ∈ {−2…2} and `strong` ∈ {2, 3, 4} on 21 scientific fixtures (both query modes) → `keep = 0`, `strong = 2`, `min_strong = 2`. Full reasoning in §12.4 S4 "As built". | No title-only split (too few rows) |
 | 2026-11-23 | S4 | Sufficiency module | Done | `core/knowledge/ranking/sufficiency.py` (`Sufficiency`, `SufficiencyThresholds`, `SufficiencyResult`, `assess_sufficiency`, `relevance_probability`) | Thresholds for web/trusted/finance come with S7/S8 |
 | 2026-11-23 | S4 | Scientific gate | Done | `pipeline_scientific._rank_candidates_gated` + `ScientificRanking`; slots reserve from survivors; `UNSCORED` fallback identical to `_rank_candidates` | — |
@@ -1237,6 +1269,17 @@ What S4 shows:
 2. **Off-topic citations drop from 38 % to 9–10 % of kept rows.** The rest are cross-encoder errors on on-subject, wrong-facet papers. Reaching ≤ 5 % needs better question facets (S5/S6) or a stronger model, not threshold tuning.
 3. **The remaining errors are wrong-facet papers that score high.** cs_engineering improves (P@3 0.78 → 0.89, recall 0.25 → 0.75) but still keeps the OAuth-plus-blockchain row; the self-attention and fasting cases keep one wrong-facet row each.
 4. **Diversity trades a little precision for recall.** Against S3's plain top-by-score preview on scientific/production, the gate scores P@3 0.91 vs 0.93 and irrelevant_kept 0.09 vs 0.07, but recall 0.86 vs 0.83. MMR prefers distinct sources over near-duplicate titles (S3 kept "The underlying structures of self-attention" twice), and in 2 cases the more diverse pick is a wrong-facet paper. This follows the spec ("MMR only for diversity among survivors"); dropping MMR on the gated path would be a one-line change if precision should win.
+
+**S5 results.** Query resolution on the 8 multi-turn fixtures (`subject_in_query`): captured 0.125 → production **0.50** → standalone 1.00. Ranking on the existing pools is unchanged within tolerance (0 regressions vs `kq_s4_*`, all rankers and modes). That is expected: the pools were retrieved with the old query, so S5's effect is in *what is retrieved*, measured live:
+
+| Live check | Before S5 | After S5 |
+|---|---|---|
+| ANT turn, production adapters (OpenAlex + arXiv), candidates with CE > 0 | 3 (top: "Artificial Ant Species on Solving Optimization Problems", +3.5; noise) | 0 (gate abstains honestly) |
+| ANT turn, OpenAlex + arXiv + Crossref (the V3 setup), CE > 0 | — | 2 with the user's spelling "Inteligence"; **12** with "Intelligence" (OpenAlex 10/10); the plan's hand-written `actor-network theory artificial intelligence`: 10 |
+| MS follow-up, trusted path | Jennifer Garner; Yes Minister; one MS page | Multiple sclerosis; National MS Society; Inflammatory demyelinating diseases |
+| "Yes, please tell me how a heat pump works for example.", general web | 0 sources | Heat pump; Air source heat pump |
+
+Spelling: OpenAlex is literal, so one misspelt content word removes every on-topic result. **Decided (D6):** S8 searches a correctly spelt variant alongside the user's wording, inside its multi-query union, and never replaces the user's word (a naive corrector would turn "statins" into "stations"). The live ANT acceptance moves to S8.
 
 ### Git reference
 
