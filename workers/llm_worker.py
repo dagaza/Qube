@@ -55,6 +55,8 @@ from core.app_settings import (
     set_mcp_rag_strict_enabled,
 )
 from core.prompt_blocks import build_prompt_blocks, resolve_retrieval_wrapper_mode
+from core.prompt_history import strip_composer_tokens_from_history
+from core.knowledge.ui_adapter import fit_source_blocks_to_budget
 from core.skills import activate_skills, build_skill_context
 from core.app_settings import get_skill_settings, get_skills_debug_log_enabled
 from core.preference_formatters import format_web_snippets
@@ -339,7 +341,7 @@ class LLMWorker(QThread):
     stream_replaced = pyqtSignal(str, str)  # session_id, full replacement text
     turn_notice = pyqtSignal(str, dict)  # session_id, {"kind": "max_tokens"|"format_retry", ...}
 
-    MAX_TOTAL_RETRIEVAL_CHARS = 4500
+    MAX_TOTAL_RETRIEVAL_CHARS = 8000
     MEMORY_BUDGET = 1500
     RAG_BUDGET = 3000
 
@@ -919,6 +921,7 @@ class LLMWorker(QThread):
         sources: list,
         *,
         format_mode: str = "grounded",
+        char_budget: int | None = None,
     ) -> str:
         """Single numbered block list so [1], [2], … align with UI / DB (no per-tool duplicate ids).
 
@@ -927,6 +930,9 @@ class LLMWorker(QThread):
         non-memory source exists in the same block, so the LLM knows to prefer
         the richer document / web source for detail on "tell me about X"
         style queries.
+
+        Web/evidence rows may include year, venue, authors, and peer-review /
+        preprint flags so the model can judge source quality.
         """
         background = str(format_mode or "grounded").lower() == "background"
         has_non_memory = any(
@@ -950,12 +956,36 @@ class LLMWorker(QThread):
             ):
                 name = f"{name} (short memory stub; prefer documents for detail)"
 
+            meta_bits: list[str] = []
+            venue = str(src.get("venue") or "").strip()
+            pub_date = str(src.get("publication_date") or "").strip()
+            if venue:
+                meta_bits.append(venue)
+            if pub_date:
+                meta_bits.append(pub_date)
+            authors = src.get("authors") or []
+            if isinstance(authors, (list, tuple)) and authors:
+                meta_bits.append(
+                    ", ".join(str(a).strip() for a in authors[:3] if str(a).strip())
+                )
+            if src.get("preprint"):
+                meta_bits.append("preprint")
+            elif src.get("peer_reviewed") is True:
+                meta_bits.append("peer-reviewed")
+            elif src.get("peer_reviewed") is False:
+                meta_bits.append("not peer-reviewed")
+            meta_line = f"({' · '.join(meta_bits)})\n" if meta_bits else ""
+
             if background and src_type == "memory":
                 parts.append(f"--- Known user context: {name} ---\n{body}")
             else:
                 cite_tag = f"[{sid}]" if sid is not None else "[?]"
-                parts.append(f"--- {cite_tag}: {name} ---\n{body}")
-        return "\n\n".join(parts)
+                parts.append(f"--- {cite_tag}: {name} ---\n{meta_line}{body}".rstrip())
+        joined = "\n\n".join(parts)
+        budget = self.MAX_TOTAL_RETRIEVAL_CHARS if char_budget is None else int(char_budget)
+        if budget > 0 and len(joined) > budget:
+            return fit_source_blocks_to_budget(parts, budget)
+        return joined
 
     def _stamp_discourse_on_decision(
         self,
@@ -4295,9 +4325,6 @@ class LLMWorker(QThread):
                 len(tool_context.strip()),
                 execution_route,
             )
-        if retrieval_prompt_body:
-            retrieval_prompt_body = retrieval_prompt_body[: self.MAX_TOTAL_RETRIEVAL_CHARS]
-
         has_retrieval_prompt = bool((retrieval_prompt_body or "").strip())
         effective_has_retrieval = bool(all_ui_sources) or has_retrieval_prompt
 
@@ -4315,13 +4342,19 @@ class LLMWorker(QThread):
                     "(omitted %d other messages from active session)",
                     len(history) - 1,
                 )
-        elif discourse_enabled and history and history[-1].get("role") == "user":
+        elif history:
             grounded = list(history)
-            last = dict(grounded[-1])
-            if prompt_rewrite is not None and prompt_rewrite.applied:
-                last["content"] = prompt_rewrite.grounded
-            grounded[-1] = last
-            prompt_history = grounded
+            if grounded and grounded[-1].get("role") == "user":
+                last = dict(grounded[-1])
+                if (
+                    discourse_enabled
+                    and prompt_rewrite is not None
+                    and prompt_rewrite.applied
+                ):
+                    last["content"] = prompt_rewrite.grounded
+                grounded[-1] = last
+            # Persist keeps raw @[tool:…] tokens for UI; strip them for the model.
+            prompt_history = strip_composer_tokens_from_history(grounded)
 
         # ============================================================
         # 3. PROMPT BUILD
@@ -4533,6 +4566,14 @@ class LLMWorker(QThread):
             ),
             evidence_has_conflicts=evidence_has_conflicts,
             evidence_low_reliability=evidence_low_reliability,
+            knowledge_service=(
+                str(getattr(_evidence_bundle, "knowledge_service", "") or "")
+                if _evidence_bundle is not None
+                else str(
+                    (decision.get("knowledge_service") if isinstance(decision, dict) else "")
+                    or ""
+                )
+            ),
         )
         if prompt_blocks.no_sources_mode:
             logger.info(

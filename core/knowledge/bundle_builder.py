@@ -576,7 +576,11 @@ def _scientific_row_to_evidence(
     if row.get("preprint"):
         authority = min(authority, 0.75)
 
-    reliability = float(row.get("_reliability_score") or max(0.0, min(1.0, authority * 0.85)))
+    reliability = float(
+        row.get("_reliability_score")
+        if row.get("_reliability_score") is not None
+        else max(0.0, min(1.0, authority * 0.85))
+    )
     fresh = freshness_score(row.get("publication_date"))
 
     return EvidenceObject(
@@ -598,7 +602,8 @@ def _scientific_row_to_evidence(
         open_access=row.get("open_access"),
         relevance_score=max(0.0, min(1.0, relevance)),
         authority_score=authority,
-        reliability_score=max(0.0, min(1.0, authority * 0.9)),
+        reliability_score=max(0.0, min(1.0, reliability)),
+        freshness_score=fresh,
         retrieved_at=retrieved_at,
         fetch_status="abstract" if full_text else "snippet_only",
         raw_metadata={
@@ -615,16 +620,33 @@ def _compute_scientific_coverage(
         return COVERAGE_NONE, "No scientific sources found."
     abstract_count = sum(1 for s in sources if s.fetch_status == "abstract")
     adapters = {s.adapter for s in sources}
-    if len(sources) >= 3 and abstract_count >= 2 and len(adapters) >= 2:
+    avg_rel = sum(s.relevance_score for s in sources) / len(sources)
+    # Count-based labels remain primary until Phase 2 reranker calibration.
+    # Cap at poor when average relevance is below a weak token-overlap floor
+    # (embeddings compress the 0–1 scale upward; token-only scores still use
+    # this path when the embedder is unavailable).
+    if avg_rel < 0.18:
+        return (
+            COVERAGE_POOR,
+            f"{len(sources)} scientific source(s) retained, but average "
+            f"relevance {avg_rel:.2f} is low.",
+        )
+    if (
+        len(sources) >= 3
+        and abstract_count >= 2
+        and len(adapters) >= 2
+        and avg_rel >= 0.28
+    ):
         return (
             COVERAGE_EXCELLENT,
             f"{len(sources)} sources across {len(adapters)} scientific indexes; "
-            f"{abstract_count} with abstracts.",
+            f"{abstract_count} with abstracts (avg relevance {avg_rel:.2f}).",
         )
     if abstract_count >= 1 and len(sources) >= 2:
         return (
             COVERAGE_ADEQUATE,
-            f"{len(sources)} scientific source(s); {abstract_count} abstract(s) retrieved.",
+            f"{len(sources)} scientific source(s); {abstract_count} abstract(s) "
+            f"retrieved (avg relevance {avg_rel:.2f}).",
         )
     if abstract_count >= 1:
         return (
@@ -641,6 +663,7 @@ def _compute_scientific_confidence(sources: tuple[EvidenceObject, ...]) -> float
     if not sources:
         return 0.0
     avg_auth = sum(s.authority_score for s in sources) / len(sources)
+    avg_rel = sum(s.relevance_score for s in sources) / len(sources)
     abstract_ratio = sum(1 for s in sources if s.fetch_status == "abstract") / len(
         sources
     )
@@ -649,7 +672,10 @@ def _compute_scientific_confidence(sources: tuple[EvidenceObject, ...]) -> float
         0.0,
         min(
             0.94,
-            avg_auth * 0.5 + abstract_ratio * 0.25 + adapter_diversity * 0.2,
+            avg_auth * 0.35
+            + avg_rel * 0.30
+            + abstract_ratio * 0.20
+            + adapter_diversity * 0.15,
         ),
     )
 

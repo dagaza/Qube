@@ -30,7 +30,8 @@ _RETRIEVAL_WRAPPER_HEAD_MULTI = (
 
 _WEB_CITATION_EXEMPLAR_SINGLE = (
     "=== CITATION FORMAT (follow exactly) ===\n"
-    "Every factual sentence using the source above must end with [1].\n\n"
+    "Cite [1] only on sentences that source directly supports.\n"
+    "If the source is not relevant, say so plainly without brackets.\n\n"
     "Example pattern only:\n"
     "One factual sentence. [1]\n\n"
     "Do not explain citations. Do not describe rules. Apply the pattern in your answer.\n"
@@ -38,7 +39,8 @@ _WEB_CITATION_EXEMPLAR_SINGLE = (
 
 _WEB_CITATION_EXEMPLAR_MULTI = (
     "=== CITATION FORMAT (follow exactly) ===\n"
-    "Every factual sentence using the sources above must end with a citation token.\n\n"
+    "Cite a source only when it directly supports the sentence.\n"
+    "If none of the sources address the question, say so plainly without brackets.\n\n"
     "The number must match the id on the source block that supports that sentence "
     "(from --- [N]: title ---), not sentence order or list numbering.\n\n"
     "Example pattern only — substitute the real ids from the source headers above:\n"
@@ -145,8 +147,9 @@ def _wrap_retrieval(
 def _short_web_persona(blocks: PromptBlocks | None = None) -> str:
     multi = blocks is not None and int(getattr(blocks, "retrieval_source_count", 0) or 0) > 1
     base = (
-        "Use the live web results in context to answer the user's query. "
-        "Cite web hits with [1], [2], etc. matching the bracket ids in context. "
+        "Use relevant retrieved sources in context to answer the user's query. "
+        "Cite with [1], [2], etc. only when a source supports the claim. "
+        "If none are relevant, say so without brackets. "
         "Never write [SOURCE N]. Never reply with only a citation token."
     )
     if multi:

@@ -24,6 +24,17 @@ def _stance(text: str) -> str:
     return "neutral"
 
 
+def _row_identity(row: dict[str, Any]) -> str:
+    doi = str(row.get("doi") or "").strip().lower()
+    if doi:
+        return f"doi:{doi}"
+    url = str(row.get("url") or "").strip().lower()
+    if url:
+        return f"url:{url}"
+    title = str(row.get("title") or "").strip().lower()
+    return f"title:{title}"
+
+
 def reliability_score_for_row(
     row: dict[str, Any],
     *,
@@ -35,10 +46,11 @@ def reliability_score_for_row(
     if not peer_rows:
         return 0.55
 
+    self_key = _row_identity(row)
     agreements = 0
     comparisons = 0
     for peer in peer_rows:
-        if peer is row:
+        if _row_identity(peer) == self_key:
             continue
         peer_text = f"{peer.get('title') or ''} {peer.get('snippet') or ''}"
         peer_stance = _stance(peer_text)
@@ -62,6 +74,7 @@ def apply_reliability_scores(rows: list[dict[str, Any]]) -> list[dict[str, Any]]
     updated: list[dict[str, Any]] = []
     for row in rows:
         copy = dict(row)
+        # Pass original ``rows`` so identity skip works; copies would always compare as peers.
         copy["_reliability_score"] = reliability_score_for_row(copy, peer_rows=rows)
         updated.append(copy)
     return updated

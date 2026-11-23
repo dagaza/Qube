@@ -7,6 +7,7 @@ Rendering lives in ``core/prompt_renderers.py`` (PR3).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Any, Literal
 
 RetrievalWrapperMode = Literal["grounded", "background", "none"]
@@ -56,14 +57,30 @@ _EXPLICIT_REMEMBER_PERSONA_HEAD = (
 )
 
 _WEB_PERSONA = (
-    "Real-time live web search results have been provided for this turn. "
-    "You MUST use the TOOLS context provided below to answer the user's query. "
+    "Retrieved sources have been provided for this turn. "
+    "Use them when they are relevant to the user's question. "
     "Do not state that you are offline or cannot browse the internet. "
     "CRITICAL: Respond directly to the user in a natural, conversational tone. "
     "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
     "Write only the user-facing response. "
-    "Cite using the numbered bracket ids from context ([1], [2], etc.)—"
-    "never echo SOURCE headers, never use Markdown links or URLs after citations."
+    "Cite using the numbered bracket ids from context ([1], [2], etc.) only when "
+    "a source supports the claim—"
+    "never echo SOURCE headers, never use Markdown links or URLs after citations. "
+    "If none of the sources are relevant, say so plainly first without brackets."
+)
+
+_SCIENTIFIC_EVIDENCE_PERSONA = (
+    "Scientific literature results have been provided for this turn. "
+    "Treat abstracts as primary evidence; note preprints, single-study limits, "
+    "and missing full text when relevant. "
+    "Do not state that you are offline or cannot access literature. "
+    "CRITICAL: Respond directly to the user in a natural, conversational tone. "
+    "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
+    "Write only the user-facing response. "
+    "Cite using the numbered bracket ids from context ([1], [2], etc.) only when "
+    "a source supports the claim—"
+    "never echo SOURCE headers, never use Markdown links or URLs after citations. "
+    "If none of the sources are relevant, say so plainly first without brackets."
 )
 
 _WEB_MULTI_SOURCE_SUFFIX = (
@@ -179,6 +196,8 @@ def build_prompt_blocks(
     web_hit_count: int = 0,
     evidence_has_conflicts: bool = False,
     evidence_low_reliability: bool = False,
+    knowledge_service: str = "",
+    current_date: str | None = None,
 ) -> PromptBlocks:
     """
     Assemble persona + suffix lists for the current turn.
@@ -189,6 +208,11 @@ def build_prompt_blocks(
     suffixes: list[str] = []
     persona = _BASE_PERSONA
     no_sources = False
+    service = str(knowledge_service or "").strip().lower()
+    scientific_turn = service in {
+        "scientific_evidence",
+        "science",
+    }
 
     if composer_diagnostics_attached:
         persona = (
@@ -238,15 +262,6 @@ def build_prompt_blocks(
         no_sources = True
         persona = _BASE_PERSONA
         suffixes.append(HELP_SOURCES_EMPTY_SUFFIX)
-    elif scientific_medical_disclaimer:
-        persona = _BASE_PERSONA
-        suffixes.append(SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX)
-    elif financial_disclaimer:
-        persona = _BASE_PERSONA
-        suffixes.append(FINANCIAL_DISCLAIMER_SUFFIX)
-    elif legal_disclaimer:
-        persona = _BASE_PERSONA
-        suffixes.append(LEGAL_DISCLAIMER_SUFFIX)
     elif route in ("RAG", "HYBRID", "MEMORY"):
         if not has_retrieval_sources:
             no_sources = True
@@ -297,7 +312,9 @@ def build_prompt_blocks(
                 else EXPLICIT_WEB_EMPTY_SUFFIX
             )
         else:
-            persona = _WEB_PERSONA
+            persona = (
+                _SCIENTIFIC_EVIDENCE_PERSONA if scientific_turn else _WEB_PERSONA
+            )
             suffixes.append(CITATION_DISCIPLINE_SUFFIX)
             if int(web_hit_count or 0) > 1 or int(retrieval_source_count or 0) > 1:
                 suffixes.append(_WEB_MULTI_SOURCE_SUFFIX)
@@ -307,6 +324,23 @@ def build_prompt_blocks(
                 suffixes.append(EVIDENCE_LOW_RELIABILITY_SYNTHESIS_SUFFIX)
     elif composer_conversation_ref and (retrieval_context or "").strip():
         suffixes.append(CONVERSATION_REF_SYSTEM_SUFFIX)
+
+    # Domain disclaimers are additive — they must not replace evidence/citation
+    # guidance on WEB turns that already have sources.
+    if scientific_medical_disclaimer and not explicit_remember_active:
+        suffixes.append(SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX)
+    if financial_disclaimer and not explicit_remember_active:
+        suffixes.append(FINANCIAL_DISCLAIMER_SUFFIX)
+    if legal_disclaimer and not explicit_remember_active:
+        suffixes.append(LEGAL_DISCLAIMER_SUFFIX)
+
+    # ``None`` → today's date; ``""`` → omit (tests / parity).
+    if current_date is None:
+        date_str = date.today().isoformat()
+    else:
+        date_str = str(current_date).strip()
+    if date_str and not explicit_remember_active:
+        suffixes.append(f" Today's date is {date_str}.")
 
     skill_block = (skill_guidance or "").strip()
     if skill_block and not explicit_remember_active:
