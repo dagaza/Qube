@@ -31,5 +31,10 @@ class ScientificEvidenceService:
             embed_fn=ctx.embed_fn,
             budget=budget,
             adapter_filter=ctx.adapter_filter,
+            # S8: the profile sets the adapter deadlines
+            # (previously dropped here, so every turn ran as "balanced").
+            retrieval_profile=ctx.retrieval_profile,
+            query_raw=ctx.query_raw,
+            conversation_terms=ctx.conversation_terms,
         )
         return self._pipeline.run(merged)

@@ -161,6 +161,13 @@ class RetrievalContext:
     composer_tool: str | None = None
     fetch_url_count: int | None = None
     site_bias: tuple[str, ...] | None = None
+    # Plan S8: the user's own wording when S5 / S6 rewrote the search query
+    # (``None`` when ``query`` already is the user's wording). Scientific
+    # retrieval searches it alongside the resolved query.
+    query_raw: str | None = None
+    # Plan S8 (D6): lower-cased words from the assistant's recent messages;
+    # the spelling variant never "corrects" them.
+    conversation_terms: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)

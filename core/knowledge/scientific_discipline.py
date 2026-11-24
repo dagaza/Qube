@@ -143,6 +143,24 @@ _SOCIOLOGY_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     )
 )
 
+# Science and technology studies (plan S8). STS questions are usually *about*
+# a technical subject ("How does actor-network theory analyse AI?"), so an STS
+# term counts double and outweighs a single CS / engineering term.
+_STS_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"\b(actor[- ]network theory|science and technology studies|"
+        r"science,? technology,? and society|social construction of technology|"
+        r"social shaping of technology|socio-?technical|sociology of (?:scientific )?knowledge|"
+        r"sociology of science|sociology of technology|technoscien\w*|"
+        r"boundary objects?|co-?production of (?:knowledge|science)|"
+        r"laboratory studies|infrastructure studies|"
+        r"latour|callon|jasanoff|haraway|bijker)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\b(?:STS|SCOT|SSK)\b"),
+)
+_STS_WEIGHT = 2
+
 _POLISCI_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
     re.compile(p, re.IGNORECASE)
     for p in (
@@ -227,7 +245,8 @@ def detect_scientific_discipline(
         SCIENTIFIC_DISCIPLINE_ECONOMICS: _score_patterns(text, _ECON_PATTERNS),
         SCIENTIFIC_DISCIPLINE_PHYSICS: _score_patterns(text, _PHYSICS_PATTERNS),
         SCIENTIFIC_DISCIPLINE_PSYCHOLOGY: _score_patterns(text, _PSYCHOLOGY_PATTERNS),
-        SCIENTIFIC_DISCIPLINE_SOCIOLOGY: _score_patterns(text, _SOCIOLOGY_PATTERNS),
+        SCIENTIFIC_DISCIPLINE_SOCIOLOGY: _score_patterns(text, _SOCIOLOGY_PATTERNS)
+        + _STS_WEIGHT * min(1, _score_patterns(text, _STS_PATTERNS)),
         SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE: _score_patterns(
             text, _POLISCI_PATTERNS
         ),

@@ -118,6 +118,8 @@ def run_v2_web_retrieval(
     composer_tool: str | None = None,
     site_bias: tuple[str, ...] | None = None,
     fetch_url_count: int | None = None,
+    query_raw: str | None = None,
+    conversation_terms: frozenset[str] = frozenset(),
 ) -> WebRetrievalOutcome:
     """Evidence pipeline path — legacy-compatible rows plus EvidenceBundle."""
     profile_id = normalize_profile_id(retrieval_profile or get_retrieval_profile())
@@ -141,6 +143,8 @@ def run_v2_web_retrieval(
         composer_tool=(composer_tool or "").strip().lower() or None,
         site_bias=site_bias,
         fetch_url_count=fetch_url_count,
+        query_raw=query_raw,
+        conversation_terms=conversation_terms,
     )
     bundle, rel_diag, raw_for_audit = service.retrieve(ctx)
 
@@ -220,6 +224,8 @@ def run_web_retrieval(
     composer_tool: str | None = None,
     site_bias: tuple[str, ...] | None = None,
     fetch_url_count: int | None = None,
+    query_raw: str | None = None,
+    conversation_terms: frozenset[str] = frozenset(),
 ) -> WebRetrievalOutcome:
     return run_v2_web_retrieval(
         query=query,
@@ -239,6 +245,8 @@ def run_web_retrieval(
         composer_tool=composer_tool,
         site_bias=site_bias,
         fetch_url_count=fetch_url_count,
+        query_raw=query_raw,
+        conversation_terms=conversation_terms,
     )
 
 

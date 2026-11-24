@@ -107,7 +107,24 @@ def candidate_gain(row: dict[str, Any]) -> int | None:
     return LABEL_GAINS.get(label)
 
 
-POOL_MODES: tuple[str, ...] = ("production", "full")
+POOL_MODES: tuple[str, ...] = ("production", "widened", "full")
+
+
+def widened_depth(fixture: dict[str, Any]) -> dict[str, int]:
+    """Per-adapter depth the S8 pipeline requests when the relevance gate runs.
+
+    General web: ``GATED_WEB_POOL`` rows of the same results page (capped by
+    what the fixture captured, 8 in v1). Every other path keeps its
+    ``production_depth``: S8 measured and rejected a deeper scholarly pool,
+    and did not change trusted or finance depth. Crossref and the user's raw
+    wording were not captured, so they are not replayed.
+    """
+    from core.knowledge.pipeline_general_web import GATED_WEB_POOL
+
+    depth = {str(k): int(v) for k, v in (fixture.get("production_depth") or {}).items()}
+    if _normalize_path(fixture.get("path")) == PATH_GENERAL_WEB:
+        return {adapter: max(n, GATED_WEB_POOL) for adapter, n in depth.items()}
+    return depth
 
 
 def _fixture_variants(fixture: dict[str, Any]) -> set[str]:
@@ -150,7 +167,11 @@ def fixture_pool(
     if pool_mode not in POOL_MODES:
         raise ValueError(f"pool_mode must be one of {POOL_MODES}")
     variant = pool_variant(fixture, query_mode)
-    depth = dict(fixture.get("production_depth") or {})
+    depth = (
+        widened_depth(fixture)
+        if pool_mode == "widened"
+        else dict(fixture.get("production_depth") or {})
+    )
     adapter_order = {name: i for i, name in enumerate(depth)}
     picked: list[tuple[tuple[int, int, int], dict[str, Any]]] = []
     for idx, row in enumerate(fixture.get("candidates") or []):
@@ -169,7 +190,7 @@ def fixture_pool(
                 continue
             adapter = str(hit.get("adapter") or "")
             rank = int(hit.get("rank") or 0)
-            if pool_mode == "production" and adapter in depth and rank >= int(depth[adapter]):
+            if pool_mode != "full" and adapter in depth and rank >= int(depth[adapter]):
                 continue
             key = (adapter_order.get(adapter, len(adapter_order)), rank, idx)
             if best is None or key < best:
@@ -444,7 +465,7 @@ def _rank_trusted(query, rows, budget, *, query_vector, embed_fn) -> RankerOutpu
             r
             for r in rows
             if str(r.get("_adapter") or "") != WIKI_ADAPTER
-            and is_allowlisted_url(str(r.get("url") or ""))
+            and is_allowlisted_url(str(r.get("url") or ""), widened=False)
             and str(r.get("url") or "").strip().lower() not in seen
         ]
         if allowlisted:
@@ -557,6 +578,7 @@ def _ce_rank_non_scientific(
     ``pipeline_finance`` (``None`` when the reranker cannot run → legacy)."""
     from core.knowledge.ranking.web_gate import (
         FINANCE_THRESHOLDS,
+        SERP_RANK_PRIOR,
         TRUSTED_THRESHOLDS,
         WEB_THRESHOLDS,
         drop_search_ads,
@@ -565,9 +587,12 @@ def _ce_rank_non_scientific(
 
     today = _EVAL_TODAY.get()
     if path == PATH_GENERAL_WEB:
-        # Every survivor is a candidate source, as in production.
+        # As in production (S8): up to ``budget`` rows are presented and judged;
+        # the other survivors are only fetch candidates.
         pool, _ads = drop_search_ads(rows)
-        gate = gate_rows(query, pool, budget=len(pool), thresholds=WEB_THRESHOLDS, today=today)
+        gate = gate_rows(
+            query, pool, budget=budget, thresholds=WEB_THRESHOLDS, today=today, rank_prior=SERP_RANK_PRIOR
+        )
     elif path == PATH_TRUSTED:
         from core.knowledge.adapters.wikipedia_api import ADAPTER_ID as WIKI_ADAPTER
         from core.knowledge.ranking.authority import is_allowlisted_url

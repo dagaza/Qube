@@ -189,7 +189,11 @@ from unittest.mock import patch  # noqa: E402
 
 from core.knowledge.discovery.types import CandidateUrl, DiscoveryResult  # noqa: E402
 from core.knowledge.ranking.rerank import set_reranker_scorer_for_tests  # noqa: E402
-from core.knowledge.ranking.sufficiency import Sufficiency, relevance_probability  # noqa: E402
+from core.knowledge.ranking.sufficiency import (  # noqa: E402
+    Sufficiency,
+    SufficiencyThresholds,
+    relevance_probability,
+)
 from core.knowledge.ranking.web_gate import (  # noqa: E402
     WARNING_RECENCY,
     WARNING_STALE,
@@ -245,6 +249,11 @@ class SearchAdTests(unittest.TestCase):
         self.assertEqual(n, 1)
 
 
+# The gate-logic tests below pin the S7 thresholds (keep 0, strong 2, two
+# strong rows), so they test the decision rules, not the current calibration.
+_GATE_T = SufficiencyThresholds(keep=0.0, strong=2.0, min_strong_for_sufficient=2)
+
+
 class WebGateTests(_ScorerCase):
     def test_unavailable_reranker_returns_none(self) -> None:
         # conftest hides the installed model; no fake scorer → legacy path.
@@ -253,7 +262,7 @@ class WebGateTests(_ScorerCase):
     def test_drops_below_keep_and_orders_by_score(self) -> None:
         self.use({"Heat pump basics": 6.0, "How heat pumps work": 3.0, "Car charger": -4.0})
         rows = [_row("Car charger"), _row("How heat pumps work"), _row("Heat pump basics")]
-        gate = gate_rows("what is a heat pump", rows, budget=3, today=_S7_TODAY)
+        gate = gate_rows("what is a heat pump", rows, budget=3, today=_S7_TODAY, thresholds=_GATE_T)
         self.assertEqual([r["title"] for r in gate.kept], ["Heat pump basics", "How heat pumps work"])
         self.assertEqual([r["title"] for r in gate.dropped], ["Car charger"])
         self.assertIs(gate.sufficiency.state, Sufficiency.SUFFICIENT)
@@ -271,27 +280,57 @@ class WebGateTests(_ScorerCase):
         for scores, state in cases:
             with self.subTest(scores=scores):
                 self.use(scores)
-                gate = gate_rows("question about things", [_row("A"), _row("B"), _row("C")], budget=3)
+                gate = gate_rows(
+                    "question about things", [_row("A"), _row("B"), _row("C")], budget=3, thresholds=_GATE_T
+                )
                 self.assertIs(gate.sufficiency.state, state)
 
     def test_budget_limits_kept_and_sufficiency_uses_kept(self) -> None:
         self.use({"A": 5.0, "B": 1.0, "C": 3.0})
-        gate = gate_rows("question about things", [_row("A"), _row("B"), _row("C")], budget=1)
+        gate = gate_rows(
+            "question about things", [_row("A"), _row("B"), _row("C")], budget=1, thresholds=_GATE_T
+        )
         self.assertEqual([r["title"] for r in gate.kept], ["A"])
         self.assertEqual(len(gate.survivors), 3)
         self.assertIs(gate.sufficiency.state, Sufficiency.PARTIAL)  # one strong row kept
 
-    def test_thresholds_match_the_scientific_gate(self) -> None:
+    def test_calibrated_thresholds(self) -> None:
         from core.knowledge.ranking.sufficiency import SCIENTIFIC_THRESHOLDS
+        from core.knowledge.ranking.web_gate import (
+            FINANCE_THRESHOLDS,
+            SECTION_THRESHOLDS,
+            TRUSTED_THRESHOLDS,
+        )
 
-        self.assertEqual(WEB_THRESHOLDS, SCIENTIFIC_THRESHOLDS)
+        # S8: general web re-calibrated on its widened 8-row pool.
+        self.assertEqual(
+            WEB_THRESHOLDS, SufficiencyThresholds(keep=3.0, strong=3.0, min_strong_for_sufficient=2)
+        )
+        # Pools S8 did not widen keep the S7 (= scientific) values.
+        for th in (TRUSTED_THRESHOLDS, FINANCE_THRESHOLDS, SECTION_THRESHOLDS):
+            self.assertEqual(th, SCIENTIFIC_THRESHOLDS)
+
+    def test_stale_row_is_kept_but_not_strong_when_keep_equals_strong(self) -> None:
+        # S8 regression: capping a stale score "just below strong" also put it
+        # below keep when keep == strong, so stale-only turns became insufficient.
+        self.use({"Old A": 6.0, "Old B": 5.0})
+        rows = [
+            _row("Old A", url="https://news.example/2022/05/01/a"),
+            _row("Old B", url="https://news.example/2021/03/b"),
+        ]
+        th = SufficiencyThresholds(keep=3.0, strong=3.0, min_strong_for_sufficient=2)
+        gate = gate_rows("What is the latest ECB deposit rate?", rows, budget=3, today=_S7_TODAY, thresholds=th)
+        self.assertEqual(len(gate.kept), 2)
+        self.assertIs(gate.sufficiency.state, Sufficiency.PARTIAL)
+        self.assertEqual(gate.sufficiency.strong_count, 0)
+        self.assertIn(WARNING_STALE, gate.warnings)
 
 
 class WebGateRecencyTests(_ScorerCase):
     Q = "What is the latest ECB deposit rate?"
 
     def _gate(self, rows, budget=3):
-        return gate_rows(self.Q, rows, budget=budget, today=_S7_TODAY)
+        return gate_rows(self.Q, rows, budget=budget, today=_S7_TODAY, thresholds=_GATE_T)
 
     def test_stale_rows_are_not_strong_and_go_last(self) -> None:
         self.use({"Old": 6.0, "New": 2.5, "Other": 2.2})

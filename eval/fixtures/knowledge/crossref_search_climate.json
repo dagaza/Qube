@@ -2,6 +2,7 @@
   "message": {
     "items": [
       {
+        "type": "journal-article",
         "DOI": "10.5194/tc-12-1234-2018",
         "title": ["Arctic sea ice extent trends from satellite observations"],
         "author": [

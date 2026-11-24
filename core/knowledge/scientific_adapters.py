@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from core.knowledge.adapters.arxiv_api import ADAPTER_ID as ARXIV_ID
 from core.knowledge.adapters.biorxiv import ADAPTER_ID as BIORXIV_ID
+from core.knowledge.adapters.crossref import ADAPTER_ID as CROSSREF_ID
 from core.knowledge.adapters.inspire_hep import ADAPTER_ID as INSPIRE_HEP_ID
 from core.knowledge.adapters.openalex import ADAPTER_ID as OPENALEX_ID
 from core.knowledge.adapters.pubchem import ADAPTER_ID as PUBCHEM_ID
@@ -25,10 +26,12 @@ from core.knowledge.scientific_query_type import reorder_adapters_for_query_type
 _MEDICAL_ADAPTERS = (PUBMED_ID, OPENALEX_ID, ARXIV_ID)
 _BIOLOGY_ADAPTERS = (PUBMED_ID, BIORXIV_ID, OPENALEX_ID)
 _CHEMISTRY_ADAPTERS = (PUBCHEM_ID, OPENALEX_ID, PUBMED_ID)
-_PSYCHOLOGY_ADAPTERS = (PUBMED_ID, OPENALEX_ID)
-_SOCIAL_SCIENCE_ADAPTERS = (OPENALEX_ID,)
+# Crossref is the keyless widening adapter for general and social science
+# (plan S8, V8); Semantic Scholar is not, since it returns nothing without a key.
+_PSYCHOLOGY_ADAPTERS = (PUBMED_ID, OPENALEX_ID, CROSSREF_ID)
+_SOCIAL_SCIENCE_ADAPTERS = (OPENALEX_ID, CROSSREF_ID)
 _PHYSICS_ADAPTERS = (ARXIV_ID, INSPIRE_HEP_ID, OPENALEX_ID)
-_SCHOLARLY_ADAPTERS = (OPENALEX_ID, ARXIV_ID)
+_SCHOLARLY_ADAPTERS = (OPENALEX_ID, CROSSREF_ID, ARXIV_ID)
 
 _PUBMED_ELIGIBLE = frozenset(
     {

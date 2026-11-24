@@ -224,6 +224,7 @@ from core.knowledge.registry import (
 )
 from core.knowledge.types import SERVICE_INTERNAL_CORPUS
 from core.knowledge.web_retrieval import run_web_retrieval
+from core.knowledge.spelling import conversation_terms
 from core.knowledge.fetch_provenance import summarize_web_pipeline_outcome
 from core.knowledge.search_outcome import search_outcome_from_relevance_diag
 from core.knowledge.adapters.duckduckgo import failure_sentinel_reason
@@ -3538,6 +3539,10 @@ class LLMWorker(QThread):
                 composer_tool=getattr(self, "_composer_knowledge_tool", None),
                 site_bias=preset_overrides.get("site_bias"),
                 fetch_url_count=preset_overrides.get("fetch_url_count"),
+                # S8: the user's own wording, searched alongside a rewrite, and
+                # the assistant's words (never spelling-"corrected", D6).
+                query_raw=raw_prompt if search_target.rewritten else None,
+                conversation_terms=conversation_terms(history),
             )
             web_results = _web_outcome.web_results
             web_results_raw_for_audit = _web_outcome.web_results_raw_for_audit

@@ -34,6 +34,8 @@ from core.knowledge.ranking.sufficiency import (
     relevance_probability,
 )
 from core.knowledge.ranking.web_gate import (
+    SECTION_THRESHOLDS,
+    SERP_RANK_PRIOR,
     WEB_THRESHOLDS,
     WARNING_RECENCY,
     WARNING_STALE,
@@ -74,7 +76,21 @@ def _rerank_skip_reason(question: str) -> str:
     return rerank.unavailable_reason(question) or rerank.SKIP_ERROR
 
 
-def _discovery_max_results(ctx: RetrievalContext, fetch_url_count: int) -> int:
+def _reranker_ready(question: str) -> bool:
+    from core.knowledge.ranking import rerank
+
+    return rerank.unavailable_reason(question) is None
+
+
+# Plan S8 (V14): with the relevance gate the pool is widened to this many rows
+# of the *same* results page; DuckDuckGo returns ~10 rows per page, so this
+# costs no extra search request.
+GATED_WEB_POOL = 8
+
+
+def _discovery_max_results(ctx: RetrievalContext, fetch_url_count: int, *, gated: bool = False) -> int:
+    if gated:
+        return GATED_WEB_POOL
     base = max(ctx.budget.max_results, fetch_url_count * 2, 3)
     return min(base, 8)
 
@@ -260,7 +276,7 @@ def _gate_fetched_sections(
     result = rerank.rerank_texts(question, texts)
     if result is None:
         return None
-    thresholds = WEB_THRESHOLDS
+    thresholds = SECTION_THRESHOLDS
     need = gate.recency
     serp_by_url = {str(r.get("url") or ""): r for r in serp_rows}
     scored: list[tuple[float, EvidenceObject, dict[str, Any]]] = []
@@ -365,7 +381,12 @@ def run_general_web_evidence_pipeline(
     fetch_url_count = fetch_options.fetch_url_count
     relevance_options = resolve_web_relevance_options(ctx, fetch_options)
 
-    discovery_limit = _discovery_max_results(ctx, fetch_url_count)
+    ce_gate = (
+        relevance_options.apply_gate
+        and relevance_options.mode in _CE_GATE_MODES
+        and _reranker_ready(semantic)
+    )
+    discovery_limit = _discovery_max_results(ctx, fetch_url_count, gated=ce_gate)
     discovery = discover_full(
         search_query,
         max_results=discovery_limit,
@@ -404,10 +425,12 @@ def run_general_web_evidence_pipeline(
         gate = gate_rows(
             semantic,
             [dict(r) for r in raw_copy],
-            budget=len(raw_copy),
+            budget=ctx.budget.max_results,
             thresholds=WEB_THRESHOLDS,
+            rank_prior=SERP_RANK_PRIOR,
         )
     if gate is not None:
+        # ``kept`` (≤ budget) is presented and judged; every survivor may be fetched.
         filtered = list(gate.kept)
         rel_diag = {
             "web_results_raw_count": len(raw_copy),
@@ -531,7 +554,7 @@ def run_general_web_evidence_pipeline(
 
     url_to_candidate = {c.url: c for c in candidates}
     ranked_candidates: list[CandidateUrl] = []
-    for row in filtered:
+    for row in (gate.survivors if gate is not None else filtered):
         url = str(row.get("url") or "").strip()
         if url in url_to_candidate:
             ranked_candidates.append(url_to_candidate[url])

@@ -5,9 +5,17 @@ from __future__ import annotations
 import dataclasses
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
+from core.knowledge.adapter_collection import (
+    VARIANT_PRIMARY,
+    VARIANT_RAW,
+    VARIANT_SPELLING,
+    AdapterTask,
+    CollectionResult,
+    collect_adapter_rows,
+    rrf_merge,
+)
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
 from core.knowledge.adapters.registry import get_search_function
 from core.app_settings import get_knowledge_source_preferences
@@ -359,43 +367,110 @@ def _ensure_physics_arxiv_slot(
     return [best, *trimmed]
 
 
+WARNING_ADAPTER_TIMEOUT = "adapter_timeout"
+# Plan S8: extra query wordings go only to OpenAlex, the one host that took a
+# second request in the same turn without a 429 in the S8 live runs. arXiv's
+# serialized 3.5 s interval would add a full interval per wording; Europe PMC
+# is slow (7–12 s); Crossref (concurrency limit) and NCBI (3 requests / s
+# without a key) both answered the extra request with 429.
+_VARIANT_ADAPTERS = frozenset({"openalex"})
+# Plan S8: candidates are capped before reranking (the gate's row cap is the
+# same 40; 24 on low-core machines).
+CANDIDATE_POOL_CAP = 40
+_COLLECT_MAX_WORKERS = 6
+_TOOL_TOKEN = re.compile(r"(?<!\S)@[\w-]+")
+
+
+def _norm_query(text: str) -> str:
+    return " ".join(re.sub(r"[^\w]+", " ", (text or "").lower()).split())
+
+
+def _openalex_key_configured() -> bool:
+    from core.knowledge.credential_resolver import api_key_query_params
+
+    try:
+        return bool(api_key_query_params("openalex"))
+    except Exception:
+        return False
+
+
+def _raw_variant_plan(ctx: RetrievalContext, plan: Any) -> Any | None:
+    """The user's own wording as a second query, when S5 / S6 rewrote it (S8).
+
+    Only with an OpenAlex API key: keyless OpenAlex allows about 100 searches a
+    day, and in the S8 live run the extra wording added no relevant source
+    (decision recorded 2026-11-24, §12.6 D8).
+    """
+    from core.knowledge.ranking.rerank import has_retrieval_content
+
+    if not _openalex_key_configured():
+        return None
+    raw = _TOOL_TOKEN.sub(" ", str(ctx.query_raw or "")).strip()
+    if not raw:
+        return None
+    raw_plan = plan_scientific_query(raw, semantic_query=raw)
+    if not has_retrieval_content(raw_plan.semantic_query):
+        return None
+    taken = {_norm_query(plan.semantic_query), _norm_query(plan.keyword_query)}
+    if _norm_query(raw_plan.semantic_query) in taken:
+        return None
+    return raw_plan
+
+
+def _spelling_variant_plan(ctx: RetrievalContext, plan: Any) -> tuple[Any, Any] | None:
+    """A correctly spelt wording of the question, searched alongside it (D6)."""
+    from core.knowledge.spelling import spelling_variant
+
+    variant = spelling_variant(plan.semantic_query, protected_terms=ctx.conversation_terms)
+    if variant is None:
+        return None
+    return plan_scientific_query(variant.text, semantic_query=variant.text), variant
+
+
+def _adapter_tasks(
+    adapter_ids: tuple[str, ...],
+    *,
+    plan: Any,
+    variants: list[tuple[str, Any]] = (),
+) -> list[AdapterTask]:
+    """One task per adapter for the primary plan, plus variant wordings (S8)."""
+    tasks = [AdapterTask(aid, VARIANT_PRIMARY, adapter_query_for(plan, aid)) for aid in adapter_ids]
+    for variant_id, variant_plan in variants:
+        for aid in adapter_ids:
+            if aid not in _VARIANT_ADAPTERS:
+                continue
+            q = adapter_query_for(variant_plan, aid)
+            if _norm_query(q) and _norm_query(q) != _norm_query(adapter_query_for(plan, aid)):
+                tasks.append(AdapterTask(aid, variant_id, q))
+    return tasks
+
+
 def _collect_adapter_rows(
     adapter_ids: tuple[str, ...],
     *,
     plan: Any,
     per_adapter: int,
-) -> tuple[list[str], list[dict[str, Any]], list[dict[str, Any]]]:
-    """Run search functions for ``adapter_ids`` in parallel."""
-    adapter_calls: list[str] = []
-    raw_audit: list[dict[str, Any]] = []
-    candidates: list[dict[str, Any]] = []
-    if not adapter_ids:
-        return adapter_calls, raw_audit, candidates
+    variants: list[tuple[str, Any]] = (),
+    adapter_timeout_s: float | None = None,
+    deadline_s: float | None = None,
+) -> CollectionResult:
+    """Search ``adapter_ids`` (and variant wordings) in parallel under deadlines."""
+    return collect_adapter_rows(
+        _adapter_tasks(tuple(adapter_ids), plan=plan, variants=list(variants)),
+        per_adapter=per_adapter,
+        adapter_timeout_s=adapter_timeout_s,
+        deadline_s=deadline_s,
+        search_fn_for=get_search_function,
+        max_workers=_COLLECT_MAX_WORKERS,
+    )
 
-    with ThreadPoolExecutor(max_workers=min(3, len(adapter_ids))) as pool:
-        futures = {}
-        for aid in adapter_ids:
-            search_fn = get_search_function(aid)
-            if search_fn is None:
-                continue
-            futures[
-                pool.submit(
-                    search_fn,
-                    adapter_query_for(plan, aid),
-                    max_results=per_adapter,
-                )
-            ] = aid
-        for future in as_completed(futures):
-            aid = futures[future]
-            try:
-                rows = future.result()
-            except Exception:
-                rows = []
-            if rows:
-                adapter_calls.append(aid)
-                raw_audit.extend(dict(r) for r in rows)
-                candidates.extend(dict(r) for r in rows)
-    return adapter_calls, raw_audit, candidates
+
+def _timeout_note(collections: list[CollectionResult]) -> tuple[list[dict[str, Any]], str]:
+    timeouts = [t for c in collections for t in c.timeouts]
+    adapters = list(dict.fromkeys(t["adapter"] for t in timeouts))
+    if not adapters:
+        return [], ""
+    return timeouts, f" Sources that did not answer in time: {', '.join(adapters)}."
 
 
 class ScientificEvidencePipeline:
@@ -446,10 +521,38 @@ class ScientificEvidencePipeline:
         phase2_invoked = False
         candidates_after_phase1 = 0
 
+        # Plan S8: the user's own wording next to a rewrite, only when the
+        # relevance gate can sort the union. Depth stays ``max(2, budget)``: a
+        # deeper pool (8 per adapter) was measured and rejected — it kept a few
+        # more relevant rows but presented proportionally more noise (S8
+        # progress log, "S8 scholarly depth").
+        from core.knowledge.ranking.rerank import unavailable_reason
+
+        gate_ready = unavailable_reason(semantic or query) is None
+        per_adapter = max(2, budget)
+        variants: list[tuple[str, Any]] = []
+        spelling_diag: list[dict[str, Any]] = []
+        if gate_ready:
+            spelled = _spelling_variant_plan(ctx, plan)
+            if spelled is not None:
+                variants.append((VARIANT_SPELLING, spelled[0]))
+                spelling_diag = spelled[1].diag()
+            raw_plan = _raw_variant_plan(ctx, plan)
+            if raw_plan is not None:
+                variants.append((VARIANT_RAW, raw_plan))
+        collect_kwargs: dict[str, Any] = {
+            "per_adapter": per_adapter,
+            "variants": variants,
+            "adapter_timeout_s": profile.adapter_timeout_s,
+        }
+        collections: list[CollectionResult] = []
+
         cache_key = make_cache_key(
             knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
             query=semantic or query,
             adapter_filter=adapter_ids,
+            pool_size=per_adapter,
+            query_variants=tuple(v.semantic_query for _, v in variants),
         )
         cached = None
         if scientific_cache_enabled(profile):
@@ -465,44 +568,68 @@ class ScientificEvidencePipeline:
             )
             raw_audit.extend(dict(r) for r in candidates)
         else:
-            per_adapter = max(2, budget)
+            t_collect = time.monotonic()
             if tiered_enabled:
                 tier_primary, tier_fallback = split_adapter_tiers(
                     adapter_ids,
                     discipline=discipline_match.discipline,
                 )
-                calls1, audit1, rows1 = _collect_adapter_rows(
+                first = _collect_adapter_rows(
                     tier_primary,
                     plan=plan,
-                    per_adapter=per_adapter,
+                    deadline_s=profile.collection_deadline_s,
+                    **collect_kwargs,
                 )
-                adapter_calls.extend(calls1)
-                raw_audit.extend(audit1)
-                candidates.extend(rows1)
-                candidates_after_phase1 = len(candidates)
-                if len(candidates) < tier_threshold and tier_fallback:
+                collections.append(first)
+                candidates_after_phase1 = len(rrf_merge(first.ranked_lists))
+                remaining = profile.collection_deadline_s - (time.monotonic() - t_collect)
+                if candidates_after_phase1 < tier_threshold and tier_fallback and remaining > 0:
                     phase2_invoked = True
-                    calls2, audit2, rows2 = _collect_adapter_rows(
-                        tier_fallback,
-                        plan=plan,
-                        per_adapter=per_adapter,
+                    collections.append(
+                        _collect_adapter_rows(
+                            tier_fallback,
+                            plan=plan,
+                            deadline_s=remaining,
+                            **collect_kwargs,
+                        )
                     )
-                    adapter_calls.extend(calls2)
-                    raw_audit.extend(audit2)
-                    candidates.extend(rows2)
             else:
-                calls, audit, rows = _collect_adapter_rows(
-                    adapter_ids,
-                    plan=plan,
-                    per_adapter=per_adapter,
+                collections.append(
+                    _collect_adapter_rows(
+                        adapter_ids,
+                        plan=plan,
+                        deadline_s=profile.collection_deadline_s,
+                        **collect_kwargs,
+                    )
                 )
-                adapter_calls.extend(calls)
-                raw_audit.extend(audit)
-                candidates.extend(rows)
+            for coll in collections:
+                adapter_calls.extend(coll.adapter_calls)
+                raw_audit.extend(coll.raw_audit)
             adapter_calls = sorted(dict.fromkeys(adapter_calls))
-            candidates = _dedupe_rows(candidates)
-            if candidates:
+            merged = rrf_merge([lst for coll in collections for lst in coll.ranked_lists])
+            candidates = merged[:CANDIDATE_POOL_CAP]
+            # A pool missing late adapters is not cached: the next turn retries them.
+            if candidates and not any(coll.timeouts for coll in collections):
                 set_cached_rows(cache_key, candidates)
+        adapter_timeouts, timeout_note = _timeout_note(collections)
+        pool_diag: dict[str, Any] = {
+            "per_adapter": per_adapter,
+            "gate_ready": gate_ready,
+            "variants": [
+                {"id": VARIANT_PRIMARY, "semantic": semantic[:200], "keyword": plan.keyword_query[:200]},
+                *(
+                    {"id": vid, "semantic": vplan.semantic_query[:200], "keyword": vplan.keyword_query[:200]}
+                    for vid, vplan in variants
+                ),
+            ],
+            "spelling_corrections": spelling_diag,
+            "candidates": len(candidates),
+            "cap": CANDIDATE_POOL_CAP,
+            "collection": [coll.diag() for coll in collections],
+            "adapter_timeouts": adapter_timeouts,
+            "adapter_deadline_s": profile.collection_deadline_s,
+            "adapter_timeout_s": profile.adapter_timeout_s,
+        }
 
         ranked_ctx = RetrievalContext(
             query=query,
@@ -549,6 +676,10 @@ class ScientificEvidencePipeline:
         sufficiency = ranking.sufficiency
         if ranking.scored:
             sufficiency = _final_sufficiency(kept, ranking.sufficiency, SCIENTIFIC_THRESHOLDS)
+            if timeout_note:
+                sufficiency = dataclasses.replace(
+                    sufficiency, rationale=f"{sufficiency.rationale}{timeout_note}"
+                )
         rerank_diag = dict(ranking.rerank_diag)
         if ranking.scored:
             rerank_diag["state"] = sufficiency.state.value
@@ -556,7 +687,10 @@ class ScientificEvidencePipeline:
         gate_diag: dict[str, Any] = {
             "rerank": rerank_diag,
             "sufficiency": sufficiency.state.value,
+            "scientific_pool": pool_diag,
         }
+        if adapter_timeouts:
+            gate_diag["adapter_timeouts"] = adapter_timeouts
         if ranking.dropped:
             gate_diag["rerank_dropped"] = _dropped_for_diag(ranking.dropped)
         latency_ms = (time.time() - t0) * 1000
@@ -587,19 +721,18 @@ class ScientificEvidencePipeline:
                     cache_hits_evidence=1 if cached is not None else 0,
                 ),
             }
-            return (
-                build_empty_bundle(
-                    query_raw=ctx.query,
-                    query_resolved=semantic or query,
-                    latency_ms=latency_ms,
-                    rejected_count=len(rejected),
-                    stop_reason="relevance_filtered",
-                    knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
-                    **empty_kwargs,
-                ),
-                rel_diag_empty,
-                raw_audit,
+            empty = build_empty_bundle(
+                query_raw=ctx.query,
+                query_resolved=semantic or query,
+                latency_ms=latency_ms,
+                rejected_count=len(rejected),
+                stop_reason="relevance_filtered",
+                knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
+                **empty_kwargs,
             )
+            if adapter_timeouts:
+                empty = _with_warning(empty, WARNING_ADAPTER_TIMEOUT)
+            return empty, rel_diag_empty, raw_audit
 
         avg_rel = sum(float(r.get("_scientific_relevance") or 0) for r in kept) / len(
             kept
@@ -629,6 +762,8 @@ class ScientificEvidencePipeline:
         conflicts = detect_conflicts(bundle.sources, topic=query)
         if conflicts:
             bundle = _bundle_with_conflicts(bundle, conflicts)
+        if adapter_timeouts:
+            bundle = _with_warning(bundle, WARNING_ADAPTER_TIMEOUT)
         rel_diag = {
             **gate_diag,
             "scientific_relevance_dropped": len(rejected),
@@ -656,6 +791,10 @@ class ScientificEvidencePipeline:
             ),
         }
         return bundle, rel_diag, raw_audit
+
+
+def _with_warning(bundle: EvidenceBundle, warning: str) -> EvidenceBundle:
+    return dataclasses.replace(bundle, warnings=tuple(dict.fromkeys((*bundle.warnings, warning))))
 
 
 def _bundle_with_conflicts(bundle: EvidenceBundle, conflicts):

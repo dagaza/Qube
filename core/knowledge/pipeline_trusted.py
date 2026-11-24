@@ -84,11 +84,12 @@ class TrustedEvidencePipeline:
                 wiki_urls = {
                     str(r.get("url") or "").strip().lower() for r in wiki_rows if r.get("url")
                 }
+                # S8: the widened allowlist only where the reranker judges each row.
                 allowlisted, _ads = drop_search_ads(
                     [
                         dict(r)
                         for r in ddg_raw
-                        if is_allowlisted_url(str((r or {}).get("url") or ""))
+                        if is_allowlisted_url(str((r or {}).get("url") or ""), widened=gate is not None)
                         and str((r or {}).get("url") or "").strip().lower() not in wiki_urls
                     ]
                 )
@@ -105,7 +106,9 @@ class TrustedEvidencePipeline:
                     else:
                         gate = None
                         kept = [dict(r) for r in wiki_rows]
-                if allowlisted and gate is None:
+                if gate is None and any(
+                    is_allowlisted_url(str(r.get("url") or ""), widened=False) for r in allowlisted
+                ):
                     existing_urls = {
                         str(r.get("url") or "").strip().lower() for r in kept if r.get("url")
                     }
@@ -113,6 +116,7 @@ class TrustedEvidencePipeline:
                         r
                         for r in allowlisted
                         if str(r.get("url") or "").strip().lower() not in existing_urls
+                        and is_allowlisted_url(str(r.get("url") or ""), widened=False)
                     ]
                     filtered, rel_diag = filter_web_results(
                         semantic,

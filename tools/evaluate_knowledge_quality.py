@@ -112,7 +112,8 @@ def main() -> int:
         "--pool-mode",
         default="production",
         choices=POOL_MODES,
-        help="production = rows within today's per-adapter depth; full = whole capture",
+        help="production = rows within the legacy per-adapter depth; widened = the "
+        "depth S8 requests when the relevance gate runs; full = whole capture",
     )
     parser.add_argument("--k", type=int, default=3, help="k for precision@k")
     parser.add_argument(
