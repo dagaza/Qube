@@ -237,6 +237,82 @@ class SubjectStateTests(unittest.TestCase):
         self.assertEqual(track_subject(history, "@[tool:evidence] Why is that?").subject, "OAuth")
 
 
+class StatementSubjectTests(unittest.TestCase):
+    """Plan S9: subjects from statement openers and framed noun phrases."""
+
+    def test_activity_statements_name_the_subject(self) -> None:
+        cases = {
+            "I'm learning Python decorators.": "Python decorators",
+            "I'm planning a trip to Lisbon.": "trip to Lisbon",
+            "I'm studying photosynthesis because of an exam.": "photosynthesis",
+            "I'm looking for a laptop under $1000.": "laptop under $1000",
+            "We've been reading about intermittent fasting.": "intermittent fasting",
+        }
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(extract_turn_subject(text), expected)
+
+    def test_activity_statements_without_a_subject(self) -> None:
+        for text in (
+            "I'm trying to fix my bike.",
+            "I'm wondering whether to buy a heat pump.",
+            "I'm still thinking about it.",
+            "I'm going to Paris next week.",
+            "I'm doing that now.",
+            "I'm confused.",
+        ):
+            with self.subTest(text=text):
+                self.assertIsNone(extract_turn_subject(text))
+
+    def test_framed_noun_phrase_is_the_subject(self) -> None:
+        cases = {
+            "Tell me about metformin.": "metformin",
+            "Tell me about photosynthesis": "photosynthesis",
+            "Can you tell me about the French Revolution?": "French Revolution",
+            # Not a leading frame, a reference, an acceptance or about the speaker.
+            "Explain quantum tunnelling please": None,
+            "Tell me about it.": None,
+            "Tell me more": None,
+            "Tell me about how vaccines work": None,
+            "Sure, show me.": None,
+        }
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(extract_turn_subject(text), expected)
+
+    def test_statement_subjects_anchor_follow_ups(self) -> None:
+        cases = [
+            ([_u("I'm learning Python decorators."), _a("Decorators wrap functions to add behavior.")],
+             "Tips for this?", "python decorators"),
+            ([_u("I'm planning a trip to Lisbon."), _a("Lisbon is Portugal's coastal capital.")],
+             "How about hotels there?", "lisbon"),
+            ([_u("Tell me about metformin."), _a("Metformin is a first-line medication for type 2 diabetes.")],
+             "What are the side effects?", "metformin"),
+        ]
+        for history, turn, subject in cases:
+            with self.subTest(turn=turn):
+                _fu, state, resolved = build_discourse_resolution(turn, history)
+                self.assertEqual(state.subject_relation, RELATION_CONTINUATION, state)
+                self.assertIn(subject, resolved.web_text.lower())
+
+    def test_statement_subject_does_not_capture_a_topic_switch(self) -> None:
+        history = [_u("I'm learning Python decorators."), _a("Decorators wrap functions to add behavior.")]
+        for turn in ("How do volcanoes form?", "I'm planning a trip to Rome."):
+            with self.subTest(turn=turn):
+                _fu, state, resolved = build_discourse_resolution(turn, history)
+                self.assertNotEqual(state.subject_relation, RELATION_CONTINUATION, state)
+                self.assertNotIn("decorator", resolved.web_text.lower())
+
+    def test_affirmation_after_offer_still_continues(self) -> None:
+        history = [
+            _u("What is the borrow checker in Rust?"),
+            _a("The borrow checker enforces Rust's ownership rules. Would you like an example of a borrow error?"),
+        ]
+        _fu, state, resolved = build_discourse_resolution("Sure, show me.", history)
+        self.assertEqual(state.subject_relation, RELATION_CONTINUATION, state)
+        self.assertIn("borrow checker", resolved.web_text.lower())
+
+
 class SubjectHelperTests(unittest.TestCase):
     def test_extract_turn_subject(self) -> None:
         cases = {

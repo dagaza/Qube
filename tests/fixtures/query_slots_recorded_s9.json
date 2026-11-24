@@ -1,0 +1,1013 @@
+{
+ "schema": "qube.query_slots_recorded.v1",
+ "description": "Plan S9: SUBJECT/FACET completions recorded from the bundled Qwen3-1.7B-Q6_K sidecar through SidecarLlmWorker._do_task (greedy, app thread defaults [8, 16]) on 2026-11-24. 'raw' is the completion after the pre-filled 'SUBJECT:'; 'expect' is what parse + validation + composition produced. Replayed offline by tests/test_query_slots_llm.py.",
+ "cases": [
+  {
+   "id": "ant_ai_followup",
+   "source": "kq",
+   "prompt": "Yes, please tell me how ANT analyzes Artificial Inteligence for example.",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is actor-network theory?>"
+    },
+    {
+     "role": "assistant",
+     "content": "Actor-network theory (ANT) is a sociological approach that treats both human and non-human entities—like tools, documents, or technologies—as \"actors\" capable of influencing social outcomes. It argues that these elements form interconnected networks where meaning and power are distributed dynamically rather than residing solely with humans. Would you like an example of how ANT analyzes a specific technology?"
+    }
+   ],
+   "gold_subject": "actor-network theory",
+   "raw": "Artificial Intelligence  \nFACET: How ANT analyzes it",
+   "expect": {
+    "status": "rejected",
+    "reason": "unanchored_proper_noun",
+    "subject": "Artificial Intelligence",
+    "facet": "How ANT analyzes it",
+    "composed_query": null
+   },
+   "latency_ms": 2528.5
+  },
+  {
+   "id": "kq_affirmation_followup",
+   "source": "kq",
+   "prompt": "Yes, please.",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is OAuth?"
+    },
+    {
+     "role": "assistant",
+     "content": "OAuth is an authorization framework. Would you like an example of the authorization code flow?"
+    }
+   ],
+   "gold_subject": "OAuth",
+   "raw": "OAuth\nFACET: Authorization Code Flow Example",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "OAuth",
+    "facet": "Authorization Code Flow Example",
+    "composed_query": "OAuth Yes, please."
+   },
+   "latency_ms": 1423.7
+  },
+  {
+   "id": "mt_acronym_ms_treatment",
+   "source": "kq",
+   "prompt": "Yes, tell me how MS is treated",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is multiple sclerosis?"
+    },
+    {
+     "role": "assistant",
+     "content": "Multiple sclerosis (MS) is a chronic autoimmune disease in which the immune system attacks the myelin sheath of nerves. Would you like to know how MS is treated?"
+    }
+   ],
+   "gold_subject": "multiple sclerosis",
+   "raw": "MS\nFACET: Treatment",
+   "expect": {
+    "status": "rejected",
+    "reason": "no_content_word",
+    "subject": "MS",
+    "facet": "Treatment",
+    "composed_query": null
+   },
+   "latency_ms": 1173.6
+  },
+  {
+   "id": "mt_ant_followup_live",
+   "source": "kq",
+   "prompt": "Yes, please tell me how ANT analyzes Artificial Inteligence for example.",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is actor-network theory?>"
+    },
+    {
+     "role": "assistant",
+     "content": "Actor-network theory (ANT) is a sociological approach that treats both human and non-human entities—like tools, documents, or technologies—as \"actors\" capable of influencing social outcomes. Would you like an example of how ANT analyzes a specific technology?"
+    }
+   ],
+   "gold_subject": "actor-network theory",
+   "raw": "Artificial Intelligence  \nFACET: How ANT analyzes it",
+   "expect": {
+    "status": "rejected",
+    "reason": "unanchored_proper_noun",
+    "subject": "Artificial Intelligence",
+    "facet": "How ANT analyzes it",
+    "composed_query": null
+   },
+   "latency_ms": 3235.3
+  },
+  {
+   "id": "mt_ellipsis_python",
+   "source": "kq",
+   "prompt": "and what about 3.14?",
+   "history": [
+    {
+     "role": "user",
+     "content": "What's new in Python 3.13?"
+    },
+    {
+     "role": "assistant",
+     "content": "Python 3.13 added an experimental free-threaded build, a new interactive REPL, and an experimental JIT compiler."
+    }
+   ],
+   "gold_subject": "Python",
+   "raw": "Python 3.14\nFACET: Features introduced in Python 3.14",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Python 3.14",
+    "facet": "Features introduced in Python 3.14",
+    "composed_query": "Python 3.14 3.14"
+   },
+   "latency_ms": 2045.8
+  },
+  {
+   "id": "mt_facet_shift_heat_pump",
+   "source": "kq",
+   "prompt": "And how much does it cost to install one?",
+   "history": [
+    {
+     "role": "user",
+     "content": "How does a heat pump work?"
+    },
+    {
+     "role": "assistant",
+     "content": "A heat pump moves heat from outside air or ground into your home using a refrigerant cycle, and can reverse to cool in summer."
+    }
+   ],
+   "gold_subject": "heat pump",
+   "raw": "Heat pump installation cost\nFACET: Financial aspect",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Heat pump installation cost",
+    "facet": "Financial aspect",
+    "composed_query": "Heat pump installation cost how much does it cost to install one?"
+   },
+   "latency_ms": 3229.3
+  },
+  {
+   "id": "mt_pronoun_statins",
+   "source": "kq",
+   "prompt": "what about side effects in that group?",
+   "history": [
+    {
+     "role": "user",
+     "content": "Are statins effective for primary prevention in older adults?"
+    },
+    {
+     "role": "assistant",
+     "content": "Evidence is mixed for people over 75; trials like JUPITER included few very old participants."
+    }
+   ],
+   "gold_subject": "statins",
+   "raw": "side effects\nFACET: impact on older adults",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "side effects",
+    "facet": "impact on older adults",
+    "composed_query": "what about side effects in that group?"
+   },
+   "latency_ms": 2404.3
+  },
+  {
+   "id": "mt_topic_switch_ethanol",
+   "source": "kq",
+   "prompt": "What is the boiling point of ethanol?",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is actor-network theory?"
+    },
+    {
+     "role": "assistant",
+     "content": "Actor-network theory (ANT) is a sociological approach that treats human and non-human entities as actors in networks."
+    }
+   ],
+   "gold_subject": "ethanol",
+   "raw": "ethanol\nFACET: boiling point",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "ethanol",
+    "facet": "boiling point",
+    "composed_query": "What is the boiling point of ethanol?"
+   },
+   "latency_ms": 1586.6
+  },
+  {
+   "id": "qr_fu_population",
+   "source": "router",
+   "prompt": "And what is the size of its population?",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is the capital of Nepal?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kathmandu is the capital of Nepal."
+    }
+   ],
+   "gold_subject": "Kathmandu",
+   "raw": "Nepal  \nFACET: Population size",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Nepal",
+    "facet": "Population size",
+    "composed_query": "Nepal what is the size of its population?"
+   },
+   "latency_ms": 2571.4
+  },
+  {
+   "id": "qr_fu_population_short",
+   "source": "router",
+   "prompt": "And its population?",
+   "history": [
+    {
+     "role": "user",
+     "content": "Tell me about Nepal."
+    },
+    {
+     "role": "assistant",
+     "content": "Nepal is a landlocked country in South Asia."
+    },
+    {
+     "role": "user",
+     "content": "What is the capital of Nepal?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kathmandu is the capital."
+    }
+   ],
+   "gold_subject": "Kathmandu",
+   "raw": "Nepal  \nFACET: Population",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Nepal",
+    "facet": "Population",
+    "composed_query": "Nepal its population?"
+   },
+   "latency_ms": 1881.0
+  },
+  {
+   "id": "qr_meta_web_prior_turn",
+   "source": "router",
+   "prompt": "Yes that would be nice. Can you also do an online search for the answer?",
+   "history": [
+    {
+     "role": "user",
+     "content": "Why do birds take dust baths?"
+    },
+    {
+     "role": "assistant",
+     "content": "Birds take dust baths to remove parasites."
+    }
+   ],
+   "gold_subject": "dust bath",
+   "raw": "Birds take dust baths\nFACET: Online search for the answer",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Birds take dust baths",
+    "facet": "Online search for the answer",
+    "composed_query": "Birds take dust baths Yes that would be nice. Can you also do an online search for the answer?"
+   },
+   "latency_ms": 2166.6
+  },
+  {
+   "id": "qr_pronoun_birth",
+   "source": "router",
+   "prompt": "when was he born",
+   "history": [
+    {
+     "role": "user",
+     "content": "Tell me about Steve Jobs."
+    },
+    {
+     "role": "assistant",
+     "content": "Steve Jobs co-founded Apple with Steve Wozniak."
+    }
+   ],
+   "gold_subject": "Steve Jobs",
+   "raw": "Steve Jobs\nFACET: Birthdate",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Steve Jobs",
+    "facet": "Birthdate",
+    "composed_query": "Steve Jobs when was he born"
+   },
+   "latency_ms": 1961.9
+  },
+  {
+   "id": "qr_kathmandu_music",
+   "source": "router",
+   "prompt": "What about its music and arts scene?",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is the capital of Nepal?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kathmandu is the capital of Nepal."
+    },
+    {
+     "role": "user",
+     "content": "What about Kathmandu's flora and fauna?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kathmandu has urban parks with marigolds and jasmine."
+    }
+   ],
+   "gold_subject": "Kathmandu",
+   "raw": "Kathmandu\nFACET: Music and arts scene",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Kathmandu",
+    "facet": "Music and arts scene",
+    "composed_query": "Kathmandu its music and arts scene"
+   },
+   "latency_ms": 2092.2
+  },
+  {
+   "id": "qr_lookup_deictic",
+   "source": "router",
+   "prompt": "Can you look it up online?",
+   "history": [
+    {
+     "role": "user",
+     "content": "I'm playing Slay the Spire."
+    },
+    {
+     "role": "assistant",
+     "content": "Slay the Spire is a roguelike deckbuilder."
+    }
+   ],
+   "gold_subject": "Slay the Spire",
+   "raw": "Slay the Spire\nFACET: Online lookup",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Slay the Spire",
+    "facet": "Online lookup",
+    "composed_query": "Slay the Spire Can you look it up online?"
+   },
+   "latency_ms": 1471.9
+  },
+  {
+   "id": "fu_001",
+   "source": "router",
+   "prompt": "What about its music and arts scene?",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is the capital of Nepal?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kathmandu is the capital of Nepal."
+    },
+    {
+     "role": "user",
+     "content": "What about Kathmandu's flora and fauna?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kathmandu has urban parks with marigolds and jasmine."
+    }
+   ],
+   "gold_subject": "Kathmandu",
+   "raw": "Kathmandu\nFACET: Music and arts scene",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Kathmandu",
+    "facet": "Music and arts scene",
+    "composed_query": "Kathmandu its music and arts scene"
+   },
+   "latency_ms": 2443.9
+  },
+  {
+   "id": "fu_002",
+   "source": "router",
+   "prompt": "And its population?",
+   "history": [
+    {
+     "role": "user",
+     "content": "Tell me about Nepal."
+    },
+    {
+     "role": "assistant",
+     "content": "Nepal is a landlocked country in South Asia."
+    },
+    {
+     "role": "user",
+     "content": "What is the capital of Nepal?"
+    },
+    {
+     "role": "assistant",
+     "content": "Kathmandu is the capital."
+    }
+   ],
+   "gold_subject": "Kathmandu",
+   "raw": "Nepal  \nFACET: Population",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Nepal",
+    "facet": "Population",
+    "composed_query": "Nepal its population?"
+   },
+   "latency_ms": 1787.7
+  },
+  {
+   "id": "fu_003",
+   "source": "router",
+   "prompt": "What about its music scene?",
+   "history": [
+    {
+     "role": "user",
+     "content": "I'm playing Slay the Spire."
+    },
+    {
+     "role": "assistant",
+     "content": "Slay the Spire is a roguelike deckbuilder."
+    }
+   ],
+   "gold_subject": "Slay the Spire",
+   "raw": "Slay the Spire\nFACET: Music scene",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Slay the Spire",
+    "facet": "Music scene",
+    "composed_query": "Slay the Spire its music scene"
+   },
+   "latency_ms": 1738.4
+  },
+  {
+   "id": "fu_004",
+   "source": "router",
+   "prompt": "Tips for this?",
+   "history": [
+    {
+     "role": "user",
+     "content": "I'm learning Python decorators."
+    },
+    {
+     "role": "assistant",
+     "content": "Decorators wrap functions to add behavior."
+    }
+   ],
+   "gold_subject": "Python decorators",
+   "raw": "Python decorators\nFACET: Tips for this",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Python decorators",
+    "facet": "Tips for this",
+    "composed_query": "Python decorators Tips for this?"
+   },
+   "latency_ms": 1677.1
+  },
+  {
+   "id": "fu_005",
+   "source": "router",
+   "prompt": "Who is she?",
+   "history": [
+    {
+     "role": "user",
+     "content": "Tell me about Marie Curie."
+    },
+    {
+     "role": "assistant",
+     "content": "Marie Curie pioneered research on radioactivity."
+    }
+   ],
+   "gold_subject": "Marie Curie",
+   "raw": "Marie Curie  \nFACET: Who she is",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Marie Curie",
+    "facet": "Who she is",
+    "composed_query": "Marie Curie Who is she?"
+   },
+   "latency_ms": 834.5
+  },
+  {
+   "id": "fu_006",
+   "source": "router",
+   "prompt": "Search the web for more on this.",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is quantum entanglement?"
+    },
+    {
+     "role": "assistant",
+     "content": "Quantum entanglement links particle states."
+    }
+   ],
+   "gold_subject": "quantum entanglement",
+   "raw": "Quantum entanglement  \nFACET: Information search",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Quantum entanglement",
+    "facet": "Information search",
+    "composed_query": "Quantum entanglement Search the web for more on this."
+   },
+   "latency_ms": 1442.6
+  },
+  {
+   "id": "fu_009",
+   "source": "router",
+   "prompt": "How about hotels there?",
+   "history": [
+    {
+     "role": "user",
+     "content": "I'm planning a trip to Lisbon."
+    },
+    {
+     "role": "assistant",
+     "content": "Lisbon is Portugal's coastal capital."
+    }
+   ],
+   "gold_subject": "Lisbon",
+   "raw": "hotels in Lisbon  \nFACET: accommodation",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "hotels in Lisbon",
+    "facet": "accommodation",
+    "composed_query": "hotels in Lisbon hotels there"
+   },
+   "latency_ms": 1317.4
+  },
+  {
+   "id": "fu_010",
+   "source": "router",
+   "prompt": "And the second point?",
+   "history": [
+    {
+     "role": "user",
+     "content": "Give me three benefits of exercise."
+    },
+    {
+     "role": "assistant",
+     "content": "1) Cardiovascular health 2) Mood 3) Sleep quality"
+    }
+   ],
+   "gold_subject": "exercise",
+   "raw": "Mood  \nFACET: What is the second benefit of exercise?",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Mood",
+    "facet": "What is the second benefit of exercise",
+    "composed_query": "Mood the second point?"
+   },
+   "latency_ms": 1717.5
+  },
+  {
+   "id": "fu_012",
+   "source": "router",
+   "prompt": "Look it up online for the answer.",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is the population of Iceland?"
+    },
+    {
+     "role": "assistant",
+     "content": "Iceland has around 380,000 people."
+    }
+   ],
+   "gold_subject": "Iceland",
+   "raw": "Iceland  \nFACET: Population",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Iceland",
+    "facet": "Population",
+    "composed_query": "Iceland Look it up online for the answer."
+   },
+   "latency_ms": 1345.8
+  },
+  {
+   "id": "fs_statement_asthma",
+   "source": "heldout",
+   "prompt": "What usually triggers attacks in kids?",
+   "history": [
+    {
+     "role": "user",
+     "content": "My daughter was just diagnosed with asthma."
+    },
+    {
+     "role": "assistant",
+     "content": "I'm sorry to hear that. Asthma is common in children and usually well controlled with treatment."
+    }
+   ],
+   "gold_subject": "asthma",
+   "raw": "asthma\nFACET: triggers of attacks in kids",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "asthma",
+    "facet": "triggers of attacks in kids",
+    "composed_query": "asthma What usually triggers attacks in kids?"
+   },
+   "latency_ms": 1991.1
+  },
+  {
+   "id": "fs_statement_go_backend",
+   "source": "heldout",
+   "prompt": "Is the garbage collector a problem for latency?",
+   "history": [
+    {
+     "role": "user",
+     "content": "We're rewriting our backend in Go."
+    },
+    {
+     "role": "assistant",
+     "content": "Go is a good fit for network services thanks to goroutines and a simple deployment story."
+    }
+   ],
+   "gold_subject": "Go",
+   "raw": "garbage collector\nFACET: latency",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "garbage collector",
+    "facet": "latency",
+    "composed_query": "Is the garbage collector a problem for latency?"
+   },
+   "latency_ms": 1406.5
+  },
+  {
+   "id": "fs_statement_fasting",
+   "source": "heldout",
+   "prompt": "Does it cause muscle loss?",
+   "history": [
+    {
+     "role": "user",
+     "content": "I've been reading about intermittent fasting."
+    },
+    {
+     "role": "assistant",
+     "content": "Intermittent fasting alternates eating windows with fasting periods, such as 16:8."
+    }
+   ],
+   "gold_subject": "intermittent fasting",
+   "raw": "Intermittent Fasting\nFACET: Muscle Loss",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Intermittent Fasting",
+    "facet": "Muscle Loss",
+    "composed_query": "Intermittent Fasting Does it cause muscle loss?"
+   },
+   "latency_ms": 2061.6
+  },
+  {
+   "id": "fs_statement_kubernetes",
+   "source": "heldout",
+   "prompt": "How do we cut the bill?",
+   "history": [
+    {
+     "role": "user",
+     "content": "Our team runs Kubernetes on AWS and the costs keep growing."
+    },
+    {
+     "role": "assistant",
+     "content": "EKS costs usually come from node sizing, idle capacity and data transfer."
+    }
+   ],
+   "gold_subject": "Kubernetes",
+   "raw": "Cutting Costs\nFACET: Strategies to Reduce AWS EKS Expenses",
+   "expect": {
+    "status": "rejected",
+    "reason": "unanchored_proper_noun",
+    "subject": "Cutting Costs",
+    "facet": "Strategies to Reduce AWS EKS Expenses",
+    "composed_query": null
+   },
+   "latency_ms": 2370.9
+  },
+  {
+   "id": "fs_pronoun_ai_act",
+   "source": "heldout",
+   "prompt": "When does it take effect?",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is the EU AI Act?"
+    },
+    {
+     "role": "assistant",
+     "content": "The EU AI Act is a European Union regulation that sets risk-based rules for artificial intelligence systems."
+    }
+   ],
+   "gold_subject": "AI Act",
+   "raw": "EU AI Act\nFACET: Effectiveness Date",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "EU AI Act",
+    "facet": "Effectiveness Date",
+    "composed_query": "EU AI Act When does it take effect?"
+   },
+   "latency_ms": 1272.4
+  },
+  {
+   "id": "fs_pronoun_framework_ram",
+   "source": "heldout",
+   "prompt": "Can I upgrade the RAM in it myself?",
+   "history": [
+    {
+     "role": "user",
+     "content": "I just bought a Framework Laptop 13."
+    },
+    {
+     "role": "assistant",
+     "content": "Nice choice. The Framework Laptop 13 is designed to be repairable and modular."
+    }
+   ],
+   "gold_subject": "Framework Laptop",
+   "raw": "Framework Laptop 13\nFACET: Upgrading RAM",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Framework Laptop 13",
+    "facet": "Upgrading RAM",
+    "composed_query": "Framework Laptop 13 Can I upgrade the RAM in it myself?"
+   },
+   "latency_ms": 2240.6
+  },
+  {
+   "id": "fs_facet_sourdough_temp",
+   "source": "heldout",
+   "prompt": "What temperature should the kitchen be?",
+   "history": [
+    {
+     "role": "user",
+     "content": "How do I keep a sourdough starter alive?"
+    },
+    {
+     "role": "assistant",
+     "content": "Feed it flour and water regularly and keep it somewhere warm."
+    }
+   ],
+   "gold_subject": "sourdough starter",
+   "raw": "kitchen temperature  \nFACET: what temperature should the kitchen be",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "kitchen temperature",
+    "facet": "what temperature should the kitchen be",
+    "composed_query": "kitchen temperature What temperature should the kitchen be?"
+   },
+   "latency_ms": 2237.4
+  },
+  {
+   "id": "fs_ellipsis_comparison",
+   "source": "heldout",
+   "prompt": "And compared with Ireland?",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is the corporate tax rate in Estonia?"
+    },
+    {
+     "role": "assistant",
+     "content": "Estonia taxes distributed profits at 22%; retained profits are not taxed."
+    }
+   ],
+   "gold_subject": "corporate tax rate",
+   "raw": "corporate tax rate in Estonia\nFACET: comparison with Ireland",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "corporate tax rate in Estonia",
+    "facet": "comparison with Ireland",
+    "composed_query": "corporate tax rate in Estonia compared with Ireland?"
+   },
+   "latency_ms": 1489.8
+  },
+  {
+   "id": "fs_deictic_that_drug",
+   "source": "heldout",
+   "prompt": "Is that drug safe during pregnancy?",
+   "history": [
+    {
+     "role": "user",
+     "content": "My doctor prescribed sertraline for anxiety."
+    },
+    {
+     "role": "assistant",
+     "content": "Sertraline is an SSRI commonly used for anxiety and depression."
+    }
+   ],
+   "gold_subject": "sertraline",
+   "raw": "sertraline\nFACET: safety during pregnancy",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "sertraline",
+    "facet": "safety during pregnancy",
+    "composed_query": "sertraline Is that drug safe during pregnancy?"
+   },
+   "latency_ms": 1440.3
+  },
+  {
+   "id": "fs_implicit_side_effects",
+   "source": "heldout",
+   "prompt": "What are the side effects?",
+   "history": [
+    {
+     "role": "user",
+     "content": "Tell me about metformin."
+    },
+    {
+     "role": "assistant",
+     "content": "Metformin is a first-line medication for type 2 diabetes."
+    }
+   ],
+   "gold_subject": "metformin",
+   "raw": "Metformin\nFACET: Side effects",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Metformin",
+    "facet": "Side effects",
+    "composed_query": "Metformin What are the side effects?"
+   },
+   "latency_ms": 1916.9
+  },
+  {
+   "id": "fs_implicit_how_long",
+   "source": "heldout",
+   "prompt": "How long does the whole process take?",
+   "history": [
+    {
+     "role": "user",
+     "content": "I want to apply for a UK Skilled Worker visa."
+    },
+    {
+     "role": "assistant",
+     "content": "You need a job offer from a licensed sponsor and a certificate of sponsorship."
+    }
+   ],
+   "gold_subject": "Skilled Worker visa",
+   "raw": "UK Skilled Worker Visa  \nFACET: Duration of the Process",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "UK Skilled Worker Visa",
+    "facet": "Duration of the Process",
+    "composed_query": "UK Skilled Worker Visa How long does the whole process take?"
+   },
+   "latency_ms": 1712.9
+  },
+  {
+   "id": "fs_affirmation_rust",
+   "source": "heldout",
+   "prompt": "Sure, show me.",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is the borrow checker in Rust?"
+    },
+    {
+     "role": "assistant",
+     "content": "The borrow checker enforces Rust's ownership rules at compile time. Would you like an example of a borrow error?"
+    }
+   ],
+   "gold_subject": "borrow checker",
+   "raw": "borrow error\nFACET: example",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "borrow error",
+    "facet": "example",
+    "composed_query": "borrow error show me"
+   },
+   "latency_ms": 2766.9
+  },
+  {
+   "id": "fs_multi_hop_capital",
+   "source": "heldout",
+   "prompt": "What's the weather like there in April?",
+   "history": [
+    {
+     "role": "user",
+     "content": "Which city is the capital of Australia?"
+    },
+    {
+     "role": "assistant",
+     "content": "Canberra is the capital of Australia."
+    }
+   ],
+   "gold_subject": "Canberra",
+   "raw": "Canberra\nFACET: Weather in April",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Canberra",
+    "facet": "Weather in April",
+    "composed_query": "Canberra What's the weather like there in April?"
+   },
+   "latency_ms": 1251.8
+  },
+  {
+   "id": "fs_switch_volcano",
+   "source": "heldout",
+   "prompt": "How do volcanoes form?",
+   "history": [
+    {
+     "role": "user",
+     "content": "I'm learning Python decorators."
+    },
+    {
+     "role": "assistant",
+     "content": "Decorators wrap functions to add behavior."
+    }
+   ],
+   "gold_subject": "volcanoes",
+   "raw": "volcanoes\nFACET: formation",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "volcanoes",
+    "facet": "formation",
+    "composed_query": "How do volcanoes form?"
+   },
+   "latency_ms": 2496.3
+  },
+  {
+   "id": "fs_switch_new_question",
+   "source": "heldout",
+   "prompt": "Who wrote Pride and Prejudice?",
+   "history": [
+    {
+     "role": "user",
+     "content": "We've been planning a trip to Kyoto."
+    },
+    {
+     "role": "assistant",
+     "content": "Kyoto is famous for its temples and autumn colours."
+    }
+   ],
+   "gold_subject": "Pride and Prejudice",
+   "raw": "Pride and Prejudice  \nFACET: Author",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "Pride and Prejudice",
+    "facet": "Author",
+    "composed_query": "Who wrote Pride and Prejudice?"
+   },
+   "latency_ms": 1262.1
+  },
+  {
+   "id": "fs_switch_explicit",
+   "source": "heldout",
+   "prompt": "Different question: what is the half-life of carbon-14?",
+   "history": [
+    {
+     "role": "user",
+     "content": "What is the EU AI Act?"
+    },
+    {
+     "role": "assistant",
+     "content": "The EU AI Act is a European Union regulation for AI systems."
+    }
+   ],
+   "gold_subject": "carbon-14",
+   "raw": "carbon-14\nFACET: half-life",
+   "expect": {
+    "status": "ok",
+    "reason": "ok",
+    "subject": "carbon-14",
+    "facet": "half-life",
+    "composed_query": "Different question: what is the half-life of carbon-14?"
+   },
+   "latency_ms": 1679.8
+  }
+ ]
+}

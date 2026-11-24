@@ -245,7 +245,12 @@ from core.app_settings import (
     get_enable_chat_personality_nudge,
     get_enable_memory_v7_salvage,
 )
-from core.app_settings import get_sidecar_query_rewrite_enabled
+from core.app_settings import (
+    get_sidecar_query_rewrite_enabled,
+    get_sidecar_query_slots_shadow_enabled,
+    get_sidecar_query_slots_timeout_ms,
+)
+from core.query_slots_llm import run_shadow_slot_extraction
 from core.dual_query_retrieval import merge_memory_search_results, merge_rag_search_results
 from core.sidecar_query_rewrite import propose_query_expansion
 from core.shadow_retrieval_policy import (
@@ -2906,6 +2911,27 @@ class LLMWorker(QThread):
                 query_expansion.expanded_query[:120],
                 execution_route,
             )
+
+        # Plan S9 (shadow): LLM SUBJECT/FACET slots for follow-ups the
+        # deterministic resolver left unresolved. Runs on a background thread,
+        # only logs, and never changes this turn's retrieval.
+        query_slots_gate = "error"
+        try:
+            query_slots_gate = run_shadow_slot_extraction(
+                prompt=original_query,
+                history=history,
+                follow_up=follow_up if discourse_enabled else None,
+                resolved=resolved_retrieval,
+                sidecar_client=self._sidecar_client,
+                enabled=get_sidecar_query_slots_shadow_enabled(),
+                timeout_sec=get_sidecar_query_slots_timeout_ms() / 1000.0,
+                queue_depth=get_sidecar_telemetry().queue_depth(),
+                session_id=str(self.session_id or ""),
+            )
+        except Exception as e:
+            logger.debug("[QuerySlots] shadow scheduling failed: %s", e)
+        if isinstance(decision, dict):
+            decision["query_slots_gate"] = query_slots_gate
 
         retrieval_wrapper_mode = "none"
         self._stamp_discourse_on_decision(

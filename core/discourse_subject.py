@@ -102,6 +102,28 @@ _DANGLING_FACET = re.compile(
 _TRAILING_JUNK = re.compile(r"[\s?!.,;:<>\"']+$")
 _NUMBER = re.compile(r"\b\d+(?:\.\d+)*\b")
 _WH_BE_LEAD = re.compile(r"^(?:what|which|who)\s+(?:are|were|was|is)\s+(.+?)\s*[?.!]*$", re.I)
+# Statement openers with no question frame (S9): "I'm learning Python decorators.",
+# "We've been planning a trip to Lisbon." The object of the -ing verb is the subject.
+_FIRST_PERSON_ACTIVITY = re.compile(
+    r"^(?:i\s*'?\s*m|i\s+am|i\s*'?\s*ve\s+been|i\s+have\s+been|"
+    r"we\s*'?\s*re|we\s+are|we\s*'?\s*ve\s+been|we\s+have\s+been)\s+"
+    r"(?:(?:currently|now|just|still|really|also)\s+)?"
+    r"[a-z]+ing\s+(.+?)\s*[.!?]*$",
+    re.I,
+)
+# An infinitive or clause object ("trying to …", "wondering whether …") is not a subject.
+_CLAUSE_OBJECT = re.compile(r"^(?:to|that|if|whether|what|how|why|when|where|who|which)\b", re.I)
+_OBJECT_PARTICLE = re.compile(r"^(?:about|on|with|into|for|through)\s+", re.I)
+_OBJECT_CLAUSE_END = re.compile(
+    r"\s*(?:[,;:(]|\s(?:because|since|but|so|which|who|and\s+(?:i|we|want|would|need))\b).*$",
+    re.I,
+)
+_ACTIVITY_OBJECT_MAX_WORDS = 6
+# A request frame stripped down to a bare noun phrase ("Tell me about metformin."
+# → "metformin") names the subject; S5 frame stripping left these unrecognised.
+_FRAMED_NP_MAX_WORDS = 5
+_WH_LEAD = re.compile(r"^(?:what|which|who|whom|whose|how|why|when|where|whether|if)\b", re.I)
+_PERSONAL_PRONOUN = re.compile(r"\b(?:i|me|my|mine|we|us|our|you|your|yours)\b", re.I)
 _YES_NO_LEAD = re.compile(
     r"^(?:are|is|was|were|do|does|did|can|could|should|will|would|has|have)\s+(.+)$",
     re.I,
@@ -207,6 +229,39 @@ def _yes_no_subject(text: str) -> Optional[str]:
     return " ".join(out)
 
 
+def _framed_noun_phrase(raw: str, cleaned: str) -> Optional[str]:
+    """What is left of a request turn once its frame is stripped, when that is a short NP."""
+    original = _strip_connective(_COMPOSER_TOKEN.sub("", raw or "").strip())
+    if not cleaned or cleaned == original:
+        return None
+    # Only a leading frame ("Tell me about …") leaves the subject as the tail.
+    tail = _TRAILING_JUNK.sub("", cleaned).lower()
+    if not tail or not _TRAILING_JUNK.sub("", original).lower().endswith(tail):
+        return None
+    if _WH_LEAD.match(cleaned) or _is_back_reference(cleaned) or _AFFIRMATION.match(original):
+        return None
+    # "show me", "help us": what is left is about the speaker, not a subject.
+    if _PERSONAL_PRONOUN.search(cleaned):
+        return None
+    if len(cleaned.split()) > _FRAMED_NP_MAX_WORDS:
+        return None
+    return cleaned
+
+
+def _activity_subject(text: str) -> Optional[str]:
+    """Object of a first-person activity statement ("I'm learning X" → X), or ``None``."""
+    m = _FIRST_PERSON_ACTIVITY.match(text.strip())
+    if not m:
+        return None
+    obj = _OBJECT_CLAUSE_END.sub("", m.group(1).strip())
+    obj = _OBJECT_PARTICLE.sub("", obj).strip()
+    if not obj or _CLAUSE_OBJECT.match(obj) or _is_back_reference(obj):
+        return None
+    if len(obj.split()) > _ACTIVITY_OBJECT_MAX_WORDS:
+        return None
+    return obj
+
+
 def extract_turn_subject(text: str) -> Optional[str]:
     """The subject a single turn names on its own, or ``None``."""
     from core.discourse_state import _extract_topic_from_text
@@ -226,7 +281,13 @@ def extract_turn_subject(text: str) -> Optional[str]:
         subject = normalize_subject(wh.group(1))
         if subject:
             return subject
-    return normalize_subject(_yes_no_subject(cleaned))
+    subject = normalize_subject(_yes_no_subject(cleaned))
+    if subject:
+        return subject
+    subject = normalize_subject(_activity_subject(cleaned))
+    if subject:
+        return subject
+    return normalize_subject(_framed_noun_phrase(text, cleaned))
 
 
 def _norm_words(text: str) -> str:

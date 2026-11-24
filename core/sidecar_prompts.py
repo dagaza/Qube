@@ -70,6 +70,8 @@ def task_inference_params(task: SidecarTask) -> dict[str, Any]:
         SidecarTask.source_digest: {"max_tokens": 400, "temperature": 0.2},
         SidecarTask.ingest_blurb: {"max_tokens": 48, "temperature": 0.2},
         SidecarTask.companion_line: {"max_tokens": 64, "temperature": 0.35},
+        # Two short lines (measured 5-23 tokens); greedy for replayable output.
+        SidecarTask.query_slots: {"max_tokens": 32, "temperature": 0.0},
     }
     return dict(defaults.get(task, {"max_tokens": 128, "temperature": 0.2}))
 
@@ -94,6 +96,16 @@ def build_prompt_for_task(
         assistant_reply = (kwargs.get("assistant_reply") or "").strip()
         system, user = build_title_task_parts(user_prompt, assistant_reply)
         return _prompt(system, user)
+
+    if task == SidecarTask.query_slots:
+        from core.query_slots_llm import build_slot_prompt
+
+        return build_slot_prompt(
+            history=kwargs.get("history") or [],
+            prompt=str(kwargs.get("prompt") or ""),
+            chat_format=chat_format,
+            model_path=model_path,
+        )
 
     if task == SidecarTask.contradiction_judge:
         old_s = (kwargs.get("old_content") or "").strip()
@@ -1304,6 +1316,20 @@ def parse_task_output(task: SidecarTask, raw: str, **kwargs: Any) -> SidecarResu
             parsed={"summary": summary, "topics": topics},
             confidence=0.75 if summary and summary.upper() != "SKIP" else 0.2,
             ok=bool(summary),
+            task=task,
+        )
+
+    if task == SidecarTask.query_slots:
+        from core.query_slots_llm import parse_slot_output
+
+        slots = parse_slot_output(text)
+        if slots is None:
+            return SidecarResult(ok=False, error="parse_fail", task=task, text=text)
+        return SidecarResult(
+            text=text,
+            parsed={"subject": slots.subject, "facet": slots.facet},
+            confidence=0.5,
+            ok=True,
             task=task,
         )
 

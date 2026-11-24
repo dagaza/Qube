@@ -494,6 +494,8 @@ def build_retrieval_outcome_snapshot(
         "discourse_rewrite_reason": str(
             decision.get("discourse_rewrite_reason") or ""
         ),
+        # Plan S9: why the shadow slot extractor did / did not run this turn.
+        "query_slots_gate": str(decision.get("query_slots_gate") or ""),
         "hybrid_extra_memory": int(hybrid_extra_memory),
         "hybrid_extra_rag": int(hybrid_extra_rag),
         "top_intent": str(decision.get("top_intent") or ""),

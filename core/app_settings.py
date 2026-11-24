@@ -33,6 +33,8 @@ KEY_SIDECAR_SOURCE_DIGEST_MIN_CHARS = "qube.sidecar.source_digest_min_chars"
 KEY_SIDECAR_MIN_REWRITE_CONFIDENCE = "qube.sidecar.min_rewrite_confidence"
 KEY_SIDECAR_FOREGROUND_TIMEOUT_MS = "qube.sidecar.foreground_timeout_ms"
 KEY_SIDECAR_INGEST_BLURB = "qube.sidecar.ingest_blurb_enabled"
+KEY_SIDECAR_QUERY_SLOTS_SHADOW = "qube.sidecar.query_slots_shadow_enabled"
+KEY_SIDECAR_QUERY_SLOTS_TIMEOUT_MS = "qube.sidecar.query_slots_timeout_ms"
 KEY_SIDECAR_MODEL_PATH = "qube.sidecar.model_path"
 KEY_SIDECAR_CHAT_FORMAT = "qube.sidecar.chat_format"
 KEY_SIDECAR_TITLE_INFERENCE_PROFILE = "qube.sidecar.title_inference_profile"
@@ -698,9 +700,42 @@ def set_sidecar_enabled(enabled: bool) -> None:
 
 
 def get_sidecar_query_rewrite_enabled() -> bool:
+    """Assistive sidecar rewrite of follow-up memory / Library queries.
+
+    Off by default (S9 audit, D10): on the bundled Qwen3 sidecar it never finished
+    inside the foreground timeout (0/21 measured), so every follow-up turn waited
+    the full timeout for nothing. Set ``qube.sidecar.query_rewrite_enabled`` to
+    true to opt back in.
+    """
     return get_sidecar_enabled() and bool(
-        _store().get(KEY_SIDECAR_QUERY_REWRITE, True)
+        _store().get(KEY_SIDECAR_QUERY_REWRITE, False)
     )
+
+
+# Plan S9: shadow SUBJECT/FACET slot extraction runs off the turn thread, so the
+# timeout bounds only how long the shadow waits, never the turn. Default from the
+# S9 measurement on the bundled Qwen3-1.7B at the app's thread settings.
+DEFAULT_SIDECAR_QUERY_SLOTS_TIMEOUT_MS = 8000
+
+
+def get_sidecar_query_slots_shadow_enabled() -> bool:
+    """Shadow LLM slot extraction for follow-ups S6 leaves unresolved (log-only)."""
+    return get_sidecar_enabled() and bool(
+        _store().get(KEY_SIDECAR_QUERY_SLOTS_SHADOW, True)
+    )
+
+
+def get_sidecar_query_slots_timeout_ms() -> int:
+    try:
+        v = int(
+            _store().get(
+                KEY_SIDECAR_QUERY_SLOTS_TIMEOUT_MS,
+                DEFAULT_SIDECAR_QUERY_SLOTS_TIMEOUT_MS,
+            )
+        )
+    except (TypeError, ValueError):
+        v = DEFAULT_SIDECAR_QUERY_SLOTS_TIMEOUT_MS
+    return max(1000, min(30000, v))
 
 
 def get_sidecar_source_digest_enabled() -> bool:
