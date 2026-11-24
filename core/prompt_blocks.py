@@ -84,6 +84,63 @@ _SCIENTIFIC_EVIDENCE_PERSONA = (
     "If none of the sources are relevant, say so plainly first without brackets."
 )
 
+# Plan S10 (R6): the answering rules every retrieval persona shares, verbatim
+# from ``_WEB_PERSONA`` so service personas differ only in their opening guidance.
+_RETRIEVAL_PERSONA_RULES = (
+    "Do not state that you are offline or cannot browse the internet. "
+    "CRITICAL: Respond directly to the user in a natural, conversational tone. "
+    "Do NOT output your internal reasoning, 'Step 1' thoughts, or search metadata. "
+    "Write only the user-facing response. "
+    "Cite using the numbered bracket ids from context ([1], [2], etc.) only when "
+    "a source supports the claim—"
+    "never echo SOURCE headers, never use Markdown links or URLs after citations. "
+    "If none of the sources are relevant, say so plainly first without brackets."
+)
+
+_TRUSTED_KNOWLEDGE_PERSONA = (
+    "Reference sources (encyclopedia articles and established reference sites) "
+    "have been provided for this turn. "
+    "Use them when they are relevant to the user's question. "
+    "They summarise settled knowledge; for recent or fast-changing topics, say "
+    "when a source may be out of date. "
+    + _RETRIEVAL_PERSONA_RULES
+)
+
+_FINANCE_KNOWLEDGE_PERSONA = (
+    "Financial sources (company filings, market and economic data) have been "
+    "provided for this turn. "
+    "Use them when they are relevant to the user's question. "
+    "Quote figures exactly as the sources give them, with their period, units "
+    "and currency, and do not present derived or projected figures as reported "
+    "ones. "
+    + _RETRIEVAL_PERSONA_RULES
+)
+
+_LEGAL_KNOWLEDGE_PERSONA = (
+    "Legal sources (court decisions and legislation) have been provided for "
+    "this turn. "
+    "Use them when they are relevant to the user's question. "
+    "Say which jurisdiction and date each source you rely on comes from, and "
+    "note when a rule may differ elsewhere or may have been amended or "
+    "overturned since. "
+    + _RETRIEVAL_PERSONA_RULES
+)
+
+
+def retrieval_persona_for_service(service: str) -> str:
+    """Persona for a WEB/INTERNET turn with sources, by knowledge service (S10)."""
+    key = str(service or "").strip().lower()
+    if key in {"scientific_evidence", "science"}:
+        return _SCIENTIFIC_EVIDENCE_PERSONA
+    if key in {"trusted_knowledge", "wikipedia"}:
+        return _TRUSTED_KNOWLEDGE_PERSONA
+    if key == "finance_knowledge":
+        return _FINANCE_KNOWLEDGE_PERSONA
+    if key == "legal_knowledge":
+        return _LEGAL_KNOWLEDGE_PERSONA
+    return _WEB_PERSONA
+
+
 _WEB_MULTI_SOURCE_SUFFIX = (
     " Multiple web sources are numbered [1], [2], and so on—cite only those ids; "
     "do NOT use [W] on this turn."
@@ -211,10 +268,6 @@ def build_prompt_blocks(
     persona = _BASE_PERSONA
     no_sources = False
     service = str(knowledge_service or "").strip().lower()
-    scientific_turn = service in {
-        "scientific_evidence",
-        "science",
-    }
 
     if composer_diagnostics_attached:
         persona = (
@@ -320,9 +373,7 @@ def build_prompt_blocks(
                 else EXPLICIT_WEB_EMPTY_SUFFIX
             )
         else:
-            persona = (
-                _SCIENTIFIC_EVIDENCE_PERSONA if scientific_turn else _WEB_PERSONA
-            )
+            persona = retrieval_persona_for_service(service)
             suffixes.append(CITATION_DISCIPLINE_SUFFIX)
             if int(web_hit_count or 0) > 1 or int(retrieval_source_count or 0) > 1:
                 suffixes.append(_WEB_MULTI_SOURCE_SUFFIX)

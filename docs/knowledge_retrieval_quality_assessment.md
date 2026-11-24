@@ -390,6 +390,8 @@ Measured on the dev laptop (Ryzen 7 7840HS, 8C/16T, 28 GB, CPU-only, normal desk
 | **V18** | V6's thread figures | **Partly wrong.** The sidecar passes no thread counts, so it decodes at `cpu_count // 2` = 8 and evaluates prompts at `cpu_count` = 16 (llama-cpp-python defaults). The "16" in the log is `os.cpu_count()`, not a user setting. The slowdown is in prompt evaluation: 63 tok/s at 16 batch threads vs 177 at 8. | The inference-settings report (S9) is about `n_threads_batch`, not `n_threads`. |
 | **V19** | S6 resolves follow-up subjects (`subject_in_query` 1.00) | **Only on the corpus phrasings.** On a held-out set written in S9 (16 cases), HEAD carries the subject on 5 of 13 non-switch follow-ups. Misses: statement openers ("My daughter was just diagnosed with asthma."), facet nouns read as new subjects ("Is the garbage collector a problem…" after "…backend in Go"), turns classified as follow-ups below threshold, and a framed-noun-phrase bug ("Tell me about metformin." gave no subject). | S9 fixes the two statement shapes that are grammatical and corpus-safe. The rest is the case for the shadow LLM slots (D11), and calibration data for S13. |
 
+| **V20** | A fixed 8000-char retrieval block fits every model (S10) | **No.** With a worst-case system prompt (all disclaimers, a full skills block, preferences) and six 600-char history turns, the pre-S10 block came to 3229–3276 real prompt tokens on Gemma 4 E4B, Qwen3.5-9B and Phi-4-mini, leaving under 870 tokens for the answer in a 4k window. Measured chars per token on English sources, system prompts and history across five local GGUF tokenizers (Qwen3, Qwen3.5, Qwen2, Phi-4-mini, Gemma 4): **3.98–5.32**. **History alone can overflow a 4k window:** ten 1500-char turns reach 4226–4292 real tokens before any retrieval, because history windowing counts messages (default 10, up to 14 000 chars each), not tokens. | S10 derives the block from `n_ctx` at 4.0 chars/token (the measured floor; 3.5 cut 4k prompts that fitted by about a third). Token-aware history trimming is outside S10 (carry-over). |
+| **V21** | The native engine clamps `max_tokens` to the window | **No (log noise only).** `native_llama_engine` reads `self._llama.n_ctx` as an attribute; in llama-cpp-python 0.3.35 it is a method, so `int()` raises and every clamp is skipped (16 of 16 attempts in the local `llm_debug.log`: `[OutputTokenBudget] clamp skipped: int() argument must be …`). No overflow results: llama-cpp itself cuts `max_tokens` to `n_ctx − prompt` and only refuses a prompt that alone fills the window. | Reported, not fixed in S10 (outside the stage; one-line fix for the engine owner). |
 Also found: the WIP commit raised `MAX_TOTAL_RETRIEVAL_CHARS` from 4500 to 8000 (`workers/llm_worker.py:344`). This was missing from the progress log and is added below.
 
 **Caveat:** V1–V5 rest on ~110 candidates over 6 questions, labelled by inspection. They are enough to choose the **architecture**. They are **not** enough to set thresholds; those come from S2.
@@ -1069,6 +1071,57 @@ flowchart LR
 - **Tests:** prompt-block tests; formatter budget tests on a 4k / 8k / 32k `n_ctx` matrix.
 - **Acceptance:** no prompt exceeds the `n_ctx` budget on the matrix, and the Phase 1 contract flags stay ok.
 - **Dependencies:** S4 for the sufficiency note; everything else here is independent and can be interleaved.
+- **As built (2026-11-24)**
+  - **Personas (R6), `core/prompt_blocks.py`:** `retrieval_persona_for_service` picks the persona for a WEB / INTERNET turn with sources:
+    - `trusted_knowledge` and `wikipedia`: reference sources; say when a source may be out of date on fast-changing topics;
+    - `finance_knowledge`: quote figures exactly, with period, units and currency; derived or projected figures are not presented as reported;
+    - `legal_knowledge`: name each source's jurisdiction and date; note that a rule may differ elsewhere or have been amended or overturned;
+    - `scientific_evidence`: unchanged;
+    - `general_web` and anything else: unchanged `_WEB_PERSONA`.
+
+    The three new personas end with `_RETRIEVAL_PERSONA_RULES`, the web persona's answer rules verbatim (no offline claims, no reasoning output, bracket citations only when a source supports the claim, abstention first). The plan text said "trusted and internet". Internet keeps the existing web persona, which is already web-specific. Finance and legal were added because they had no persona of their own (R6 note). Disclaimers still compose after the persona.
+  - **Retrieval budget (R5), `core/retrieval_budget.py` (new):**
+    - *Formula:* `retrieval_char_budget` = `n_ctx` − answer reserve − prompt overhead − history − question − 128-token margin, converted to characters.
+      - *Answer reserve:* a quarter of the window, at least 512 and at most the completion budget.
+      - *Prompt overhead:* 4800 chars for persona, suffixes, retrieval wrapper and hints, plus the skills budget, attachment and capability context.
+      - *History:* each message's estimate plus 8 template tokens.
+    - *Token estimate:* 4.0 ASCII chars per token, the measured floor (§12.1 V20); each non-ASCII character counts as one token.
+    - *Defaults:* unknown `n_ctx` gives today's 8000 characters. The result is capped at 8000 (D12) and floored at 1000.
+    - *Worker:* `workers/llm_worker.py` `_retrieval_budget_for_turn`.
+      - It uses the window the native model actually loaded with: `NativeLlamaEngine.loaded_n_ctx()`, which can be below the setting after the unified-memory cap. Otherwise it uses the configured context limit (external engines).
+      - If the formatted block's own token estimate exceeds the room actually left (`tokens`; non-ASCII sources on a tight window), it re-fits the block once, scaled down. A capped turn has room to spare, so large contexts are never re-fitted; the floor sets no token limit.
+      - The budget is stamped as `decision["retrieval_budget"]` (`chars`, `tokens`, `n_ctx`, `reason` = default / cap / n_ctx / floor, `used_chars`) and persisted in the routing-debug `retrieval_outcome`.
+  - **Coverage note (R5):**
+    - *Flag:* both gates (`web_gate.gate_rows`, the scientific `_rank_candidates_gated`, and fetched sections) mark each scored row `_rerank_strong` (score ≥ the service's `strong` threshold). Bundle builders keep it as `raw_metadata["rerank_strong"]`, and UI sources expose it as `directly_relevant`.
+    - *Note:* `memory_filters.retrieval_coverage_note` writes `[Coverage: partial — 2 of 5 search results directly address the question.]` on sufficient and partial turns.
+    - *What it counts:* only gated rows; memory and library rows are not counted. Unscored turns get no note, so their pack is unchanged.
+    - *Placement:* `prefix_evidence_notes` puts it first, before the S7 recency and S4 partial notes.
+  - **Semantic Scholar (V8):** `review_status` derives `(peer_reviewed, preprint)` from venue, `journal`, `publicationVenue`, `publicationTypes`, arXiv ids and preprint-server DOI prefixes; the API request asks for the three extra fields.
+    - A named non-preprint venue counts as reviewed (the DBLP / INSPIRE / RePEc rule).
+    - A preprint-server venue, or an arXiv id or preprint DOI with no other venue, is a preprint.
+    - Otherwise the status is unknown (`None`), so the prompt shows no review label.
+
+    Example: "Attention Is All You Need" (NeurIPS, arXiv DOI) is peer-reviewed. Crossref was already honest (S8).
+  - **Attribution labels (R7).** The plan gave no detail, so the code was traced. Three defects were found and fixed:
+    1. General-web and trusted SERP rows were always labelled `duckduckgo`, and the web bundle's `adapter_calls` was always `("duckduckgo",)`, even when Brave, SearXNG or Wikipedia discovery returned the results. Rows now carry `_discovery_provider` from `CandidateUrl.source`. Evidence objects, `adapter_calls` (fetched: `(provider, "fetch_engine")`) and the inspector's `rerank_dropped` use it. Rows without a provider keep `duckduckgo`.
+    2. A scientific row without `_adapter` was credited to **PubMed**, with PubMed's 0.92 index authority. Finance rows defaulted to `sec_edgar`, legal rows to `courtlistener`. They are now `unknown`.
+    3. Finance and legal adapters missing from the venue maps (configured sources, MCP connectors, World Bank-style feeds without a venue) were shown to the model as **"SEC EDGAR"** or **"CourtListener"**, with `sec_filing` / `court_opinion` types. Unmapped adapters now get no venue and a generic type (`finance_record`, `legal_document`, method `api`). SEC EDGAR, CourtListener, CanLII and BAILII keep their labels, and coverage text names an unmapped adapter by its id.
+  - **Not changed (reported):** the native engine's `max_tokens` clamp never runs (§12.1 V21). History windowing is message-count based, so long history can overflow a 4k window by itself (V20). Both are outside S10.
+  - **Evidence:**
+    - *Budget matrix:* 4k / 8k / 32k × 5 history sizes on Gemma 4 E4B, Qwen3.5-9B and Phi-4-mini tokenizers, below. Every non-floor case fits with the answer reserve; 4k with no history uses 2017–2066 of 4096 tokens plus a 1024 reserve.
+    - *Offline eval:* identical to `kq_s9_*` in all six modes, since ranking and selection are unchanged.
+    - *Contract flags:* all ok.
+  - **Tests:** `tests/test_s10_evidence_pack.py` (new, 35 tests + 55 subtests) covers:
+    - personas per service, with shared rules, abstention, citation discipline, date and composed disclaimers;
+    - the Phase 1 contract flags;
+    - budget defaults, cap, shrink, floor, answer reserve, token room (a capped 32k turn is never re-fitted), the non-ASCII estimate, and the 4k / 8k / 32k matrix with a worst-case prompt (plus a check that the old fixed block over-ran the reserve at 4k);
+    - worker wiring (loaded window, external engine, unloaded fallback, `loaded_n_ctx`);
+    - coverage-note wording, absence and order;
+    - the strong flag through web, trusted, finance, scientific and fetched paths;
+    - Semantic Scholar cases;
+    - attribution (Brave end to end through the general-web pipeline, DuckDuckGo unchanged, trusted fallback provider, untagged scientific row, finance / legal venues).
+
+    No existing test changed.
 
 #### S11 — Post-generation grounding telemetry (R8)
 
@@ -1130,6 +1183,7 @@ flowchart LR
 | D9 | The S9 audit found that every non-title Qwen3 sidecar task returns only `<think>` (V17). Fix it globally, scoped, or report only? | **Scoped fix plus a report.** The empty think block is pre-filled only on the new slot task. The bug is written up for the sidecar owner (§12.4 S9, "Report"). Other tasks stay as they are until each is evaluated, because a global fix would switch on behaviour that has never run. (Recorded 2026-11-24, during S9.) | S9 |
 | D10 | What happens to `propose_query_expansion` (V7 verdict: never finished inside its timeout, never applied, ~1.5 s wait per follow-up turn)? | **Default off, code kept.** `qube.sidecar.query_rewrite_enabled` defaults to false; the setting, code and tests stay, so it can be turned back on. (Recorded 2026-11-24, during S9.) | S9 |
 | D11 | S9's premise looked weak on the corpus (S6: 20 of 23 follow-ups). How should S9 proceed? | **Deterministic first, then the LLM in shadow.** Fix the statement-style subject gap in the S6 tracker, measured corpus-wide. Then build the slot extractor shadow-only and non-blocking (background thread, zero turn latency), gated to follow-ups S6 left unresolved. (Recorded 2026-11-24, during S9.) | S9 |
+| D12 | S10 sizes the retrieval block from `n_ctx`. Should large contexts (≥ 8k) get more than today's 8000 characters, as R5 suggested ("6–8k tokens on 32k")? The block tops out near 12–13k characters (8 sources × 1500), so growth adds at most ~1200 prompt tokens: tens of seconds of prompt processing for a 9B model on CPU, negligible on GPU. | **Keep the 8000-char cap.** The budget only shrinks for small contexts; 8k–32k contexts behave exactly as before. Revisit when S11 grounding data shows whether truncated sources hurt answers. (Recorded 2026-11-24, during S10.) | S10 |
 
 **D3 safeguards** (labelling stays honest without a human pass):
 
@@ -1191,13 +1245,13 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 ## Implementation progress log
 
 > **Do not edit sections 1–11 above.** Record shipped work here only.  
-> **Last reviewed:** 2026-11-24, S9 complete, acceptance Partial (§12.4 S9: V7 audit, rewrite off by default, statement-style subjects, shadow LLM slots; D9–D11); S8 complete except the live ANT check (open to-do, §12.4 S8 "To do"; §12.4 S8, deadlines + multi-query union + spelling variant + web pool 8 + trusted allowlist); S7 complete (§12.4 S7, web / trusted / finance gate + recency); S6 complete (§12.4 S6, subject/facet + follow-ups); S5 complete (§12.4 S5, acronyms + request frames); S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
+> **Last reviewed:** 2026-11-24, S10 complete (§12.4 S10: service personas, n_ctx-aware retrieval budget, coverage note, Semantic Scholar review status, attribution labels; D12); S9 complete, acceptance Partial (§12.4 S9: V7 audit, rewrite off by default, statement-style subjects, shadow LLM slots; D9–D11); S8 complete except the live ANT check (open to-do, §12.4 S8 "To do"; §12.4 S8, deadlines + multi-query union + spelling variant + web pool 8 + trusted allowlist); S7 complete (§12.4 S7, web / trusted / finance gate + recency); S6 complete (§12.4 S6, subject/facet + follow-ups); S5 complete (§12.4 S5, acronyms + request frames); S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
 
-### Resuming work in a new session (handoff, updated 2026-11-24 after S9)
+### Resuming work in a new session (handoff, updated 2026-11-24 after S10)
 
-A new session has no memory of earlier conversations. Read this section, then §12.3–§12.6, then the S8 and S9 "As built" notes (§12.4), before starting a stage.
+A new session has no memory of earlier conversations. Read this section, then §12.3–§12.6, then the S8–S10 "As built" notes (§12.4), before starting a stage.
 
-**State.** Branch `feat/knowledge-retrieval-quality`, based on `main` (`2f4b180`). S1–S8 are committed, one commit per stage: S1 `2fda486`, S2 `355e661`, S3 `9f9a0ea` (+ `0db97bb` HF repo casing), S4 `4a07449` (+ `182ba04` MMR fix), S5 `b789420`, S6 `35a0ea3`, S7 `3e993e5`, S8 `2e278ad`, then S9 (see `git log`; the S9 commit follows `0ac4a77`). Next stage: **S10**. Open item: the S8 live ANT re-run (§12.4 S8 "To do"; progress-log row "S8 · To do"). It was still blocked at 07:58 UTC on 2026-11-24 (OpenAlex 429, `x-ratelimit-remaining: 0`, `retry-after` 57 688 s, i.e. until 00:00 UTC).
+**State.** Branch `feat/knowledge-retrieval-quality`, based on `main` (`2f4b180`). S1–S9 are committed, one commit per stage: S1 `2fda486`, S2 `355e661`, S3 `9f9a0ea` (+ `0db97bb` HF repo casing), S4 `4a07449` (+ `182ba04` MMR fix), S5 `b789420`, S6 `35a0ea3`, S7 `3e993e5`, S8 `2e278ad`, S9 `a646cda`, then S10 (see `git log`; it follows `a646cda`). Next stage: **S11**. Open item: the S8 live ANT re-run (§12.4 S8 "To do"; progress-log row "S8 · To do"). It was still blocked at 07:58 UTC on 2026-11-24 (OpenAlex 429, `x-ratelimit-remaining: 0`, `retry-after` 57 688 s, i.e. until 00:00 UTC).
 
 **Working agreement (from the product owner).**
 
@@ -1222,10 +1276,10 @@ Mark partial acceptance as **Partial** and say why.
 - Targeted tests: `.venv/bin/python -m pytest -q -p no:cacheprovider tests/<files>`.
 - Full suite: `QT_QPA_PLATFORM=offscreen HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings -m "not packaging" tests > <log> 2>&1`.
   - The process ends with the known Qt teardown abort (exit 134, no summary line), so count ` PASSED` / ` FAILED` lines in the log.
-  - S8 reference: **4073 passed**, and exactly these 5 pre-existing failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), and `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
+  - S10 reference: **4141 passed**, and exactly these 5 pre-existing failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), and `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
 - Offline eval, which needs the reranker model locally: `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_knowledge_quality.py --corpus eval/retrieval_corpus/v1_knowledge_quality.json --ranker <token|embed|ce> --query-mode <production|standalone> [--pool-mode widened] [--json] [--compare <baseline>]`.
   - Stage baselines are `eval/retrieval_corpus/baselines/kq_sN_{token,embed}_{production,standalone}.json` (default pool mode) and `kq_sN_ce_{production,standalone}.json` (with `--pool-mode widened`, the shipped depth since S8). Always pass the relative `--corpus` path above.
-  - Compare new work against `kq_s9_*`, using the same flags as the baseline (S9 left all six identical to `kq_s8_*`).
+  - Compare new work against `kq_s10_*`, using the same flags as the baseline (S9 and S10 left all six identical to `kq_s8_*`).
 - Follow-up subject checks (S9): the 16 held-out cases in `eval/router_corpus/followup_subjects_v1.json`; the recorded sidecar slot outputs in `tests/fixtures/query_slots_recorded_s9.json` replay offline in `tests/test_query_slots_llm.py`.
 - Keep scratch scripts and benchmark outputs outside the repo; only baselines are committed.
 
@@ -1270,15 +1324,17 @@ The scientific `keep` threshold is 0, so `survivors` is the number of candidates
 - **Pass** (the S8 plan acceptance): ≥ 5 candidates with CE > 0 on the ANT turns (S5 measured 12 with the correct spelling), and the "Inteligence → Intelligence" correction in the trace. Read the kept titles too: they should be papers on ANT and AI.
 - **Measured on 2026-11-24:** the correction is generated, but OpenAlex was over budget, so only Crossref and SocArXiv answered (3 candidates, 0 with CE > 0).
 
-**Carry-overs for S10–S13** (found during S1–S9; check them again before acting):
+**Carry-overs for S11–S13** (found during S1–S10; check them again before acting):
 
 - **Outside the plan (reported in §12.4 S9, D9):** Qwen3 sidecar tasks other than titles return only `<think>` (the `"\n\n"` stop). `n_threads_batch` should be the physical core count. Do not fix either globally without the owner.
 - **S9 follow-ups:**
   - The shadow slots log `[QuerySlots] shadow {json}` lines to `~/.qube/logs/qube.log`, and the routing-debug `retrieval_outcome.query_slots_gate`. Read them before proposing any steering role; that is an owner decision.
   - `active_topic` still holds the legacy value (S6 deviation), and the move to `subject` was not done in S9. It needs its own routing evidence (S13).
-- **S10:**
-  - Crossref `peer_reviewed` is already fixed (S8).
-  - Semantic Scholar still hard-codes `peer_reviewed: True` (V8).
+- **S10 follow-ups (outside the plan, reported):**
+  - History windowing counts messages, not tokens, so a long history can overflow a 4k window by itself (§12.1 V20). The S10 budget then sits at its 1000-char floor.
+  - `native_llama_engine` reads `self._llama.n_ctx` as an attribute (it is a method), so the `max_tokens` clamp is always skipped (V21). llama-cpp cuts `max_tokens` itself, so this is log noise, not overflow.
+  - `tests/test_scientific_evidence.py::test_v2_scientific_bundle` can make live requests (Europe PMC and other adapters from local preferences are not mocked).
+- **S11:** UI sources now carry `directly_relevant` (gated rows) and the trace carries `retrieval_budget`. Both are inputs for grounding telemetry. D12: revisit the 8000-char cap with S11 data.
 - **S12:**
   - Adapter **timeouts** already reach the sufficiency rationale (S8). Adapter **errors** are only in `scientific_pool.collection[*].adapter_errors`, not in the rationale.
   - SocArXiv (OSF) often returns 500 / 400 and arXiv sometimes takes about 10 s; both are now cut off by the deadline.
@@ -1292,7 +1348,7 @@ The scientific `keep` threshold is 0, so `survivors` is the number of candidates
     - a facet question about something else (sourdough → kitchen temperature);
     - a multi-hop "there" (Canberra) that S6 reads as a new subject;
     - statement openers without an -ing verb ("My daughter was just diagnosed with asthma.").
-- **Decisions in force:** D1–D11 (§12.6). D10: the sidecar query rewrite is off by default. D11: LLM slots are shadow-only. D5: Library / memory RAG comes only after S13. D8: the raw-wording variant runs only with an OpenAlex key.
+- **Decisions in force:** D1–D12 (§12.6). D12: the retrieval block keeps the 8000-char cap; the n_ctx budget only shrinks it. D10: the sidecar query rewrite is off by default. D11: LLM slots are shadow-only. D5: Library / memory RAG comes only after S13. D8: the raw-wording variant runs only with an OpenAlex key.
 
 ### Summary
 
@@ -1359,6 +1415,15 @@ The scientific `keep` threshold is 0, so `survivors` is the number of candidates
 | 2026-11-24 | S7 | Acceptance | Done | Web (ce, production / standalone): irrelevant_kept **0.06 / 0.00** (≤ 0.10), abstain precision **1.00 / 1.00** (≥ 0.85); 0 web cases labelled sufficient abstain (same as before). Recency, replayed 730 days later: stale-only turns marked partial + `stale_sources` **100 %** (1/1 per mode), **0** stale-only turns reported sufficient (also 0 at capture date). Per-category vs legacy production (token, S6): no `general_web` / `trusted` / `finance` category regresses. Live: gate ≈25 ms / 3 snippets, sections ≈45 ms / 3. | `--compare` against the S6 **ce** baseline flags trusted recall / nDCG and multi_turn (via the trusted MS fixture). The S6 ce trusted numbers were a preview that ignored the allowlist and Wikipedia-first order; against legacy production (token) S7 is better on every trusted metric except standalone abstain_correct (WHO, allowlist). |
 | 2026-11-24 | S7 | Baselines | Done | `eval/retrieval_corpus/baselines/kq_s7_{token,embed,ce}_{production,standalone}.json` | — |
 | 2026-11-24 | — | D7 recorded: trusted allowlist widened (gov zones, agencies, intergovernmental, national academic zones); narrow list kept on the reranker-free path | Done | §12.6 D7 | — |
+| 2026-11-24 | S10 | Service personas (R6) | Done | `core/prompt_blocks.py` `retrieval_persona_for_service`: trusted / Wikipedia, finance, legal personas sharing `_RETRIEVAL_PERSONA_RULES` (the web persona's rules verbatim); scientific and web personas unchanged; disclaimers still additive | Internet keeps the web persona; finance / legal added (deviation, see "As built") |
+| 2026-11-24 | S10 | n_ctx-aware retrieval budget (R5) | Done | `core/retrieval_budget.py` (new); `LLMWorker._retrieval_budget_for_turn` / `_active_context_window`; `NativeLlamaEngine.loaded_n_ctx()`; `retrieval_budget` in routing debug. 4.0 chars/token = measured floor over 5 tokenizers (3.98–5.32, §12.1 V20); unknown `n_ctx` → 8000; cap 8000 (D12); floor 1000 | History is not n_ctx-aware (V20); engine `max_tokens` clamp never runs (V21) |
+| 2026-11-24 | S10 | Coverage note (R5) | Done | `_rerank_strong` on gated rows (web, trusted, finance, scientific, fetched sections) → `raw_metadata["rerank_strong"]` → UI `directly_relevant`; `memory_filters.retrieval_coverage_note` ("[Coverage: partial — 2 of 5 search results directly address the question.]") first in the pack on sufficient / partial turns; unscored turns unchanged | Counts gated rows only |
+| 2026-11-24 | S10 | Semantic Scholar review status (V8) | Done | `semantic_scholar.review_status` from venue / journal / publicationVenue / publicationTypes / arXiv id / preprint DOI prefixes; unknown → `None` (no label); API asks for the three extra fields | Live S2 not exercised (needs an API key) |
+| 2026-11-24 | S10 | Attribution labels (R7) | Done | Web and trusted SERP rows, `adapter_calls` and `rerank_dropped` credit the discovery provider (Brave / SearXNG / Wikipedia / DuckDuckGo) instead of always DuckDuckGo; untagged scientific / finance / legal rows are `unknown` (no PubMed authority); unmapped finance / legal adapters no longer shown as "SEC EDGAR" / "CourtListener" | — |
+| 2026-11-24 | S10 | Acceptance | Done | **No prompt exceeds `n_ctx` on the matrix ✓**: 4k / 8k / 32k × 5 history sizes, worst-case system prompt, 8 × 1500-char sources, real tokenizers (Gemma 4 E4B, Qwen3.5-9B, Phi-4-mini): every non-floor case fits with the answer reserve (S10 results). Before S10 the fixed block left < 870 answer tokens at 4k with 6 history turns. **Phase 1 contract flags all ok ✓** (`evaluate_ant_fixture`, CLI exit 0 in all six modes). Offline eval identical to `kq_s9_*` in all six modes, so no category regresses ✓ | Floor cases (history alone fills 4k) excluded: history trimming is outside S10 |
+| 2026-11-24 | S10 | Tests | Done | `tests/test_s10_evidence_pack.py` (new, 35 tests + 55 subtests); no existing test changed. Full suite (`-m "not packaging"`): **4141 passed**; the same 5 pre-existing failures (`test_linux_ggml_release_verify` ×2, `test_type_to_search` ×2, `test_winget_validation` ×1) and the known Qt teardown abort | `tests/test_scientific_evidence.py::test_v2_scientific_bundle` mocks only PubMed / OpenAlex / arXiv; the medical query also resolves Europe PMC and others from the local source preferences, which then run live (seen twice in S10 runs as a read timeout; intermittent, pre-existing, test unchanged) |
+| 2026-11-24 | S10 | Baselines | Done | `eval/retrieval_corpus/baselines/kq_s10_{token,embed}_{production,standalone}.json`, `kq_s10_ce_{production,standalone}.json` (`--pool-mode widened`); identical to `kq_s9_*` | — |
+| 2026-11-24 | — | D12 recorded: retrieval block keeps the 8000-char cap on large contexts (shrink-only) | Done | §12.6 D12 | — |
 | 2026-11-24 | S9 | V7 audit: sidecar query rewrite | Done | 0 of 21 follow-up rewrites inside the 1500 ms timeout (p50 4.4 s, p95 6.8 s); all 21 completions `<think>` (the `"\n\n"` stop on Qwen3's empty think block; same for `contradiction_judge`, `source_digest`); with the block pre-filled, 11/21 accepted, p50 2.7–5.9 s, no residual fixed; persisted routing-debug log: 0 rewrites applied (§12.1 V17) | Sidecar-wide bug reported, not fixed globally (D9) |
 | 2026-11-24 | S9 | Rewrite default off (D10) | Done | `get_sidecar_query_rewrite_enabled` default `False`; code, key `qube.sidecar.query_rewrite_enabled` and tests kept | — |
 | 2026-11-24 | S9 | Thread finding (correcting V6) | Reported | Sidecar uses llama-cpp defaults: 8 decode / 16 batch threads; 8 / 8 gives prompt eval 63 → 177 tok/s, total p50 5.1 → 2.3 s (§12.1 V18, §12.4 S9 table) | Inference-settings owner; outside the plan |
@@ -1650,6 +1715,25 @@ Per fixture (labelled gain of the kept rows vs S7): production 4 better / 14 sam
   - facet nouns read as new subjects ("Is the garbage collector a problem for latency?" after "…backend in Go"; "How do we cut the bill?" after "Kubernetes on AWS");
   - "What temperature should the kitchen be?" after a sourdough question;
   - a multi-hop "there" (Canberra) that S6 reads as a new subject. The LLM gets that one, but the gate does not schedule it (`not_follow_up`).
+
+**S10 results.** Retrieval is unchanged offline: all six `kq_s10_*` baselines match `kq_s9_*` exactly (token / embed / ce × production / standalone; ce with `--pool-mode widened`), so every category is unchanged (rule 7 ✓). S10 changes what the model is told, not which sources are kept.
+
+Budget matrix (acceptance). Worst-case prompt: every disclaimer, the conflict suffix, a 1200-char skills block, preferences and a reply hint; eight 1500-char sources; history of *n* turns × *c* chars. Real prompt tokens are counted with three local tokenizers (Gemma 4 E4B / Qwen3.5-9B / Phi-4-mini), against the answer reserve (a quarter of the window, capped at the 4096-token completion budget):
+
+| n_ctx | history | budget (chars, reason) | real prompt tokens | reserve | fits |
+|---|---|---|---|---|---|
+| 4096 | none | 5684, n_ctx | 2017–2066 | 1024 | ✓ |
+| 4096 | 4 × 300 | 4356, n_ctx | 2041–2094 | 1024 | ✓ |
+| 4096 | 6 × 600 | 1892, n_ctx | 2083–2148 | 1024 | ✓ |
+| 4096 | 8 × 900 | 1000, floor | 2648–2714 | 1024 | ✓ |
+| 4096 | 10 × 1500 | 1000, floor | 4226–4292 | 1024 | ✗ (history alone over 4k) |
+| 8192 | none … 8 × 900 | 8000, cap | 2455–3919 | 2048 | ✓ |
+| 8192 | 10 × 1500 | 2652, n_ctx | 4536–4596 | 2048 | ✓ |
+| 32768 | all five | 8000, cap | 2455–5592 | 4096 | ✓ |
+
+- **Before S10**, the fixed 8000-char block with 6 × 600 history came to 3229–3276 tokens. A 4k model then had under 870 tokens left for the answer.
+- **The estimate stays pessimistic** (about 1.3× the real count), so 8k with long history shrinks to 2652 characters where 8000 would have fitted. That is the price of not loading a tokenizer.
+- **Prompt cost of the coverage note:** about 90 characters per gated turn.
 
 ### Git reference
 

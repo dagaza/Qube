@@ -496,6 +496,12 @@ def build_retrieval_outcome_snapshot(
         ),
         # Plan S9: why the shadow slot extractor did / did not run this turn.
         "query_slots_gate": str(decision.get("query_slots_gate") or ""),
+        # Plan S10: n_ctx-derived retrieval block budget (chars, tokens, reason).
+        "retrieval_budget": (
+            dict(decision.get("retrieval_budget"))
+            if isinstance(decision.get("retrieval_budget"), dict)
+            else {}
+        ),
         "hybrid_extra_memory": int(hybrid_extra_memory),
         "hybrid_extra_rag": int(hybrid_extra_rag),
         "top_intent": str(decision.get("top_intent") or ""),

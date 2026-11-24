@@ -567,20 +567,49 @@ RETRIEVAL_STALE_NOTE: str = (
 )
 
 
+def retrieval_coverage_note(sufficiency: str, sources: list | tuple) -> str:
+    """Plan S10 (R5): one plain-language line on how well the sources cover the question.
+
+    Counts only sources the relevance gate scored (``directly_relevant`` set by
+    the cross-encoder "strong" threshold); memory and library rows are not
+    counted. Returns "" when the gate did not run or the turn has no scored
+    sources, so unscored turns keep the pre-S10 pack.
+    """
+    state = str(sufficiency or "").strip().lower()
+    if state not in ("sufficient", "partial"):
+        return ""
+    scored = [
+        s for s in (sources or ()) if isinstance(s, dict) and "directly_relevant" in s
+    ]
+    if not scored:
+        return ""
+    strong = sum(1 for s in scored if s.get("directly_relevant"))
+    total = len(scored)
+    noun = "search result" if total == 1 else "search results"
+    verb = "addresses" if strong == 1 else "address"
+    return (
+        f"[Coverage: {state} — {strong} of {total} {noun} directly {verb} "
+        "the question.]"
+    )
+
+
 def prefix_evidence_notes(
     body: str,
     *,
     partial: bool,
     bundle_warnings: tuple[str, ...] | list[str] = (),
+    coverage_note: str = "",
 ) -> str:
-    """Prepend the evidence notes for a gated retrieval body (S4 partial, S7 recency).
+    """Prepend the evidence notes for a gated retrieval body (S4 partial, S7 recency, S10 coverage).
 
-    Order in the prompt: recency note, then partial note, then the sources.
-    An empty ``body`` (no sources) gets no notes.
+    Order in the prompt: coverage line, recency note, partial note, then the
+    sources. An empty ``body`` (no sources) gets no notes.
     """
     if not (body or "").strip():
         return body
     notes: list[str] = []
+    if (coverage_note or "").strip():
+        notes.append(coverage_note.strip())
     warnings = tuple(bundle_warnings or ())
     if "recency_requested" in warnings:
         notes.append(RETRIEVAL_STALE_NOTE if "stale_sources" in warnings else RETRIEVAL_RECENCY_NOTE)

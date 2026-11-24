@@ -237,6 +237,8 @@ def gate_rows(
         return None
     for row, score in zip(to_score, result.scores):
         row["_rerank_score"] = round(float(score), 4)
+        # Plan S10: the coverage note counts rows that directly address the question.
+        row["_rerank_strong"] = float(score) >= thresholds.strong
     pool_result = assess_sufficiency(result.scores, thresholds)
     kept_idx = set(pool_result.kept_indices)
     order = list(pool_result.kept_indices)

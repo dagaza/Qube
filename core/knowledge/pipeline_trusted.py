@@ -25,11 +25,15 @@ from core.retrieval_relevance import filter_web_results
 
 
 def _candidate_to_row(candidate: CandidateUrl) -> dict[str, Any]:
-    return {
+    row: dict[str, Any] = {
         "title": candidate.title or "",
         "snippet": candidate.snippet or "",
         "url": candidate.url,
     }
+    # Plan S10 (R7): attribute the row to the provider that found it.
+    if candidate.source:
+        row["_discovery_provider"] = str(candidate.source)
+    return row
 
 
 def _discovery_rows(discovery) -> list[dict[str, Any]]:

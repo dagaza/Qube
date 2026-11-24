@@ -493,6 +493,16 @@ class NativeLlamaEngine(QThread):
             out.update(top.to_telemetry_dict())
         return out
 
+    def loaded_n_ctx(self) -> Optional[int]:
+        """Context size the model was actually loaded with (after any cap), or None."""
+        if self._llama is None:
+            return None
+        try:
+            value = int(getattr(self._llama, "n_ctx", lambda: 0)() or self._n_ctx)
+        except Exception:
+            value = int(self._n_ctx or 0)
+        return value if value > 0 else None
+
     def get_template_output_profile(self) -> Optional[TemplateOutputProfile]:
         return self._template_output_profile
 

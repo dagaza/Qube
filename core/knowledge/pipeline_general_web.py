@@ -57,11 +57,16 @@ _CE_GATE_MODES = frozenset({"strict"})
 
 
 def _candidate_to_row(candidate: CandidateUrl) -> dict[str, Any]:
-    return {
+    row: dict[str, Any] = {
         "title": candidate.title or "",
         "snippet": candidate.snippet or "",
         "url": candidate.url,
     }
+    # Plan S10 (R7): attribute the row to the provider that found it (Brave,
+    # SearXNG, Wikipedia, DuckDuckGo), not always to DuckDuckGo.
+    if candidate.source:
+        row["_discovery_provider"] = str(candidate.source)
+    return row
 
 
 def _is_ad_candidate(candidate: CandidateUrl) -> bool:
@@ -309,6 +314,7 @@ def _gate_fetched_sections(
     for score, section, row in survivors:
         meta = dict(section.raw_metadata or {})
         meta["rerank_score"] = row["_rerank_score"]
+        meta["rerank_strong"] = float(score) >= thresholds.strong
         if row.get("_freshness"):
             meta.update(
                 freshness=row["_freshness"],
@@ -446,7 +452,9 @@ def run_general_web_evidence_pipeline(
             "sufficiency": gate.sufficiency.state.value,
         }
         if gate.dropped:
-            rel_diag["rerank_dropped"] = dropped_for_diag(gate.dropped, adapter=ADAPTER_ID)
+            rel_diag["rerank_dropped"] = dropped_for_diag(
+                gate.dropped, adapter=discovery_provider or ADAPTER_ID
+            )
     elif relevance_options.apply_gate:
         filtered, rel_diag = filter_web_results(
             semantic,
@@ -526,7 +534,7 @@ def run_general_web_evidence_pipeline(
             kept_rows=filtered,
             rejected_count=rejected_count,
             latency_ms=latency_ms,
-            adapter_calls=(ADAPTER_ID,),
+            adapter_calls=(discovery_provider or ADAPTER_ID,),
             stop_reason=stop_reason,
             sufficiency=gate_sufficiency,
             sufficiency_rationale=gate_rationale,
@@ -599,6 +607,7 @@ def run_general_web_evidence_pipeline(
             latency_ms=latency_ms,
             fetch_attempts=len(fetch_diag.get("attempted") or []),
             fetch_successes=len(fetch_diag.get("succeeded") or []),
+            adapter_calls=(discovery_provider or ADAPTER_ID, "fetch_engine"),
             warnings=tuple(dict.fromkeys((*fetch_warnings, *fetched_warnings))),
             sufficiency=fetched_sufficiency,
             sufficiency_rationale=fetched_rationale,
@@ -631,7 +640,7 @@ def run_general_web_evidence_pipeline(
         kept_rows=filtered,
         rejected_count=rejected_count,
         latency_ms=latency_ms,
-        adapter_calls=(ADAPTER_ID,),
+        adapter_calls=(discovery_provider or ADAPTER_ID,),
         stop_reason=stop_reason,
         sufficiency=gate_sufficiency,
         sufficiency_rationale=gate_rationale,

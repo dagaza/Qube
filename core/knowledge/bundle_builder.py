@@ -67,6 +67,8 @@ def _row_dates(row: dict[str, Any]) -> tuple[str | None, float | None, dict[str,
     extras: dict[str, Any] = {}
     if row.get("_rerank_score") is not None:
         extras["rerank_score"] = row.get("_rerank_score")
+    if row.get("_rerank_strong") is not None:
+        extras["rerank_strong"] = bool(row.get("_rerank_strong"))
     if row.get("_freshness"):
         extras["freshness"] = row.get("_freshness")
         extras["source_date"] = source_date
@@ -122,11 +124,13 @@ def _legacy_row_to_evidence(
         relevance = float(semantic) if semantic is not None else token_overlap
     publication, fresh, date_meta = _row_dates(row)
 
+    # Plan S10 (R7): the provider that found the row (Brave, SearXNG, …).
+    adapter = str(row.get("_discovery_provider") or "duckduckgo")
     source_id = url or f"ddg:{title[:96]}"
     return EvidenceObject(
         id=f"ek_{index}",
         source_id=source_id,
-        adapter="duckduckgo",
+        adapter=adapter,
         retrieval_method="serp",
         title=title,
         excerpt=snippet,
@@ -483,7 +487,9 @@ def _trusted_row_to_evidence(
         url = None
 
     is_wiki = bool(row.get("_wiki_source"))
-    adapter = "wikipedia_api" if is_wiki else "duckduckgo"
+    adapter = (
+        "wikipedia_api" if is_wiki else str(row.get("_discovery_provider") or "duckduckgo")
+    )
     retrieval_method = "api_extract" if is_wiki else "serp"
     document_type = "encyclopedia" if is_wiki else tier_label_for_url(url)
 
@@ -696,7 +702,8 @@ def _scientific_row_to_evidence(
     else:
         full_text = None
     url = str(row.get("url") or "").strip() or None
-    adapter = str(row.get("_adapter") or "pubmed")
+    # Plan S10 (R7): an untagged row is not credited to PubMed (or its authority).
+    adapter = str(row.get("_adapter") or "unknown")
     authors_raw = row.get("authors") or ()
     authors = tuple(str(a).strip() for a in authors_raw if str(a).strip())
     relevance = float(row.get("_scientific_relevance") or 0.75)
@@ -739,6 +746,12 @@ def _scientific_row_to_evidence(
         raw_metadata={
             "pmid": row.get("pmid"),
             "arxiv_id": row.get("arxiv_id"),
+            **({"rerank_score": row.get("_rerank_score")} if row.get("_rerank_score") is not None else {}),
+            **(
+                {"rerank_strong": bool(row.get("_rerank_strong"))}
+                if row.get("_rerank_strong") is not None
+                else {}
+            ),
         },
     )
 
@@ -1082,7 +1095,7 @@ def _finance_row_to_evidence(
     snippet = str(row.get("snippet") or "").strip()
     url = str(row.get("url") or "").strip() or None
     form = str(row.get("form") or "").strip()
-    adapter = str(row.get("_adapter") or "sec_edgar")
+    adapter = str(row.get("_adapter") or "unknown")
     retrieval_method = str(row.get("retrieval_method") or _finance_retrieval_method(adapter))
     gated = _gate_relevance(row)
     relevance = gated if gated is not None else float(row.get("_web_token_overlap") or 0.82)
@@ -1108,7 +1121,7 @@ def _finance_row_to_evidence(
         url=url,
         document_type=document_type,
         publication_date=row.get("publication_date"),
-        venue=venue,
+        venue=venue or None,
         authors=(),
         relevance_score=max(0.0, min(1.0, relevance)),
         authority_score=authority,
@@ -1130,6 +1143,11 @@ def _finance_row_to_evidence(
             "region": row.get("region"),
             "currency": row.get("currency"),
             **({"rerank_score": row.get("_rerank_score")} if row.get("_rerank_score") is not None else {}),
+            **(
+                {"rerank_strong": bool(row.get("_rerank_strong"))}
+                if row.get("_rerank_strong") is not None
+                else {}
+            ),
         },
     )
 
@@ -1140,7 +1158,8 @@ def _finance_retrieval_method(adapter: str) -> str:
         "companies_house": "companies_house_search",
         "alpha_vantage": "alpha_vantage_symbol_search",
         "bloomberg_api": "bloomberg_instrument_search",
-    }.get(adapter, "sec_submissions")
+        "sec_edgar": "sec_submissions",
+    }.get(adapter, "api")
 
 
 def _finance_venue(adapter: str) -> str:
@@ -1153,7 +1172,8 @@ def _finance_venue(adapter: str) -> str:
         "eurostat": "Eurostat",
         "bls": "BLS",
         "oecd": "OECD",
-    }.get(adapter, "SEC EDGAR")
+        "sec_edgar": "SEC EDGAR",
+    }.get(adapter, "")  # S10 (R7): no invented venue for other sources
 
 
 def _finance_document_type(adapter: str) -> str:
@@ -1166,7 +1186,8 @@ def _finance_document_type(adapter: str) -> str:
         "eurostat": "statistical_release",
         "bls": "statistical_release",
         "oecd": "statistical_release",
-    }.get(adapter, "sec_filing")
+        "sec_edgar": "sec_filing",
+    }.get(adapter, "finance_record")
 
 
 def _finance_authority(adapter: str) -> float:
@@ -1217,7 +1238,7 @@ def _compute_finance_coverage(
         )
     if len(sources) >= 1:
         if len(adapters) > 1:
-            labels = ", ".join(sorted(_finance_venue(a) for a in adapters))
+            labels = ", ".join(sorted(_finance_venue(a) or a for a in adapters))
             return (
                 COVERAGE_ADEQUATE,
                 f"{len(sources)} finance source(s) from {labels}.",
@@ -1320,7 +1341,7 @@ def _legal_row_to_evidence(
     snippet = str(row.get("snippet") or "").strip()
     url = str(row.get("url") or "").strip() or None
     relevance = float(row.get("_web_token_overlap") or 0.82)
-    adapter = str(row.get("_adapter") or "courtlistener")
+    adapter = str(row.get("_adapter") or "unknown")
     authority = float(row.get("authority_score") or _legal_authority(adapter))
     retrieval_method = str(row.get("retrieval_method") or _legal_retrieval_method(adapter))
     document_type = str(row.get("document_type") or _legal_document_type(adapter))
@@ -1343,7 +1364,7 @@ def _legal_row_to_evidence(
         url=url,
         document_type=document_type,
         publication_date=row.get("publication_date"),
-        venue=venue,
+        venue=venue or None,
         authors=(),
         relevance_score=max(0.0, min(1.0, relevance)),
         authority_score=max(0.0, min(1.0, authority)),
@@ -1374,7 +1395,7 @@ def _legal_retrieval_method(adapter: str) -> str:
         "congress_gov": "congress_gov_bill_search",
         "govinfo": "govinfo_search",
         "legislation_uk": "legislation_uk_search",
-    }.get(adapter, "courtlistener_search")
+    }.get(adapter, "api")
 
 
 def _legal_venue(adapter: str) -> str:
@@ -1386,7 +1407,7 @@ def _legal_venue(adapter: str) -> str:
         "congress_gov": "Congress.gov",
         "govinfo": "GovInfo",
         "legislation_uk": "legislation.gov.uk",
-    }.get(adapter, "CourtListener")
+    }.get(adapter, "")  # S10 (R7): no invented venue for other sources
 
 
 def _legal_document_type(adapter: str) -> str:
@@ -1395,7 +1416,10 @@ def _legal_document_type(adapter: str) -> str:
         "congress_gov": "federal_bill",
         "govinfo": "federal_publication",
         "legislation_uk": "uk_legislation",
-    }.get(adapter, "court_opinion")
+        "courtlistener": "court_opinion",
+        "canlii": "court_opinion",
+        "bailii": "court_opinion",
+    }.get(adapter, "legal_document")
 
 
 def _legal_authority(adapter: str) -> float:
@@ -1436,7 +1460,7 @@ def _compute_legal_coverage(
         for s in sources
     }
     if len(sources) >= 2 and len(adapters) > 1:
-        labels = ", ".join(sorted(_legal_venue(a) for a in adapters))
+        labels = ", ".join(sorted(_legal_venue(a) or a for a in adapters))
         return (
             COVERAGE_ADEQUATE,
             f"{len(sources)} legal source(s) from {labels}.",

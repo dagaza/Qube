@@ -109,6 +109,10 @@ def evidence_to_ui_source(obj: EvidenceObject, *, ui_id: int) -> dict:
         row["reliability_score"] = round(float(obj.reliability_score), 4)
     # Plan S7 (R9): freshness on turns that ask for current information.
     meta = obj.raw_metadata or {}
+    # Plan S10: the gate judged this source to address the question directly
+    # (cross-encoder score at or above the service's "strong" threshold).
+    if meta.get("rerank_strong") is not None:
+        row["directly_relevant"] = bool(meta["rerank_strong"])
     if meta.get("freshness"):
         row["freshness"] = str(meta["freshness"])
         if meta.get("source_date"):

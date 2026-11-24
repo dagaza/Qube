@@ -245,6 +245,7 @@ from core.app_settings import (
     get_enable_chat_personality_nudge,
     get_enable_memory_v7_salvage,
 )
+from core.retrieval_budget import estimate_tokens, retrieval_char_budget
 from core.app_settings import (
     get_sidecar_query_rewrite_enabled,
     get_sidecar_query_slots_shadow_enabled,
@@ -1004,6 +1005,50 @@ class LLMWorker(QThread):
         if budget > 0 and len(joined) > budget:
             return fit_source_blocks_to_budget(parts, budget)
         return joined
+
+    def _active_context_window(self) -> int | None:
+        """n_ctx for this turn: the loaded native window, else the configured limit."""
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
+            engine = getattr(self, "_native_engine", None)
+            loaded = getattr(engine, "loaded_n_ctx", None)
+            if callable(loaded):
+                try:
+                    value = loaded()
+                except Exception:
+                    value = None
+                if value:
+                    return int(value)
+        try:
+            value = int(getattr(self, "context_window", 0) or 0)
+        except (TypeError, ValueError):
+            return None
+        return value if value > 0 else None
+
+    def _retrieval_budget_for_turn(self, history: list, *, extra_context_chars: int = 0):
+        """Plan S10 (R5): retrieval character budget from n_ctx, history and overhead."""
+        messages = [m for m in (history or []) if isinstance(m, dict)]
+        query = ""
+        if not messages or str(messages[-1].get("role") or "") != "user":
+            query = str(getattr(self, "prompt", "") or "")
+        try:
+            skills_chars = int(get_skill_settings().total_prompt_char_budget)
+        except Exception:
+            skills_chars = 1200
+        try:
+            max_output = self._max_tokens_completion(
+                native=getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal"
+            )
+        except Exception:
+            max_output = None
+        return retrieval_char_budget(
+            n_ctx=self._active_context_window(),
+            history=messages,
+            query=query,
+            extra_context_chars=extra_context_chars,
+            skills_chars=skills_chars,
+            max_output_tokens=max_output,
+            cap_chars=self.MAX_TOTAL_RETRIEVAL_CHARS,
+        )
 
     def _stamp_discourse_on_decision(
         self,
@@ -4340,22 +4385,60 @@ class LLMWorker(QThread):
         # ============================================================
         # 2.5 UNIFIED RETRIEVAL PROMPT (order: memory → RAG → web; ids [1]..[n] match UI)
         # ============================================================
+        attachment_ctx = getattr(self, "_turn_attachment_context", "").strip()
+        inject_tool_context = bool(tool_context.strip()) and (
+            execution_route == "CAPABILITY"
+            or (
+                getattr(self, "_composer_knowledge_tool", None)
+                and not all_ui_sources
+            )
+        )
+        # Plan S10 (R5): size the retrieval block from the active context window.
+        retrieval_budget = self._retrieval_budget_for_turn(
+            history,
+            extra_context_chars=len(attachment_ctx)
+            + (len(tool_context.strip()) if inject_tool_context else 0),
+        )
+        retrieval_format_mode = (
+            "background"
+            if execution_route == "NONE"
+            and all_ui_sources
+            and all(
+                str(s.get("type", "")).lower() == "memory"
+                for s in all_ui_sources
+                if isinstance(s, dict)
+            )
+            else "grounded"
+        )
         retrieval_prompt_body = self._format_sources_for_llm_prompt(
             all_ui_sources,
-            format_mode=(
-                "background"
-                if execution_route == "NONE"
-                and all_ui_sources
-                and all(
-                    str(s.get("type", "")).lower() == "memory"
-                    for s in all_ui_sources
-                    if isinstance(s, dict)
-                )
-                else "grounded"
-            ),
+            format_mode=retrieval_format_mode,
+            char_budget=retrieval_budget.chars,
         )
+        if (
+            retrieval_prompt_body
+            and retrieval_budget.tokens
+            and estimate_tokens(retrieval_prompt_body) > retrieval_budget.tokens
+        ):
+            # Non-ASCII sources cost more tokens per character than the estimate
+            # assumes; shrink the character budget in proportion.
+            scaled = int(
+                retrieval_budget.chars
+                * retrieval_budget.tokens
+                / max(1, estimate_tokens(retrieval_prompt_body))
+            )
+            retrieval_prompt_body = self._format_sources_for_llm_prompt(
+                all_ui_sources,
+                format_mode=retrieval_format_mode,
+                char_budget=max(1, scaled),
+            )
+        if isinstance(decision, dict):
+            decision["retrieval_budget"] = {
+                **retrieval_budget.as_trace(),
+                "used_chars": len(retrieval_prompt_body or ""),
+            }
         if retrieval_prompt_body:
-            from core.memory_filters import prefix_evidence_notes
+            from core.memory_filters import prefix_evidence_notes, retrieval_coverage_note
 
             retrieval_prompt_body = prefix_evidence_notes(
                 retrieval_prompt_body,
@@ -4363,8 +4446,13 @@ class LLMWorker(QThread):
                 bundle_warnings=tuple(getattr(_gate_bundle, "warnings", ()) or ())
                 if _gate_bundle is not None
                 else (),
+                coverage_note=retrieval_coverage_note(
+                    str(getattr(_gate_bundle, "sufficiency", "") or "")
+                    if _gate_bundle is not None
+                    else "",
+                    all_ui_sources,
+                ),
             )
-        attachment_ctx = getattr(self, "_turn_attachment_context", "").strip()
         if attachment_ctx:
             if retrieval_prompt_body:
                 retrieval_prompt_body = (
@@ -4376,13 +4464,7 @@ class LLMWorker(QThread):
                 "[LLM Worker] Injected composer attachment context (%d chars)",
                 len(attachment_ctx),
             )
-        if tool_context.strip() and (
-            execution_route == "CAPABILITY"
-            or (
-                getattr(self, "_composer_knowledge_tool", None)
-                and not all_ui_sources
-            )
-        ):
+        if inject_tool_context:
             if retrieval_prompt_body:
                 retrieval_prompt_body = (
                     f"{tool_context.strip()}\n\n{retrieval_prompt_body}"

@@ -209,6 +209,8 @@ def _rank_candidates_gated(
     for row, score in zip(to_score, result.scores):
         row["_token_relevance"] = row.get("_scientific_relevance")
         row["_rerank_score"] = round(float(score), 4)
+        # Plan S10: the coverage note counts rows that directly address the question.
+        row["_rerank_strong"] = float(score) >= thresholds.strong
         # One meaning everywhere (MMR, bundle, slots, UI): p(relevant).
         row["_scientific_relevance"] = relevance_probability(score)
 
