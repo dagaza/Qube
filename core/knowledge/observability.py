@@ -175,3 +175,32 @@ def record_retrieval_trace(
         )
     except Exception:
         pass
+
+
+CITATION_GROUNDING_EVENT = "citation_grounding"
+
+
+def record_citation_grounding_event(payload: Mapping[str, Any]) -> None:
+    """Plan S11: append the post-stream grounding scores next to the turn's trace.
+
+    Same JSONL sink and opt-in as ``record_retrieval_trace``; joined to the
+    trace by ``session_id`` / ``turn_id`` in ``retrieval_trace_reader``.
+    """
+    if not web_search_audit_log_enabled():
+        return
+    try:
+        body = {"event": CITATION_GROUNDING_EVENT, "ts": time.time(), **dict(payload)}
+        from core.web_search_audit import web_search_audit_redact_enabled
+
+        if web_search_audit_redact_enabled():
+            # Answer text stays out of a redacted audit log; scores and ids remain.
+            body["grounding_scores"] = [
+                {k: v for k, v in row.items() if k != "preview"}
+                for row in body.get("grounding_scores") or []
+            ]
+            body["previews_redacted"] = True
+        logging.getLogger(WEB_SEARCH_AUDIT_LOGGER_NAME).info(
+            json.dumps(body, ensure_ascii=False, default=str)
+        )
+    except Exception:
+        pass

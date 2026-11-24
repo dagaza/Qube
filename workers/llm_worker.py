@@ -643,6 +643,11 @@ class LLMWorker(QThread):
         except Exception:
             logger.debug("[CitationIntegrity] telemetry failed", exc_info=True)
 
+        if phase == "worker_finalize":
+            # Plan S11 (R8): grounding scores for cited WEB turns, off the turn
+            # thread. Telemetry only; the text below is never changed by it.
+            self._schedule_citation_grounding(text or "", src_list)
+
         if not get_citation_integrity_enforce():
             return text or ""
 
@@ -664,6 +669,23 @@ class LLMWorker(QThread):
             except Exception:
                 logger.debug("[CitationIntegrity] repair telemetry failed", exc_info=True)
         return repaired
+
+    def _schedule_citation_grounding(self, text: str, sources: list) -> None:
+        try:
+            from core.app_settings import get_citation_grounding_telemetry_enabled
+            from core.citation_grounding import run_citation_grounding_telemetry
+
+            if not get_citation_grounding_telemetry_enabled():
+                return
+            run_citation_grounding_telemetry(
+                text,
+                sources,
+                execution_route=str(getattr(self, "_turn_execution_route", "") or ""),
+                session_id=str(self.session_id or ""),
+                turn_id=getattr(self, "_routing_debug_turn_seq", None),
+            )
+        except Exception:
+            logger.debug("[CitationGrounding] scheduling failed", exc_info=True)
 
     def _apply_cited_only_citation_renumber(
         self, final_text: str, all_ui_sources: list

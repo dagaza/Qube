@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from core.knowledge.observability import RETRIEVAL_TRACE_EVENT
+from core.knowledge.observability import CITATION_GROUNDING_EVENT, RETRIEVAL_TRACE_EVENT
 from core.knowledge.search_outcome import (
     format_search_outcome_summary_line,
     search_outcome_from_relevance_diag,
@@ -14,19 +14,37 @@ from core.knowledge.search_outcome import (
 from core.web_search_audit_sink import default_web_search_audit_log_path
 
 
-def _parse_line(line: str) -> dict[str, Any] | None:
+def _parse_event(line: str, event: str) -> dict[str, Any] | None:
     line = (line or "").strip()
     if not line:
         return None
+    # The file sink writes "[time] [LEVEL] [logger] {json}"; tests and older
+    # tools write bare JSON. Parse from the first brace either way (S11 fix:
+    # before it, no line written by the real sink could be read).
+    brace = line.find("{")
+    if brace > 0:
+        line = line[brace:]
     try:
         payload = json.loads(line)
     except json.JSONDecodeError:
         return None
     if not isinstance(payload, dict):
         return None
-    if payload.get("event") != RETRIEVAL_TRACE_EVENT:
+    if payload.get("event") != event:
         return None
     return payload
+
+
+def _parse_line(line: str) -> dict[str, Any] | None:
+    return _parse_event(line, RETRIEVAL_TRACE_EVENT)
+
+
+def _turn_key(payload: dict[str, Any]) -> tuple[str, str] | None:
+    sid = str(payload.get("session_id") or "")
+    tid = payload.get("turn_id")
+    if not sid or tid is None:
+        return None
+    return sid, str(tid)
 
 
 def read_retrieval_traces(
@@ -47,10 +65,23 @@ def read_retrieval_traces(
     except OSError:
         return []
 
+    # Plan S11: post-stream grounding events, newest per (session, turn).
+    grounding: dict[tuple[str, str], dict[str, Any]] = {}
+    for line in reversed(lines):
+        if CITATION_GROUNDING_EVENT not in line:
+            continue
+        event = _parse_event(line, CITATION_GROUNDING_EVENT)
+        key = _turn_key(event) if event is not None else None
+        if key is not None and key not in grounding:
+            grounding[key] = event
+
     for line in reversed(lines):
         payload = _parse_line(line)
         if payload is None:
             continue
+        key = _turn_key(payload)
+        if key is not None and key in grounding:
+            payload["citation_grounding"] = grounding[key]
         if session_id and str(payload.get("session_id") or "") != session_id:
             continue
         if turn_id is not None:
@@ -122,6 +153,21 @@ def format_relevance_gate_lines(trace: dict[str, Any]) -> list[str]:
     return lines
 
 
+def format_citation_grounding_line(event: dict[str, Any]) -> str:
+    """One line on post-stream citation grounding (plan S11; telemetry only)."""
+    if not event:
+        return ""
+    if event.get("status") != "scored":
+        reason = event.get("skip_reason") or "not scored"
+        return f"Citation grounding: not scored ({reason})"
+    return (
+        "Citation grounding (relevance proxy, not a verdict): "
+        f"{event.get('claims', 0)} cited sentence(s), {event.get('pairs_scored', 0)} scored; "
+        f"median {event.get('score_median')}, min {event.get('score_min')}; "
+        f"{event.get('claims_best_below_0', 0)} with best source below 0"
+    )
+
+
 def format_retrieval_trace_summary(trace: dict[str, Any]) -> str:
     """Human-readable summary for UI display."""
     if not trace:
@@ -157,6 +203,9 @@ def format_retrieval_trace_summary(trace: dict[str, Any]) -> str:
     if search_line:
         lines.append(search_line)
     lines.extend(format_relevance_gate_lines(trace))
+    grounding_line = format_citation_grounding_line(trace.get("citation_grounding") or {})
+    if grounding_line:
+        lines.append(grounding_line)
     warnings = trace.get("warnings") or []
     if warnings:
         lines.append(f"Warnings: {'; '.join(str(w) for w in warnings)}")

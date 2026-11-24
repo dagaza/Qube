@@ -73,6 +73,8 @@ KEY_DEEP_RESEARCH_ENABLED = "qube.knowledge.deep_research_enabled"  # legacy; ig
 KEY_DEEP_RESEARCH_PROFILE = "qube.knowledge.deep_research_profile"
 KEY_KNOWLEDGE_SOURCE_PREFERENCES = "qube.knowledge.source_preferences"
 KEY_KNOWLEDGE_RERANKER_ENABLED = "qube.knowledge.reranker.enabled"
+# Plan S11: post-stream citation grounding telemetry (log-only; never edits answers).
+KEY_KNOWLEDGE_CITATION_GROUNDING_ENABLED = "qube.knowledge.citation_grounding_telemetry_enabled"
 KEY_KNOWLEDGE_PROVIDER_CREDENTIALS = "qube.knowledge.provider_credentials"
 KEY_DEFAULT_KNOWLEDGE_SERVICE = "qube.knowledge.default_service"
 KEY_SKILLS_ENABLED = "qube.skills.enabled"
@@ -598,6 +600,20 @@ def get_knowledge_reranker_enabled() -> bool:
 
 def set_knowledge_reranker_enabled(enabled: bool) -> None:
     _store().set(KEY_KNOWLEDGE_RERANKER_ENABLED, bool(enabled))
+
+
+def get_citation_grounding_telemetry_enabled() -> bool:
+    """Score cited sentences against their sources after each WEB turn and log it (S11).
+
+    Telemetry only: the answer is never changed. Needs the reranker (default on).
+    """
+    return get_knowledge_reranker_enabled() and bool(
+        _store().get(KEY_KNOWLEDGE_CITATION_GROUNDING_ENABLED, True)
+    )
+
+
+def set_citation_grounding_telemetry_enabled(enabled: bool) -> None:
+    _store().set(KEY_KNOWLEDGE_CITATION_GROUNDING_ENABLED, bool(enabled))
 
 
 def get_default_knowledge_service() -> str:
