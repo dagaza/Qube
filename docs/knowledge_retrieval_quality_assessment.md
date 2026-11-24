@@ -1139,6 +1139,96 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 > **Do not edit sections 1–11 above.** Record shipped work here only.  
 > **Last reviewed:** 2026-11-24, S8 complete except the live ANT check (open to-do, §12.4 S8 "To do"; §12.4 S8, deadlines + multi-query union + spelling variant + web pool 8 + trusted allowlist); S7 complete (§12.4 S7, web / trusted / finance gate + recency); S6 complete (§12.4 S6, subject/facet + follow-ups); S5 complete (§12.4 S5, acronyms + request frames); S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
 
+### Resuming work in a new session (handoff, updated 2026-11-24 after S8)
+
+A new session has no memory of earlier conversations. Read this section, then §12.3–§12.6, then the S8 "As built" notes (§12.4), before starting a stage.
+
+**State.** Branch `feat/knowledge-retrieval-quality`, based on `main` (`2f4b180`). S1–S8 are committed, one commit per stage: S1 `2fda486`, S2 `355e661`, S3 `9f9a0ea` (+ `0db97bb` HF repo casing), S4 `4a07449` (+ `182ba04` MMR fix), S5 `b789420`, S6 `35a0ea3`, S7 `3e993e5`, S8 `2e278ad`. Next stage: **S9**. Open item: the S8 live ANT re-run (§12.4 S8 "To do"; progress-log row "S8 · To do").
+
+**Working agreement (from the product owner).**
+
+- One stage at a time, in plan order. After each stage, run the tests, inspect the diff, and check that existing behaviour still works. Then report the results and **ask before committing**. Commit or push only when asked.
+- Never weaken existing functionality, remove features, or add placeholder implementations to make tests pass. Change a test only when the intended behaviour changed, and say why in the commit (§12.5 rule 3).
+- Validate uncertain assumptions by measuring them, and record the finding. If an assumption proves false, stop and adjust the plan (§12.5 rule 6). The goal is real quality across all topics, not the ANT case (§12.5 rule 7).
+- Ask the owner before a decision that is theirs: new third-party dependencies, product behaviour, anything spending a user's API quota. Record each decision as a new D-row in §12.6.
+- Privacy: never put the user's name, email or other personal details in a request to an outside service. Adapters use the generic contact `local@qube.app`.
+- Commit messages: a one-line summary ending in "(SN)", a bullet body in the style of earlier stage commits, a short metrics paragraph, and finally the line `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+
+**Documentation rules.** Never edit sections 1–11. For each stage add:
+
+- an "As built (date)" block under the stage in §12.4, with any deviations from the plan text and the evidence for them;
+- progress-log rows (deliverables, calibration, acceptance with ✓/✗, tests including the full-suite count, baselines);
+- an "SN results" table before "Git reference";
+- an update to the "Last reviewed" line.
+
+Mark partial acceptance as **Partial** and say why.
+
+**Commands** (from the repo root, with `.venv`):
+
+- Targeted tests: `.venv/bin/python -m pytest -q -p no:cacheprovider tests/<files>`.
+- Full suite: `QT_QPA_PLATFORM=offscreen HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings -m "not packaging" tests > <log> 2>&1`.
+  - The process ends with the known Qt teardown abort (exit 134, no summary line), so count ` PASSED` / ` FAILED` lines in the log.
+  - S8 reference: **4073 passed**, and exactly these 5 pre-existing failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), and `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
+- Offline eval, which needs the reranker model locally: `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_knowledge_quality.py --corpus eval/retrieval_corpus/v1_knowledge_quality.json --ranker <token|embed|ce> --query-mode <production|standalone> [--pool-mode widened] [--json] [--compare <baseline>]`.
+  - Stage baselines are `eval/retrieval_corpus/baselines/kq_sN_{token,embed}_{production,standalone}.json` (default pool mode) and `kq_sN_ce_{production,standalone}.json` (with `--pool-mode widened`, the shipped depth since S8). Always pass the relative `--corpus` path above.
+  - Compare new work against `kq_s8_*`, using the same flags as the baseline.
+- Keep scratch scripts and benchmark outputs outside the repo; only baselines are committed.
+
+**Live checks.** Live runs hit real APIs, so keep them few.
+
+- Qube runs OpenAlex without a key, and about 95 searches (four live runs of the 21-case scientific corpus) used up its daily budget on 2026-11-24. OpenAlex then answers 429 until 00:00 UTC.
+- Do the important live check first in a UTC day. Before trusting any OpenAlex-dependent result, check that `api.openalex.org` in `http_summary` shows no 429.
+- The S8 live ANT re-run (to do), from the repo root:
+
+```bash
+HF_HUB_OFFLINE=1 .venv/bin/python - <<'PY'
+import os
+os.environ["QUBE_EVIDENCE_CACHE"] = "0"
+from unittest.mock import patch
+from core.knowledge import quality_eval as qe
+from core.knowledge.pipeline_scientific import ScientificEvidencePipeline
+from core.knowledge.types import RetrievalBudget, RetrievalContext
+from core.query_resolution_evaluation import build_discourse_resolution
+
+for fid in ("ant_ai_candidates", "mt_ant_followup_live"):  # kq_ant_ai_followup, mt_ant_followup_live
+    fx = qe.load_json(f"eval/fixtures/knowledge_quality/{fid}.json")
+    q, raw = qe.fixture_ranking_query(fx, query_mode="production"), None
+    if fx.get("history") and fx.get("query_clean"):
+        _, _, r = build_discourse_resolution(fx["query_clean"], fx["history"])
+        q = r.web_text or q
+        raw = fx["query_clean"] if r.web_rewritten else None
+    ctx = RetrievalContext(query=q, semantic_query=q, budget=RetrievalBudget(max_results=3), query_raw=raw)
+    with patch("core.app_settings.get_knowledge_reranker_enabled", return_value=True):
+        bundle, diag, _ = ScientificEvidencePipeline().run(ctx)
+    rr, pool = diag.get("rerank") or {}, diag.get("scientific_pool") or {}
+    oa = ((diag.get("http_summary") or {}).get("by_host") or {}).get("api.openalex.org", {})
+    print(fid, "| state:", bundle.sufficiency, "| candidates:", pool.get("candidates"),
+          "| CE>0 (survivors):", rr.get("survivors"), "| spelling:", pool.get("spelling_corrections"),
+          "| openalex 429:", oa.get("429"), "remaining:", oa.get("rate_limit_remaining"),
+          "| timeouts:", [t["adapter"] for t in diag.get("adapter_timeouts") or []])
+PY
+```
+
+The scientific `keep` threshold is 0, so `survivors` is the number of candidates with CE > 0.
+
+- **Pass** (the S8 plan acceptance): ≥ 5 candidates with CE > 0 on the ANT turns (S5 measured 12 with the correct spelling), and the "Inteligence → Intelligence" correction in the trace. Read the kept titles too: they should be papers on ANT and AI.
+- **Measured on 2026-11-24:** the correction is generated, but OpenAlex was over budget, so only Crossref and SocArXiv answered (3 candidates, 0 with CE > 0).
+
+**Carry-overs for S9–S13** (found during S1–S8; check them again before acting):
+
+- **S9:** none from S8. Start with the sidecar rewrite audit (V7), as the plan says.
+- **S10:**
+  - Crossref `peer_reviewed` is already fixed (S8).
+  - Semantic Scholar still hard-codes `peer_reviewed: True` (V8).
+- **S12:**
+  - Adapter **timeouts** already reach the sufficiency rationale (S8). Adapter **errors** are only in `scientific_pool.collection[*].adapter_errors`, not in the rationale.
+  - SocArXiv (OSF) often returns 500 / 400 and arXiv sometimes takes about 10 s; both are now cut off by the deadline.
+- **S13 / calibration candidates:**
+  - On 8-row web pools the cross-encoder still sometimes keeps a `partial` page over a `relevant` one: 3 of 40 web cases are worse than S7 (ECB rate, iPhone guide, Bled Castle). The SERP-rank prior (`web_gate.SERP_RANK_PRIOR`) is the current mitigation.
+  - Title dedupe misses chapter-numbered duplicates ("2 EVIDENCE FOR DARK MATTER…" vs "Evidence for Dark Matter…").
+  - `relevant_recall` and nDCG are scored against each run's own pool, so `--compare` across different pool sizes flags false regressions. Compare kept sets on the same pool instead (S8 results).
+- **Decisions in force:** D1–D8 (§12.6). D5: Library / memory RAG comes only after S13. D8: the raw-wording variant runs only with an OpenAlex key.
+
 ### Summary
 
 | Phase (roadmap §7) | Status as of 2026-11-23 | Notes |
