@@ -38,10 +38,12 @@ Metric conventions (pinned by ``tests/test_knowledge_quality_eval.py``):
 
 from __future__ import annotations
 
+import contextvars
 import json
 import math
 import re
 from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
@@ -341,6 +343,27 @@ class RankerOutput:
     kept: list[dict[str, Any]]
     rejected: list[dict[str, Any]]
     state: str = "unscored"  # sufficiency state once S4 lands
+    warnings: tuple[str, ...] = ()  # S7: recency warnings ("stale_sources", …)
+
+
+# The "today" freshness is judged against (S7): the fixture's capture date, or
+# that date shifted forward to replay the same pool as if it had aged.
+_EVAL_TODAY: contextvars.ContextVar[date | None] = contextvars.ContextVar("kq_eval_today", default=None)
+
+
+def fixture_today(fixture: dict[str, Any], *, shift_days: int = 0) -> date | None:
+    """Capture date of ``fixture`` (plus ``shift_days``), or ``None`` if unknown."""
+    raw = str(fixture.get("captured_at") or "").strip()
+    if not raw:
+        return None
+    try:
+        day = datetime.fromisoformat(raw.replace("Z", "+00:00")).date()
+    except ValueError:
+        try:
+            day = date.fromisoformat(raw[:10])
+        except ValueError:
+            return None
+    return day + timedelta(days=int(shift_days))
 
 
 # (query, pool rows, budget, retrieval path) -> RankerOutput
@@ -389,11 +412,14 @@ def _rank_general_web(query, rows, budget, *, query_vector, embed_fn) -> RankerO
     # pipeline_general_web (default "strict" gate): filter_web_results keeps SERP
     # order; every survivor is a candidate source (the balanced profile then
     # fetches the top survivor — fetch is not replayed offline).
+    from core.knowledge.ranking.web_gate import drop_search_ads
     from core.retrieval_relevance import filter_web_results
 
+    # S7: search ads are dropped before any gate (both paths).
+    candidates, _ads = drop_search_ads(rows)
     kept, _ = filter_web_results(
         query,
-        rows,
+        candidates,
         query_vector=query_vector,
         embed_text_fn=embed_fn,
         use_embedding_gate=True,
@@ -524,22 +550,81 @@ def _build_embed_ranker() -> RankerFn:
     return rank
 
 
+def _ce_rank_non_scientific(
+    query: str, rows: list[dict[str, Any]], budget: int, path: str
+) -> RankerOutput | None:
+    """Replay the S7 gates of ``pipeline_general_web`` / ``pipeline_trusted`` /
+    ``pipeline_finance`` (``None`` when the reranker cannot run → legacy)."""
+    from core.knowledge.ranking.web_gate import (
+        FINANCE_THRESHOLDS,
+        TRUSTED_THRESHOLDS,
+        WEB_THRESHOLDS,
+        drop_search_ads,
+        gate_rows,
+    )
+
+    today = _EVAL_TODAY.get()
+    if path == PATH_GENERAL_WEB:
+        # Every survivor is a candidate source, as in production.
+        pool, _ads = drop_search_ads(rows)
+        gate = gate_rows(query, pool, budget=len(pool), thresholds=WEB_THRESHOLDS, today=today)
+    elif path == PATH_TRUSTED:
+        from core.knowledge.adapters.wikipedia_api import ADAPTER_ID as WIKI_ADAPTER
+        from core.knowledge.ranking.authority import is_allowlisted_url
+
+        wiki = [r for r in rows if str(r.get("_adapter") or "") == WIKI_ADAPTER][: min(2, budget)]
+        for r in wiki:
+            r.setdefault("_wiki_source", True)
+        gate = gate_rows(query, wiki, budget=budget, thresholds=TRUSTED_THRESHOLDS, today=today)
+        if gate is not None and len(gate.kept) < budget:
+            wiki_urls = {str(r.get("url") or "").strip().lower() for r in wiki if r.get("url")}
+            allowlisted, _ads = drop_search_ads(
+                [
+                    r
+                    for r in rows
+                    if str(r.get("_adapter") or "") != WIKI_ADAPTER
+                    and is_allowlisted_url(str(r.get("url") or ""))
+                    and str(r.get("url") or "").strip().lower() not in wiki_urls
+                ]
+            )
+            if allowlisted:
+                gate = gate_rows(
+                    query, [*wiki, *allowlisted], budget=budget, thresholds=TRUSTED_THRESHOLDS, today=today
+                )
+    elif path == PATH_FINANCE:
+        from core.knowledge.finance_query_planner import plan_finance_query
+
+        plan = plan_finance_query(query, semantic_query=query)
+        gate = gate_rows(
+            plan.semantic_query or query, rows, budget=budget, thresholds=FINANCE_THRESHOLDS, today=today
+        )
+    else:
+        return None
+    if gate is None:
+        return None
+    return RankerOutput(
+        kept=list(gate.kept),
+        rejected=_rest(rows, gate.kept),
+        state=gate.sufficiency.state.value,
+        warnings=tuple(gate.warnings),
+    )
+
+
 def _build_ce_ranker() -> RankerFn:
     """Cross-encoder relevance gate (``ce``), S4.
 
     * ``scientific_evidence``: the shipped S4 path,
       ``pipeline_scientific._rank_candidates_gated`` (CE order, ``keep`` gate,
       MMR among survivors, reliability), state from its ``SufficiencyResult``.
-    * other paths: a preview of the S7/S8 gates with the same thresholds — score
-      the pool, keep rows ``>= keep`` best-first up to the budget, state from
-      ``assess_sufficiency``. Not production behaviour yet.
+    * ``general_web`` / ``trusted_knowledge`` / ``finance_knowledge``: the
+      shipped S7 gates (``_ce_rank_non_scientific``), with freshness judged
+      against the fixture's capture date.
 
     Content-free / non-English questions fall back to the legacy ranking, as in
     production. Raises ``RankerUnavailable`` when the model is not on disk.
     ``token`` / ``embed`` keep measuring the legacy, reranker-free path.
     """
     from core.knowledge.ranking import rerank
-    from core.knowledge.ranking.sufficiency import SCIENTIFIC_THRESHOLDS, assess_sufficiency
 
     reason = rerank.unavailable_reason()
     if reason is not None:
@@ -560,16 +645,8 @@ def _build_ce_ranker() -> RankerFn:
             ranking = _rank_candidates_gated(rows, ctx=ctx, max_results=budget, question=query)
             state = ranking.sufficiency.state.value
             return RankerOutput(kept=list(ranking.kept), rejected=list(ranking.rejected), state=state)
-        pool = list(rows)
-        result = rerank.rerank_rows(query, pool)
-        if result is None:
-            return _token_ranker(query, rows, budget, path)
-        for row, score in zip(pool, result.scores):
-            row["_rerank_score"] = float(score)
-        suff = assess_sufficiency(result.scores, SCIENTIFIC_THRESHOLDS)
-        kept = [pool[i] for i in suff.kept_indices][: max(0, budget)]
-        kept_suff = assess_sufficiency([r["_rerank_score"] for r in kept], SCIENTIFIC_THRESHOLDS) if kept else suff
-        return RankerOutput(kept=kept, rejected=_rest(pool, kept), state=kept_suff.state.value)
+        output = _ce_rank_non_scientific(query, rows, budget, key)
+        return output if output is not None else _token_ranker(query, rows, budget, path)
 
     return rank
 
@@ -660,8 +737,13 @@ def evaluate_fixture(
     include_synthetic: bool = False,
     pool_mode: str = "production",
     k: int = 3,
+    recency_shift_days: int = 0,
 ) -> dict[str, Any]:
-    """Rank a fixture's pool and report graded ranking + abstention metrics."""
+    """Rank a fixture's pool and report graded ranking + abstention metrics.
+
+    ``recency_shift_days`` replays the pool as if it were that many days older
+    (S7: a fresh capture becomes a stale one without a new capture).
+    """
     if query_mode not in QUERY_MODES:
         raise ValueError(f"query_mode must be one of {QUERY_MODES}")
     rank_fn = get_fixture_ranker(ranker) if isinstance(ranker, str) else ranker
@@ -675,8 +757,13 @@ def evaluate_fixture(
         pool_mode=pool_mode,
     )
     query = fixture_ranking_query(fixture, query_mode=query_mode)
-    output = rank_fn(query, [dict(r) for r in pool], budget, _normalize_path(fixture.get("path")))
+    token = _EVAL_TODAY.set(fixture_today(fixture, shift_days=recency_shift_days))
+    try:
+        output = rank_fn(query, [dict(r) for r in pool], budget, _normalize_path(fixture.get("path")))
+    finally:
+        _EVAL_TODAY.reset(token)
     kept = output.kept
+    recency = _recency_report(query, kept, output, fixture, recency_shift_days)
     did_abstain = abstained(kept, output.state)
     # An explicit fixture ``expect`` is for single-pool fixtures; captured
     # fixtures derive it from the labels of the pool being evaluated.
@@ -722,6 +809,44 @@ def evaluate_fixture(
         "relevant_recall": relevant_recall(kept, pool, budget=budget),
         "abstain_correct": abstain_correct(expect, did_abstain),
         "subject_in_query": subject_in_query(fixture, query),
+        "warnings": list(output.warnings),
+        **recency,
+    }
+
+
+def _recency_report(
+    query: str,
+    kept: Sequence[dict[str, Any]],
+    output: RankerOutput,
+    fixture: dict[str, Any],
+    shift_days: int,
+) -> dict[str, Any]:
+    """S7 acceptance fields for turns that ask for current information.
+
+    ``stale_only``: something is kept, nothing kept is fresh, and some kept row
+    is dated outside the window. ``stale_marked``: such a turn is ``partial``
+    (or abstains) and carries ``stale_sources``. ``stale_presented_sufficient``:
+    such a turn is reported ``sufficient`` (must never happen).
+    """
+    from core.retrieval_query_cleanup import recency_need
+
+    need = recency_need(query, today=fixture_today(fixture, shift_days=shift_days))
+    if need is None:
+        return {"recency_need": None}
+    statuses = [r.get("_freshness") for r in kept]
+    stale_only = bool(kept) and "fresh" not in statuses and "stale" in statuses
+    scored = output.state != "unscored"
+    return {
+        "recency_need": need.window_days,
+        "recency_shift_days": shift_days,
+        "kept_freshness": statuses,
+        "stale_only": stale_only if scored else None,
+        "stale_marked": (
+            (output.state in ("partial", "insufficient", "none") and "stale_sources" in output.warnings)
+            if stale_only and scored
+            else None
+        ),
+        "stale_presented_sufficient": (stale_only and output.state == "sufficient") if scored else None,
     }
 
 
@@ -762,6 +887,11 @@ def aggregate_reports(
             "subject_in_query": _mean(r.get("subject_in_query") for r in reps),
             "abstain_precision": (tp / (tp + fp)) if (tp + fp) else None,
             "abstain_recall": (tp / (tp + fn)) if (tp + fn) else None,
+            # S7 (R9): turns that ask for current information.
+            "recency_turns": sum(1 for r in reps if r.get("recency_need")),
+            "stale_only_turns": sum(1 for r in reps if r.get("stale_only")),
+            "stale_marked": _mean(r.get("stale_marked") for r in reps),
+            "stale_presented_sufficient": sum(1 for r in reps if r.get("stale_presented_sufficient")),
         }
     return out
 

@@ -128,6 +128,12 @@ def main() -> int:
     )
     for flag, _, _ in _GATES:
         parser.add_argument(f"--{flag.replace('_', '-')}", dest=flag, type=float, default=None)
+    parser.add_argument(
+        "--recency-shift-days",
+        type=int,
+        default=0,
+        help="Judge source freshness as if each capture were this many days older (S7)",
+    )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON summary")
     args = parser.parse_args()
 
@@ -161,6 +167,7 @@ def main() -> int:
             include_synthetic=args.include_synthetic,
             pool_mode=args.pool_mode,
             k=args.k,
+            recency_shift_days=args.recency_shift_days,
         )
         report["ranker"] = args.ranker
         report["id"] = entry.get("id")
@@ -224,6 +231,7 @@ def main() -> int:
         "query_mode": args.query_mode,
         "include_synthetic": args.include_synthetic,
         "pool_mode": args.pool_mode,
+        "recency_shift_days": args.recency_shift_days,
         "total": len(results),
         "evaluated": len(evaluated),
         "aggregates": {"all": overall, "category": by_category, "path": by_path},
@@ -264,6 +272,15 @@ def main() -> int:
         _print_table("Overall", overall)
         _print_table("By path", by_path)
         _print_table("By category", by_category)
+        rec = all_row
+        if rec.get("recency_turns"):
+            print(
+                f"\nRecency (S7, shift {args.recency_shift_days} d): "
+                f"{rec['recency_turns']} turn(s) need current information; "
+                f"{rec['stale_only_turns']} kept only stale/undated sources with ≥1 stale; "
+                f"stale_marked={_fmt(rec.get('stale_marked')).strip()}; "
+                f"stale presented as sufficient: {rec['stale_presented_sufficient']}"
+            )
         if failures:
             print("\nFAILURES:")
             for f in failures:

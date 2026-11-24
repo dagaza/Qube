@@ -13,6 +13,7 @@ from core.knowledge.bundle_builder import build_empty_bundle, build_finance_know
 from core.knowledge.finance_query_planner import plan_finance_query
 from core.knowledge.source_preferences import resolve_service_adapters
 from core.knowledge.types import EvidenceBundle, RetrievalContext, SERVICE_FINANCE_KNOWLEDGE
+from core.knowledge.ranking.web_gate import FINANCE_THRESHOLDS, dropped_for_diag, gate_rows
 from core.retrieval_relevance import filter_web_results
 
 
@@ -91,7 +92,27 @@ class FinanceEvidencePipeline:
         rejected_count = 0
 
         kept: list[dict[str, Any]] = [dict(r) for r in rows]
-        if kept and len(kept) > budget:
+        # S7: cross-encoder gate on the filings (``None`` → legacy path below).
+        gate = gate_rows(
+            plan.semantic_query or semantic,
+            kept,
+            budget=budget,
+            thresholds=FINANCE_THRESHOLDS,
+        ) if kept else None
+        sufficiency, sufficiency_rationale, gate_warnings = "unscored", "", ()
+        if gate is not None:
+            rejected_count = len(gate.dropped)
+            kept = [dict(r) for r in gate.kept]
+            rel_diag = {
+                "rerank": dict(gate.diag),
+                "sufficiency": gate.sufficiency.state.value,
+            }
+            if gate.dropped:
+                rel_diag["rerank_dropped"] = dropped_for_diag(gate.dropped)
+            sufficiency = gate.sufficiency.state.value
+            sufficiency_rationale = gate.sufficiency.rationale
+            gate_warnings = tuple(gate.warnings)
+        elif kept and len(kept) > budget:
             filtered, rel_diag = filter_web_results(
                 plan.semantic_query,
                 kept,
@@ -111,6 +132,8 @@ class FinanceEvidencePipeline:
                 rejected_count=rejected_count,
                 stop_reason="no_evidence",
                 knowledge_service=SERVICE_FINANCE_KNOWLEDGE,
+                sufficiency=sufficiency,
+                sufficiency_rationale=sufficiency_rationale,
             )
             rel_diag = {
                 **(rel_diag or {}),
@@ -129,6 +152,9 @@ class FinanceEvidencePipeline:
             latency_ms=latency_ms,
             adapter_calls=tuple(adapter_calls),
             stop_reason=stop_reason,
+            sufficiency=sufficiency,
+            sufficiency_rationale=sufficiency_rationale,
+            extra_warnings=gate_warnings,
         )
         rel_diag = {
             **(rel_diag or {}),

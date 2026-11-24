@@ -553,6 +553,43 @@ RETRIEVAL_PARTIAL_NOTE: str = (
     "only for what they actually support, and say plainly what they do not cover.]"
 )
 
+# Plan S7 (R9): the question asks for current information.
+RETRIEVAL_RECENCY_NOTE: str = (
+    "[Evidence note: this question asks for current information. When you state "
+    "a figure or fact from a source, say how recent that source is (its date is "
+    "shown next to it when known). If a source's date is unknown, say so rather "
+    "than presenting it as current.]"
+)
+RETRIEVAL_STALE_NOTE: str = (
+    "[Evidence note: this question asks for current information, but none of "
+    "these sources is dated recently enough to confirm it. Give the date of the "
+    "source you rely on and say plainly that newer information may exist.]"
+)
+
+
+def prefix_evidence_notes(
+    body: str,
+    *,
+    partial: bool,
+    bundle_warnings: tuple[str, ...] | list[str] = (),
+) -> str:
+    """Prepend the evidence notes for a gated retrieval body (S4 partial, S7 recency).
+
+    Order in the prompt: recency note, then partial note, then the sources.
+    An empty ``body`` (no sources) gets no notes.
+    """
+    if not (body or "").strip():
+        return body
+    notes: list[str] = []
+    warnings = tuple(bundle_warnings or ())
+    if "recency_requested" in warnings:
+        notes.append(RETRIEVAL_STALE_NOTE if "stale_sources" in warnings else RETRIEVAL_RECENCY_NOTE)
+    if partial:
+        notes.append(RETRIEVAL_PARTIAL_NOTE)
+    if not notes:
+        return body
+    return "\n\n".join([*notes, body])
+
 CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX: str = (
     " IMPORTANT: the prior turn attempted a web search but returned no usable "
     "results. The user may be continuing that topic. Do NOT claim you lack "

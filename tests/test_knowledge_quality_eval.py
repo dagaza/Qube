@@ -602,5 +602,80 @@ class CliSmokeTests(unittest.TestCase):
             tmp.unlink(missing_ok=True)
 
 
+
+class S7GateReplayTests(unittest.TestCase):
+    """The ``ce`` ranker replays the shipped S7 web / trusted / finance gates."""
+
+    def setUp(self) -> None:
+        from core.knowledge.ranking.rerank import set_reranker_scorer_for_tests
+
+        def scorer(_q, docs):
+            return [6.0 if "relevant" in d else -6.0 for d in docs]
+
+        set_reranker_scorer_for_tests(scorer)
+
+    def tearDown(self) -> None:
+        from core.knowledge.ranking.rerank import set_reranker_scorer_for_tests
+
+        set_reranker_scorer_for_tests(None)
+
+    def _fixture(self, path, rows, query="What is the latest stable Python version?", captured="2026-11-23T10:00:00+0100"):
+        return {
+            "id": "s7_case", "path": path, "category": "recency", "query_clean": query,
+            "captured_at": captured, "candidates": rows,
+        }
+
+    def test_web_replay_drops_ads_and_irrelevant_rows(self) -> None:
+        from core.knowledge.quality_eval import evaluate_fixture
+
+        rows = [
+            {"title": "relevant A", "snippet": "", "url": "https://a.org/x", "label": "relevant"},
+            {"title": "relevant ad", "snippet": "", "url": "https://duckduckgo.com/y.js?ad_domain=s", "label": "irrelevant"},
+            {"title": "other", "snippet": "", "url": "https://b.org/x", "label": "irrelevant"},
+            {"title": "relevant B", "snippet": "", "url": "https://c.org/x", "label": "relevant"},
+        ]
+        rep = evaluate_fixture(self._fixture("general_web", rows), ranker="ce", query_mode="captured")
+        self.assertEqual(rep["kept_titles"], ["relevant A", "relevant B"])
+        self.assertEqual(rep["state"], "sufficient")
+        self.assertEqual(rep["irrelevant_kept_rate"], 0.0)
+
+    def test_recency_report_and_time_shift(self) -> None:
+        from core.knowledge.quality_eval import evaluate_fixture
+
+        rows = [
+            {"title": "relevant release", "snippet": "", "url": "https://blog.example/2026/10/rel/", "label": "relevant"},
+            {"title": "relevant notes", "snippet": "", "url": "https://blog.example/2026/09/notes/", "label": "relevant"},
+        ]
+        fx = self._fixture("general_web", rows)
+        now = evaluate_fixture(fx, ranker="ce", query_mode="captured")
+        self.assertEqual(now["recency_need"], 365)
+        self.assertEqual(now["kept_freshness"], ["fresh", "fresh"])
+        self.assertEqual(now["state"], "sufficient")
+        self.assertFalse(now["stale_only"])
+        aged = evaluate_fixture(fx, ranker="ce", query_mode="captured", recency_shift_days=730)
+        self.assertEqual(aged["kept_freshness"], ["stale", "stale"])
+        self.assertTrue(aged["stale_only"])
+        self.assertTrue(aged["stale_marked"])
+        self.assertFalse(aged["stale_presented_sufficient"])
+        self.assertIn("stale_sources", aged["warnings"])
+
+    def test_token_ranker_reports_no_recency_verdict(self) -> None:
+        from core.knowledge.quality_eval import evaluate_fixture
+
+        rows = [{"title": "Python release", "snippet": "latest stable Python version", "url": "https://a.org/2020/01/x", "label": "relevant"}]
+        rep = evaluate_fixture(self._fixture("general_web", rows), ranker="token", query_mode="captured")
+        self.assertEqual(rep["state"], "unscored")
+        self.assertIsNone(rep["stale_only"])
+
+    def test_fixture_today(self) -> None:
+        from datetime import date
+
+        from core.knowledge.quality_eval import fixture_today
+
+        self.assertEqual(fixture_today({"captured_at": "2026-11-23T19:01:16+0100"}), date(2026, 11, 23))
+        self.assertEqual(fixture_today({"captured_at": "2026-11-23"}, shift_days=7), date(2026, 11, 30))
+        self.assertIsNone(fixture_today({}))
+
+
 if __name__ == "__main__":
     unittest.main()

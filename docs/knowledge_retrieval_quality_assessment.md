@@ -874,6 +874,55 @@ flowchart LR
   - recency fixtures: 100% of turns whose only sources are stale are marked `partial` / `stale_sources`; zero recency turns presented as `sufficient` with only out-of-window sources
   - per-category: no `general_web` / `trusted` / `finance` category regresses (§12.5 rule 7)
 - **Dependencies:** S3, S4; web fixtures from S2.
+- **As built (2026-11-24):**
+  - **`core/knowledge/ranking/web_gate.py` (new):** `gate_rows` scores search rows with the S3 cross-encoder (`title + snippet`, or the page text when a row has one), drops rows below `keep` (D2: they go to `rerank_dropped`, inspector only), orders survivors by score and returns a `SufficiencyResult` for the rows actually kept. It returns `None` when the reranker cannot run, and every caller then keeps its legacy path unchanged (`unscored`).
+    - **Deviation from the plan text:** the CE path lives in `web_gate`, not inside `retrieval_relevance.filter_web_results`. `filter_web_results` is unchanged and is the fallback. The raw-cosine gate is not removed yet (still the fallback's embedding check).
+    - Per-service constants `WEB_THRESHOLDS`, `TRUSTED_THRESHOLDS` and `FINANCE_THRESHOLDS`. All three calibrated to the scientific values (`keep=0`, `strong=2`, 2 strong rows); see "S7 calibration" in the progress log.
+    - Search ads (`duckduckgo.com/y.js?ad_domain=…`) are dropped before any gate, on both the CE and the legacy path (`drop_search_ads`). The S2 iPhone pool had two such rows, scoring 6.8.
+  - **Recency (R9):**
+    - `core.retrieval_query_cleanup.recency_need`: 7 days for news phrasing ("today", "this week", "breaking"); 12 months for "latest / newest / current(ly)", price / rate / score questions, and this or last year. Not for "electric current", "ocean currents", "price elasticity", or a question pinned to a historical year ("Who won the 2022 World Cup?").
+    - `core/knowledge/ranking/recency.py` (new) dates each row:
+      - *published*: `publication_date`, or a date in the URL path. It can prove a row fresh or stale.
+      - *mentioned*: the latest non-future date in the title or snippet. It can prove a row fresh only, since a page mentioning Oct 2026 was written after it.
+      - A row with neither is `undated`.
+    - When the question needs recency:
+      - stale rows never count as strong and are ordered after the others;
+      - no fresh kept row but at least one stale → at most `partial`, warning `stale_sources`;
+      - all kept rows undated → state unchanged, warning `undated_sources`;
+      - `recency_requested` is always set.
+    - Dates reach the prompt as `publication_date` when published, or "mentions 2026-10", "date unknown" or "may be out of date". A note (`RETRIEVAL_RECENCY_NOTE` / `RETRIEVAL_STALE_NOTE`) asks the model to state source dates; `memory_filters.prefix_evidence_notes` orders it before the S4 partial note.
+    - `freshness_score` (the existing `ranking/freshness.py`) is now set on web and trusted rows.
+    - Fetched sections carry the extractor's page date (`Document.date`).
+  - **`pipeline_general_web`:**
+    - The CE gate runs in the default `strict` mode. `@fetch` with a URL (`fetch_permissive`) and recipe fetches keep their lenient legacy gates.
+    - Every survivor is a candidate, as before, and the top survivors are fetched.
+    - **Gate before and after the fetch** (measured live: ≈25 ms for 3 snippets, ≈45 ms for 3 fetched sections, against a 0.5–1 s fetch):
+      - before: picks what to fetch, so no fetch is spent on an irrelevant page;
+      - after: scores the fetched sections, drops those below `keep`, and sets the bundle's state from them. If no section passes, the gated snippets are used, with warning `fetched_page_irrelevant`.
+    - All rows dropped → empty bundle with `insufficient`. The worker's existing S4 "found but not relevant" handling then applies, not the "search failed" wording.
+  - **`pipeline_trusted`:**
+    - Wikipedia rows are gated like every other row (V13).
+    - If fewer than `budget` Wikipedia rows survive, allowlisted search rows are fetched and the combined pool is gated, then ordered by score.
+    - Without the reranker, Wikipedia rows are kept unconditionally as before.
+  - **`pipeline_finance`:** the gate runs on every pool, not only when rows exceed the budget. Filings carry dates, so "latest 10-K" turns get real freshness.
+  - **`pipeline_legal`:** unchanged (no fixtures), as planned.
+  - **`bundle_builder`:**
+    - The general-web, fetched, trusted and finance builders take `sufficiency` / `sufficiency_rationale` / `extra_warnings`.
+    - The S4 mapping, shared by these builders: `sufficient` keeps the legacy coverage; `partial` → `poor` with confidence ≤ 0.55; `insufficient` → `none` / 0.
+    - `relevance_score` = sigmoid(logit) on gated rows. `build_empty_bundle` passes `sufficiency` for these services.
+  - **Worker:** an all-dropped `@finance` turn no longer adds "No SEC sources were retrieved, do not answer from general knowledge", which would contradict the S4 insufficient suffix.
+  - **Eval:**
+    - `ce` now replays the shipped gates for web, trusted and finance (`_ce_rank_non_scientific`). Freshness is judged against each fixture's `captured_at`, and `--recency-shift-days N` replays the pool as if it were N days older.
+    - New per-fixture fields `recency_need`, `kept_freshness`, `stale_only`, `stale_marked`, `stale_presented_sufficient`, plus their aggregates.
+    - The token ranker also drops ads, like production.
+  - **Tests:**
+    - `tests/test_recency.py` (new): recency-need table, URL / mention / published dates, freshness rules.
+    - `tests/test_web_relevance_gate.py` (extended): gate states, budget, recency rules, ads; general-web snippet, fetch and fallback paths; trusted Wikipedia gating and no-search-when-full; finance; legacy fallbacks; evidence-pack dates; note order.
+    - `tests/test_knowledge_quality_eval.py`: S7 replay, time shift, `fixture_today`.
+  - **Known limits:**
+    - Wikipedia rows are always `undated`. Live, "What is the newest iPhone model?" on the Wikipedia fallback kept "iPhone 4 / 7 / 12 Pro" as `sufficient` + `undated_sources`. The prompt says the dates are unknown, but nothing ranks a newer model first.
+    - Most snippets are undated, so stale detection mostly fires on URL-dated news, filings and fetched pages with a date.
+    - The trusted allowlist (Wikipedia, `.gov`, `.gov.uk`, `.edu`, `.ac.uk`) excludes `who.int`, the UN, the EU and the OECD. That caps `@trusted` recall (the WHO fixture); proposed for S8.
 
 #### S8 — Modest recall widening + adapter deadlines
 
@@ -1058,7 +1107,7 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 ## Implementation progress log
 
 > **Do not edit sections 1–11 above.** Record shipped work here only.  
-> **Last reviewed:** 2026-11-23, S6 complete (§12.4 S6, subject/facet + follow-ups); S5 complete (§12.4 S5, acronyms + request frames); S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
+> **Last reviewed:** 2026-11-24, S7 complete (§12.4 S7, web / trusted / finance gate + recency); S6 complete (§12.4 S6, subject/facet + follow-ups); S5 complete (§12.4 S5, acronyms + request frames); S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
 
 ### Summary
 
@@ -1118,6 +1167,12 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 | 2026-11-23 | S6 | Tests | Done | `tests/test_discourse_subject.py` (17 follow-ups + 14 topic switches as table tests, fixture acceptance, B3, state, classifier); S5 tests in `tests/test_resolved_retrieval_query.py` updated for S6 (expansion still tested without a follow-up); one case-insensitive assertion in `tests/test_discourse_source_venue.py` | — |
 | 2026-11-23 | S6 | Acceptance | Done | Multi-turn fixtures: follow-up detected **7/7** (100 %), subject preserved **7/7** (gold subject in query 8/8 incl. the topic switch); **0** false anchors on 1 fixture + 14 table topic switches; routing: existing routing/worker/prompt tests (1184) pass and 0 of 132 corpus routing texts change. Live (S5 → S6): OAuth "Yes, please." 0 → 3 authorization-code-flow sources; Python "what about 3.14?" Pi pages → Python 3.14 docs; heat pump EV-charger costs → heat pump pages; statins `insufficient` → `sufficient` ("Muscular Side Effects of Statins"). | ANT still blocked by the typo (S8, D6) |
 | 2026-11-23 | S6 | Baselines | Done | `eval/retrieval_corpus/baselines/kq_s6_{token,embed,ce}_{production,standalone}.json` | — |
+| 2026-11-24 | S7 | S7 calibration | Done | CE scores for the 27 web / trusted / finance fixtures. A first sweep on the full captured pools put `strong` at 4. The re-run on the **production-depth** pools (what the pipelines see; 54 runs over both query modes; keep ∈ {-1…2}, strong ∈ {2…6}, min ∈ {1, 2}) showed that was wrong: keep 0 → irrelevant_kept 0.029 / recall 0.889 (keep 2: recall 0.841, +1 false abstention). With min 2, strong 2 agreed with the labelled state best (0.80; 5 over-, 5 under-claims) vs strong 4 (0.72; 9 under). The over-claims are pages labelled "partial" that answer the question. Final thresholds equal the scientific ones. | Trusted (5) and finance (2) too few for their own fit |
+| 2026-11-24 | S7 | Gate for web / trusted / finance | Done | `core/knowledge/ranking/web_gate.py`; wired into `pipeline_general_web` (pre- and post-fetch), `pipeline_trusted` (Wikipedia gated, V13), `pipeline_finance`; ads dropped on all web paths; bundle builders carry sufficiency | CE path outside `filter_web_results` (deviation, see "As built"); legal unchanged |
+| 2026-11-24 | S7 | Recency (R9) | Done | `recency_need`, `core/knowledge/ranking/recency.py`, stale / undated warnings, dates and notes in the prompt, `freshness_score` on web / trusted rows, page dates on fetched sections | — |
+| 2026-11-24 | S7 | Tests | Done | `tests/test_recency.py` (new), `tests/test_web_relevance_gate.py` (+S7 classes), `tests/test_knowledge_quality_eval.py` (+S7 replay) | — |
+| 2026-11-24 | S7 | Acceptance | Done | Web (ce, production / standalone): irrelevant_kept **0.06 / 0.00** (≤ 0.10), abstain precision **1.00 / 1.00** (≥ 0.85); 0 web cases labelled sufficient abstain (same as before). Recency, replayed 730 days later: stale-only turns marked partial + `stale_sources` **100 %** (1/1 per mode), **0** stale-only turns reported sufficient (also 0 at capture date). Per-category vs legacy production (token, S6): no `general_web` / `trusted` / `finance` category regresses. Live: gate ≈25 ms / 3 snippets, sections ≈45 ms / 3. | `--compare` against the S6 **ce** baseline flags trusted recall / nDCG and multi_turn (via the trusted MS fixture). The S6 ce trusted numbers were a preview that ignored the allowlist and Wikipedia-first order; against legacy production (token) S7 is better on every trusted metric except standalone abstain_correct (WHO, allowlist). |
+| 2026-11-24 | S7 | Baselines | Done | `eval/retrieval_corpus/baselines/kq_s7_{token,embed,ce}_{production,standalone}.json` | — |
 | 2026-11-23 | — | D6 recorded: misspellings handled with a correctly spelt variant alongside the user's wording, in S8 | Done | §12.6 D6, §12.4 S8 | — |
 | 2026-11-23 | S5 | Acronym expansion | Done | `core/discourse_acronyms.py`; `build_resolved_retrieval_query` hook (regardless of follow-up); `ResolvedRetrievalQuery.acronym_expansions`; `web_query_acronym_expansions` in the decision | — |
 | 2026-11-23 | S5 | Request-frame stripping | Done | `core/retrieval_query_cleanup.py`; scientific planner (keyword + semantic), general-web and trusted discovery + gate text; changes 3 of 48 corpus queries, all intended | Finance/legal planners keep their own prefix lists (S13) |
@@ -1333,6 +1388,19 @@ Spelling: OpenAlex is literal, so one misspelt content word removes every on-top
 Standalone mode is unchanged (it already uses the gold question). The pools were captured with the S2-era queries, so these numbers only show how a better query **ranks the old pool**; the live table in the S6 progress-log row shows what the new queries **retrieve**.
 
 The one token regression (multi_turn abstain_correct 0.50 → 0.33, category tolerance 0.17) is `kq_affirmation_followup`. Its pool, captured for the query "Yes, please.", holds only "Yes, please" dictionary pages. With the S6 query the legacy web gate keeps two of them instead of keeping nothing. That is a legacy-gate weakness on a stale pool, and S7 replaces that gate; live, the S6 query retrieves the right pages.
+
+**S7 results** (48 fixtures, production queries, budget 3). Cells: P@3 · nDCG@5 · irrelevant_kept · relevant_recall · abstain_correct. `token` is the legacy (reranker-free) path; `ce` is now the shipped gate on every path.
+
+| Group | token S6 | token S7 | ce S7 |
+|---|---|---|---|
+| all (48) | 0.70 · 0.77 · 0.30 · 0.84 · 0.81 | 0.71 · 0.78 · 0.29 · 0.84 · 0.81 | **0.93** · 0.82 · **0.07** · 0.86 · **0.98** |
+| general_web (20) | 0.77 · 0.92 · 0.23 · 1.00 · 0.80 | 0.80 · 0.96 · 0.20 · 1.00 · 0.80 | **0.94** · 0.94 · **0.06** · 0.96 · **0.95** |
+| trusted_knowledge (5) | 0.75 · 0.34 · 0.25 · 0.42 · 1.00 | 0.75 · 0.34 · 0.25 · 0.42 · 1.00 | **0.92** · **0.46** · **0.08** · **0.50** · 1.00 |
+| finance_knowledge (2) | 0.67 · 1.00 · 0.33 · 1.00 · 1.00 | 0.67 · 1.00 · 0.33 · 1.00 · 1.00 | **1.00** · 1.00 · **0.00** · 1.00 · 1.00 |
+| recency (4) | 0.83 · 0.88 · 0.17 · 1.00 · 1.00 | 1.00 · 1.00 · 0.00 · 1.00 · 1.00 | 1.00 · 0.88 · 0.00 · 0.83 · 1.00 |
+| abstain (5) | 0.08 · 0.17 · 0.92 · — · 0.40 | 0.08 · 0.17 · 0.92 · — · 0.40 | 0.25 · 0.21 · 0.75 · — · **0.80** |
+
+token S6 → S7 differs only by ad removal (the iPhone pool). The remaining abstain miss is `web_abstain_fictional_product`: "Manually Update Firmware on Toast Flex" scores 2.95 for the fictional Zorblax toaster and is presented as `partial` with the partial note. Recency recall 0.83 is the Python-release pool, where the gate keeps 2 of 3 rows.
 
 ### Git reference
 

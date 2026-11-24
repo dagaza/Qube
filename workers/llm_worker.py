@@ -963,6 +963,18 @@ class LLMWorker(QThread):
                 meta_bits.append(venue)
             if pub_date:
                 meta_bits.append(pub_date)
+            # Plan S7 (R9): dates on turns that ask for current information.
+            freshness = str(src.get("freshness") or "")
+            if freshness == "undated":
+                meta_bits.append("date unknown")
+            elif (
+                not pub_date
+                and src.get("source_date")
+                and src.get("source_date_basis") == "mentioned"
+            ):
+                meta_bits.append(f"mentions {src.get('source_date')}")
+            if freshness == "stale":
+                meta_bits.append("may be out of date")
             authors = src.get("authors") or []
             if isinstance(authors, (list, tuple)) and authors:
                 meta_bits.append(
@@ -4041,7 +4053,7 @@ class LLMWorker(QThread):
                     "general model knowledge about cases, holdings, or citations. "
                     "Do NOT emit [1], [2], or [W].]\n"
                 )
-            elif composer_tool == "finance":
+            elif composer_tool == "finance" and not retrieval_insufficient:
                 tool_context += (
                     "\n[@finance: No SEC or finance sources were retrieved. Preferred "
                     "finance sources may be disabled in Settings → Knowledge. Tell the "
@@ -4110,7 +4122,9 @@ class LLMWorker(QThread):
         legal_disclaimer = False
         composer_tool = str(getattr(self, "_composer_knowledge_tool", "") or "").lower()
         legal_sources_empty = composer_tool == "legal" and not all_ui_sources
-        finance_sources_empty = composer_tool == "finance" and not all_ui_sources
+        finance_sources_empty = (
+            composer_tool == "finance" and not all_ui_sources and not retrieval_insufficient
+        )
         help_sources_empty = composer_tool == "help" and not all_ui_sources
         composer_help_attached = composer_tool == "help"
         _evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
@@ -4309,10 +4323,16 @@ class LLMWorker(QThread):
                 else "grounded"
             ),
         )
-        if retrieval_partial and retrieval_prompt_body:
-            from core.memory_filters import RETRIEVAL_PARTIAL_NOTE
+        if retrieval_prompt_body:
+            from core.memory_filters import prefix_evidence_notes
 
-            retrieval_prompt_body = f"{RETRIEVAL_PARTIAL_NOTE}\n\n{retrieval_prompt_body}"
+            retrieval_prompt_body = prefix_evidence_notes(
+                retrieval_prompt_body,
+                partial=retrieval_partial,
+                bundle_warnings=tuple(getattr(_gate_bundle, "warnings", ()) or ())
+                if _gate_bundle is not None
+                else (),
+            )
         attachment_ctx = getattr(self, "_turn_attachment_context", "").strip()
         if attachment_ctx:
             if retrieval_prompt_body:

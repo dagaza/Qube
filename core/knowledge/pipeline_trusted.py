@@ -12,6 +12,12 @@ from core.knowledge.bundle_builder import build_empty_bundle, build_trusted_know
 from core.knowledge.discovery import discover_full_with_fallback
 from core.knowledge.discovery.types import CandidateUrl
 from core.knowledge.ranking.authority import is_allowlisted_url
+from core.knowledge.ranking.web_gate import (
+    TRUSTED_THRESHOLDS,
+    drop_search_ads,
+    dropped_for_diag,
+    gate_rows,
+)
 from core.knowledge.search_outcome import attach_search_outcome
 from core.knowledge.types import EvidenceBundle, RetrievalContext, SERVICE_TRUSTED_KNOWLEDGE
 from core.retrieval_query_cleanup import strip_request_frames
@@ -57,7 +63,11 @@ class TrustedEvidencePipeline:
             adapter_calls.append(WIKI_ADAPTER)
             raw_audit.extend(dict(r) for r in wiki_rows)
 
-        kept: list[dict[str, Any]] = [dict(r) for r in wiki_rows]
+        # S7: Wikipedia rows pass the relevance gate like every other row (V13);
+        # ``None`` means the reranker cannot run and the legacy path applies.
+        wiki_copies = [dict(r) for r in wiki_rows]
+        gate = gate_rows(semantic, wiki_copies, budget=budget, thresholds=TRUSTED_THRESHOLDS)
+        kept: list[dict[str, Any]] = list(gate.kept) if gate is not None else [dict(r) for r in wiki_rows]
 
         if len(kept) < budget:
             discovery = discover_full_with_fallback(
@@ -71,25 +81,42 @@ class TrustedEvidencePipeline:
                 provider = discovery.provider_id or DDG_ADAPTER
                 if provider not in adapter_calls:
                     adapter_calls.append(provider)
-                allowlisted = [
-                    dict(r)
-                    for r in ddg_raw
-                    if is_allowlisted_url(str((r or {}).get("url") or ""))
-                ]
-                existing_urls = {
-                    str(r.get("url") or "").strip().lower()
-                    for r in kept
-                    if r.get("url")
+                wiki_urls = {
+                    str(r.get("url") or "").strip().lower() for r in wiki_rows if r.get("url")
                 }
-                allowlisted = [
-                    r
-                    for r in allowlisted
-                    if str(r.get("url") or "").strip().lower() not in existing_urls
-                ]
-                if allowlisted:
+                allowlisted, _ads = drop_search_ads(
+                    [
+                        dict(r)
+                        for r in ddg_raw
+                        if is_allowlisted_url(str((r or {}).get("url") or ""))
+                        and str((r or {}).get("url") or "").strip().lower() not in wiki_urls
+                    ]
+                )
+                if allowlisted and gate is not None:
+                    merged = gate_rows(
+                        semantic,
+                        [*wiki_copies, *allowlisted],
+                        budget=budget,
+                        thresholds=TRUSTED_THRESHOLDS,
+                    )
+                    if merged is not None:
+                        gate = merged
+                        kept = list(gate.kept)
+                    else:
+                        gate = None
+                        kept = [dict(r) for r in wiki_rows]
+                if allowlisted and gate is None:
+                    existing_urls = {
+                        str(r.get("url") or "").strip().lower() for r in kept if r.get("url")
+                    }
+                    legacy_pool = [
+                        r
+                        for r in allowlisted
+                        if str(r.get("url") or "").strip().lower() not in existing_urls
+                    ]
                     filtered, rel_diag = filter_web_results(
                         semantic,
-                        allowlisted,
+                        legacy_pool,
                         query_vector=ctx.query_vector,
                         embed_text_fn=ctx.embed_fn,
                         use_embedding_gate=True,
@@ -111,6 +138,18 @@ class TrustedEvidencePipeline:
                 rel_diag["privacy_tier"] = discovery.privacy_tier
             rel_diag = attach_search_outcome(rel_diag, discovery.search_outcome)
 
+        sufficiency, sufficiency_rationale, gate_warnings = "unscored", "", ()
+        if gate is not None:
+            rel_diag = dict(rel_diag or {})
+            rel_diag["rerank"] = dict(gate.diag)
+            rel_diag["sufficiency"] = gate.sufficiency.state.value
+            if gate.dropped:
+                rel_diag["rerank_dropped"] = dropped_for_diag(gate.dropped)
+            rejected_count = len(gate.dropped)
+            sufficiency = gate.sufficiency.state.value
+            sufficiency_rationale = gate.sufficiency.rationale
+            gate_warnings = tuple(gate.warnings)
+
         latency_ms = (time.time() - t0) * 1000
 
         if not kept:
@@ -121,8 +160,29 @@ class TrustedEvidencePipeline:
                 rejected_count=rejected_count,
                 stop_reason="no_evidence",
                 knowledge_service=SERVICE_TRUSTED_KNOWLEDGE,
+                sufficiency=sufficiency,
+                sufficiency_rationale=sufficiency_rationale,
             )
             return bundle, rel_diag, raw_audit
+
+        stop_reason = (
+            "sufficient_evidence"
+            if len(kept) >= budget
+            else "budget_exhausted"
+        )
+        bundle = build_trusted_knowledge_bundle(
+            query_raw=query,
+            query_resolved=search_query,
+            kept_rows=kept,
+            rejected_count=rejected_count,
+            latency_ms=latency_ms,
+            adapter_calls=tuple(adapter_calls),
+            stop_reason=stop_reason,
+            sufficiency=sufficiency,
+            sufficiency_rationale=sufficiency_rationale,
+            extra_warnings=gate_warnings,
+        )
+        return bundle, rel_diag, raw_audit
 
         stop_reason = (
             "sufficient_evidence"

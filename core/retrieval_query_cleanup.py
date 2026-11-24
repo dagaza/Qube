@@ -14,11 +14,17 @@ Nothing inside the question is touched ("example-based learning", "Tell Me
 Lies" stay), and when stripping would leave no words the original text is
 returned unchanged. Used by the scientific planner (keyword *and* semantic
 queries) and the general-web / trusted discovery queries. Not user-visible.
+
+``recency_need`` (plan S7, R9) flags questions that ask for current
+information ("latest", "current", "today", a recent year, a price / rate /
+score) and returns the freshness window sources must fall in.
 """
 
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
 
 _AFFIRMATION = re.compile(
     r"^(?:yes|yeah|yep|sure|ok|okay|alright|great|thanks|thank\s+you)\s*[,.!;:]+\s*",
@@ -79,4 +85,103 @@ def strip_request_frames(text: str) -> str:
     return q
 
 
-__all__ = ["strip_request_frames"]
+# ---------------------------------------------------------------------------
+# Recency need (plan S7, R9)
+# ---------------------------------------------------------------------------
+
+RECENCY_WINDOW_DAYS = 365
+NEWS_WINDOW_DAYS = 7
+
+# News-like phrasing: the answer changes within days.
+_NEWS = re.compile(
+    r"\b(?:today|tonight|yesterday|this\s+(?:morning|afternoon|evening|week)|breaking|"
+    r"right\s+now|latest\s+news|news\s+(?:on|about|from|today)|headlines?|"
+    r"live\s+(?:scores?|updates?|coverage))\b",
+    re.IGNORECASE,
+)
+_RECENT_WORDS = re.compile(
+    r"\b(?:latest|newest|most\s+recent|recent\s+(?:news|developments?|changes?|updates?)|"
+    r"recently|up[-\s]to[-\s]date|nowadays|these\s+days|at\s+the\s+moment|"
+    r"this\s+(?:year|month)|so\s+far\s+this|as\s+of\s+(?:now|today))\b",
+    re.IGNORECASE,
+)
+# "current(ly)" except the physics / ocean noun ("electric current", "current density").
+_CURRENT = re.compile(r"\bcurrent(?:ly)?\b", re.IGNORECASE)
+_CURRENT_NOUN_BEFORE = re.compile(
+    r"\b(?:electric(?:al)?|alternating|direct|eddy|ocean|rip|tidal|leakage|displacement|"
+    r"induced|ac|dc|of|the\s+ocean|a)\s+$",
+    re.IGNORECASE,
+)
+_CURRENT_NOUN_AFTER = re.compile(
+    r"^\s+(?:density|flow|source|loop|limit(?:ing)?|sensor|divider|transformer|carrying|"
+    r"clamp|draw|gain|mirror|amplifier|through|flow(?:s|ing)?|in\s+a\s+(?:wire|circuit))\b",
+    re.IGNORECASE,
+)
+# Price / rate / score questions whose answer moves over months.
+_MARKET = re.compile(
+    r"\b(?:price\s+(?:of|for)|prices\s+(?:of|for)|stock\s+price|share\s+price|"
+    r"(?:exchange|interest|inflation|mortgage|deposit(?:\s+facility)?|unemployment|"
+    r"policy|base|bank|prime|savings|cpi)\s+rates?|"
+    r"(?:final|latest|live)\s+score|who\s+(?:won|is\s+winning))\b",
+    re.IGNORECASE,
+)
+_YEAR = re.compile(r"(?<![\d.])((?:19|20)\d{2})(?![\d.])")
+
+
+@dataclass(frozen=True)
+class RecencyNeed:
+    """The question asks for current information (plan S7, R9)."""
+
+    window_days: int
+    reason: str  # "news" | "recent_wording" | "current" | "market" | "recent_year"
+
+
+def _current_is_temporal(text: str) -> bool:
+    for m in _CURRENT.finditer(text):
+        if m.group(0).lower() == "currently":
+            return True
+        if _CURRENT_NOUN_BEFORE.search(text[: m.start()]):
+            continue
+        if _CURRENT_NOUN_AFTER.match(text[m.end():]):
+            continue
+        return True
+    return False
+
+
+def recency_need(text: str, *, today: date | None = None) -> RecencyNeed | None:
+    """Whether ``text`` asks for current information, and the window sources need.
+
+    Deterministic and English-only (D4: non-English questions keep the old
+    behaviour). News-like phrasing ("today", "this week", "breaking") gets a
+    7-day window; "latest / current / newest", price / rate / score questions
+    and a mention of this or last year get 12 months. ``None`` otherwise —
+    including "electric current", "price elasticity" and historical years.
+    """
+    q = " ".join((text or "").split())
+    if not q:
+        return None
+    if _NEWS.search(q):
+        return RecencyNeed(NEWS_WINDOW_DAYS, "news")
+    if _RECENT_WORDS.search(q):
+        return RecencyNeed(RECENCY_WINDOW_DAYS, "recent_wording")
+    if _current_is_temporal(q):
+        return RecencyNeed(RECENCY_WINDOW_DAYS, "current")
+    year_now = (today or datetime.now(UTC).date()).year
+    years = [int(m.group(1)) for m in _YEAR.finditer(q)]
+    # "What was the inflation rate in 2019?", "Who won the 2022 World Cup?":
+    # a historical year pins the question to the past.
+    historical = any(y < year_now - 1 for y in years)
+    if _MARKET.search(q) and not historical:
+        return RecencyNeed(RECENCY_WINDOW_DAYS, "market")
+    if any(year_now - 1 <= y <= year_now for y in years):
+        return RecencyNeed(RECENCY_WINDOW_DAYS, "recent_year")
+    return None
+
+
+__all__ = [
+    "NEWS_WINDOW_DAYS",
+    "RECENCY_WINDOW_DAYS",
+    "RecencyNeed",
+    "recency_need",
+    "strip_request_frames",
+]
