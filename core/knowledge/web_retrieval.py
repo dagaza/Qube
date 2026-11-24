@@ -98,6 +98,21 @@ def run_legacy_web_retrieval(
     )
 
 
+def _note_degraded_discovery(bundle, rel_diag: dict[str, Any] | None):
+    """S12 (V15): say in the coverage rationale when discovery fell back or was blocked."""
+    from dataclasses import replace
+
+    from core.knowledge.search_outcome import degraded_discovery_note, search_outcome_from_relevance_diag
+
+    try:
+        note = degraded_discovery_note(search_outcome_from_relevance_diag(rel_diag or {}))
+    except Exception:
+        return bundle
+    if not note or note in (bundle.coverage_rationale or ""):
+        return bundle
+    return replace(bundle, coverage_rationale=f"{bundle.coverage_rationale} {note}".strip())
+
+
 def run_v2_web_retrieval(
     *,
     query: str,
@@ -120,13 +135,23 @@ def run_v2_web_retrieval(
     fetch_url_count: int | None = None,
     query_raw: str | None = None,
     conversation_terms: frozenset[str] = frozenset(),
+    budget_is_explicit: bool = False,
 ) -> WebRetrievalOutcome:
-    """Evidence pipeline path — legacy-compatible rows plus EvidenceBundle."""
+    """Evidence pipeline path — legacy-compatible rows plus EvidenceBundle.
+
+    ``budget_is_explicit`` (S12, D16): the caller's ``budget`` is used as given
+    instead of being capped by the app-wide retrieval profile. ``@research``
+    passes its own depth profile this way; every other caller is unchanged.
+    """
     profile_id = normalize_profile_id(retrieval_profile or get_retrieval_profile())
     service = get_knowledge_service(knowledge_service)
     profile = get_profile_spec(profile_id)
     base_budget = budget or service.default_budget()
-    merged_budget = profile.materialize_budget(base_budget)
+    merged_budget = (
+        base_budget
+        if budget_is_explicit and budget is not None
+        else profile.materialize_budget(base_budget)
+    )
     ctx = RetrievalContext(
         query=query,
         semantic_query=semantic_query,
@@ -147,6 +172,7 @@ def run_v2_web_retrieval(
         conversation_terms=conversation_terms,
     )
     bundle, rel_diag, raw_for_audit = service.retrieve(ctx)
+    bundle = _note_degraded_discovery(bundle, rel_diag)
 
     if rel_diag:
         http_summary = rel_diag.get("http_summary")

@@ -82,10 +82,11 @@ class TestGeneralWebFetchPipeline(unittest.TestCase):
         )
         self.assertIsNotNone(rel_diag)
         assert rel_diag is not None
-        self.assertEqual(rel_diag.get("fetch_url_count"), 1)
+        # S12 (D17): Balanced opens up to two result pages (was one).
+        self.assertEqual(rel_diag.get("fetch_url_count"), 2)
         self.assertIn("fetch_provenance", rel_diag)
         self.assertIn("pipeline_stages", rel_diag)
-        mock_fetch.assert_called_once()
+        mock_fetch.assert_called_once()  # one candidate, so one fetch
 
     @patch("core.knowledge.pipeline_general_web.discover_full")
     @patch("core.knowledge.pipeline_general_web.fetch_url")
@@ -162,7 +163,7 @@ class TestGeneralWebFetchPipeline(unittest.TestCase):
         self.assertTrue(rel_diag.get("web_relevance_gate_skipped"))
         self.assertEqual(rel_diag.get("web_relevance_gate_mode"), "recipe_fetch_skip")
         self.assertTrue(bundle.sources)
-        mock_fetch.assert_called_once()
+        self.assertEqual(mock_fetch.call_count, 2)  # S12 (D17): Balanced fetches 2
 
     @patch("core.knowledge.pipeline_general_web.extract_document")
     @patch("core.knowledge.pipeline_general_web.discover_full")

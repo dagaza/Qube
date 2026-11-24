@@ -77,5 +77,86 @@ class TestFetchBlockers(unittest.TestCase):
         self.assertEqual(result.failure_reason, BlockerReason.EGRESS_BLOCKED)
 
 
+_ARTICLE_BODY = "<p>" + ("Heat pumps move heat from a cold space to a warm one. " * 60) + "</p>"
+
+
+class TestBlockerFalsePositives(unittest.TestCase):
+    """S12: markup seen on real article pages that used to be discarded."""
+
+    def test_cloudflare_scripts_on_a_real_page_are_not_a_challenge(self) -> None:
+        for script in (
+            '<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js"></script>',
+            '<link rel="preconnect" href="https://cdnjs.cloudflare.com">',
+            "<script>var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=1';</script>",
+            '<script>window.cfg={"cloudflare":{"version":"1.0.0"}}</script>',
+        ):
+            with self.subTest(script=script[:40]):
+                html = f"<html><head>{script}</head><body>{_ARTICLE_BODY}</body></html>"
+                self.assertFalse(detect_cloudflare(html))
+                self.assertIsNone(detect_blocker(html, status_code=200, content_type_header="text/html"))
+
+    def test_real_challenge_shapes_still_detected(self) -> None:
+        orchestrate = (
+            "<html><head><title>Just a moment...</title></head><body>"
+            "<noscript>Enable JavaScript and cookies to continue</noscript>"
+            "<script>window._cf_chl_opt={cvId:'3'};</script>"
+            "<script src='/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1'></script>"
+            "</body></html>"
+        )
+        self.assertTrue(detect_cloudflare(orchestrate))
+        blocked = "<html><head><title>Attention Required! | Cloudflare</title></head><body><h1>Sorry, you have been blocked</h1></body></html>"
+        self.assertTrue(detect_cloudflare(blocked))
+
+    def test_wikipedia_citation_lock_is_not_a_paywall(self) -> None:
+        lock = '<span class="id-lock-subscription" title="paid subscription required"><a href="#">doi</a></span>'
+        html = f"<html><body>{_ARTICLE_BODY}{lock}</body></html>"
+        self.assertIsNone(detect_blocker(html, status_code=200, content_type_header="text/html"))
+
+    def test_visible_paywall_text_still_detected(self) -> None:
+        html = "<html><body><p>Intro.</p><div>Subscribe to read the full article.</div></body></html>"
+        self.assertEqual(
+            detect_blocker(html, status_code=200, content_type_header="text/html"),
+            BlockerReason.PAYWALL,
+        )
+
+
+class TestOversizeTruncation(unittest.TestCase):
+    def _resp(self, total: int):
+        resp = MagicMock()
+        resp.iter_content.return_value = [b"a" * 65536] * (total // 65536)
+        return resp
+
+    def test_api_reads_still_raise_over_the_limit(self) -> None:
+        from core.knowledge.http_client import _read_bounded_response
+
+        with self.assertRaises(EgressPolicyError):
+            _read_bounded_response(self._resp(655360), max_bytes=524288)
+
+    def test_page_fetch_keeps_the_head(self) -> None:
+        from core.knowledge.http_client import _read_bounded_response
+
+        resp = self._resp(655360)
+        content = _read_bounded_response(resp, max_bytes=524288, truncate=True)
+        self.assertEqual(len(content), 524288)
+        self.assertTrue(resp.qube_truncated)
+        small = self._resp(131072)
+        self.assertEqual(len(_read_bounded_response(small, max_bytes=524288, truncate=True)), 131072)
+        self.assertIsNot(getattr(small, "qube_truncated", None), True)
+
+    @patch("core.knowledge.fetch.engine.knowledge_get")
+    def test_fetch_url_asks_for_truncation(self, mock_get) -> None:
+        response = MagicMock()
+        response.status_code = 200
+        response.url = "https://en.wikipedia.org/wiki/Heat_pump"
+        response.headers = {"Content-Type": "text/html"}
+        response.text = f"<html><body>{_ARTICLE_BODY}</body></html>"
+        response.qube_truncated = True
+        mock_get.return_value = response
+        result = fetch_url("https://en.wikipedia.org/wiki/Heat_pump")
+        self.assertTrue(result.success)
+        self.assertTrue(mock_get.call_args.kwargs["truncate_oversize"])
+        self.assertTrue(result.raw_metadata.get("truncated"))
+
+
 if __name__ == "__main__":
     unittest.main()

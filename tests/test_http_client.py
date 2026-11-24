@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 import unittest
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime
@@ -139,14 +140,41 @@ class TestKnowledgeGetRetries(unittest.TestCase):
     @patch("core.knowledge.http_client._sleep")
     @patch("core.knowledge.http_client._execute_once")
     def test_503_honors_retry_after(self, mock_execute, mock_sleep) -> None:
+        # S12: a Retry-After within MAX_RETRY_WAIT_SEC is still honoured.
         mock_execute.side_effect = [
-            _mock_response(status=503, headers={"Retry-After": "60"}),
+            _mock_response(status=503, headers={"Retry-After": "5"}),
             _mock_response(status=200),
         ]
         resp = knowledge_get("https://api.openalex.org/works")
         self.assertEqual(resp.status_code, 200)
         mock_sleep.assert_called_once()
-        self.assertAlmostEqual(mock_sleep.call_args[0][0], 60.0, places=1)
+        self.assertAlmostEqual(mock_sleep.call_args[0][0], 5.0, places=1)
+
+    @patch("core.knowledge.http_client._sleep")
+    @patch("core.knowledge.http_client._execute_once")
+    def test_long_retry_after_is_not_slept_and_skips_host(self, mock_execute, mock_sleep) -> None:
+        # S12 (§3.7 "unbounded Retry-After"): 60 s used to be slept inside the
+        # request, past every adapter deadline. Now the response comes back at
+        # once and the host is skipped for the Retry-After period (bounded).
+        from core.knowledge.http_client import MAX_RETRY_AFTER_SKIP_SEC, HostUnavailableError
+        from core.knowledge.negative_cache import get_host_negative
+
+        for status, header in ((503, "60"), (429, "57688")):
+            with self.subTest(status=status):
+                reset_negative_cache()
+                reset_host_scheduler()
+                mock_execute.reset_mock()
+                mock_sleep.reset_mock()
+                mock_execute.side_effect = [_mock_response(status=status, headers={"Retry-After": header})]
+                resp = knowledge_get("https://api.crossref.org/works")
+                self.assertEqual(resp.status_code, status)
+                mock_sleep.assert_not_called()
+                self.assertEqual(mock_execute.call_count, 1)
+                entry = get_host_negative("api.crossref.org")
+                self.assertIsNotNone(entry)
+                self.assertLessEqual(entry.expires_at - time.time(), MAX_RETRY_AFTER_SKIP_SEC + 1)
+                with self.assertRaises(HostUnavailableError):
+                    knowledge_get("https://api.crossref.org/works")
 
     @patch("core.knowledge.http_client._execute_once")
     def test_openalex_anonymous_search_throttle_fails_fast(self, mock_execute) -> None:

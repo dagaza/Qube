@@ -1629,10 +1629,15 @@ class MainWindow(QMainWindow):
         """Toast + top-bar countdown when DDG enters a new backoff window."""
         self.refresh_ddg_backoff_indicator()
         self._ddg_backoff_was_active = True
+        from core.knowledge.discovery.backoff import get_provider_backoff
         from core.notification_types import ddg_backoff_event
 
+        entry = get_provider_backoff("duckduckgo")
         self.emit_notification(
-            ddg_backoff_event(remaining_seconds=remaining_seconds)
+            ddg_backoff_event(
+                remaining_seconds=remaining_seconds,
+                reason=entry.reason if entry is not None else "bot_challenge",
+            )
         )
 
     def _on_ddg_backoff_label_clicked(self, event) -> None:

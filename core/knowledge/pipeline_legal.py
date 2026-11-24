@@ -8,6 +8,8 @@ from typing import Any
 
 from core.app_settings import get_knowledge_source_preferences
 from core.knowledge.adapters.registry import get_search_function
+from core.knowledge.adapter_failures import adapter_error, failure_report, with_failure_note
+from core.knowledge.http_metrics import begin_turn_http_metrics, snapshot_turn_http_summary
 from core.knowledge.bundle_builder import build_empty_bundle, build_legal_knowledge_bundle
 from core.knowledge.legal_query_planner import plan_legal_query
 from core.knowledge.source_preferences import resolve_service_adapters
@@ -20,6 +22,7 @@ def _fetch_legal_rows(
     adapter_ids: tuple[str, ...],
     search_query: str,
     max_results: int,
+    errors: list[dict[str, str]] | None = None,
 ) -> tuple[list[str], list[dict[str, Any]]]:
     adapter_calls: list[str] = []
     rows: list[dict[str, Any]] = []
@@ -39,12 +42,23 @@ def _fetch_legal_rows(
             aid = futures[future]
             try:
                 result = future.result()
-            except Exception:
+            except Exception as exc:  # S12: recorded, not swallowed (§3.7)
                 result = []
+                if errors is not None:
+                    errors.append(adapter_error(aid, exc))
             if result:
                 adapter_calls.append(aid)
                 rows.extend(dict(r) for r in result)
     return sorted(dict.fromkeys(adapter_calls)), rows
+
+
+def _finish(bundle, rel_diag, http_summary, adapter_failures, failure_note):
+    """S12: carry HTTP outcome and adapter failures into diag and rationale."""
+    diag = dict(rel_diag or {})
+    diag["http_summary"] = http_summary
+    if adapter_failures:
+        diag["adapter_failures"] = adapter_failures
+    return with_failure_note(bundle, failure_note), diag
 
 
 class LegalEvidencePipeline:
@@ -65,11 +79,16 @@ class LegalEvidencePipeline:
             composer_adapter_filter=ctx.adapter_filter,
             stored_preferences=get_knowledge_source_preferences(),
         )
+        adapter_errors: list[dict[str, str]] = []
+        begin_turn_http_metrics()
         adapter_calls, rows = _fetch_legal_rows(
+            errors=adapter_errors,
             adapter_ids=adapter_ids,
             search_query=plan.search_query,
             max_results=max(3, budget),
         )
+        http_summary = snapshot_turn_http_summary()
+        adapter_failures, failure_note = failure_report(adapter_errors, http_summary)
         raw_audit: list[dict[str, Any]] = list(rows)
         rel_diag: dict[str, Any] | None = None
         rejected_count = 0
@@ -101,6 +120,7 @@ class LegalEvidencePipeline:
                 "legal_search_query": plan.search_query,
                 "legal_adapters_selected": list(adapter_ids),
             }
+            bundle, rel_diag = _finish(bundle, rel_diag, http_summary, adapter_failures, failure_note)
             return bundle, rel_diag, raw_audit
 
         stop_reason = "sufficient_evidence" if len(kept) >= budget else "budget_exhausted"
@@ -118,4 +138,5 @@ class LegalEvidencePipeline:
             "legal_search_query": plan.search_query,
             "legal_adapters_selected": list(adapter_ids),
         }
+        bundle, rel_diag = _finish(bundle, rel_diag, http_summary, adapter_failures, failure_note)
         return bundle, rel_diag, raw_audit

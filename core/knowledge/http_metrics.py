@@ -33,6 +33,37 @@ def _percentile(values: list[float], pct: float) -> float | None:
     return round(value, 1)
 
 
+FAILURE_NETWORK = "network_error"
+FAILURE_RATE_LIMITED = "rate_limited"
+FAILURE_REFUSED = "refused"
+FAILURE_SERVER = "server_error"
+FAILURE_LABELS = {
+    FAILURE_NETWORK: "network error",
+    FAILURE_RATE_LIMITED: "rate limited",
+    FAILURE_REFUSED: "access refused",
+    FAILURE_SERVER: "server error",
+    "skipped": "skipped after an earlier limit or error",
+}
+
+
+def http_failure_kind(status_code: int) -> str | None:
+    """Failure class of one response, or ``None`` when the host answered.
+
+    Status 0 is an exception (timeout, DNS, connection). 404 and other 4xx
+    answers are treated as answers: a lookup that finds nothing is not a failure.
+    """
+    code = int(status_code or 0)
+    if code <= 0:
+        return FAILURE_NETWORK
+    if code == 429:
+        return FAILURE_RATE_LIMITED
+    if code in (401, 403):
+        return FAILURE_REFUSED
+    if code >= 500:
+        return FAILURE_SERVER
+    return None
+
+
 @dataclass
 class HostHttpStats:
     requests: int = 0
@@ -42,6 +73,10 @@ class HostHttpStats:
     latency_ms_samples: list[float] = field(default_factory=list)
     rate_limit_remaining: float | None = None
     last_request_at: float = 0.0
+    # S12 (§3.7 "adapter exceptions swallowed"): adapters log and return []
+    # on failure, so the per-host outcome is the only reliable failure record.
+    ok: int = 0
+    failure_kinds: dict[str, int] = field(default_factory=dict)
 
     def record(
         self,
@@ -55,6 +90,11 @@ class HostHttpStats:
         self.last_request_at = time.time()
         if is_retry:
             self.retries += 1
+        kind = http_failure_kind(status_code)
+        if kind is None:
+            self.ok += 1
+        else:
+            self.failure_kinds[kind] = self.failure_kinds.get(kind, 0) + 1
         if status_code == 429:
             self.status_429 += 1
         elif status_code == 503:
@@ -157,6 +197,11 @@ def snapshot_turn_http_summary(*, cache_hits_evidence: int = 0) -> dict[str, Any
     return _collector.snapshot(cache_hits_evidence=cache_hits_evidence)
 
 
+def peek_turn_http_summary() -> dict[str, Any]:
+    """The active turn's HTTP summary without closing the turn scope (S12)."""
+    return _active_collector().snapshot()
+
+
 def _active_collector() -> HttpMetricsCollector:
     with _turn_lock:
         if _turn_collector is not None:
@@ -207,6 +252,9 @@ def build_http_summary(
             entry["rate_limit_remaining"] = stats.rate_limit_remaining
         if stats.last_request_at > 0:
             entry["last_request_at"] = stats.last_request_at
+        entry["ok"] = stats.ok
+        if stats.failure_kinds:
+            entry["failures"] = dict(stats.failure_kinds)
         host_payload[host] = entry
     return {
         "requests_total": requests_total,
@@ -238,7 +286,10 @@ def merge_http_summaries(summaries: list[Mapping[str, Any]]) -> dict[str, Any]:
                 stats.status_429 += int(row.get("429") or 0)
                 stats.status_503 += int(row.get("503") or 0)
                 stats.retries += int(row.get("retries") or 0)
-            except (TypeError, ValueError):
+                stats.ok += int(row.get("ok") or 0)
+                for kind, count in (row.get("failures") or {}).items():
+                    stats.failure_kinds[str(kind)] = stats.failure_kinds.get(str(kind), 0) + int(count)
+            except (TypeError, ValueError, AttributeError):
                 pass
             p95 = row.get("latency_ms_p95")
             if p95 is not None:
@@ -306,3 +357,49 @@ def instrumented_get(
     from core.knowledge.http_client import knowledge_get
 
     return knowledge_get(url, host=host, is_retry=is_retry, **kwargs)
+
+
+_SKIP_MARKERS = (":negative_cache_", ":circuit_open", ":budget_exhausted")
+
+
+def failed_sources(summary: Mapping[str, Any] | None) -> list[dict[str, str]]:
+    """Hosts that never answered in this turn, with the main reason (plan S12).
+
+    A host counts when every request failed (see ``http_failure_kind``) or when
+    it was skipped by the negative cache / circuit breaker / quota guard without
+    any successful request. Hosts with at least one answer are not listed.
+    """
+    if not isinstance(summary, Mapping):
+        return []
+    by_host = summary.get("by_host") or {}
+    out: dict[str, str] = {}
+    if isinstance(by_host, Mapping):
+        for host, row in sorted(by_host.items()):
+            if not isinstance(row, Mapping):
+                continue
+            failures = row.get("failures") or {}
+            if not failures or int(row.get("ok") or 0) > 0:
+                continue
+            kind = max(failures.items(), key=lambda kv: (kv[1], kv[0]))[0]
+            out[str(host)] = kind
+    answered = {
+        str(h) for h, row in (by_host.items() if isinstance(by_host, Mapping) else ())
+        if isinstance(row, Mapping) and int(row.get("ok") or 0) > 0
+    }
+    for reason in summary.get("retry_reasons") or ():
+        text = str(reason)
+        for marker in _SKIP_MARKERS:
+            if marker in text:
+                host = text.split(marker, 1)[0]
+                if host and host not in answered and host not in out:
+                    out[host] = FAILURE_RATE_LIMITED if "budget" in text else "skipped"
+    return [{"host": h, "reason": r} for h, r in out.items()]
+
+
+def failed_sources_note(summary: Mapping[str, Any] | None) -> tuple[list[dict[str, str]], str]:
+    """(failed hosts, one rationale sentence) for the sufficiency rationale; "" when none."""
+    rows = failed_sources(summary)
+    if not rows:
+        return [], ""
+    parts = [f"{r['host']} ({FAILURE_LABELS.get(r['reason'], r['reason'])})" for r in rows]
+    return rows, f" Sources that failed: {', '.join(parts)}."

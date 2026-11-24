@@ -80,7 +80,7 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
     PROFILE_BALANCED: RetrievalProfileSpec(
         id=PROFILE_BALANCED,
         label="Balanced",
-        short_description="Default for most users; on web, may open one result page.",
+        short_description="Default for most users; on web, may open up to two result pages.",
         budget=RetrievalBudget(
             max_results=3,
             max_adapter_calls=3,
@@ -90,7 +90,10 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
         max_parallel_adapters=3,
         cache_policy="default",
         source_ordering="default",
-        fetch_url_count=1,
+        # S12 (D17): 2 pages. On the 16 web fixtures with a fetchable result,
+        # page content reached the answer for 12/16 with 1 page and 16/16 with
+        # 2 (a 3rd added none); median fetch time 358 ms -> 828 ms.
+        fetch_url_count=2,
         adapter_timeout_s=5.0,
         collection_deadline_s=6.5,
     ),

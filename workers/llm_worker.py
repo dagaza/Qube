@@ -3665,10 +3665,24 @@ class LLMWorker(QThread):
             )
             if _search_outcome is not None and _search_outcome.is_failure:
                 if _search_outcome.kind.value == "bot_challenge":
-                    self.status_update.emit("🌐 Web search blocked (provider challenge)")
-                    self.web_search_outcome_hint.emit(
-                        "Web search blocked — search engine bot challenge"
-                    )
+                    # S12 (V15): name the real cause; Qube's own limits and a
+                    # provider rate limit are not bot challenges.
+                    _cause = _search_outcome.block_cause
+                    if _cause == "qube_limit":
+                        self.status_update.emit("🌐 Web search paused (Qube's search limit)")
+                        self.web_search_outcome_hint.emit(
+                            "Web search paused — Qube's own search limit; try again shortly"
+                        )
+                    elif _cause == "provider_rate_limit":
+                        self.status_update.emit("🌐 Web search blocked (provider rate limit)")
+                        self.web_search_outcome_hint.emit(
+                            "Web search blocked — search engine rate limit"
+                        )
+                    else:
+                        self.status_update.emit("🌐 Web search blocked (provider challenge)")
+                        self.web_search_outcome_hint.emit(
+                            "Web search blocked — search engine bot challenge"
+                        )
                 else:
                     self.status_update.emit("🌐 Web search returned no usable results")
                     self.web_search_outcome_hint.emit(
@@ -3685,10 +3699,15 @@ class LLMWorker(QThread):
                 and _search_outcome.fallback_from
                 and not _web_outcome.skip_enrichment
             ):
+                from core.knowledge.search_outcome import BLOCK_CAUSE_LABELS
+
+                _primary_cause = (_search_outcome.primary_outcome or {}).get("block_cause")
+                _cause_label = BLOCK_CAUSE_LABELS.get(str(_primary_cause or ""), "")
                 self.web_search_outcome_hint.emit(
                     "Web search via "
                     f"{_search_outcome.provider} "
-                    f"(fallback from {_search_outcome.fallback_from})"
+                    f"(fallback from {_search_outcome.fallback_from}"
+                    f"{': ' + _cause_label if _cause_label else ''})"
                 )
 
             from core.knowledge.discovery.backoff import consume_ddg_backoff_notification

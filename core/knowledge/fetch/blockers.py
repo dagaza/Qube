@@ -6,14 +6,6 @@ import re
 
 from core.knowledge.fetch.types import BlockerReason
 
-_CLOUDFLARE_MARKERS = (
-    "just a moment",
-    "checking your browser",
-    "cf-browser-verification",
-    "challenge-platform",
-    "cloudflare",
-    "attention required",
-)
 _JS_SHELL_MARKERS = (
     '<div id="root"></div>',
     '<div id="app"></div>',
@@ -43,16 +35,44 @@ def _normalized(html: str) -> str:
 
 
 def _visible_text_length(html: str) -> int:
+    return len(_visible_text(html))
+
+
+# S12: a challenge interstitial is a short page that says so. The bare word
+# "cloudflare" or "challenge-platform" also appears in the scripts Cloudflare
+# injects into every page it proxies (Insights beacon, cdnjs, the passive
+# /cdn-cgi/challenge-platform/scripts/jsd/ bot script), so matching raw HTML
+# discarded 8 of 41 real article pages in the S12 measurement.
+_CHALLENGE_TEXT_MARKERS = (
+    "just a moment",
+    "checking your browser",
+    "attention required",
+    "verify you are human",
+    "enable javascript and cookies to continue",
+)
+_CHALLENGE_MARKUP_MARKERS = (
+    "cf-browser-verification",
+    "cf_chl_opt",
+    "/cdn-cgi/challenge-platform/h/",
+)
+_CHALLENGE_MAX_VISIBLE_CHARS = 2000
+
+
+def _visible_text(html: str) -> str:
     text = re.sub(r"<script[^>]*>.*?</script>", " ", html or "", flags=re.I | re.S)
     text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.I | re.S)
     text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return len(text)
+    return re.sub(r"\s+", " ", text).strip().lower()
 
 
 def detect_cloudflare(html: str) -> bool:
+    visible = _visible_text(html)
+    if len(visible) >= _CHALLENGE_MAX_VISIBLE_CHARS:
+        return False
+    if any(marker in visible for marker in _CHALLENGE_TEXT_MARKERS):
+        return True
     norm = _normalized(html)
-    return any(marker in norm for marker in _CLOUDFLARE_MARKERS)
+    return any(marker in norm for marker in _CHALLENGE_MARKUP_MARKERS)
 
 
 def detect_js_rendered(html: str) -> bool:
@@ -74,8 +94,13 @@ def detect_cookie_wall(html: str) -> bool:
 
 
 def detect_paywall(html: str) -> bool:
-    norm = _normalized(html)
-    return any(marker in norm for marker in _PAYWALL_MARKERS)
+    """Paywall wording in the page's visible text (S12).
+
+    Attributes are not text: every Wikipedia citation to a paywalled source
+    carries ``title="paid subscription required"`` and used to match.
+    """
+    visible = _visible_text(html)
+    return any(marker in visible for marker in _PAYWALL_MARKERS)
 
 
 def detect_blocker(

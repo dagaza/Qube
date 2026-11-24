@@ -67,8 +67,8 @@ from core.retrieval_query_cleanup import RecencyNeed, recency_need
 #   and 0 false abstentions. keep=3 on 3 rows loses relevant rows (72) and
 #   adds a false abstention: the wider pool is what makes the stricter keep
 #   affordable. keep 3–3.5 is a plateau.
-# Fetched page sections are a different pool (one page) and keep the S7
-# values (``SECTION_THRESHOLDS``).
+# Fetched page sections are a different pool (the sections of 1–3 fetched
+# pages) and keep the S7 values (``SECTION_THRESHOLDS``).
 WEB_THRESHOLDS = SufficiencyThresholds(keep=3.0, strong=3.0, min_strong_for_sufficient=2)
 SECTION_THRESHOLDS = SufficiencyThresholds(keep=0.0, strong=2.0, min_strong_for_sufficient=2)
 TRUSTED_THRESHOLDS = SufficiencyThresholds(keep=0.0, strong=2.0, min_strong_for_sufficient=2)

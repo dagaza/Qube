@@ -221,7 +221,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.retrieval_profile_selector.setMenu(QMenu(host.retrieval_profile_selector))
     host.retrieval_profile_selector.setToolTip(
         "How hard Qube searches on Library, Live Sources, presets, and web turns. "
-        "On web: Fast uses search snippets only; Balanced may open one page; "
+        "On web: Fast uses search snippets only; Balanced may open up to two pages; "
         "Thorough up to three. Not the same as Search quality (embedding presets) "
         "or My knowledge presets."
     )

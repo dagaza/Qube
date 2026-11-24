@@ -3,7 +3,7 @@
 import html
 import logging
 import re
-from typing import List, Dict, Optional, TypedDict
+from typing import List, Dict, NotRequired, Optional, TypedDict
 from dataclasses import dataclass
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -19,6 +19,10 @@ DDG_PACING_TIMEOUT_SNIPPET = (
     "Internet search deferred: discovery pacing timeout (using fallbacks)."
 )
 DDG_NETWORK_ERROR_PREFIX = "Internet search failed due to network error:"
+# S12: HTTP 429 / 403 from DuckDuckGo are provider blocks, not network errors.
+DDG_RATE_LIMITED_SNIPPET = "Internet search blocked: DuckDuckGo rate limit (HTTP 429)."
+DDG_FORBIDDEN_SNIPPET = "Internet search blocked: DuckDuckGo refused the request (HTTP 403)."
+DDG_BLOCK_STATUS_CODES = frozenset({403, 429})
 
 
 class DdgInspectResult(TypedDict):
@@ -31,6 +35,7 @@ class DdgInspectResult(TypedDict):
     urls_with_http: int
     bot_challenge_signals: list[str]
     pace_wait_ms: int
+    retry_after: NotRequired[str | None]
 
 
 @dataclass(frozen=True)
@@ -277,6 +282,35 @@ def execute_internet_search(
     try:
         response = ddg_html_search(scoped_query)
         record_ddg_live_request()
+        if response.status_code in DDG_BLOCK_STATUS_CODES:
+            # S12 (§3.7): these used to become a generic network error, which
+            # lost the status and skipped the fallback chain.
+            limited = response.status_code == 429
+            inspection = {
+                "response_kind": "rate_limited" if limited else "forbidden",
+                "http_status": response.status_code,
+                "body_len": len(response.text or ""),
+                "link_matches": 0,
+                "snippet_matches": 0,
+                "parsed_rows": 0,
+                "urls_with_http": 0,
+                "bot_challenge_signals": [f"http_{response.status_code}"],
+                "pace_wait_ms": pace_wait_ms,
+                "retry_after": response.retry_after,
+            }
+            _log_ddg_inspection(scoped_query, inspection)
+            logger.warning(
+                "[DDG] DuckDuckGo answered HTTP %s (transport=%s, retry-after=%s).",
+                response.status_code,
+                response.transport,
+                response.retry_after or "-",
+            )
+            if not limited:
+                reset_ddg_browser_session()
+            return InternetSearchResponse(
+                rows=[{"title": "", "snippet": DDG_RATE_LIMITED_SNIPPET if limited else DDG_FORBIDDEN_SNIPPET}],
+                inspection=inspection,
+            )
         if response.status_code >= 400:
             raise requests.HTTPError(
                 f"{response.status_code} from DuckDuckGo ({response.transport})"

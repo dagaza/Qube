@@ -43,6 +43,13 @@ class SearchOutcome:
     fallback_from: str | None = None
     fallback_reason: str | None = None
     primary_outcome: dict[str, Any] | None = None
+    # S12: seconds from a provider's Retry-After (HTTP 429), unbounded as sent.
+    retry_after_s: float | None = None
+
+    @property
+    def block_cause(self) -> str | None:
+        """Why discovery was blocked, or ``None`` (see ``discovery_block_cause``)."""
+        return discovery_block_cause(self.failure_sentinel_reason, self.bot_challenge_signals)
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -55,6 +62,11 @@ class SearchOutcome:
             "failure_sentinel_reason": self.failure_sentinel_reason,
             "recovery_hint": self.recovery_hint,
         }
+        cause = self.block_cause
+        if cause:
+            payload["block_cause"] = cause
+        if self.retry_after_s is not None:
+            payload["retry_after_s"] = self.retry_after_s
         if self.fallback_from:
             payload["fallback_from"] = self.fallback_from
         if self.fallback_reason:
@@ -93,6 +105,9 @@ class SearchOutcome:
             fallback_from=(
                 str(raw.get("fallback_from")) if raw.get("fallback_from") else None
             ),
+            retry_after_s=(
+                float(raw["retry_after_s"]) if raw.get("retry_after_s") is not None else None
+            ),
             fallback_reason=(
                 str(raw.get("fallback_reason")) if raw.get("fallback_reason") else None
             ),
@@ -112,6 +127,43 @@ class SearchOutcome:
         return self.kind != SearchOutcomeKind.SERP_SUCCESS
 
 
+# S12 (V15): Qube's own limits and provider blocks both surface as
+# ``bot_challenge`` outcomes (so the fallback chain runs), but they need
+# different handling and reporting.
+BLOCK_CAUSE_QUBE_LIMIT = "qube_limit"  # burst / session budget, pacing timeout
+BLOCK_CAUSE_PROVIDER_CHALLENGE = "provider_challenge"  # anomaly page, HTTP 403, or a pause after one
+BLOCK_CAUSE_PROVIDER_RATE_LIMIT = "provider_rate_limit"  # HTTP 429
+
+_QUBE_LIMIT_REASONS = frozenset(
+    {"burst_budget_exhausted", "session_budget_exhausted", "ddg_pacing_timeout"}
+)
+_QUBE_LIMIT_SIGNALS = frozenset({"burst_budget_exhausted", "session_budget_exhausted", "pacing_timeout"})
+_PROVIDER_CHALLENGE_REASONS = frozenset({"ddg_bot_challenge", "ddg_backoff", "ddg_forbidden"})
+
+BLOCK_CAUSE_LABELS = {
+    BLOCK_CAUSE_QUBE_LIMIT: "Qube's own search limit",
+    BLOCK_CAUSE_PROVIDER_CHALLENGE: "provider bot challenge",
+    BLOCK_CAUSE_PROVIDER_RATE_LIMIT: "provider rate limit",
+}
+
+
+def discovery_block_cause(
+    failure_sentinel_reason: str | None,
+    signals: tuple[str, ...] | list[str] = (),
+) -> str | None:
+    reason = str(failure_sentinel_reason or "").strip().lower()
+    if reason in _QUBE_LIMIT_REASONS:
+        return BLOCK_CAUSE_QUBE_LIMIT
+    if reason == "ddg_rate_limited":
+        return BLOCK_CAUSE_PROVIDER_RATE_LIMIT
+    if reason in _PROVIDER_CHALLENGE_REASONS:
+        return BLOCK_CAUSE_PROVIDER_CHALLENGE
+    sigs = {str(s).strip().lower() for s in signals or ()}
+    if sigs & _QUBE_LIMIT_SIGNALS:
+        return BLOCK_CAUSE_QUBE_LIMIT
+    return None
+
+
 def build_search_outcome_from_ddg(
     rows: list[dict[str, Any]] | None,
     inspection: Mapping[str, Any] | None,
@@ -129,8 +181,20 @@ def build_search_outcome_from_ddg(
         str(s) for s in (inspect.get("bot_challenge_signals") or ()) if s
     )
     sentinel_reason = failure_sentinel_reason(safe_rows)
+    retry_after_s: float | None = None
 
-    if sentinel_reason == "ddg_bot_challenge" or response_kind == "bot_challenge":
+    if response_kind == "rate_limited":
+        from core.knowledge.http_client import retry_after_seconds
+
+        kind = SearchOutcomeKind.BOT_CHALLENGE
+        sentinel_reason = "ddg_rate_limited"
+        retry_after_s = retry_after_seconds({"Retry-After": inspect.get("retry_after")}) if inspect.get("retry_after") else None
+        recovery = "DuckDuckGo rate limit (HTTP 429); fallbacks may still apply."
+    elif response_kind == "forbidden":
+        kind = SearchOutcomeKind.BOT_CHALLENGE
+        sentinel_reason = "ddg_forbidden"
+        recovery = "DuckDuckGo refused the request (HTTP 403); retry later or change network."
+    elif sentinel_reason == "ddg_bot_challenge" or response_kind == "bot_challenge":
         kind = SearchOutcomeKind.BOT_CHALLENGE
         recovery = "Retry later or change network."
     elif sentinel_reason == "ddg_pacing_timeout" or response_kind == "pacing_timeout":
@@ -161,6 +225,7 @@ def build_search_outcome_from_ddg(
         bot_challenge_signals=bot_signals,
         failure_sentinel_reason=sentinel_reason,
         recovery_hint=recovery,
+        retry_after_s=retry_after_s,
     )
 
 
@@ -255,6 +320,7 @@ def with_discovery_fallback(
         fallback_from=fallback_from,
         fallback_reason=fallback_reason,
         primary_outcome=primary_outcome.to_dict() if primary_outcome else None,
+        retry_after_s=outcome.retry_after_s,
     )
 
 
@@ -296,6 +362,9 @@ def format_search_outcome_summary_line(outcome: SearchOutcome | None) -> str | N
         parts.append(
             "fallback_from=" + discovery_provider_label(outcome.fallback_from)
         )
+    cause = outcome.block_cause or (outcome.primary_outcome or {}).get("block_cause")
+    if cause:
+        parts.append("cause=" + BLOCK_CAUSE_LABELS.get(str(cause), str(cause)))
     if outcome.bot_challenge_signals:
         parts.append(
             "signals="
@@ -303,6 +372,29 @@ def format_search_outcome_summary_line(outcome: SearchOutcome | None) -> str | N
             + ("…" if len(outcome.bot_challenge_signals) > 4 else "")
         )
     return " | ".join(parts)
+
+
+def degraded_discovery_note(outcome: SearchOutcome | None) -> str:
+    """One sentence when web discovery did not run on its primary provider (S12, V15).
+
+    "" when discovery ran normally. Used in the bundle's coverage rationale so
+    the inspector and trace say that a web search became, say, a Wikipedia search.
+    """
+    if outcome is None:
+        return ""
+    from core.knowledge.discovery.policy import discovery_provider_label
+
+    if outcome.fallback_from:
+        cause = (outcome.primary_outcome or {}).get("block_cause")
+        why = BLOCK_CAUSE_LABELS.get(str(cause or ""), "it was unavailable")
+        return (
+            f"Search ran on {discovery_provider_label(outcome.provider)} instead of "
+            f"{discovery_provider_label(outcome.fallback_from)} ({why})."
+        )
+    if outcome.kind == SearchOutcomeKind.BOT_CHALLENGE:
+        why = BLOCK_CAUSE_LABELS.get(str(outcome.block_cause or ""), "blocked")
+        return f"Search on {discovery_provider_label(outcome.provider)} did not run ({why})."
+    return ""
 
 
 def format_search_outcome_explain_text(outcome: SearchOutcome | None) -> str:

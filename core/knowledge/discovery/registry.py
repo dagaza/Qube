@@ -26,6 +26,8 @@ from core.knowledge.discovery.cache import (
 )
 from core.knowledge.discovery.types import DiscoveryProvider, DiscoveryResult
 from core.knowledge.search_outcome import (
+    BLOCK_CAUSE_PROVIDER_RATE_LIMIT,
+    BLOCK_CAUSE_QUBE_LIMIT,
     SearchOutcome,
     SearchOutcomeKind,
     with_discovery_fallback,
@@ -125,15 +127,20 @@ def _provider_discover_full(
 def _synthetic_backoff_result(provider_id: str) -> DiscoveryResult:
     entry = get_provider_backoff(provider_id)
     remaining = entry.remaining_seconds if entry is not None else 0
+    minutes = max(1, (remaining + 59) // 60)
+    # S12: a pause after HTTP 429 is reported as a rate limit, not a challenge.
+    rate_limited = entry is not None and entry.reason == "rate_limited"
     outcome = SearchOutcome(
         kind=SearchOutcomeKind.BOT_CHALLENGE,
         provider=provider_id,
         parsed_rows=0,
         candidate_count=0,
         bot_challenge_signals=("backoff_active",),
-        failure_sentinel_reason="ddg_backoff",
+        failure_sentinel_reason="ddg_rate_limited" if rate_limited else "ddg_backoff",
         recovery_hint=(
-            f"Provider paused after bot challenge; retry in ~{max(1, (remaining + 59) // 60)} min."
+            f"Provider paused after a rate limit; retry in ~{minutes} min."
+            if rate_limited
+            else f"Provider paused after bot challenge; retry in ~{minutes} min."
         ),
     )
     return DiscoveryResult(
@@ -216,6 +223,20 @@ def _record_primary_outcome(provider_id: str, result: DiscoveryResult) -> None:
         clear_provider_backoff(provider_id)
         return
     if outcome.kind == SearchOutcomeKind.BOT_CHALLENGE:
+        cause = outcome.block_cause
+        if cause == BLOCK_CAUSE_QUBE_LIMIT:
+            # S12 (§3.7): Qube's own pacing / budget is not a provider block.
+            # It used to pause DuckDuckGo for 30 min and tighten pacing further.
+            return
+        if cause == BLOCK_CAUSE_PROVIDER_RATE_LIMIT:
+            from core.knowledge.discovery.backoff import rate_limit_backoff_seconds
+
+            mark_provider_backoff(
+                provider_id,
+                reason="rate_limited",
+                ttl_seconds=rate_limit_backoff_seconds(outcome.retry_after_s),
+            )
+            return
         mark_provider_backoff(provider_id, reason="bot_challenge")
         record_ddg_bot_challenge()
 
@@ -246,6 +267,8 @@ def _merge_fallback_result(
 ) -> DiscoveryResult:
     outcome = fallback.search_outcome
     if outcome is not None:
+        # ``fallback_reason`` keeps its value; the S12 cause is in
+        # ``primary_outcome["block_cause"]``.
         outcome = with_discovery_fallback(
             outcome,
             fallback_from=primary.provider_id,
@@ -355,13 +378,19 @@ def discover_full_with_fallback(
                 site_bias,
             )
             logger.warning(
-                "[Discovery] primary=%s outcome=%s → fallback=%s query=%r",
+                "[Discovery] primary=%s outcome=%s cause=%s → fallback=%s query=%r",
                 primary_id,
                 (
                     primary_result.search_outcome.kind.value
                     if primary_result.search_outcome
                     else "unknown"
                 ),
+                (
+                    primary_result.search_outcome.block_cause
+                    if primary_result.search_outcome
+                    else None
+                )
+                or "-",
                 fallback_id,
                 fallback_query[:120],
             )

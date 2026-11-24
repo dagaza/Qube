@@ -24,6 +24,16 @@ from core.retrieval_query_cleanup import strip_request_frames
 from core.retrieval_relevance import filter_web_results
 
 
+# S12 (D19): DuckDuckGo search for @trusted is scoped to the allowlist's main
+# zones (``site:wikipedia.org OR site:gov OR site:int OR site:edu <query>``).
+# Live, on the 5 trusted fixtures: rows on the allowlist 16/30 unscoped vs
+# 30/30 scoped, gate-kept rows 9 vs 12, sufficient 2 vs 4 of the 4 answerable
+# fixtures; the fictional case stayed insufficient. A 6-site list (+ gov.uk,
+# europa.eu) returned off-topic pages, so it is not used. Wikipedia fallback
+# ignores the scope; the allowlist filter below still applies to every row.
+TRUSTED_DISCOVERY_SITE_SCOPE: tuple[str, ...] = ("wikipedia.org", "gov", "int", "edu")
+
+
 def _candidate_to_row(candidate: CandidateUrl) -> dict[str, Any]:
     row: dict[str, Any] = {
         "title": candidate.title or "",
@@ -77,6 +87,7 @@ class TrustedEvidencePipeline:
             discovery = discover_full_with_fallback(
                 search_query,
                 max_results=max(5, budget * 2),
+                site_bias=TRUSTED_DISCOVERY_SITE_SCOPE,
                 retrieval_profile=ctx.retrieval_profile,
             )
             ddg_raw = _discovery_rows(discovery)

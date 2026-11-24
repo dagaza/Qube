@@ -22,9 +22,10 @@ from core.knowledge.types import (
     EvidenceObject,
     RetrievalBudget,
     SERVICE_SCIENTIFIC_EVIDENCE,
+    SERVICE_TRUSTED_KNOWLEDGE,
 )
 from core.knowledge.deep_research_decompose import decompose_query, normalize_deep_research_query
-from core.knowledge.deep_research_merge import filter_merged_sources_for_query
+from core.knowledge.deep_research_merge import DEEP_RESEARCH_MERGE_TOP_K, filter_merged_sources_for_query
 from core.knowledge.deep_research_profiles import (
     DEEP_BUDGET,
     DeepResearchProfileSpec,
@@ -221,6 +222,7 @@ def build_bibliography_report(
     bundle: EvidenceBundle | None,
     sub_queries: tuple[str, ...],
     include_summary: bool = True,
+    sub_query_fallbacks: tuple[dict[str, Any], ...] = (),
 ) -> str:
     """Markdown report skeleton with numbered bibliography (Phase 4 v1)."""
     lines = [
@@ -233,6 +235,20 @@ def build_bibliography_report(
         lines.extend(["## Sub-queries", ""])
         for idx, sq in enumerate(sub_queries, start=1):
             lines.append(f"{idx}. {sq}")
+        lines.append("")
+    # S12 (D14): say which sub-questions had no relevant scholarly source.
+    for fb in sub_query_fallbacks:
+        target = "trusted sources (Wikipedia, government, intergovernmental)"
+        if fb.get("sources"):
+            lines.append(
+                f"_Sub-query {fb.get('index')}: no relevant scholarly source; "
+                f"{fb.get('sources')} result(s) from {target} were used instead._"
+            )
+        else:
+            lines.append(
+                f"_Sub-query {fb.get('index')}: no relevant scholarly or trusted source found._"
+            )
+    if sub_query_fallbacks:
         lines.append("")
 
     if bundle is None or not bundle.sources:
@@ -278,23 +294,95 @@ def build_bibliography_report(
     return "\n".join(lines) + "\n"
 
 
+# S12 (R10): the merged gate's keep threshold, the scientific gate's (S4).
+MERGE_RERANK_KEEP = 0.0
+
+
+def rerank_merged_sources(
+    query: str,
+    sources: list[EvidenceObject],
+    *,
+    top_k: int,
+) -> tuple[list[EvidenceObject], int, dict[str, Any]] | None:
+    """S12: rank merged sources with the S3 cross-encoder; ``None`` if it cannot run.
+
+    Each source scores the higher of its cross-encoder score against the main
+    question and the score its own sub-question gave it (``raw_metadata
+    ["rerank_score"]``), so a source relevant to one sub-question is not lost
+    because the main question is broader. Sources below the scientific keep
+    threshold on both are dropped; the best ``top_k`` are kept.
+    """
+    from core.knowledge.ranking import rerank
+
+    if not sources or rerank.unavailable_reason(query) is not None:
+        return None
+    # Title + 800-char head, as every other gate scores (V5).
+    texts = [
+        f"{s.title}. {(s.full_text or s.excerpt or '').strip()}"[: rerank.DEFAULT_TEXT_CHARS]
+        for s in sources
+    ]
+    result = rerank.rerank_texts(query, texts)
+    if result is None:
+        return None
+    scored: list[tuple[float, float, EvidenceObject]] = []
+    for src, main_score in zip(sources, result.scores):
+        sub = (src.raw_metadata or {}).get("rerank_score")
+        try:
+            sub_score = float(sub) if sub is not None else float("-inf")
+        except (TypeError, ValueError):
+            sub_score = float("-inf")
+        best = max(float(main_score), sub_score)
+        scored.append((best, float(main_score), src))
+    passing = [row for row in scored if row[0] >= MERGE_RERANK_KEEP]
+    passing.sort(key=lambda row: (row[0], row[2].authority_score), reverse=True)
+    kept_rows = passing[: max(1, int(top_k))]
+    kept = [src for _, _, src in kept_rows]
+    diag = {
+        "merged_gate": "rerank",
+        "merged_rerank_keep": MERGE_RERANK_KEEP,
+        "merged_rerank_top_k": int(top_k),
+        "merged_rerank_below_keep": len(scored) - len(passing),
+        "merged_rerank_over_cap": max(0, len(passing) - len(kept_rows)),
+        "merged_rerank_scores": [
+            {"title": src.title[:80], "best": round(best, 2), "main": round(main, 2)}
+            for best, main, src in kept_rows[:8]
+        ],
+        "merged_rerank_latency_ms": round(result.latency_ms, 1),
+    }
+    return kept, len(sources) - len(kept), diag
+
+
 def apply_merged_relevance_gate(
     *,
     query: str,
     bundle: EvidenceBundle | None,
     query_vector: np.ndarray | None = None,
     embed_fn: Callable[[str], np.ndarray] | None = None,
+    top_k: int | None = None,
 ) -> tuple[EvidenceBundle | None, int, dict[str, Any]]:
-    """Filter tangential merged sources; rebuild bundle metrics when sources drop."""
+    """Filter tangential merged sources; rebuild bundle metrics when sources drop.
+
+    S12 (R10): the cross-encoder ranks the merge when it can run (the same
+    gate as each sub-question); Merge Ranker v2 is the fallback. ``top_k`` is
+    the profile's merged-source cap (it used to be a fixed 8, below both
+    profiles' caps of 10 and 24).
+    """
     if bundle is None or not bundle.sources:
         return bundle, 0, {}
 
-    filtered, dropped, filter_diag = filter_merged_sources_for_query(
-        query,
-        list(bundle.sources),
-        query_vector=query_vector,
-        embed_fn=embed_fn,
-    )
+    cap = int(top_k) if top_k else DEEP_RESEARCH_MERGE_TOP_K
+    reranked = rerank_merged_sources(query, list(bundle.sources), top_k=cap)
+    if reranked is not None:
+        filtered, dropped, filter_diag = reranked
+    else:
+        filtered, dropped, filter_diag = filter_merged_sources_for_query(
+            query,
+            list(bundle.sources),
+            query_vector=query_vector,
+            embed_fn=embed_fn,
+            top_k=cap,
+        )
+        filter_diag = {**filter_diag, "merged_gate": "merge_ranker_v2"}
     if not filtered:
         return None, dropped, filter_diag
     filtered_ids = [s.id for s in filtered]
@@ -443,6 +531,7 @@ def run_deep_research(
         )
 
     sub_bundles: list[EvidenceBundle] = []
+    sub_query_fallbacks: list[dict[str, Any]] = []
     total = len(sub_queries)
     accumulated_sources = 0
     for idx, sub_q in enumerate(sub_queries, start=1):
@@ -460,7 +549,36 @@ def run_deep_research(
             semantic_query=sub_q,
             knowledge_service=knowledge_service,
             budget=profile_spec.budget,
+            # S12 (D16): the @research depth profile is not capped by the app profile.
+            budget_is_explicit=True,
         )
+        if (
+            knowledge_service == SERVICE_SCIENTIFIC_EVIDENCE
+            and outcome.bundle is not None
+            and getattr(outcome.bundle, "sufficiency", "") == "insufficient"
+        ):
+            # S12 (D14): the relevance gate found no scholarly source for this
+            # sub-question; retry it once on trusted sources.
+            trusted = run_v2_web_retrieval(
+                query=sub_q,
+                semantic_query=sub_q,
+                knowledge_service=SERVICE_TRUSTED_KNOWLEDGE,
+                budget=profile_spec.budget,
+                budget_is_explicit=True,
+            )
+            fallback_used = bool(trusted.bundle is not None and trusted.bundle.sources)
+            sub_query_fallbacks.append(
+                {
+                    "sub_query": sub_q[:200],
+                    "index": idx,
+                    "to": SERVICE_TRUSTED_KNOWLEDGE,
+                    "sources": len(trusted.bundle.sources) if fallback_used else 0,
+                }
+            )
+            if fallback_used:
+                # Kept next to (not instead of) any scholarly rows; the merged
+                # gate ranks them together.
+                sub_bundles.append(trusted.bundle)
         if outcome.bundle is not None:
             sub_bundles.append(outcome.bundle)
             accumulated_sources = sum(len(b.sources) for b in sub_bundles)
@@ -487,6 +605,7 @@ def run_deep_research(
         bundle=merged,
         query_vector=resolved_query_vector,
         embed_fn=resolved_embed_fn,
+        top_k=profile_spec.merged_source_cap,
     )
     post_filter_count = len(merged.sources) if merged else 0
     _check_cancel()
@@ -495,6 +614,7 @@ def run_deep_research(
         query=normalized_query,
         bundle=merged,
         sub_queries=sub_queries,
+        sub_query_fallbacks=tuple(sub_query_fallbacks),
     )
     latency_ms = (time.time() - t0) * 1000
     return DeepResearchResult(
@@ -516,6 +636,7 @@ def run_deep_research(
             "merged_sources_pre_filter": pre_filter_count,
             "merged_sources_post_filter": post_filter_count,
             "merged_relevance_dropped": dropped,
+            "sub_query_fallbacks": sub_query_fallbacks,
             **filter_diag,
         },
     )

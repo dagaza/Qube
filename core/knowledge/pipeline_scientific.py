@@ -475,6 +475,26 @@ def _timeout_note(collections: list[CollectionResult]) -> tuple[list[dict[str, A
     return timeouts, f" Sources that did not answer in time: {', '.join(adapters)}."
 
 
+def _failure_note(collections: list[CollectionResult]) -> tuple[list[dict[str, Any]], str]:
+    """S12 (§3.7): adapters that raised, and hosts that never answered this turn.
+
+    Most adapters log and return [] on failure, so the per-turn HTTP outcome is
+    the main record; exceptions that do reach the collector are added by adapter.
+    """
+    from core.knowledge.http_metrics import failed_sources_note, peek_turn_http_summary
+
+    errors = [e for c in collections for e in c.errors]
+    raised = list(dict.fromkeys(str(e.get("adapter") or "") for e in errors if e.get("adapter")))
+    try:
+        hosts, host_note = failed_sources_note(peek_turn_http_summary())
+    except Exception:
+        hosts, host_note = [], ""
+    note = host_note
+    if raised:
+        note += f" Sources that raised an error: {', '.join(raised)}."
+    return [*errors, *hosts], note
+
+
 class ScientificEvidencePipeline:
     """Parallel scientific adapter collection, Phase 3 rank, and bundle assembly."""
 
@@ -614,6 +634,7 @@ class ScientificEvidencePipeline:
             if candidates and not any(coll.timeouts for coll in collections):
                 set_cached_rows(cache_key, candidates)
         adapter_timeouts, timeout_note = _timeout_note(collections)
+        adapter_failures, failure_note = _failure_note(collections) if collections else ([], "")
         pool_diag: dict[str, Any] = {
             "per_adapter": per_adapter,
             "gate_ready": gate_ready,
@@ -629,6 +650,7 @@ class ScientificEvidencePipeline:
             "cap": CANDIDATE_POOL_CAP,
             "collection": [coll.diag() for coll in collections],
             "adapter_timeouts": adapter_timeouts,
+            "adapter_failures": adapter_failures,
             "adapter_deadline_s": profile.collection_deadline_s,
             "adapter_timeout_s": profile.adapter_timeout_s,
         }
@@ -678,9 +700,9 @@ class ScientificEvidencePipeline:
         sufficiency = ranking.sufficiency
         if ranking.scored:
             sufficiency = _final_sufficiency(kept, ranking.sufficiency, SCIENTIFIC_THRESHOLDS)
-            if timeout_note:
+            if timeout_note or failure_note:
                 sufficiency = dataclasses.replace(
-                    sufficiency, rationale=f"{sufficiency.rationale}{timeout_note}"
+                    sufficiency, rationale=f"{sufficiency.rationale}{timeout_note}{failure_note}"
                 )
         rerank_diag = dict(ranking.rerank_diag)
         if ranking.scored:
