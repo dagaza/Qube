@@ -40,6 +40,17 @@ export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
 
 smoke_linux_stop_stale_qube
 
+# Plan S15: modules and data whose absence only switches a feature off
+# (reranker, spelling word list); see core/bundle_self_check.py.
+echo "Running bundle self-check ..."
+SELF_CHECK_JSON="$FAKE_HOME/bundle_self_check.json"
+if ! "$BINARY" --self-check-bundle "$SELF_CHECK_JSON"; then
+  cat "$SELF_CHECK_JSON" >&2 2>/dev/null || echo "(no self-check result written)" >&2
+  echo "Bundle self-check failed" >&2
+  exit 1
+fi
+cat "$SELF_CHECK_JSON"
+
 run_smoke() {
   smoke_linux_run_liveness 20 "$@" "$BINARY" --mock-bootstrap-download
 }

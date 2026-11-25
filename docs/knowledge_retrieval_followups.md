@@ -1,6 +1,6 @@
 # Qube Knowledge Retrieval — Follow-up Plan (S14+)
 
-**Status:** Plan of record for the work after S1–S13 · created 2026-11-25 · Phase 0 in progress (S14 done)
+**Status:** Plan of record for the work after S1–S13 · created 2026-11-25 · Phase 0 in progress (S14 done, S15 implemented)
 **Predecessor:** `docs/knowledge_retrieval_quality_assessment.md` (the assessment, the S1–S13 plan in its §12, and its progress log). That document is now the closed record of S1–S13; this one carries everything after it.
 **Audience:** Engineering, and any new session resuming this work. Start with §7 "Resuming work in a new session".
 
@@ -34,7 +34,7 @@ Out of scope unless the owner adds it: new knowledge services, UI redesign, and 
   | embed | 0.74 · 0.76 · 0.26 · 0.83 · 0.86 | 0.79 · 0.76 · 0.21 · 0.84 · 0.92 |
   | ce (shipped, `--pool-mode widened`) | 0.92 · 0.71 · 0.08 · 0.78 · 1.00 | 0.94 · 0.71 · 0.06 · 0.83 · 1.00 |
 
-- **Tests.** The S1–S13 stage test files: 428 passed (2026-11-25). Full-suite reference (S13): **4209 passed** plus the 5 known failures listed in §7.
+- **Tests.** The S1–S13 stage test files: 428 passed (2026-11-25). Full suite on `main` `0e6944a`: 4233 tests collected, so **4228 pass** plus the 5 known failures listed in §7. The S13 log's "4209 passed" undercounted; the true S13 figure is 4216 (V34).
 - **Field data: none yet.** `~/.qube/logs/qube.log` holds 0 `[QuerySlots] shadow` lines, `llm_debug.log` 0 `citation_grounding` events (last written 2026-11-24 16:48), `routing_debug.log` 1 `query_slots_gate`, and `web_search.log` is empty because the web-search audit log is off. Decisions that need real use start with Track 0 (§4).
 
 ## 3. Rules
@@ -125,6 +125,21 @@ flowchart LR
 - **Risks:** release CI time; a smoke check that needs network. The check must be offline.
 - **Acceptance:** findings recorded; the smoke check fails on a build without the files and passes on a fixed build; a patch release if 1.3.60 is affected (owner decision).
 - **Decisions:** the release CI change; whether a patch release is needed.
+- **As built (2026-11-25):**
+  - **1.3.60 inspected (V33).** The Linux x86_64 CPU tarball and the macOS arm64 DMG were downloaded with `gh release download` and listed without running anything from them: `tar -t`, `7z l` for the DMG, and `pyi-archive_viewer -r -b` for the module archive inside the Linux executable. `SHA256SUMS.txt` covers only the three Windows installers, so these two could not be checksum-verified (carry-over in §7).
+    - *Reranker:* `fastembed.rerank.cross_encoder` and its five submodules are in the module archive, and `onnxruntime` ships too. The model is not in the bundle, by design (bootstrap download).
+    - *Spelling:* the `spellchecker` modules ship, but `spellchecker/resources/` is **absent** from both artifacts. Control: `language_tags/data`, which the same spec collects, is present in both (16 files each). pyspellchecker reads its word list with `pkgutil.get_data("spellchecker", "resources/en.json.gz")`; without the file that raises `FileNotFoundError`, re-raised as `ValueError: The provided dictionary language (en) does not exist!`. `spelling._get_checker` catches it, logs one INFO line and switches the feature off. **The D6 spelling variant has never run in a packaged build.**
+    - *Reproduced* with two minimal frozen builds (PyInstaller 6.22.2, local): without the data, that `ValueError`; with `collect_data_files("spellchecker", includes=["resources/en.json.gz"])`, "inteligence" → "intelligence".
+    - *Windows* was not opened: its Inno Setup installer cannot be listed here. It builds from the same spec with no platform-specific data entries, so it is taken to be the same.
+    - *Sweep for the same class of gap:* every module that S1–S13 added or changed is in the module archive except `core.knowledge.quality_eval` (eval only). Every third-party import resolves except PyQt6 (compiled extensions, stored outside the archive) and `brotli` (optional, absent in the dev venv too, unchanged since 1.3.54). S1–S13 code reads no runtime data files other than test fixtures.
+  - **Fix.** `qube.spec` collects only `resources/en.json.gz` (650 KB of the package's 7 MB; only English is used) and stops the build if the file is not found, rather than shipping without it.
+  - **Self-check.**
+    - `core/bundle_self_check.py` adds `Qube --self-check-bundle <result.json>`. `qube_entry.run()` dispatches it first, before validation bookkeeping, Qt, the single-instance guard or any model.
+    - Checks: the reranker import that `rerank._load_model` performs, and spelling end to end (`spelling.correct_word("Inteligence")` must give "Intelligence").
+    - It writes JSON and exits 0 or 1, and needs no network, model or settings. Normal launches pay about 2 ms for the import.
+  - **Smoke scripts.** `smoke_linux_dist.sh` and `smoke_dist.ps1` run the self-check after their CUDA branch (CUDA CI still runs only the bundle-layout check, as before); `smoke_dmg.sh` runs it on the mounted, signature-checked app. `release.yml` is unchanged. It runs only on `v*` tags, so CI first exercises these steps at the next release.
+  - **Verified on a full local build** (`pyinstaller qube.spec`, PyInstaller 6.22.2, Python 3.12, Linux CPU; 58 s; output outside the repo). The bundle holds only `spellchecker/resources/en.json.gz`. `Qube --self-check-bundle <file>` under a throwaway HOME: `frozen: true`, `reranker_module` ok, `spelling_en` ok ("Intelligence"), exit 0, 1.1 s, nothing written to `~/.qube`. **Negative control:** the same code built with the 1.3.60 spec has no `spellchecker/` data, and the self-check reports `spelling_en: spell checker unavailable` and exits 1, so the new smoke step would have failed the 1.3.60 release job.
+  - **Not run here:** the PowerShell script (no `pwsh` on this machine), the macOS script (no macOS), and the full Linux smoke script, whose stale-process cleanup kills any process named `Qube` on the machine. Its self-check command was run directly instead, as above.
 
 #### S16 — Test hygiene and the engine clamp
 
@@ -325,14 +340,15 @@ What they lack is the cross-encoder gate, the sufficiency state and honest "not 
 
 A new session has no memory of earlier ones. Read this section, then §3–§6, then the open stage's entry and the progress log.
 
-**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 in progress: S14 done; next is S15.
+**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 in progress: S14 committed (`1b6fb88`); S15 implemented and verified locally, not committed; next is S16.
 
 **Commands** (repo root, `.venv`):
 
 - Targeted tests: `.venv/bin/python -m pytest -q -p no:cacheprovider tests/<files>`.
 - Full suite: `QT_QPA_PLATFORM=offscreen HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings -m "not packaging" tests > <log> 2>&1`.
-  - The process ends with the known Qt teardown abort (exit 134, no summary line), so count ` PASSED` / ` FAILED` lines.
-  - Reference (S13): **4209 passed**, and exactly these 5 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
+  - The process ends with the known Qt teardown abort (exit 134, no summary line), so count results from the log: `grep -o PASSED <log> | wc -l` and `grep -o FAILED <log> | wc -l`. Do **not** count ` PASSED` with a leading space: a test that prints output pushes its result to the start of the next line, and that count misses it (V34).
+  - Cross-check against the collected count: `... -m "not packaging" --collect-only -q tests | tail -1` must equal passed + failed (+ skipped).
+  - Reference (S15): **4244 passed** of 4249 collected; on `main` before S15, 4228 of 4233. Exactly these 5 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
 - Offline eval (needs the reranker model at `~/.qube/models/search/reranker/`): `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_knowledge_quality.py --corpus eval/retrieval_corpus/v1_knowledge_quality.json --ranker <token|embed|ce> --query-mode <production|standalone> [--pool-mode widened] [--json] [--compare <baseline>]`.
   - Compare against `eval/retrieval_corpus/baselines/kq_s13_*`, using `--pool-mode widened` for `ce`. Always pass the relative `--corpus` path.
 - Heuristic A/B: `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_heuristic_ab.py` (S13).
@@ -353,10 +369,11 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 
 - Wikipedia rows are always `undated`, so a "newest iPhone" question can keep old models as `sufficient` + `undated_sources` (predecessor S7 known limits).
 - `@trusted` via Brave: a user with Brave configured gets Brave as the primary `@trusted` provider through `site_bias`, unmeasured (S12).
+- Release checksums: `SHA256SUMS.txt` lists only the three Windows installers. The Linux tarballs, AppImages, `.deb` / `.rpm` and macOS DMGs have no published checksum (found in S15; release tooling, outside this plan).
 
 ## 8. Progress log
 
-> **Last reviewed:** 2026-11-25, plan created (S14 done).
+> **Last reviewed:** 2026-11-25, S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
 
 ### Deliverables
 
@@ -364,18 +381,25 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 |---|---|---|---|---|---|
 | 2026-11-25 | S14 | Follow-up plan | Done | `docs/knowledge_retrieval_followups.md` | — |
 | 2026-11-25 | S14 | Predecessor close-out | Done | `docs/knowledge_retrieval_quality_assessment.md`: header pointer, Resuming state, full-suite reference, Summary, Git reference, Last reviewed, §12.7 pointer | — |
+| 2026-11-25 | S15 | 1.3.60 inspection (V33) | Done | Linux x86_64 CPU tarball and macOS arm64 DMG listed (`tar -t`, `7z l`, `pyi-archive_viewer`): reranker module present; `spellchecker/resources/` absent on both (control `language_tags/data` present); reproduced with a minimal frozen build | Windows installer not opened (same spec) |
+| 2026-11-25 | S15 | Spec fix | Done | `qube.spec`: `collect_data_files("spellchecker", includes=["resources/en.json.gz"])`, build stops if not found | — |
+| 2026-11-25 | S15 | Release self-check | Done | `core/bundle_self_check.py`, `qube_entry.py` (`--self-check-bundle <file>`); `scripts/release/smoke_linux_dist.sh`, `smoke_dist.ps1`, `smoke_dmg.sh`. Full local build: exit 0, both checks ok, 1.1 s; 1.3.60-spec control: `spelling_en` fails, exit 1 | PowerShell and macOS scripts not run here; CI runs them at the next `v*` tag |
+| 2026-11-25 | S15 | Tests | Done | `tests/test_bundle_self_check.py` (new, 16 tests): dev checks pass, failure reported not raised, missing word list and wrong correction fail, flag forms, JSON + exit code, no stdout (windowed build), entry dispatch before validation and Qt, spec text, smoke scripts call the flag. Full suite (`-m "not packaging"`): **4244 passed** of 4249 collected (main before S15: 4228 of 4233, +16), the same 5 known failures, Qt teardown abort as before. No existing test changed | — |
+| 2026-11-25 | S15 | Acceptance | Done | Findings recorded ✓ (V33); the self-check fails on a build without the files and passes on the fixed build ✓ (local full build and control); patch release decided: none, the fix ships with the next release (D24) | CI first runs the new smoke steps at the next `v*` tag; packaged builds keep the spelling variant off until then |
 
 ### Validated findings (V33+)
 
 | # | Assumption | Finding | Consequence |
 |---|---|---|---|
-| — | — | — | — |
+| **V33** | The packaged app ships every S1–S13 feature (S3's frozen-build smoke test was never run) | **No: the spelling variant is off in every 1.3.60 build.** The reranker module ships. pyspellchecker's `resources/en.json.gz` does not (Linux tarball and macOS arm64 DMG inspected; Windows builds from the same spec), so `SpellChecker(language="en")` raises and the D6 variant switches itself off with one INFO line. Reproduced with a minimal frozen build, and fixed by collecting the file. No other S1–S13 module or data file is missing. | S15 fixes `qube.spec` and adds a release self-check (§6 S15) |
+| **V34** | Counting ` PASSED` lines gives the full-suite pass count (the predecessor's method) | **No, it undercounts.** A test that prints output pushes its result to the start of the next line, without the leading space. The S15 run had 8 such results (` PASSED` 4236, `PASSED` 4244, 4249 collected = 4244 + 5 failures). `--collect-only` on `2800b62` gives 4221 tests, so the S13 figure was **4216**, not the recorded 4209. Earlier stage counts (S1–S12) used the same method and may be low by a few. | §7 counts every `PASSED` token and cross-checks against `--collect-only`; the predecessor's reference line is corrected |
 
 ### Owner decisions (D23+)
 
 | # | Question | Decision | Where it applies |
 |---|---|---|---|
 | D23 | How should the post-S13 work be structured? | **A new plan document** (this one) with S14+ / D23+ / V33+ numbering; the predecessor is closed. **One branch and PR per phase, from `main`.** **Order:** Phase 0 → 1 → 2 → 6 → 4 → 5 → 7, with Phase 3's live sessions run when quotas allow. (Recorded 2026-11-25.) | All |
+| D24 | 1.3.60 ships without the spelling word list (V33). Cut a 1.3.61 patch release for the S15 fix? | **No.** The fix ships with the next regular release, bundled with more work; until then the spelling variant stays off in packaged builds. (Recorded 2026-11-25, after S15.) | S15 |
 
 ### Track 0 checkpoints
 
