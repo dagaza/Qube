@@ -27,20 +27,75 @@ from core.knowledge.search_outcome import (
     SearchOutcomeKind,
     attach_search_outcome,
 )
-from core.knowledge.types import EvidenceBundle, RetrievalContext
+from core.knowledge.ranking.recency import FRESH, STALE, assess_freshness
+from core.knowledge.ranking.sufficiency import (
+    Sufficiency,
+    assess_sufficiency,
+    relevance_probability,
+)
+from core.knowledge.ranking.web_gate import (
+    SECTION_THRESHOLDS,
+    SERP_RANK_PRIOR,
+    WEB_THRESHOLDS,
+    WARNING_RECENCY,
+    WARNING_STALE,
+    WARNING_UNDATED,
+    WebGateResult,
+    drop_search_ads,
+    dropped_for_diag,
+    final_sufficiency,
+    gate_rows,
+)
+from core.knowledge.types import EvidenceBundle, EvidenceObject, RetrievalContext
 from core.knowledge.web_fetch_context import resolve_web_fetch_options, resolve_web_relevance_options
+from core.retrieval_query_cleanup import strip_request_frames
 from core.retrieval_relevance import filter_web_results
+
+# Gate mode that runs the S7 cross-encoder gate; "fetch_permissive" (@fetch with
+# a URL) and "recipe_fetch_skip" keep their lenient legacy behaviour.
+_CE_GATE_MODES = frozenset({"strict"})
 
 
 def _candidate_to_row(candidate: CandidateUrl) -> dict[str, Any]:
-    return {
+    row: dict[str, Any] = {
         "title": candidate.title or "",
         "snippet": candidate.snippet or "",
         "url": candidate.url,
     }
+    # Plan S10 (R7): attribute the row to the provider that found it (Brave,
+    # SearXNG, Wikipedia, DuckDuckGo), not always to DuckDuckGo.
+    if candidate.source:
+        row["_discovery_provider"] = str(candidate.source)
+    return row
 
 
-def _discovery_max_results(ctx: RetrievalContext, fetch_url_count: int) -> int:
+def _is_ad_candidate(candidate: CandidateUrl) -> bool:
+    from core.knowledge.ranking.web_gate import is_search_ad_url
+
+    return is_search_ad_url(candidate.url)
+
+
+def _rerank_skip_reason(question: str) -> str:
+    from core.knowledge.ranking import rerank
+
+    return rerank.unavailable_reason(question) or rerank.SKIP_ERROR
+
+
+def _reranker_ready(question: str) -> bool:
+    from core.knowledge.ranking import rerank
+
+    return rerank.unavailable_reason(question) is None
+
+
+# Plan S8 (V14): with the relevance gate the pool is widened to this many rows
+# of the *same* results page; DuckDuckGo returns ~10 rows per page, so this
+# costs no extra search request.
+GATED_WEB_POOL = 8
+
+
+def _discovery_max_results(ctx: RetrievalContext, fetch_url_count: int, *, gated: bool = False) -> int:
+    if gated:
+        return GATED_WEB_POOL
     base = max(ctx.budget.max_results, fetch_url_count * 2, 3)
     return min(base, 8)
 
@@ -203,6 +258,93 @@ def _fetch_and_extract(
     return evidence, fetch_diag, warnings
 
 
+def _gate_fetched_sections(
+    question: str,
+    sections: list[EvidenceObject],
+    *,
+    serp_rows: list[dict[str, Any]],
+    gate: WebGateResult,
+) -> tuple[list[EvidenceObject], Any, tuple[str, ...], dict[str, Any]] | None:
+    """Score fetched page sections with the S7 gate (``None`` if the model cannot run).
+
+    Sections below ``keep`` are dropped. A section's freshness is its page's: the
+    extractor's page date, the URL, or what the page's search snippet mentions.
+    """
+    from core.knowledge.ranking import rerank
+
+    if not sections:
+        return None
+    texts = [
+        f"{s.title}. {(s.full_text or s.excerpt or '').strip()}"[: rerank.DEFAULT_TEXT_CHARS]
+        for s in sections
+    ]
+    result = rerank.rerank_texts(question, texts)
+    if result is None:
+        return None
+    thresholds = SECTION_THRESHOLDS
+    need = gate.recency
+    serp_by_url = {str(r.get("url") or ""): r for r in serp_rows}
+    scored: list[tuple[float, EvidenceObject, dict[str, Any]]] = []
+    for section, score in zip(sections, result.scores):
+        row: dict[str, Any] = {"_rerank_score": round(float(score), 4)}
+        if need is not None:
+            serp = serp_by_url.get(str(section.url or ""), {})
+            fresh = assess_freshness(
+                {
+                    "publication_date": section.publication_date,
+                    "url": section.url,
+                    "title": serp.get("title") or section.title,
+                    "snippet": serp.get("snippet") or "",
+                },
+                window_days=need.window_days,
+                today=None,
+            )
+            row["_freshness"] = fresh.status
+            row["_source_date"] = fresh.source_date.iso() if fresh.source_date else None
+            row["_source_date_basis"] = fresh.basis
+        scored.append((float(score), section, row))
+    survivors = [t for t in scored if t[0] >= thresholds.keep]
+    survivors.sort(key=lambda t: -t[0])
+    if need is not None:
+        survivors.sort(key=lambda t: t[2].get("_freshness") == STALE)
+    kept_rows = [t[2] for t in survivors]
+    pool_result = assess_sufficiency([t[0] for t in scored], thresholds)
+    final = final_sufficiency(kept_rows, pool_result, thresholds, need)
+    kept: list[EvidenceObject] = []
+    for score, section, row in survivors:
+        meta = dict(section.raw_metadata or {})
+        meta["rerank_score"] = row["_rerank_score"]
+        meta["rerank_strong"] = float(score) >= thresholds.strong
+        if row.get("_freshness"):
+            meta.update(
+                freshness=row["_freshness"],
+                source_date=row.get("_source_date"),
+                source_date_basis=row.get("_source_date_basis"),
+            )
+        kept.append(
+            replace(
+                section,
+                relevance_score=relevance_probability(score),
+                reliability_score=max(0.0, min(1.0, relevance_probability(score) * 0.85)),
+                raw_metadata=meta,
+            )
+        )
+    warnings: tuple[str, ...] = ()
+    if need is not None:
+        statuses = [r.get("_freshness") for r in kept_rows]
+        warnings = (WARNING_RECENCY,)
+        if kept_rows and FRESH not in statuses:
+            warnings += (WARNING_STALE if STALE in statuses else WARNING_UNDATED,)
+    diag = {
+        "sections_scored": len(scored),
+        "sections_kept": len(kept),
+        "latency_ms": round(result.latency_ms, 1),
+        "section_scores": [round(t[0], 3) for t in scored],
+        "state": final.state.value,
+    }
+    return kept, final, warnings, diag
+
+
 def _discovery_rel_diag(
     search_outcome: SearchOutcome | None,
     *,
@@ -238,14 +380,21 @@ def run_general_web_evidence_pipeline(
     """Discover URLs, optionally fetch pages, and assemble an EvidenceBundle."""
     t0 = time.time()
     query = ctx.query
-    semantic = ctx.semantic_query or query
+    # Search and gate on the question, not its request frame (plan S5).
+    search_query = strip_request_frames(query)
+    semantic = strip_request_frames(ctx.semantic_query or query)
     fetch_options = resolve_web_fetch_options(ctx)
     fetch_url_count = fetch_options.fetch_url_count
     relevance_options = resolve_web_relevance_options(ctx, fetch_options)
 
-    discovery_limit = _discovery_max_results(ctx, fetch_url_count)
+    ce_gate = (
+        relevance_options.apply_gate
+        and relevance_options.mode in _CE_GATE_MODES
+        and _reranker_ready(semantic)
+    )
+    discovery_limit = _discovery_max_results(ctx, fetch_url_count, gated=ce_gate)
     discovery = discover_full(
-        query,
+        search_query,
         max_results=discovery_limit,
         site_bias=fetch_options.site_bias,
         retrieval_profile=ctx.retrieval_profile,
@@ -263,7 +412,7 @@ def run_general_web_evidence_pipeline(
             latency_ms = (time.time() - t0) * 1000
             bundle = build_empty_bundle(
                 query_raw=query,
-                query_resolved=query,
+                query_resolved=search_query,
                 latency_ms=latency_ms,
                 stop_reason="failure_sentinel",
             )
@@ -274,7 +423,39 @@ def run_general_web_evidence_pipeline(
             )
             return bundle, rel_diag, raw_copy
 
-    if relevance_options.apply_gate:
+    # Search-engine ads are never evidence (S7).
+    raw_copy, ads_dropped = drop_search_ads(raw_copy)
+    candidates = [c for c in candidates if not _is_ad_candidate(c)]
+    gate: WebGateResult | None = None
+    if relevance_options.apply_gate and relevance_options.mode in _CE_GATE_MODES:
+        gate = gate_rows(
+            semantic,
+            [dict(r) for r in raw_copy],
+            budget=ctx.budget.max_results,
+            thresholds=WEB_THRESHOLDS,
+            rank_prior=SERP_RANK_PRIOR,
+        )
+    if gate is not None:
+        # ``kept`` (≤ budget) is presented and judged; every survivor may be fetched.
+        filtered = list(gate.kept)
+        rel_diag = {
+            "web_results_raw_count": len(raw_copy),
+            "web_results_kept_count": len(filtered),
+            "web_relevance_min_overlap": None,
+            "web_relevance_dropped": [
+                {"title": str(r.get("title") or "")[:80], "rerank_score": r.get("_rerank_score")}
+                for r in gate.dropped
+            ],
+            "web_relevance_embedding_gate": False,
+            "web_relevance_gate_mode": "rerank",
+            "rerank": dict(gate.diag),
+            "sufficiency": gate.sufficiency.state.value,
+        }
+        if gate.dropped:
+            rel_diag["rerank_dropped"] = dropped_for_diag(
+                gate.dropped, adapter=discovery_provider or ADAPTER_ID
+            )
+    elif relevance_options.apply_gate:
         filtered, rel_diag = filter_web_results(
             semantic,
             raw_copy,
@@ -284,6 +465,8 @@ def run_general_web_evidence_pipeline(
             min_token_ratio=relevance_options.min_token_ratio,
         )
         rel_diag["web_relevance_gate_mode"] = relevance_options.mode
+        if relevance_options.mode in _CE_GATE_MODES:
+            rel_diag["rerank"] = {"skipped_reason": _rerank_skip_reason(semantic)}
     else:
         filtered = list(raw_copy)
         rel_diag = {
@@ -294,10 +477,15 @@ def run_general_web_evidence_pipeline(
             "web_relevance_dropped": [],
             "web_relevance_embedding_gate": False,
         }
+    if ads_dropped:
+        rel_diag["web_ads_dropped"] = ads_dropped
     rel_diag = attach_search_outcome(rel_diag, search_outcome)
     rel_diag.update(discovery_extra)
     rejected_count = len(rel_diag.get("web_relevance_dropped") or [])
     latency_ms = (time.time() - t0) * 1000
+    gate_sufficiency = gate.sufficiency.state.value if gate is not None else "unscored"
+    gate_rationale = gate.sufficiency.rationale if gate is not None else ""
+    gate_warnings = tuple(gate.warnings) if gate is not None else ()
 
     if not filtered:
         filtered_outcome = (
@@ -320,10 +508,16 @@ def run_general_web_evidence_pipeline(
         )
         bundle = build_empty_bundle(
             query_raw=query,
-            query_resolved=query,
+            query_resolved=search_query,
             latency_ms=latency_ms,
             rejected_count=rejected_count,
             stop_reason="relevance_filtered",
+            sufficiency=(
+                gate_sufficiency
+                if gate_sufficiency in (Sufficiency.INSUFFICIENT.value, Sufficiency.NONE.value)
+                else "unscored"
+            ),
+            sufficiency_rationale=gate_rationale,
         )
         rel_diag = attach_search_outcome(rel_diag, filtered_outcome)
         return bundle, rel_diag, raw_copy
@@ -336,12 +530,15 @@ def run_general_web_evidence_pipeline(
         )
         bundle = build_general_web_bundle(
             query_raw=query,
-            query_resolved=query,
+            query_resolved=search_query,
             kept_rows=filtered,
             rejected_count=rejected_count,
             latency_ms=latency_ms,
-            adapter_calls=(ADAPTER_ID,),
+            adapter_calls=(discovery_provider or ADAPTER_ID,),
             stop_reason=stop_reason,
+            sufficiency=gate_sufficiency,
+            sufficiency_rationale=gate_rationale,
+            extra_warnings=gate_warnings,
         )
         selected_urls = [
             str(row.get("url") or "").strip()
@@ -365,7 +562,7 @@ def run_general_web_evidence_pipeline(
 
     url_to_candidate = {c.url: c for c in candidates}
     ranked_candidates: list[CandidateUrl] = []
-    for row in filtered:
+    for row in (gate.survivors if gate is not None else filtered):
         url = str(row.get("url") or "").strip()
         if url in url_to_candidate:
             ranked_candidates.append(url_to_candidate[url])
@@ -384,19 +581,36 @@ def run_general_web_evidence_pipeline(
         candidates=ranked_candidates,
         fetch_url_count=fetch_url_count,
     )
-    latency_ms = (time.time() - t0) * 1000
     selected_urls = [candidate.url for candidate in ranked_candidates[:fetch_url_count]]
+    fetched_sufficiency, fetched_rationale, fetched_warnings = "unscored", "", ()
+    if evidence and gate is not None:
+        section_gate = _gate_fetched_sections(semantic, evidence, serp_rows=filtered, gate=gate)
+        if section_gate is not None:
+            kept_sections, section_suff, fetched_warnings, section_diag = section_gate
+            rel_diag["rerank_sections"] = section_diag
+            if kept_sections:
+                evidence = kept_sections
+                fetched_sufficiency = section_suff.state.value
+                fetched_rationale = section_suff.rationale
+            else:
+                # The fetched page did not address the question: use the gated snippets.
+                evidence = []
+                fetch_warnings = [*fetch_warnings, "fetched_page_irrelevant"]
+    latency_ms = (time.time() - t0) * 1000
 
     if evidence:
         bundle = build_fetched_general_web_bundle(
             query_raw=query,
-            query_resolved=query,
+            query_resolved=search_query,
             sources=evidence,
             rejected_count=rejected_count,
             latency_ms=latency_ms,
             fetch_attempts=len(fetch_diag.get("attempted") or []),
             fetch_successes=len(fetch_diag.get("succeeded") or []),
-            warnings=tuple(fetch_warnings),
+            adapter_calls=(discovery_provider or ADAPTER_ID, "fetch_engine"),
+            warnings=tuple(dict.fromkeys((*fetch_warnings, *fetched_warnings))),
+            sufficiency=fetched_sufficiency,
+            sufficiency_rationale=fetched_rationale,
         )
         rel_diag = _attach_fetch_provenance(
             rel_diag,
@@ -422,12 +636,15 @@ def run_general_web_evidence_pipeline(
     )
     bundle = build_general_web_bundle(
         query_raw=query,
-        query_resolved=query,
+        query_resolved=search_query,
         kept_rows=filtered,
         rejected_count=rejected_count,
         latency_ms=latency_ms,
-        adapter_calls=(ADAPTER_ID,),
+        adapter_calls=(discovery_provider or ADAPTER_ID,),
         stop_reason=stop_reason,
+        sufficiency=gate_sufficiency,
+        sufficiency_rationale=gate_rationale,
+        extra_warnings=gate_warnings,
     )
     if warnings:
         bundle = replace(

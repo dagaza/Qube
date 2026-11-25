@@ -124,13 +124,20 @@ def extract_query_anchor_tokens(query: str) -> tuple[str, ...]:
 
 
 def extract_merge_reject_title_patterns(query: str) -> tuple[str, ...]:
-    """Off-topic title patterns to drop during merge (aligned with eval corpus)."""
+    """Off-topic title patterns to drop during merge (aligned with eval corpus).
+
+    S12 fix: a pattern the question itself mentions is never a reject. The
+    generic patterns used to apply to every query, so an @research question
+    about Chagas disease dropped every Chagas paper.
+    """
     normalized = re.sub(r"\s+", " ", (query or "").lower()).strip()
     patterns: list[str] = list(_GENERIC_MERGE_REJECT_PATTERNS)
     for phrase, rejects in _MERGE_REJECT_BY_PHRASE:
         if phrase in normalized:
             patterns.extend(rejects)
-    return tuple(dict.fromkeys(p.lower() for p in patterns if p))
+    return tuple(
+        dict.fromkeys(p.lower() for p in patterns if p and p.lower() not in normalized)
+    )
 
 
 def _anchor_in_text(text: str, anchor: str) -> bool:
@@ -261,12 +268,14 @@ def filter_merged_sources_for_query(
     min_keep: int = DEEP_RESEARCH_MIN_KEEP,
     query_vector: Optional[np.ndarray] = None,
     embed_fn: Optional[Callable[[str], np.ndarray]] = None,
+    top_k: int = DEEP_RESEARCH_MERGE_TOP_K,
 ) -> tuple[list[EvidenceObject], int, dict[str, Any]]:
     """Backward-compatible entry point; delegates to Merge Ranker v2."""
     del min_overlap, min_semantic
     return rank_merged_sources_for_query(
         query,
         sources,
+        top_k=top_k,
         min_keep=min_keep,
         query_vector=query_vector,
         embed_fn=embed_fn,

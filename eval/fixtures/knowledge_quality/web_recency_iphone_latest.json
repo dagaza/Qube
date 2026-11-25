@@ -1,0 +1,214 @@
+{
+  "schema_version": 2,
+  "id": "web_recency_iphone_latest",
+  "path": "general_web",
+  "category": "recency",
+  "description": "",
+  "query_raw": "@[tool:internet] What is the newest iPhone model?",
+  "query_clean": "What is the newest iPhone model?",
+  "retrieval_query": "What is the newest iPhone model?",
+  "standalone_question": "What is the newest iPhone model currently available?",
+  "gold_subject": "iPhone",
+  "gold_facet": "newest model",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T19:35:03+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "What is the newest iPhone model?"
+    },
+    "standalone": {
+      "duckduckgo": "What is the newest iPhone model currently available?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Shop the Latest iPhone - Verizon Business Official Site",
+      "snippet": "Shop the latest iPhone for your business needs at Verizon Business. Switch today. Learn how you can save when you switch to Verizon Business. Explore special offers.",
+      "url": "https://duckduckgo.com/y.js?ad_domain=verizon.com&amp;ad_provider=bingv7aa&amp;ad_type=txad&amp;click_metadata=Dq2rL0m2RKf10kKRTNZ35zY8YLdCnvuNA5zbiXi1bB_PKZVuzEBsHUcV595WskDacJws35SQjlyy%2DwA6wuq4C1Thyc9AJbW%2DRMxPlNhkenmSuQXqwnCZa8JS0b142HagLM6vnleOr_6J6C4NjsvmGR5OKKBgHDYDfy_B9DIX9T0.68%2D9v1UfDOWLukygMhkmyw&amp;rut=cb4af22a62e684a5227756d236798a8676f40a6934d971d04b9b9ef0bcb565be&amp;u3=https%3A%2F%2Fwww.bing.com%2Faclick%3Fld%3De8R90FpU3vdFET1bNhUWnW3DVUCUwmB%2DktqeVxml6_rw4QF4GixlCt23fBD5w06LzsZy8_DV7PbgY9M_tvlXG6ghFvPP8QkAqsBDySWlKJ4SNH2n5p3yHqvFwmVDWGjUy9KLCFosix14tuXgU_GubO82%2D7v30kvtQAHtZKSPinVq%2D751w%2DrusE51DFgUZ_nCwjqHRwH1DLiYsvEzIQOahRGYZB5cI%26u%3DaHR0cHMlM2ElMmYlMmZhZC5kb3VibGVjbGljay5uZXQlMmZzZWFyY2hhZHMlMmZsaW5rJTJmY2xpY2slM2ZsaWQlM2Q0MzcwMDA4Mjg3NDk4MTY2NiUyNmRzX3Nfa3dnaWQlM2Q1ODcwMDAwODk1MDYwNTI4MSUyNmRzX2FfY2lkJTNkNTkzMjIxMTQwJTI2ZHNfYV9jYWlkJTNkMjI5ODIxNzY3NjklMjZkc19hX2FnaWQlM2QxODIxNzUyMjEyNjIlMjZkc19hX2xpZCUzZGt3ZC0xMTcwNjIyMTE0OTg5JTI2JTI2ZHNfZV9hZGlkJTNkNzczNzgzNjIyOTAyODglMjZkc19lX3RhcmdldF9pZCUzZGt3ZC03NzM3ODY0ODI4Mzc3NSUzYWxvYy01MyUyNiUyNmRzX2VfbmV0d29yayUzZHMlMjZkc191cmxfdiUzZDIlMjZkc19kZXN0X3VybCUzZGh0dHBzJTNhJTJmJTJmd3d3LnZlcml6b24uY29tJTJmYnVzaW5lc3MlMmZzaG9wJTJmcHJvZHVjdHMlMmZkZXZpY2VzJTJmYXBwbGUlMmYlM2ZjbXAlM2RrbmMlM2FiaW4lM2FhYyUzYXdscyUzYWRwciUzYTg3NzM5OTA5NTdfZHNfY2lkXzIyOTgyMTc2NzY5X2RzX2FnaWRfMTgyMTc1MjIxMjYyJTI2dXRtX3Rlcm0lM2RzZSUyNTIwaXBob25lJTI1MjBuZXclMjUyMG1vZGVsJTI2dXRtX21lZGl1bSUzZGNwYyUyNnV0bV9zb3VyY2UlM2RiaW5nJTI2dXRtX2NhbXBhaWduJTNkQk5HX05CX0FwcGxlJTJiaVBob25lX0F1ZGllbmNlX1BocmFzZSUyNnV0bV9jb250ZW50JTNkRXZlcmdyZWVuQWRzJTI2Z2NsaWQlM2QwNzg4MGU4OGFmZGQxNTZhYTExNjY1OGMyOGQxNGRhNCUyNmdjbHNyYyUzZDNwLmRzJTI2JTI2bXNjbGtpZCUzZDA3ODgwZTg4YWZkZDE1NmFhMTE2NjU4YzI4ZDE0ZGE0%26rlid%3D07880e88afdd156aa116658c28d14da4&amp;vqd=4-259250503316704364477614058871994517451&amp;iurl=%7B1%7DIG%3D8CE463FA80F34A51BB0112AB5D9D2CB7%26CID%3D3A5E2A10F2F864771F3F320AF311654D%26ID%3DDevEx%2C5037.1",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Shop apple iphone newest model 2025 - Amazon® Official Site",
+      "snippet": "Get deals and low prices on apple iphone newest model 2025 in Cell Phones & Accessories on Amazon. Browse & discover thousands of brands. Read customer reviews & find best sellers",
+      "url": "https://duckduckgo.com/y.js?ad_domain=amazon.com&amp;ad_provider=bingv7aa&amp;ad_type=txad&amp;click_metadata=y3%2D3a4_zc1JGQeG3GFOSwHDHETz5Uq_mdxf7vF4NDifC66UQL3vhcHUANFncQD7ghvTO2iy4ECXp0%2Dl2WFvwh1XehxHHGpd5cq36pzGBSpSXhTa9WyFNN1MtXsfVXI4xFu9TjlFqVXf9qfb%2DL9kPRaGBYhVUhCZwF74Og_sSPyU.ANdfJjKEqQlSshnQC6HUHA&amp;rut=1da92abe3caacfa43099ab4c8fa6bcaccd5b9e24d6ea2f9db896b049faebd6c8&amp;u3=https%3A%2F%2Fwww.bing.com%2Faclick%3Fld%3De8Pgs4CWQkc0R7jwm32CzNjDVUCUwai%2DkAwlAsDnctKSm9FrZflvCTJuviEeEnNuiKipa7lnWXbvWobYDTGLuFEDVXSuCfgAA1H5JkceJ9EpC8gtZX1PytI8_zLGdDoBGjKkEonii_xy2p25wLYfnLZJUGnV4Bxvv8GLGdO153508n2vjO3K9WtBJlS7hmIRfY5ja81%2D2YVU0Z5QRv9LqXosBH7PY%26u%3DaHR0cHMlM2ElMmYlMmZ3d3cuYW1hem9uLmNvbSUyZnMlMmYlM2ZpZSUzZFVURjglMjZrZXl3b3JkcyUzZGFwcGxlJTJiaXBob25lJTJibmV3ZXN0JTJibW9kZWwlMmIyMDI1JTI2aW5kZXglM2RhcHMlMjZ0YWclM2R0eHRzdGRiZ2R0LTIwJTI2cmVmJTNkcGRfc2xfMmdrY2s4ajUyNV9wJTI2YWRncnBpZCUzZDEyMzU4NTIwNjcyMDM5MTQlMjZodmFkaWQlM2Q3NzI0MDg4NTE0MDQ4NCUyNmh2bmV0dyUzZHMlMjZodnFtdCUzZHAlMjZodmJtdCUzZGJwJTI2aHZkZXYlM2RjJTI2aHZsb2NpbnQlM2QlMjZodmxvY3BoeSUzZDE0ODQ3NSUyNmh2dGFyZ2lkJTNka3dkLTc3MjQxMTY4MzYwOTU2JTNhbG9jLTUzJTI2aHlkYWRjciUzZDE3NzY5XzEzNTc1Mjg3JTI2bWNpZCUzZGI0Mzk2Yjg0YWE5MDM5YjNhY2M4YjU5YzY3NTE4MGVlJTI2bGFuZ3VhZ2UlM2Rlbl9VUyUyNm1zY2xraWQlM2Q3MWRjMjg1ODU4YzMxMTk3ZDZlNTQzNWNkZmNmYzFkNQ%26rlid%3D71dc285858c31197d6e5435cdfcfc1d5&amp;vqd=4-71210043242496838386343789030278456124&amp;iurl=%7B1%7DIG%3D8CE463FA80F34A51BB0112AB5D9D2CB7%26CID%3D3A5E2A10F2F864771F3F320AF311654D%26ID%3DDevEx%2C5041.1",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What's the Best iPhone to Buy or Avoid Right Now? (2026) | WIRED",
+      "snippet": "The first folding iPhone Duo is here, alongside the 18 Pro and 18 Pro Max, but they're not your only options. We have all the details on Apple's smartphone lineup to help you find the right model.",
+      "url": "https://www.wired.com/gallery/iphone-buying-guide/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "iPhone - Apple",
+      "snippet": "Misplaced your iPhone? The latest Apple Watch models can show you its approximate distance and direction. 5 To set up a group photo on your iPhone, join the group and use Apple Watch as a viewfinder to snap the shot. And when you take a call on your Apple Watch, just tap your iPhone to continue the conversation there.",
+      "url": "https://www.apple.com/iphone/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "iPhone - Compare Models - Apple",
+      "snippet": "Compare features and technical specifications for iPhone Duo, iPhone 18 Pro, iPhone Air, iPhone 17, iPhone 17e, and many more.",
+      "url": "https://www.apple.com/iphone/compare/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What is the Latest iPhone? A Complete Guide to Apple's iPhone 17 Lineup ...",
+      "snippet": "Discover the latest iPhone 17 lineup, including iPhone Air, Pro, and Pro Max, with features, pricing, cameras, battery life updates.",
+      "url": "https://www.macobserver.com/tips/round-ups/what-is-the-latest-iphone/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Best iPhone 2026: Which iPhone should you buy? | Macworld",
+      "snippet": "Which iPhone is best for you? We compare every current iPhone, including the iPhone 18 Pro, 18 Pro Max and iPhone Duo, to help you choose.",
+      "url": "https://www.macworld.com/article/228816/best-iphone-pro-max-duo-ranked.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Best iPhone in 2026 ranked from best to worst - Stuff",
+      "snippet": "Best iPhone in 2026 ranked from best to worst Which iPhone should you choose? This guide will help you find out. Here's the good and the bad about every available Apple smartphone",
+      "url": "https://www.stuff.tv/features/best-iphone/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Shop apple iphone newest model 2025 - Amazon® Official Site",
+      "snippet": "Get deals and low prices on apple iphone newest model 2025 in Cell Phones & Accessories on Amazon. Browse & discover thousands of brands. Read customer reviews & find best sellers",
+      "url": "https://duckduckgo.com/y.js?ad_domain=amazon.com&amp;ad_provider=bingv7aa&amp;ad_type=txad&amp;click_metadata=QPHJANc4XQF9V_c_vWsXuMfeXHvZbgOCFCGlJY0BGEaShZdwTJq2yPR3FJ%2DuUI69VxC%2Dt695sj4RmXJw_DFLRKMZb8mjLHK5fjKpemyGAkwP0lKkehD8L8T8zxPaK6iwJZfqtiqsMZ2VHLtgghLRR0T2t92asqtwQl0oAbJqKzk.F0bg9ADU9_1w33BZ2sshEg&amp;rut=339044e9687f5adc33277020290b2ef48465bb244309cd153a9ad0e7c8cea360&amp;u3=https%3A%2F%2Fwww.bing.com%2Faclick%3Fld%3De8NN4%2DsdKhQuAKX0PxjWzSEzVUCUyCAY_2wrbgopc4KtVuiNBRwiTpS%2DvwDzSu1ljgpOA5zmtmpZQ7wIHkVxdAfpzTTfiB0kJtrmvgabpEZGEYjkHmyjdIU92T3wps0aQeth9a7jlI78xf6dwveffZ2NbySq5NkiExZaj66VYtvKWLRtrBnpqfMBq%2Dy8%2DBmIvgWQw9Yg3Vd7gYPlX6fOScnuOqfp8%26u%3DaHR0cHMlM2ElMmYlMmZ3d3cuYW1hem9uLmNvbSUyZnMlMmYlM2ZpZSUzZFVURjglMjZrZXl3b3JkcyUzZGFwcGxlJTJiaXBob25lJTJibmV3ZXN0JTJibW9kZWwlMmIyMDI1JTI2aW5kZXglM2RhcHMlMjZ0YWclM2R0eHRzdGRiZ2R0LTIwJTI2cmVmJTNkcGRfc2xfMmdrY2s4ajUyNV9wJTI2YWRncnBpZCUzZDEyMzU4NTIwNjcyMDM5MTQlMjZodmFkaWQlM2Q3NzI0MDg4NTE0MDQ4NCUyNmh2bmV0dyUzZHMlMjZodnFtdCUzZHAlMjZodmJtdCUzZGJwJTI2aHZkZXYlM2RjJTI2aHZsb2NpbnQlM2QlMjZodmxvY3BoeSUzZDE0ODQ3NSUyNmh2dGFyZ2lkJTNka3dkLTc3MjQxMTY4MzYwOTU2JTNhbG9jLTUzJTI2aHlkYWRjciUzZDE3NzY5XzEzNTc1Mjg3JTI2bWNpZCUzZGI0Mzk2Yjg0YWE5MDM5YjNhY2M4YjU5YzY3NTE4MGVlJTI2bGFuZ3VhZ2UlM2Rlbl9VUyUyNm1zY2xraWQlM2RiYjlmYzY3Yzk2NDExN2UzMzkwZmFkNzgxMTE2OGM4NA%26rlid%3Dbb9fc67c964117e3390fad7811168c84&amp;vqd=4-68767220377592772614115795044814141445&amp;iurl=%7B1%7DIG%3D04B4B4ADE75042858BE8FCEC3B050704%26CID%3D28E81406441E6DAD11D10C1C45576C38%26ID%3DDevEx%2C5037.1",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Every iPhone Apple sells in 2026: full lineup and buying guide",
+      "snippet": "The newest iPhones are the iPhone Duo, on sale since October 2026, and the iPhone 18 Pro and Pro Max from September 2026 Apple sells seven iPhones in the US, from $699 for iPhone 17e to $1,999 for iPhone Duo, with no regular iPhone 18 until a reported spring 2027 launch This guide explains which model fits value, cameras, thinness, battery and foldable multitasking without assuming the newest ...",
+      "url": "https://applescoop.org/story/every-iphone-apple-sells-2026-complete-lineup-buying-guide",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

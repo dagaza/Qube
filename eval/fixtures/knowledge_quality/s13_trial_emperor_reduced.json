@@ -1,0 +1,635 @@
+{
+  "schema_version": 2,
+  "id": "s13_trial_emperor_reduced",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: trial_grounding trigger (named trial).",
+  "query_raw": "@[tool:evidence] What did the EMPEROR-Reduced trial show for empagliflozin in heart failure?",
+  "query_clean": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure?",
+  "retrieval_query": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure?",
+  "standalone_question": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure?",
+  "gold_subject": "EMPEROR-Reduced trial",
+  "gold_facet": "results",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:08:34+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "pubmed": 3,
+    "nice": 3,
+    "cdc": 3,
+    "who": 3,
+    "clinicaltrials_gov": 3,
+    "openfda": 3,
+    "europe_pmc": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "pubmed": "EMPEROR-Reduced empagliflozin heart failure",
+      "nice": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure",
+      "cdc": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure",
+      "who": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure",
+      "clinicaltrials_gov": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure",
+      "openfda": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure",
+      "europe_pmc": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure",
+      "crossref": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure",
+      "arxiv": "EMPEROR-Reduced empagliflozin heart failure",
+      "openalex": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "Restoring myocardial sodium-calcium homeostasis: A central mechanism of empagliflozin in heart failure.",
+      "snippet": "Heart failure (HF) remains a major global health challenge, with high morbidity, frequent hospitalization, and substantial mortality despite major advances in guideline-directed therapy. Landmark EMPEROR-Reduced and EMPEROR-Preserved trials established empagliflozin, a sodium-glucose cotransporter 2 inhibitor (SGLT2i), as an effective therapy across the spectrum of HF, independent of diabetes status. However, the molecular mechanisms underlying its cardioprotective effects remain incompletely understood. Growing experimental and translational evidences suggest that restoration of myocardial so",
+      "full_text": "Heart failure (HF) remains a major global health challenge, with high morbidity, frequent hospitalization, and substantial mortality despite major advances in guideline-directed therapy. Landmark EMPEROR-Reduced and EMPEROR-Preserved trials established empagliflozin, a sodium-glucose cotransporter 2 inhibitor (SGLT2i), as an effective therapy across the spectrum of HF, independent of diabetes status. However, the molecular mechanisms underlying its cardioprotective effects remain incompletely understood. Growing experimental and translational evidences suggest that restoration of myocardial sodium (Na + ) and calcium (Ca 2+ ) homeostasis represents a key mechanism. In failing cardiomyocytes, intracellular Na + and Ca 2+ overload, leading to impaired excitation-contraction coupling, mitochondrial dysfunction, oxidative stress, electrical instability, and adverse ventricular remodeling. Empagliflozin appears to interrupt this pathological cascade by limiting pathological Na + entry, attenuating late sodium current (I Na-L ) and sodium-hydrogen exchanger 1 (NHE1) activity, modulating Ca 2+ /calmodulin-dependent protein kinase II (CaMKII) signaling, improving Na + -Ca 2+ exchanger (NCX)-mediated Ca 2+ handling, and preserving mitochondrial ion homeostasis. This review summarizes current evidence linking empagliflozin to myocardial Na + -Ca 2+ homeostasis, discusses the integration of ion-handling mechanisms with its established clinical benefits, highlights unresolved mechanistic controversies, and outlines priorities for future basic and translational research. Copyright © 2026 Elsevier B.V. All rights reserved.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43003330/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Lu, Jian",
+        "Wang, Yunru",
+        "Zheng, Wenyue",
+        "Zhang, Min",
+        "Pu, Cheng",
+        "Luo, Yujie",
+        "Fan, Xinrong",
+        "Gao, Changzheng",
+        "Li, Miaoling"
+      ],
+      "venue": "European journal of pharmacology",
+      "publication_date": "2026-Nov",
+      "doi": "10.1016/j.ejphar.2026.179543",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43003330",
+      "publication_types": [
+        "Journal Article",
+        "Review"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Kidney function decline, heart failure hospitalization, and the effect of empagliflozin in heart failure: an EMPEROR-pooled analysis.",
+      "snippet": "Kidney function decline in heart failure (HF) may accelerate during periods surrounding HF-related events, while sodium-glucose cotransporter 2 inhibitors slow kidney function decline. However, the temporal relationship between kidney function changes, HF-related events, and treatment effects has not been well characterized. We aimed to explore kidney function trajectories around HF-related events and to assess whether empagliflozin modifies these changes. In a pooled analysis of the EMPEROR-Reduced and EMPEROR-Preserved trials, we examined longitudinal changes in estimated glomerular filtrati",
+      "full_text": "Kidney function decline in heart failure (HF) may accelerate during periods surrounding HF-related events, while sodium-glucose cotransporter 2 inhibitors slow kidney function decline. However, the temporal relationship between kidney function changes, HF-related events, and treatment effects has not been well characterized. We aimed to explore kidney function trajectories around HF-related events and to assess whether empagliflozin modifies these changes. In a pooled analysis of the EMPEROR-Reduced and EMPEROR-Preserved trials, we examined longitudinal changes in estimated glomerular filtration rate (eGFR) before and after HF-related events, defined as HF hospitalization or HF-related death. In the EMPEROR-Pooled analysis, HF-related events occurred in 12.7% of 9554 patients during a median follow-up of 20.9 months (14.7-28.6). Patients who experienced HF-related events had a steeper eGFR decline during the 12 months before the event than those without HF-related events: average -5.01 ml/min/1.73 m2/year vs -1.93 ml/min/1.73 m2/year; P < .001. During the 12 months after HF-related events, eGFR decline persisted at an average rate of -4.73 ml/min/1.73 m2/year. These trajectories were not materially altered after adjustment for concurrent NYHA class or natriuretic peptide levels. Compared with placebo, empagliflozin slowed eGFR decline in patients without events (between-group difference, 0.94 ml/min/1.73 m2/year) and before events (1.09 ml/min/1.73 m2/year). The post-event difference was smaller (0.29 ml/min/1.73 m2/year), without significant heterogeneity across periods (P > .10). Findings were consistent across trials and irrespective of prior HF hospitalization. Across the LVEF spectrum, kidney function decline accelerated before HF-related events and remained rapid thereafter. Empagliflozin attenuated eGFR decline without evidence of heterogeneity across periods. © The Author(s) 2026. Published by Oxford University Press on behalf of the European Society of Cardiology.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42834642/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Kobayashi, Masatake",
+        "Duarte, Kevin",
+        "Baudry, Guillaume",
+        "Ferreira, João Pedro",
+        "Monzo, Luca",
+        "Butler, Javed",
+        "Zannad, Faiez",
+        "Girerd, Nicolas"
+      ],
+      "venue": "European journal of heart failure",
+      "publication_date": "2026-Oct",
+      "doi": "10.1093/ejhf/xuag295",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "42834642",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Neutrophil-to-Lymphocyte Ratio in Patients With Heart Failure: Findings From The EMPEROR Program.",
+      "snippet": "Sodium-glucose cotransporter 2 inhibitors (SGLT2i) are a cornerstone of treatment for chronic heart failure (CHF), a condition characterised by systemic inflammation and congestion. We investigated the relationship between the neutrophil-to-lymphocyte ratio (NLR), which is thought to reflect both inflammation and congestion, and the clinical characteristics and outcomes of patients with CHF. Additionally, we sought to evaluate the effects of empagliflozin on NLR and across NLR quintiles. For this post-hoc analysis, we used the EMPEROR-Pooled database, which combines the EMPEROR-Reduced (NCT030",
+      "full_text": "Sodium-glucose cotransporter 2 inhibitors (SGLT2i) are a cornerstone of treatment for chronic heart failure (CHF), a condition characterised by systemic inflammation and congestion. We investigated the relationship between the neutrophil-to-lymphocyte ratio (NLR), which is thought to reflect both inflammation and congestion, and the clinical characteristics and outcomes of patients with CHF. Additionally, we sought to evaluate the effects of empagliflozin on NLR and across NLR quintiles. For this post-hoc analysis, we used the EMPEROR-Pooled database, which combines the EMPEROR-Reduced (NCT03057977) and EMPEROR-Preserved (NCT03057951) trials, in which 9706 patients with CHF were randomised to empagliflozin or placebo and had NLR available at baseline. The primary outcome was time to first heart failure hospitalisation or cardiovascular death; secondary endpoints included all-cause mortality and renal outcomes. Compared with patients in the lowest NLR quintile, those in the highest quintile were older, more likely to be men, more symptomatic, had higher plasma NT-proBNP and more likely to be treated with loop diuretics. Compared to the lowest NLR quintile, patients in the highest quintile had a greater risk of the primary outcome (14.9% versus 27.3% events; adjusted hazard ratio 1.44 (1.16-1.80); p=0.001), mainly due to more heart failure hospitalisations. Baseline NLR did not modify the effect of empagliflozin on either primary and secondary endpoints. NLR increased during follow-up but this was not affected by empagliflozin. In patients with CHF, a higher NLR was associated with greater congestion and poorer prognosis. The efficacy of empagliflozin was consistent, regardless of baseline NLR. © The Author(s) 2026. Published by Oxford University Press on behalf of the European Society of Cardiology.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42759496/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Pellicori, Pierpaolo",
+        "Ferreira, Joao Pedro",
+        "Butler, Javed",
+        "Filippatos, Gerasimos",
+        "Cleland, John G F",
+        "Maffia, Pasquale",
+        "Anker, Stefan D",
+        "Zannad, Faiez",
+        "Packer, Milton"
+      ],
+      "venue": "ESC heart failure",
+      "publication_date": "2026-Sep",
+      "doi": "10.1093/eschf/xvag243",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "42759496",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Angiotensin receptor blockers in heart failure after the ELITE II trial",
+      "snippet": "Specific blockers of the angiotensin type1 receptor, angiotensin receptor blockers (ARBs), have been introduced as an alternative to angiotensin-converting enzyme inhibitors (ACEi) for the treatment of heart failure. In comparison with ACEi, ARBs are better tolerated and have similar effects on haemodynamics, neurohormones and exercise capacity. Early studies have suggested that ARBs might have a superior effect on mortality. However, the first outcome trial, ELITE II (Losartan Heart Failure Survival Study), did not show any significant difference between losartan and captopril in terms of mor",
+      "full_text": "Specific blockers of the angiotensin type1 receptor, angiotensin receptor blockers (ARBs), have been introduced as an alternative to angiotensin-converting enzyme inhibitors (ACEi) for the treatment of heart failure. In comparison with ACEi, ARBs are better tolerated and have similar effects on haemodynamics, neurohormones and exercise capacity. Early studies have suggested that ARBs might have a superior effect on mortality. However, the first outcome trial, ELITE II (Losartan Heart Failure Survival Study), did not show any significant difference between losartan and captopril in terms of mortality or morbidity. This commentary outlines the role of ARBs in the treatment of heart failure.",
+      "url": "https://data.cdc.gov/d/4kmz-g4wf",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "4kmz-g4wf",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multisystem Inflammatory Syndrome in Children (MIS-C) National Surveillance - (February 2020 - December 2022)",
+      "snippet": "\"This public use dataset includes case-level data from confirmed MIS-C cases with illness onset February 2020 through December 2022 that were reported to CDC’s National MIS-C Surveillance system. Reports are from 55 U.S. jurisdictions (all 50 states plus New York City, Guam, Puerto Rico, US Virgin Islands, and Washington DC). All cases meet the 2020 CDC MIS-C case definition. U.S. jurisdictions voluntarily report potential MIS-C cases to CDC using a standardized case report form. \n\nTo protect patient privacy, location information has been consolidated to census region, illness onset dates have",
+      "full_text": "\"This public use dataset includes case-level data from confirmed MIS-C cases with illness onset February 2020 through December 2022 that were reported to CDC’s National MIS-C Surveillance system. Reports are from 55 U.S. jurisdictions (all 50 states plus New York City, Guam, Puerto Rico, US Virgin Islands, and Washington DC). All cases meet the 2020 CDC MIS-C case definition. U.S. jurisdictions voluntarily report potential MIS-C cases to CDC using a standardized case report form. \n\nTo protect patient privacy, location information has been consolidated to census region, illness onset dates have been abbreviated to month-year, and age ranges are provided. The dataset was further deidentified by implementing a k-anonymity threshold of k=3, and suppressing data for Census Region using primary and complementary suppression to protect patient privacy. The following data are included: patient demographics, timing of illness onset, outcomes, organ system involvement, SARS CoV-2 testing, comorbidities, treatment, and COVID-19 vaccination information. “Case definition” organ system involvement is defined according to 2020 CDC MIS-C case definition criteria. “Severe organ involvement” is a subset of case definition organ involvement composed of more severe MIS-C organ manifestations. This definition has been used in several prior publications and is written out in supplemental materials.\"",
+      "url": "https://data.cdc.gov/d/qgfq-p8ib",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-09-22",
+      "document_type": "government_publication",
+      "dataset_id": "qgfq-p8ib",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Empagliflozin: Therapeutic area: Kidney disease, nephrology: Reimbursement Review",
+      "snippet": "<h4>What is chronic kidney disease?</h4>• Chronic kidney disease (CKD) is a heterogeneous group of disorders that can progress to end-stage kidney disease (ESKD) and result in poor health-related quality of life (HRQoL), high morbidity, and premature mortality. • From 2010 to 2015, the prevalence of CKD was 71.9 per 1,000 people in Canada. In 2021, more than 6,000 people received kidney replacement therapy (dialysis or pre-emptive kidney transplant) in Canada.<h4>What are the treatment goals and current treatment options for ckd?</h4>• Core outcomes identified by patients, caregivers, and heal",
+      "full_text": "<h4>What is chronic kidney disease?</h4>• Chronic kidney disease (CKD) is a heterogeneous group of disorders that can progress to end-stage kidney disease (ESKD) and result in poor health-related quality of life (HRQoL), high morbidity, and premature mortality. • From 2010 to 2015, the prevalence of CKD was 71.9 per 1,000 people in Canada. In 2021, more than 6,000 people received kidney replacement therapy (dialysis or pre-emptive kidney transplant) in Canada.<h4>What are the treatment goals and current treatment options for ckd?</h4>• Core outcomes identified by patients, caregivers, and health professionals were mortality, kidney function, life participation, and cardiovascular disease. Clinicians advocate for patients with CKD to have access to treatments that halt or delay disease progression, prevent kidney failure, reduce mortality, and improve HRQoL, while minimizing side effects. • Dapagliflozin and canagliflozin were considered relevant treatments to compare with empagliflozin.<h4>What is empagliflozin and why did canada’s drug agency conduct this review?</h4>• Empagliflozin is a drug that is available as an oral tablet. Health Canada has approved empagliflozin to reduce the risk of sustained estimated glomerular filtration rate (eGFR) decline, ESKD, and cardiovascular and renal death in adults with CKD. • At the request of the participating public drug programs, Canada’s Drug Agency (CDA-AMC) reviewed empagliflozin to inform a recommendation on whether it should be reimbursed for CKD in adults with or without type 2 diabetes mellitus (T2DM).<h4>How did cda-amc evaluate empagliflozin?</h4>• CDA-AMC reviewed the clinical evidence on the beneficial and harmful effects and compared costs of empagliflozin versus other treatments used in Canada for CKD in adults with or without T2DM. Dapagliflozin and canagliflozin were considered relevant treatments to compare with empagliflozin. • The clinical evidence was identified through systematic searches for available studies. • There were no submissions from patient groups, clinician groups, or industry in response to our call for input. The review was informed by input from the participating public drug programs around issues that may impact their ability to implement a recommendation. • Two nephrologists, 1 from Alberta and 1 from Ontario, were consulted as part of the review process.<h4>What were the findings?</h4>CLINICAL EVIDENCE: • CDA-AMC reviewed the following clinical evidence: o.. One randomized controlled phase III trial (the EMPA-KIDNEY study) comparing empagliflozin 10 mg with placebo in 6,609 adult patients with CKD. o.. One randomized controlled phase III trial (the EMPA-REG RENAL study) comparing empagliflozin 10 mg with placebo in 193 adult patients with stage 2 CKD and T2DM. o.. Three randomized controlled phase III trials that enrolled subgroups of adults with CKD: the EMPA-REG OUTCOME study comparing empagliflozin 10 mg and 25 mg with placebo in up to 2,250 patients with prevalent kidney disease, the EMPEROR-Preserved study comparing empagliflozin 10 mg with placebo in 3,198 patients with CKD, and the EMPEROR-Reduced study comparing empagliflozin 10 mg with placebo in 1,978 patients with CKD. o.. Three network meta-analyses (NMAs) of empagliflozin versus dapagliflozin and canagliflozin in adult patients with CKD and T2DM. • For the comparison of empagliflozin 10 mg versus placebo at a median of 2.0 years (interquartile range, 1.5 to 2.4) follow-up: o.. Empagliflozin delayed time to progression of kidney disease or death from cardiovascular causes (composite outcome), and time to hospitalization for any cause. o.. Empagliflozin was associated with delayed time to progression of kidney disease (composite), time to progression of kidney disease or death from any cause (composite), time to ESKD or death from cardiovascular casuses (composite), and time to ESKD or death from any cause (composite). o.. Empagliflozin was associated with a slower rate of eGFR decline ",
+      "url": "https://europepmc.org/article/MED/42641040",
+      "_adapter": "europe_pmc",
+      "authors": [],
+      "venue": "Europe PMC",
+      "publication_date": "2026-07-01",
+      "doi": null,
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42641040",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Natriuretic Peptides for Predicting Treatment Response in Heart Failure: Insights From Recent Randomized Controlled Trials.",
+      "snippet": "N-terminal pro-B-type natriuretic peptide (NT-proBNP) has emerged as a cornerstone biomarker in heart failure (HF), serving as a diagnostic, prognostic, and pharmacodynamic tool in randomized controlled trials. Recent HF trials have generated substantial evidence regarding 2 interrelated roles: (1) the relationship between baseline NT-proBNP levels and differential treatment efficacy across drug classes, and (2) the proportional relationship between NT-proBNP reduction and clinical outcome improvement. We synthesize data from pivotal trials of sacubitril/valsartan (angiotensin receptor-neprily",
+      "full_text": "N-terminal pro-B-type natriuretic peptide (NT-proBNP) has emerged as a cornerstone biomarker in heart failure (HF), serving as a diagnostic, prognostic, and pharmacodynamic tool in randomized controlled trials. Recent HF trials have generated substantial evidence regarding 2 interrelated roles: (1) the relationship between baseline NT-proBNP levels and differential treatment efficacy across drug classes, and (2) the proportional relationship between NT-proBNP reduction and clinical outcome improvement. We synthesize data from pivotal trials of sacubitril/valsartan (angiotensin receptor-neprilysin inhibitor, ARNI), sodium-glucose cotransporter 2 (SGLT2) inhibitors, mineralocorticoid receptor antagonists (MRAs), vericiguat, and omecamtiv mecarbil. Across trials in both HF with reduced ejection fraction and HF with mildly reduced or preserved ejection fraction, some drug classes including ARNI, SGLT2 inhibitors, MRA, and device therapies demonstrated consistent relative treatment benefits regardless of baseline NT-proBNP levels. Notable exceptions were vericiguat, a soluble guanylate cyclase stimulator, where patients with higher baseline NT-proBNP derived no benefit; omecamtiv mecarbil, which showed selective benefit in patients with higher NT-proBNP levels; and spironolactone in HFpEF, where benefit was concentrated in patients with the lowest baseline NT-proBNP. With respect to NT-proBNP dynamics, a geometric mean ratio of on-treatment to baseline NT-proBNP consistently parallels the hazard ratio for clinical outcomes across ARNI trials, supporting NT-proBNP change as a robust surrogate endpoint. SGLT2 inhibitors consistently show clinical benefit exceeding the extent of NT-proBNP reduction, reflecting pleiotropic mechanisms. These insights position NT-proBNP not merely as a prognostic marker, but as an outcome-predictive biomarker that may inform patient selection and response monitoring in precision HF management.",
+      "url": "https://doi.org/10.36628/ijhf.2026.0076",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Oh HE",
+        "Hyun J"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-10-08",
+      "doi": "10.36628/ijhf.2026.0076",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "43011112",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Combined use of glucagon-like peptide-1 receptor agonists and sodium-glucose cotransporter 2 inhibitors for cardiovascular protection.",
+      "snippet": "<h4>Abstract</h4>Among the various treatments for type 2 diabetes during the initial period, glucagon-like peptide-1 receptor agonists (GLP-1 RAs) and sodium-glucose cotransporter 2 (SGLT2) inhibitors have been considered together as agents with separate cardiometabolic benefits, given their limited glucose-lowering effects. GLP-1 RAs are reported to inhibit atherosclerosis through several physiological processes, including increased blood flow in endothelial tissues, decreased inflammation, increased antioxidant levels, and improved lipid profile. There is a similar situation with SGLT2 inhib",
+      "full_text": "<h4>Abstract</h4>Among the various treatments for type 2 diabetes during the initial period, glucagon-like peptide-1 receptor agonists (GLP-1 RAs) and sodium-glucose cotransporter 2 (SGLT2) inhibitors have been considered together as agents with separate cardiometabolic benefits, given their limited glucose-lowering effects. GLP-1 RAs are reported to inhibit atherosclerosis through several physiological processes, including increased blood flow in endothelial tissues, decreased inflammation, increased antioxidant levels, and improved lipid profile. There is a similar situation with SGLT2 inhibitors, and the explanation for this is different yet complementary, as these drugs cause a decrease in both cardiac preload and afterload and, at the same time, increase vascular permeability, diuresis, and more efficient energy usage by the heart. Thus, they have been affirmed by extensive clinical trials, which show that, although these drugs may harm patients, they do not result in significant cardiovascular events, have a lower treatment rate for heart defects, and are associated with a longer time before the patient's renal function deteriorates. This translates into a continuing shift toward the dominion in terms of cardiometabolic protection - a strategy that is receiving strong backing from the majority of clinical guidelines across the world.",
+      "url": "https://doi.org/10.4103/ijp.ijp_1384_25",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Mohanty SS",
+        "Selvammathy RR",
+        "Ahad HA",
+        "Kumar ES"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-07-01",
+      "doi": "10.4103/ijp.ijp_1384_25",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42583965",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "EMPEROR-Reduced: Empagliflozin and Outcomes in Heart Failure and CKD",
+      "snippet": "EMPEROR-Reduced: Empagliflozin and Outcomes in Heart Failure and CKD",
+      "full_text": null,
+      "url": "https://doi.org/10.1681/asn.20203110s1b1b",
+      "_adapter": "crossref",
+      "authors": [
+        "Faiez Zannad",
+        "The EMPEROR Reduced trial steering committe and investigators"
+      ],
+      "venue": "Journal of the American Society of Nephrology",
+      "publication_date": "2020",
+      "doi": "10.1681/asn.20203110s1b1b",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Kidney Function Variability and Cardiovascular Outcomes in Heart Failure: Effects of Empagliflozin in the EMPEROR-Reduced Trial",
+      "snippet": "Abstract Background Although sodium-glucose cotransporter-2 (SGLT2) inhibitors improve cardiovascular and kidney outcomes in patients with heart failure (HF), the prognostic significance of intraindividual kidney function variability and its modification by SGLT2 inhibition remain unclear. We investigated these relationships in patients with HF with reduced ejection fraction (HFrEF). Methods This secondary analysis included 3,492 patients from the EMPEROR-Reduced trial. A location-scale joint model (LSJM) simultaneously evaluated the associations of estimated glomerular filtration rate (eGFR) ",
+      "full_text": "Abstract Background Although sodium-glucose cotransporter-2 (SGLT2) inhibitors improve cardiovascular and kidney outcomes in patients with heart failure (HF), the prognostic significance of intraindividual kidney function variability and its modification by SGLT2 inhibition remain unclear. We investigated these relationships in patients with HF with reduced ejection fraction (HFrEF). Methods This secondary analysis included 3,492 patients from the EMPEROR-Reduced trial. A location-scale joint model (LSJM) simultaneously evaluated the associations of estimated glomerular filtration rate (eGFR) levels, longitudinal slopes, and intraindividual variability from day 28 onward with the composite outcome of cardiovascular death or HF hospitalization. Patients were stratified into tertiles of estimated eGFR variability using common cutoffs across the empagliflozin and placebo groups, allowing comparisons of cardiovascular outcomes at comparable variability levels. Results Greater intraindividual eGFR variability was independently associated with increased cardiovascular risk (hazard ratio: 1.08 per 1 mL/min/1.73 m² increase in estimated standard deviation; P &lt; 0.001). The model incorporating eGFR levels, slopes, and variability demonstrated the best fit. Empagliflozin significantly reduced eGFR variability compared with placebo (standard deviation ratio: 0.93; P = 0.005) and attenuated annual eGFR decline by 1.83 mL/min/1.73 m²/year, despite an initial eGFR reduction of approximately 2.5 mL/min/1.73 m². Event-free survival progressively decreased with increasing eGFR variability in both treatment groups. Importantly, within each variability tertile defined by common cutoffs, empagliflozin-treated patients consistently exhibited higher event-free survival than placebo-treated patients. Conclusion In patients with HFrEF, greater intraindividual eGFR variability was independently associated with adverse cardiovascular outcomes, beyond eGFR levels and slopes. Empagliflozin reduced kidney function variability and attenuated long-term eGFR decline, with more favorable cardiovascular outcomes observed even among patients with comparable levels of kidney function variability.",
+      "url": "https://doi.org/10.64898/2026.11.16.26368172",
+      "_adapter": "crossref",
+      "authors": [
+        "Masayuki Kunitake",
+        "Kyoko Higuchi",
+        "Yoshiro Sakai",
+        "Yoshihiro Fukumoto"
+      ],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.64898/2026.11.16.26368172",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Early Changes in Estimated Glomerular Filtration Rate Post-initiation of Empagliflozin in EMPEROR-Reduced Heart Failure Trial",
+      "snippet": "Early Changes in Estimated Glomerular Filtration Rate Post-initiation of Empagliflozin in EMPEROR-Reduced Heart Failure Trial",
+      "full_text": null,
+      "url": "https://doi.org/10.1055/s-0042-1746294",
+      "_adapter": "crossref",
+      "authors": [
+        "Nikolaus Marx",
+        "on behalf of the EMPEROR-Reduced Trial Committees and Investigators"
+      ],
+      "venue": "Diabetologie und Stoffwechsel",
+      "publication_date": "2022",
+      "doi": "10.1055/s-0042-1746294",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Patient Specific Congestive Heart Failure Detection From Raw ECG signal",
+      "snippet": "In this study; in order to diagnose congestive heart failure (CHF) patients, non-linear second-order difference plot (SODP) obtained from raw 256 Hz sampled frequency and windowed record with different time of ECG records are used. All of the data rows are labelled with their belongings to classify much more realistically. SODPs are divided into different radius of quadrant regions and numbers of the points fall in the quadrants are computed in order to extract feature vectors. Fisher's linear discriminant, Naive Bayes, Radial basis function, and artificial neural network are used as classifie",
+      "full_text": "In this study; in order to diagnose congestive heart failure (CHF) patients, non-linear second-order difference plot (SODP) obtained from raw 256 Hz sampled frequency and windowed record with different time of ECG records are used. All of the data rows are labelled with their belongings to classify much more realistically. SODPs are divided into different radius of quadrant regions and numbers of the points fall in the quadrants are computed in order to extract feature vectors. Fisher's linear discriminant, Naive Bayes, Radial basis function, and artificial neural network are used as classifier. The results are considered in two step validation methods as general k-fold cross-validation and patient based cross-validation. As a result, it is shown that using neural network classifier with features obtained from SODP, the constructed system could distinguish normal and CHF patients with 100% accuracy rate. Keywords",
+      "url": "https://arxiv.org/abs/1703.00396v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Yakup Kutlu",
+        "Apdullah Yayık",
+        "Esen Yıldırım",
+        "Mustafa Yeniad",
+        "Serdar Yıldırım"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-02-01",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1703.00396v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ASB1 differential methylation in ischaemic cardiomyopathy. Relationship with left ventricular performance in end stage heart failure patients",
+      "snippet": "Aims: Ischaemic cardiomyopathy (ICM) leads to impaired contraction and ventricular dysfunction causing high rates of morbidity and mortality. Epigenomics allows the identification of epigenetic signatures in human diseases. We analyse the differential epigenetic patterns of ASB gene family in ICM patients and relate these alterations to their haemodynamic and functional status. Methods and Results: Epigenomic analysis was carried out using 16 left ventricular (LV) tissue samples, 8 from ICM patients undergoing heart transplantation and 8 from control (CNT) subjects without cardiac disease. We ",
+      "full_text": "Aims: Ischaemic cardiomyopathy (ICM) leads to impaired contraction and ventricular dysfunction causing high rates of morbidity and mortality. Epigenomics allows the identification of epigenetic signatures in human diseases. We analyse the differential epigenetic patterns of ASB gene family in ICM patients and relate these alterations to their haemodynamic and functional status. Methods and Results: Epigenomic analysis was carried out using 16 left ventricular (LV) tissue samples, 8 from ICM patients undergoing heart transplantation and 8 from control (CNT) subjects without cardiac disease. We increased the sample size up to 13 ICM and 10 CNT for RNA-sequencing and to 14 ICM for pyrosequencing analyses. We found a hypermethylated profile (cg11189868) in the ASB1 gene that showed a differential methylation of 0.26 beta difference, P < 0.05. This result was validated by pyrosequencing technique (0.23 beta difference, P < 0.05). Notably, the methylation pattern was strongly related to LV ejection fraction (r = -0.849, P = 0.008) stroke volume (r = -0.929, P = 0.001) and end-systolic and diastolic LV diameters (r = -0.743, P = 0.035 for both). ASB1 showed a down regulation in mRNA levels (-1.2 fold, P < 0.05). Conclusion: Our findings link a specific ASB1 methylation pattern to LV structure and performance in end-stage ICM, opening new therapeutic opportunities and providing new insights regarding which is the functionally relevant genome in the ischemic failing myocardium. Keywords: ischaemic cardiomyopathy; epigenomics; heart failure; left ventricular dysfunction; stroke volume; ASB1.",
+      "url": "https://arxiv.org/abs/1704.00945v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Ana Ortega",
+        "Estefanía Tarazón",
+        "Carolina Gil-Cayuela",
+        "Luis Martínez-Dolz",
+        "Francisca Lago",
+        "José Ramón González-Juanatey",
+        "Juan Sandoval",
+        "Manuel Portolés",
+        "Esther Roselló-Lletí",
+        "Miguel Rivera"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-04-04",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1704.00945v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multi-modal Heart Failure Risk Estimation based on Short ECG and Sampled Long-Term HRV",
+      "snippet": "Cardiovascular diseases, including Heart Failure (HF), remain a leading global cause of mortality, often evading early detection. In this context, accessible and effective risk assessment is indispensable. Traditional approaches rely on resource-intensive diagnostic tests, typically administered after the onset of symptoms. The widespread availability of electrocardiogram (ECG) technology and the power of Machine Learning are emerging as viable alternatives within smart healthcare. In this paper, we propose several multi-modal approaches that combine 30-second ECG recordings and approximate lo",
+      "full_text": "Cardiovascular diseases, including Heart Failure (HF), remain a leading global cause of mortality, often evading early detection. In this context, accessible and effective risk assessment is indispensable. Traditional approaches rely on resource-intensive diagnostic tests, typically administered after the onset of symptoms. The widespread availability of electrocardiogram (ECG) technology and the power of Machine Learning are emerging as viable alternatives within smart healthcare. In this paper, we propose several multi-modal approaches that combine 30-second ECG recordings and approximate long-term Heart Rate Variability (HRV) data to estimate the risk of HF hospitalization. We introduce two survival models: an XGBoost model with Accelerated Failure Time (AFT) incorporating comprehensive ECG features and a ResNet model that learns from the raw ECG. We extend these with our novel long-term HRVs extracted from the combination of ultra-short-term beat-to-beat measurements taken over the day. To capture their temporal dynamics, we propose a survival model comprising ResNet and Transformer architectures (TFM-ResNet). Our experiments demonstrate high model performance for HF risk assessment with a concordance index of 0.8537 compared to 14 survival models and competitive discrimination power on various external ECG datasets. After transferability tests with Apple Watch data, our approach implemented in the myHeartScore App offers cost-effective and highly accessible HF risk assessment, contributing to its prevention and management.",
+      "url": "https://arxiv.org/abs/2403.15408v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Sergio González",
+        "Abel Ko-Chun Yi",
+        "Wan-Ting Hsieh",
+        "Wei-Chao Chen",
+        "Chun-Li Wang",
+        "Victor Chien-Chia Wu",
+        "Shang-Hung Chang"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-03-01",
+      "doi": "10.1016/j.inffus.2024.102337",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2403.15408v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Effect of Empagliflozin on Worsening Heart Failure Events in Patients With Heart Failure and Preserved Ejection Fraction: EMPEROR-Preserved Trial",
+      "snippet": "BACKGROUND: Empagliflozin reduces the risk of cardiovascular death or hospitalization for heart failure in patients with heart failure with preserved ejection fraction, but additional data are needed about its effect on inpatient and outpatient heart failure events. METHODS: We randomly assigned 5988 patients with class II through IV heart failure with an ejection fraction of >40% to double-blind treatment with placebo or empagliflozin (10 mg once daily), in addition to usual therapy, for a median of 26 months. We prospectively collected information on inpatient and outpatient events reflectin",
+      "full_text": "BACKGROUND: Empagliflozin reduces the risk of cardiovascular death or hospitalization for heart failure in patients with heart failure with preserved ejection fraction, but additional data are needed about its effect on inpatient and outpatient heart failure events. METHODS: We randomly assigned 5988 patients with class II through IV heart failure with an ejection fraction of >40% to double-blind treatment with placebo or empagliflozin (10 mg once daily), in addition to usual therapy, for a median of 26 months. We prospectively collected information on inpatient and outpatient events reflecting worsening heart failure and prespecified their analysis in individual and composite end points. RESULTS: <0.0001), and patients assigned to empagliflozin were 20% to 50% more likely to have a better New York Heart Association functional class, with significant effects at 12 weeks that were maintained for at least 2 years. The benefit on total heart failure hospitalizations was similar in patients with an ejection fraction of >40% to <50% and 50% to <60%, but was attenuated at higher ejection fractions. CONCLUSIONS: In patients with heart failure with preserved ejection fraction, empagliflozin produced a meaningful, early, and sustained reduction in the risk and severity of a broad range of inpatient and outpatient worsening heart failure events. Registration: URL: https://www.clinicaltrials.gov; Unique identifier: NCT03057977.",
+      "url": "https://openalex.org/W3198485697",
+      "_adapter": "openalex",
+      "authors": [
+        "Milton Packer",
+        "Javed Butler",
+        "Faiez M. Zannad",
+        "Gerasimos S Filippatos",
+        "João Pedro Ferreira",
+        "Stuart Pocock",
+        "Peter E. Carson",
+        "Inder S. Anand",
+        "Wolfram Doehner",
+        "Markus Haass",
+        "Michel Komajda",
+        "Alan Bruce Miller",
+        "Steen Michael Pehrson",
+        "John R. Teerlink",
+        "Sven Schnaidt",
+        "Cordula Zeller",
+        "Janet M. Schnee",
+        "Stefan D. Anker",
+        "for the EMPEROR-Preserved Trial Study Group"
+      ],
+      "venue": "Circulation",
+      "publication_date": "2021",
+      "doi": "10.1161/circulationaha.121.056824",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Empagliflozin, Health Status, and Quality of Life in Patients With Heart Failure and Preserved Ejection Fraction: The EMPEROR-Preserved Trial",
+      "snippet": "Background: Patients with heart failure with preserved ejection fraction have significant impairment in health-related quality of life. In the EMPEROR-Preserved trial (Empagliflozin Outcome Trial in Patients With Chronic Heart Failure With Preserved Ejection Fraction), we evaluated the efficacy of empagliflozin on health-related quality of life in patients with heart failure with preserved ejection fraction and whether the clinical benefit observed with empagliflozin varies according to baseline health status. Methods: Health-related quality of life was measured with the Kansas City Cardiomyop",
+      "full_text": "Background: Patients with heart failure with preserved ejection fraction have significant impairment in health-related quality of life. In the EMPEROR-Preserved trial (Empagliflozin Outcome Trial in Patients With Chronic Heart Failure With Preserved Ejection Fraction), we evaluated the efficacy of empagliflozin on health-related quality of life in patients with heart failure with preserved ejection fraction and whether the clinical benefit observed with empagliflozin varies according to baseline health status. Methods: Health-related quality of life was measured with the Kansas City Cardiomyopathy Questionnaire (KCCQ) at baseline and 12, 32, and 52 weeks. Patients were divided by baseline KCCQ Clinical Summary Score (CSS) tertiles, and the effect of empagliflozin on outcomes was examined. The effect of empagliflozin on KCCQ-CSS, Total Symptom Score, and Overall Summary Score was evaluated. Responder analyses were performed to compare the odds of improvement and deterioration in KCCQ related to treatment with empagliflozin. Results: The effect of empagliflozin on reducing the risk of time to cardiovascular death or heart failure hospitalization was consistent across baseline KCCQ-CSS tertiles (hazard ratio, 0.83 [95% CI, 0.69–1.00], 0.70 [95% CI, 0.55–0.88], and 0.82 [95% CI, 0.62–1.08] for scores <62.5, 62.5–83.3, and ≥83.3, respectively; P trend=0.77). Similar results were seen for total heart failure hospitalizations. Patients treated with empagliflozin had significant improvement in KCCQ-CSS versus placebo (+1.03, +1.24, and +1.50 at 12, 32, and 52 weeks, respectively; P <0.01); similar results were seen for Total Symptom Score and Overall Summary Score. At 12 weeks, patients on empagliflozin had higher odds of improvement ≥5 points (odds ratio, 1.23 [95% CI, 1.10–1.37]), ≥10 points (odds ratio, 1.15 [95% CI, 1.03–1.27]), and ≥15 points (odds ratio, 1.13 [95% CI, 1.02–1.26]) and lower odds of deterioration ≥5 points in KCCQ-CSS (odds ratio, 0.85 [95% CI, 0.75–0.97]). A similar pattern was seen at 32 and 52 weeks, and results were consistent for Total Symptom Score and Overall Summary Score. Conclusions: In patients with heart failure with preserved ejection fraction, empagliflozin reduced the risk for major heart failure outcomes across the range of baseline KCCQ scores. Empagliflozin improved health-related quality of life, an effect that appeared early and was sustained for at least 1 year. Registration: URL: https://www.clinicaltrials.gov ; Unique identifier: NCT03057951.",
+      "url": "https://openalex.org/W3213447899",
+      "_adapter": "openalex",
+      "authors": [
+        "Javed Butler",
+        "Gerasimos Filippatos",
+        "Tariq Jamal Siddiqi",
+        "Martina Brueckmann",
+        "Michael Böhm",
+        "Vijay K. Chopra",
+        "João Pedro Ferreira",
+        "James L. Januzzi",
+        "Sanjay Kaul",
+        "Ileana L. Piña",
+        "Piotr P. Ponikowski",
+        "Sanjiv Jayendra Shah",
+        "Michele Senni",
+        "Ola Vedin",
+        "Subodh Verma",
+        "Barbara Peil",
+        "Stuart Pocock",
+        "Faiez M. Zannad",
+        "Milton Packer",
+        "Stefan D. Anker"
+      ],
+      "venue": "Circulation",
+      "publication_date": "2021",
+      "doi": "10.1161/circulationaha.121.057812",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Effect of Empagliflozin on the Clinical Stability of Patients With Heart Failure and a Reduced Ejection Fraction",
+      "snippet": "Background: Empagliflozin reduces the risk of cardiovascular death or hospitalization for heart failure in patients with heart failure and a reduced ejection fraction, with or without diabetes, but additional data are needed about the effect of the drug on inpatient and outpatient events that reflect worsening heart failure. Methods: We randomly assigned 3730 patients with class II to IV heart failure with an ejection fraction of ≤40% to double-blind treatment with placebo or empagliflozin (10 mg once daily), in addition to recommended treatments for heart failure, for a median of 16 months. W",
+      "full_text": "Background: Empagliflozin reduces the risk of cardiovascular death or hospitalization for heart failure in patients with heart failure and a reduced ejection fraction, with or without diabetes, but additional data are needed about the effect of the drug on inpatient and outpatient events that reflect worsening heart failure. Methods: We randomly assigned 3730 patients with class II to IV heart failure with an ejection fraction of ≤40% to double-blind treatment with placebo or empagliflozin (10 mg once daily), in addition to recommended treatments for heart failure, for a median of 16 months. We prospectively collected information on inpatient and outpatient events reflecting worsening heart failure and prespecified their analysis in individual and composite end points. Results: Empagliflozin reduced the combined risk of death, hospitalization for heart failure or an emergent/urgent heart failure visit requiring intravenous treatment (415 versus 519 patients; empagliflozin versus placebo, respectively; hazard ratio [HR], 0.76; 95% CI, 0.67–0.87; P <0.0001). This benefit reached statistical significance at 12 days after randomization. Empagliflozin reduced the total number of heart failure hospitalizations that required intensive care (HR, 0.67; 95% CI, 0.50–0.90; P =0.008) and that required a vasopressor or positive inotropic drug or mechanical or surgical intervention (HR, 0.64; 95% CI, 0.47–0.87; P =0.005). As compared with placebo, fewer patients in the empagliflozin group reported intensification of diuretics (297 versus 414 [HR, 0.67; 95% CI, 0.56–0.78; P <0.0001]). Additionally, patients assigned to empagliflozin were 20% to 40% more likely to experience an improvement in New York Heart Association functional class and were 20% to 40% less likely to experience worsening of New York Heart Association functional class, with statistically significant effects that were apparent 28 days after randomization and maintained during long-term follow-up. The risk of any inpatient or outpatient worsening heart failure event in the placebo group was high (48.1 per 100 patient-years of follow-up), and it was reduced by empagliflozin (HR, 0.70; 95% CI, 0.63–0.78; P <0.0001). Conclusions: In patients with heart failure and a reduced ejection fraction, empagliflozin reduced the risk and total number of inpatient and outpatient worsening heart failure events, with benefits seen early after initiation of treatment and sustained for the duration of double-blind therapy. Registration: URL: https://www.clinicaltrials.gov ; Unique identifier: NCT03057977.",
+      "url": "https://openalex.org/W3093992036",
+      "_adapter": "openalex",
+      "authors": [
+        "Milton Packer",
+        "Stefan D. Anker",
+        "Javed Butler",
+        "Gerasimos S Filippatos",
+        "João Pedro Ferreira",
+        "Stuart Pocock",
+        "Peter E. Carson",
+        "Inder S. Anand",
+        "Wolfram Doehner",
+        "Markus Haass",
+        "Michel Komajda",
+        "Alan Bruce Miller",
+        "Steen Michael Pehrson",
+        "John R. Teerlink",
+        "Martina Brueckmann",
+        "Waheed Jamal",
+        "Cordula Zeller",
+        "Sven Schnaidt",
+        "Faiez M. Zannad"
+      ],
+      "venue": "Circulation",
+      "publication_date": "2020",
+      "doi": "10.1161/circulationaha.120.051783",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:13+0100"
+}

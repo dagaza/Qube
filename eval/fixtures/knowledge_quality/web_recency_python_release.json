@@ -1,0 +1,214 @@
+{
+  "schema_version": 2,
+  "id": "web_recency_python_release",
+  "path": "general_web",
+  "category": "recency",
+  "description": "",
+  "query_raw": "@[tool:internet] What is the latest stable Python version?",
+  "query_clean": "What is the latest stable Python version?",
+  "retrieval_query": "What is the latest stable Python version?",
+  "standalone_question": "What is the latest stable release of Python?",
+  "gold_subject": "Python",
+  "gold_facet": "latest stable release",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T19:06:16+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "What is the latest stable Python version?"
+    },
+    "standalone": {
+      "duckduckgo": "What is the latest stable release of Python?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Python Release Python 3.15.2 | Python.org",
+      "snippet": "Python 3.15.2 is an expedited security release and the second maintenance release of 3.15, containing around 130 bugfixes, build improvements and documentation changes from 70 contributors since 3.15.1.",
+      "url": "https://www.python.org/downloads/latest/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Download Python | Python.org",
+      "snippet": "The official home of the Python Programming Language",
+      "url": "https://www.python.org/downloads/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Status of Python versions",
+      "snippet": "Status of Python versions ¶ The main branch is currently the future Python 3.16, and is the only branch that accepts new features. The latest release for each Python version can be found on the download page.",
+      "url": "https://devguide.python.org/versions/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What's new in Python 3.14 — Python 3.15.2 documentation",
+      "snippet": "Summary - Release highlights ¶ Python 3.14 is a stable release of the Python programming language, with a mix of changes to the language, the implementation, and the standard library. The biggest changes include template string literals, deferred evaluation of annotations, and support for subinterpreters in the standard library.",
+      "url": "https://docs.python.org/3/whatsnew/3.14.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "What's new in Python 3.15 — Python 3.15.2 documentation",
+      "snippet": "Python 3.15 is the latest stable release of the Python programming language, with a mix of changes to the language, the implementation, and the standard library. The biggest changes include lazy imports, frozendict and sentinel builtins, UTF-8 as the default encoding, unpacking in comprehensions, and a stable ABI for free-threaded builds.",
+      "url": "https://docs.python.org/3/whatsnew/3.15.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Python 3.10.22, 3.11.17, 3.12.15, 3.13.16 and 3.14.8 are now available ...",
+      "snippet": "These two releases contain security fixes rather than new features. Python 3.12.15 is also a source-only security release, with security support continuing until October 2028. Python 3.13.16 is the last full maintenance release of 3.13; future 3.13 releases will contain security fixes only.",
+      "url": "https://blog.python.org/2026/10/python-31022-31117/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Python Latest Version - Support Lifecycle & EOL",
+      "snippet": "Python Lifecycle & End of Life (EOL) Policy Python follows a clear five-year support policy for every minor release. Once a version is fully released, it enters the bugfix phase where the core team accepts both bug fixes and security updates. New installer packages appear roughly every two months during this period to keep the ecosystem stable and reliable. After approximately two years, the ...",
+      "url": "https://versionlog.com/python/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Which Python Version Should I Use in 2026? - Krishnamohan Productions",
+      "snippet": "📌 Quick Summary In 2026, the best Python version for most users is the latest stable Python release that includes official installers, which is Python 3.14.x. It offers the newest features, long-term support, strong library compatibility, and easy installation on Windows and macOS. Older versions like Python 3.11 and 3.10 are still usable in specific cases, but source-only security releases ...",
+      "url": "https://www.krishnamohanproductions.com/blog/tech-blog/which-python-version-should-i-use-2026/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Python 3.15.0 (final) is here! | Python Insider",
+      "snippet": "This is the stable release of Python 3.15.0 Python 3.15.0 is the newest major release of the Python programming language, and it contains many new features and optimisations compared to Python 3.14, in 5,643 commits from 1,012 contributors.",
+      "url": "https://blog.python.org/2026/10/python-3150-final-is-here/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Python Versions: Latest Release, Supported and EOL Dates",
+      "snippet": "The latest Python is 3.15.2. Which Python versions are still supported, with release and end-of-life dates, including the Python 3.12 EOL.",
+      "url": "https://pythonresources.com/python-versions/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

@@ -1,0 +1,194 @@
+{
+  "schema_version": 2,
+  "id": "web_entity_sydney_opera_house",
+  "path": "general_web",
+  "category": "entity_lookup",
+  "description": "",
+  "query_raw": "@[tool:internet] who designed the sydney opera house",
+  "query_clean": "who designed the sydney opera house",
+  "retrieval_query": "who designed the sydney opera house",
+  "standalone_question": "Who designed the Sydney Opera House?",
+  "gold_subject": "Sydney Opera House",
+  "gold_facet": "architect",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T18:32:29+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "who designed the sydney opera house"
+    },
+    "standalone": {
+      "duckduckgo": "Who designed the Sydney Opera House?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Sydney Opera House - Wikipedia",
+      "snippet": "The Sydney Opera House is a multi-venue performing arts centre in Sydney, New South Wales, Australia. Located on the foreshore of Sydney Harbour, it is widely regarded as one of the world's most famous and distinctive buildings, and a masterpiece of 20th-century architecture. [3][4] Designed by Danish architect Jørn Utzon and completed by an Australian architectural team headed by Peter Hall ...",
+      "url": "https://en.wikipedia.org/wiki/Sydney_Opera_House",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Jørn Utzon - Wikipedia",
+      "snippet": "Sydney Opera House Sydney Opera House - side view In 1957, Utzon unexpectedly won the competition to design the Sydney Opera House. His submission was one of 233 designs from 32 countries, many of them from the most famous architects of the time. [9] Although he had won six other architectural competitions previously, the Opera House was his first non-domestic project. One of the judges, Eero ...",
+      "url": "https://en.wikipedia.org/wiki/J%C3%B8rn_Utzon",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sydney Opera House | History, Location, Architect, Design, Uses ...",
+      "snippet": "Sydney Opera House, opera house located on Port Jackson (Sydney Harbour), New South Wales, Australia. Its unique use of a series of gleaming white sail-shaped shells as its roof structure makes it one of the most-photographed buildings in the world. Learn more about its history and its uses.",
+      "url": "https://www.britannica.com/topic/Sydney-Opera-House",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Jørn Utzon AC | Sydney Opera House",
+      "snippet": "Such modernist buildings typically resembled glass boxes, as did many of the entrants to the Sydney Opera House competition. In contrast, Utzon's design was more sculptural and embraced expressionism.",
+      "url": "https://www.sydneyoperahouse.com/our-story/jorn-utzon",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Our story - Sydney Opera House",
+      "snippet": "Our story The Sydney Opera House exists because a few brave people dared to think differently. From conception to completion, the building tested the limits of engineering, construction and design. Designed by the Danish architect Jørn Utzon, this World Heritage-listed masterpiece represents a breakthrough in modern architecture.",
+      "url": "https://www.sydneyoperahouse.com/our-story",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Sydney Opera House by Jørn Utzon: Architecture and Plans | ArchEyes",
+      "snippet": "The Sydney Opera House is a multi-venue performing arts center on Bennelong Point in Sydney Harbour, designed by the Danish architect Jørn Utzon. Utzon won the international competition in 1957, construction began in 1959, and Queen Elizabeth II opened the building on October 20, 1973.",
+      "url": "https://archeyes.com/sydney-opera-house-jorn-utzon/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sydney Opera House / Jørn Utzon | Classics on Architecture Lab",
+      "snippet": "The Sydney Opera House, designed by Jørn Utzon, is one of the world's most renowned buildings. Often called the eighth wonder of the world, its story began in 1956 when the New South Wales Government held a competition for designing two performance halls.",
+      "url": "https://www.architecturelab.net/sydney-opera-house-jorn-utzon/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sydney Opera House Facts | Britannica",
+      "snippet": "The Sydney Opera House is a multipurpose performing arts facility located on Port Jackson in Sydney, New South Wales, Australia. It was designed by Danish architect Jørn Utzon, the winner of an international competition sponsored by the New South Wales government for the complex's design. The Opera House, which was designated a UNESCO World Heritage site in 2007, is Sydney's most prominent ...",
+      "url": "https://www.britannica.com/facts/Sydney-Opera-House",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

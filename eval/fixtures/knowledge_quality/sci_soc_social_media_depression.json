@@ -1,0 +1,539 @@
+{
+  "schema_version": 2,
+  "id": "sci_soc_social_media_depression",
+  "path": "scientific_evidence",
+  "category": "social_science",
+  "description": "",
+  "query_raw": "@[tool:evidence] What does research say about social media use and adolescent depression?",
+  "query_clean": "What does research say about social media use and adolescent depression?",
+  "retrieval_query": "What does research say about social media use and adolescent depression?",
+  "standalone_question": "What is the effect of social media use on adolescent depression?",
+  "gold_subject": "social media use",
+  "gold_facet": "adolescent depression",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:03:17+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "What does research say about social media use and adolescent depression",
+      "arxiv": "What does research say about social media use and adolescent depression"
+    },
+    "standalone": {
+      "openalex": "What is the effect of social media use on adolescent depression",
+      "arxiv": "What is the effect of social media use on adolescent depression"
+    }
+  },
+  "candidates": [
+    {
+      "title": "The Use of Social Media in Children and Adolescents: Scoping Review on the Potential Risks",
+      "snippet": "In recent years, social media has become part of our lives, even among children. From the beginning of COVID-19 pandemic period, media device and Internet access rapidly increased. Adolescents connected Internet alone, consulting social media, mostly Instagram, TikTok, and YouTube. During \"lockdown\", the Internet usage allowed communication with peers and the continuity activities such as school teaching. However, we have to keep in mind that media usage may be related to some adverse consequences especially in the most vulnerable people, such as the young. Aim of the review is to focus on ris",
+      "full_text": "In recent years, social media has become part of our lives, even among children. From the beginning of COVID-19 pandemic period, media device and Internet access rapidly increased. Adolescents connected Internet alone, consulting social media, mostly Instagram, TikTok, and YouTube. During \"lockdown\", the Internet usage allowed communication with peers and the continuity activities such as school teaching. However, we have to keep in mind that media usage may be related to some adverse consequences especially in the most vulnerable people, such as the young. Aim of the review is to focus on risks correlated to social media use by children and adolescents, identifying spies of rising problems and engaging in preventive recommendations. The scoping review was performed according to PRISMA guidelines, searching on PubMed the terms \"social media\" or \"social network\", \"health\", and \"pediatrics\". Excluding articles not pertinent, we found 68 reports. Out of them, 19 were dealing with depression, 15 with diet, and 15 with psychological problems, which appeared to be the most reported risk of social media use. Other identified associated problems were sleep, addiction, anxiety, sex related issues, behavioral problems, body image, physical activity, online grooming, sight, headache, and dental caries. Public and medical awareness must rise over this topic and new prevention measures must be found, starting with health practitioners, caregivers, and websites/application developers. Pediatricians should be aware of the risks associated to a problematic social media use for the young's health and identify sentinel signs in children as well as prevent negative outcomes in accordance with the family.",
+      "url": "https://openalex.org/W4291885054",
+      "_adapter": "openalex",
+      "authors": [
+        "Elena Bozzola",
+        "Giulia Spina",
+        "Rino Agostiniani",
+        "Sarah Barni",
+        "Rocco Russo",
+        "Elena Scarpato",
+        "Antonio Di Mauro",
+        "Antonella Vita Di Stefano",
+        "Cinthia Caruso",
+        "Giovanni Corsello",
+        "Annamaria Staiano"
+      ],
+      "venue": "International Journal of Environmental Research and Public Health",
+      "publication_date": "2022",
+      "doi": "10.3390/ijerph19169960",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "A Systematic Review: The Association Between Social Media Use, Social Media Addiction, and Depression in Adolescents",
+      "snippet": "With the development of technology, social media has become the main way for people to communicate with others and entertain themselves. At the same time, depression is one of the most common mental disorders. About 4.3% of people in the world are diagnosed with depression. Many researchers pay attention to the relationship between social media and depression. They did surveys to measure depression and the level of social media addiction or use and tested the correlation between them. Surveys are only able to get a correlation but not accurate causation, and most related researches used the sa",
+      "full_text": "With the development of technology, social media has become the main way for people to communicate with others and entertain themselves. At the same time, depression is one of the most common mental disorders. About 4.3% of people in the world are diagnosed with depression. Many researchers pay attention to the relationship between social media and depression. They did surveys to measure depression and the level of social media addiction or use and tested the correlation between them. Surveys are only able to get a correlation but not accurate causation, and most related researches used the same method. Because of simply using surveys during research, mechanisms between social media use, social media addiction, and depression need further exploration. Our review aims at finding the universal result of various previous researches and presenting suggestions on method selection for later researches. We reviewed 15 articles and offered a summary of previous methods and results. Our review found that the methods used are limited, and it is necessary to find new approaches to get a more specific relationship. Controversial results suggested that further and more careful research are needed. A universally used scale for depression and social media use or addiction would be helpful for investigating related fields. They should also focus on the mechanism but not only the correlation between some variables.",
+      "url": "https://openalex.org/W4214478688",
+      "_adapter": "openalex",
+      "authors": [
+        "Letong Yang",
+        "Jingqiao Yuan"
+      ],
+      "venue": "Advances in Social Science, Education and Humanities Research/Advances in social science, education and humanities research",
+      "publication_date": "2021",
+      "doi": "10.2991/assehr.k.211220.018",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Problematic Social Media Use and Health among Adolescents",
+      "snippet": "(1) Background: The use of social media has become an integral part of adolescents’ daily lives. However, the intensive use of social media can develop into a health-threatening addiction, but unfavourable health consequences can occur even with less use. Social media user groups categorized as no-risk, moderate risk (of developing problematic behaviour), and problematic use were examined with reference to their prevalence, their associations with individual determinants and health, and the increased health risk between groups. (2) Methods: The Finnish nationally representative HBSC data (pers",
+      "full_text": "(1) Background: The use of social media has become an integral part of adolescents’ daily lives. However, the intensive use of social media can develop into a health-threatening addiction, but unfavourable health consequences can occur even with less use. Social media user groups categorized as no-risk, moderate risk (of developing problematic behaviour), and problematic use were examined with reference to their prevalence, their associations with individual determinants and health, and the increased health risk between groups. (2) Methods: The Finnish nationally representative HBSC data (persons aged 11, 13, and 15, n = 3408) and descriptive and binary logistic regression analysis were applied. (3) Results: Problematic social media use (9.4%) was most common among older age groups, and among persons with moderate/low school achievement, low health literacy, and low parental monitoring. Belonging to a moderate risk group (33.5%) was most frequent among girls, and among adolescents with low/moderate parental monitoring and health literacy. All the negative health indicators systematically increased if the respondent belonged to a moderate risk or problematic use group. (4) Conclusions: The study confirmed the association between problematic social media use and negative health outcomes and highlighted the need to pay close attention to adolescents at moderate risk who exhibited negative health outcomes.",
+      "url": "https://openalex.org/W3132808242",
+      "_adapter": "openalex",
+      "authors": [
+        "Leena T. Paakkari",
+        "Jorma Tynjälä",
+        "Henri Lahti",
+        "Kristiina Ojala",
+        "Nelli Lyyra"
+      ],
+      "venue": "International Journal of Environmental Research and Public Health",
+      "publication_date": "2021",
+      "doi": "10.3390/ijerph18041885",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "PSYCHOLOGICAL PREDICTORS OF PROBLEMATIC SOCIAL MEDIA USE AMONG ADOLESCENTS",
+      "snippet": "PSYCHOLOGICAL PREDICTORS OF PROBLEMATIC SOCIAL MEDIA USE AMONG ADOLESCENTS",
+      "full_text": null,
+      "url": "https://openalex.org/W4404543106",
+      "_adapter": "openalex",
+      "authors": [
+        "Лановая Алеся Михайловна",
+        "E.V. Fadeeva"
+      ],
+      "venue": null,
+      "publication_date": "2024",
+      "doi": "10.61365/forum.2024.167",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Social Media Use and adolescents' mental health and well-being: An umbrella review",
+      "snippet": "This umbrella review analyses the risks and opportunities for adolescents' mental health and well-being associated with Social Media Use (SMU) and the main risk mitigation proposals presented in systematic, scoping and narrative literature reviews and meta-analyses. Following the PRIOR guidelines, we defined inclusion and exclusion criteria for Population (10-19 years), Exposure (Social Media Use) and Outcomes (Well-being, Ill-being, Mental health) and searched articles published from January 2015 to April 2023 in four databases: Scopus, Web of Science, PsychInfo, and Pubmed. We screened title",
+      "full_text": "This umbrella review analyses the risks and opportunities for adolescents' mental health and well-being associated with Social Media Use (SMU) and the main risk mitigation proposals presented in systematic, scoping and narrative literature reviews and meta-analyses. Following the PRIOR guidelines, we defined inclusion and exclusion criteria for Population (10-19 years), Exposure (Social Media Use) and Outcomes (Well-being, Ill-being, Mental health) and searched articles published from January 2015 to April 2023 in four databases: Scopus, Web of Science, PsychInfo, and Pubmed. We screened titles and abstracts of 1470 publications, and after conducting the quality assessment based on the AMSTAR 2 protocol, we selected 24 articles on which we performed a thematic analysis. We highlight that the relationship between SMU and adolescents' mental health is influenced by several intervening factors: 1) individual demographic and psycho-socio characteristics, 2) individual use of Social Media (SM), and 3) SM' content and design. Furthermore, we describe the risks and opportunities associated with SMU that emerge from the reviewed articles. We discuss how the limitation to collecting SM data hinders the research on the impact of SMU and how the adoption of responsible design principles by SM platforms would contribute to introducing a societal change to achieve a population-level shift, which is harder to attain if the burden of responsible use is only attributed to individuals' choices. Finally, we discuss the opportunities brought about by upcoming regulatory frameworks, such as the EU Digital Services Act.",
+      "url": "https://openalex.org/W4393176161",
+      "_adapter": "openalex",
+      "authors": [
+        "Arianna Sala",
+        "Lorenzo Porcaro",
+        "Emília Gómez"
+      ],
+      "venue": "Computers in Human Behavior Reports",
+      "publication_date": "2024",
+      "doi": "10.1016/j.chbr.2024.100404",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Exploring the Relationships of Social Media Usage and Symptoms of Anxiety and Depression in Adolescents",
+      "snippet": "Social media is a popular form of communication and entertainment among youth. Inconsistencies are present in the literature on the potential effects it can have on mental health. Depression and anxiety disorders are common among all age groups in the US, and this study aimed to determine the relationship social media has on symptoms of anxiety and depression. The Social Anxiety Scale for Adolescents (SAS) and the GAD-7 were used to measure symptoms of anxiety, as well as the CES-D scale to evaluate depressive symptoms in adolescents. The number of social networking sites and number of hours s",
+      "full_text": "Social media is a popular form of communication and entertainment among youth. Inconsistencies are present in the literature on the potential effects it can have on mental health. Depression and anxiety disorders are common among all age groups in the US, and this study aimed to determine the relationship social media has on symptoms of anxiety and depression. The Social Anxiety Scale for Adolescents (SAS) and the GAD-7 were used to measure symptoms of anxiety, as well as the CES-D scale to evaluate depressive symptoms in adolescents. The number of social networking sites and number of hours spent on social media are two variables that measure social media usage and were analyzed among a sample of Communities In Schools (CIS) students. The majority of the sample identified as persons of color and were considered to be of low socioeconomic status according to the district guidelines. An exploratory study using a single measurement, correlational design was conducted to explore the relationship between social media and mental health, and a survey was completed among CIS students in four middle schools and two high school in a local school district (N=84). Several linear regression analyses were conducted to analyze the variance in scores on the SAS, GAD-7, and CESD scales as explained by social media factors. The findings show that the amount of time spent on social media and symptoms of depression were significantly related to one another, yet there appeared to be no relationship between symptoms of anxiety and social media usage.",
+      "url": "https://openalex.org/W3027779064",
+      "_adapter": "openalex",
+      "authors": [
+        "Morgan Culpepper"
+      ],
+      "venue": "Digital Commons - ACU (Abilene Christian University)",
+      "publication_date": "2020",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Social Media Use and Depression in Adolescents: A Scoping Review",
+      "snippet": "This scoping review aimed to investigate the association between depression and social media use among adolescents. The study analyzed 43 papers using five databases to identify articles published from 2012 to August 2022. The results revealed a connection between social media use and depression, as well as other negative outcomes such as anxiety, poor sleep, low self-esteem, and social and appearance anxiety. Surveys were the most used study strategy, with multiple common scales applied to assess depression, social media use, and other factors such as self-esteem and sleep quality. Among the ",
+      "full_text": "This scoping review aimed to investigate the association between depression and social media use among adolescents. The study analyzed 43 papers using five databases to identify articles published from 2012 to August 2022. The results revealed a connection between social media use and depression, as well as other negative outcomes such as anxiety, poor sleep, low self-esteem, and social and appearance anxiety. Surveys were the most used study strategy, with multiple common scales applied to assess depression, social media use, and other factors such as self-esteem and sleep quality. Among the studies, eight reported that females who use social media showed higher depression symptoms than males. This scoping review provides an overview of the current literature on the relationship between social media use and depression among adolescents. The findings emphasize the importance of monitoring social media use and providing support for individuals struggling with depression. However, more research is needed to better understand the factors contributing to this relationship and to develop more standardized assessment methods.",
+      "url": "https://openalex.org/W4379518907",
+      "_adapter": "openalex",
+      "authors": [
+        "Layan Azem",
+        "Rafaa Al Alwani",
+        "Augusto Lucas",
+        "Balqes Alsaadi",
+        "Gilbert Njihia Muchori",
+        "Bushra Bibi",
+        "Mahmood Saleh Alzubaidi",
+        "Mowafa Said Househ"
+      ],
+      "venue": "Behavioral Sciences",
+      "publication_date": "2023",
+      "doi": "10.3390/bs13060475",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The effect of social media on well-being differs from adolescent to adolescent",
+      "snippet": "The question whether social media use benefits or undermines adolescents' well-being is an important societal concern. Previous empirical studies have mostly established across-the-board effects among (sub)populations of adolescents. As a result, it is still an open question whether the effects are unique for each individual adolescent. We sampled adolescents' experiences six times per day for one week to quantify differences in their susceptibility to the effects of social media on their momentary affective well-being. Rigorous analyses of 2,155 real-time assessments showed that the associati",
+      "full_text": "The question whether social media use benefits or undermines adolescents' well-being is an important societal concern. Previous empirical studies have mostly established across-the-board effects among (sub)populations of adolescents. As a result, it is still an open question whether the effects are unique for each individual adolescent. We sampled adolescents' experiences six times per day for one week to quantify differences in their susceptibility to the effects of social media on their momentary affective well-being. Rigorous analyses of 2,155 real-time assessments showed that the association between social media use and affective well-being differs strongly across adolescents: While 44% did not feel better or worse after passive social media use, 46% felt better, and 10% felt worse. Our results imply that person-specific effects can no longer be ignored in research, as well as in prevention and intervention programs.",
+      "url": "https://openalex.org/W3039124223",
+      "_adapter": "openalex",
+      "authors": [
+        "Ine Beyens",
+        "J. Loes Pouwels",
+        "Irene Ingeborg van Driel",
+        "Loes Keijsers",
+        "Patti M. Valkenburg"
+      ],
+      "venue": "Scientific Reports",
+      "publication_date": "2020",
+      "doi": "10.1038/s41598-020-67727-7",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Lack of Sample Diversity in Research on Adolescent Depression and Social Media Use: A Scoping Review and Meta-Analysis",
+      "snippet": "Research on whether social media use relates to adolescent depression is rapidly increasing. However, is it adequately representing the diversity of global adolescent populations? We conducted a preregistered scoping review (research published between 2018 and 2020; 34 articles) to investigate the proportion of studies recruiting samples from the Global North versus Global South and assess whether the association between social media and depression varies depending on the population being studied. Sample diversity was lacking between regions: More than 70% of studies examined Global North popu",
+      "full_text": "Research on whether social media use relates to adolescent depression is rapidly increasing. However, is it adequately representing the diversity of global adolescent populations? We conducted a preregistered scoping review (research published between 2018 and 2020; 34 articles) to investigate the proportion of studies recruiting samples from the Global North versus Global South and assess whether the association between social media and depression varies depending on the population being studied. Sample diversity was lacking between regions: More than 70% of studies examined Global North populations. The link between social media and depression was positive and significant in the Global North but null and nonsignificant in the Global South. There was also little evidence of diversity within regions in both sampling choices and reporting of participants' demographics. Given that most adolescents live in the Global South and sample diversity is crucial for the generalizability of research findings, urgent action is needed to address these oversights.",
+      "url": "https://openalex.org/W4319788437",
+      "_adapter": "openalex",
+      "authors": [
+        "Sakshi Ghai",
+        "Luisa Fassi",
+        "Faisal Awadh",
+        "Amy C. Orben"
+      ],
+      "venue": "Clinical Psychological Science",
+      "publication_date": "2023",
+      "doi": "10.1177/21677026221114859",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Social media, internet use and suicide attempts in adolescents",
+      "snippet": "PURPOSE OF REVIEW: Suicide is the second leading cause of death in youth aged 10-24 years old globally, but detecting those at risk is challenging. Novel preventive strategies with wide influence across populations are required. Interest in the potential for both detrimental and supportive influences of social media/internet use on suicidal behaviour has been growing; however, the relationship remains unclear. RECENT FINDINGS: A systematic search of articles from database inception up to 25 January 2019 across five databases: Medline, PsycINFO, EMBASE, HMIC and CINAHL revealed nine independent",
+      "full_text": "PURPOSE OF REVIEW: Suicide is the second leading cause of death in youth aged 10-24 years old globally, but detecting those at risk is challenging. Novel preventive strategies with wide influence across populations are required. Interest in the potential for both detrimental and supportive influences of social media/internet use on suicidal behaviour has been growing; however, the relationship remains unclear. RECENT FINDINGS: A systematic search of articles from database inception up to 25 January 2019 across five databases: Medline, PsycINFO, EMBASE, HMIC and CINAHL revealed nine independent studies investigating social media/internet use and suicide attempts in young people less than 19 years old (n = 346 416). An independent direct association was found between heavy social media/internet use and increased suicide attempts in seven studies (adjusted ORs ranged from 1.03 to 5.10), although adjusting for cyberbullying victimization and sleep disturbance reduced the strength of this association. Two studies found that some social media/internet use, versus no use, may be associated with fewer suicide attempts. There were no studies investigating the relationship between social media/internet use and completed suicide. SUMMARY: There is an independent association between problematic use of social media/internet and suicide attempts in young people. However, the direction of causality, if any, remains unclear. Further evaluation through longitudinal studies is needed.",
+      "url": "https://openalex.org/W2961274044",
+      "_adapter": "openalex",
+      "authors": [
+        "Rosemary Sedgwick",
+        "Sophie Epstein",
+        "Rina Dutta",
+        "Dennis Ougrin"
+      ],
+      "venue": "Current Opinion in Psychiatry",
+      "publication_date": "2019",
+      "doi": "10.1097/yco.0000000000000547",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "A Systematic Review of Social Media Use and Adolescent Identity Development",
+      "snippet": "Social media have become a new context for adolescent identity development. However, it is challenging to build a thorough understanding of how social media and identity development are related because studies refer to different facets of social media engagement and use diverse concepts related to identity. This review synthesizes research on the relationships between quantity and quality of social media use and different dimensions of identity development, including identity exploration and commitment, self-concept clarity, and identity distress. The search conducted across four databases yie",
+      "full_text": "Social media have become a new context for adolescent identity development. However, it is challenging to build a thorough understanding of how social media and identity development are related because studies refer to different facets of social media engagement and use diverse concepts related to identity. This review synthesizes research on the relationships between quantity and quality of social media use and different dimensions of identity development, including identity exploration and commitment, self-concept clarity, and identity distress. The search conducted across four databases yielded 4,467 records, of which 32 studies were included in the analysis, comprising 19,658 adolescents with a mean age of 16.43 years ( SD = 1.81) and an age range of eight to 26 years. Active participation in social media, rather than the amount of time spent on it, was associated with more identity exploration. Authenticity on social media, not idealized self-presentation, correlated with higher self-concept clarity. Additionally, adolescents who engaged in comparisons on social media demonstrated higher levels of identity exploration and identity distress. Overall, it seems to matter more for identity development what young people do on social media than how much time they spend on it.",
+      "url": "https://openalex.org/W4404588758",
+      "_adapter": "openalex",
+      "authors": [
+        "Hamide Avci",
+        "Laura Baams",
+        "Tina Kretschmer"
+      ],
+      "venue": "Adolescent Research Review",
+      "publication_date": "2024",
+      "doi": "10.1007/s40894-024-00251-1",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Multitask learning for recognizing stress and depression in social media",
+      "snippet": "Stress and depression are prevalent nowadays across people of all ages due to the quick paces of life. People use social media to express their feelings. Thus, social media constitute a valuable form of information for the early detection of stress and depression. Although many research works have been introduced targeting the early recognition of stress and depression, there are still limitations. There have been proposed multi-task learning settings, which use depression and emotion (or figurative language) as the primary and auxiliary tasks respectively. However, although stress is inextric",
+      "full_text": "Stress and depression are prevalent nowadays across people of all ages due to the quick paces of life. People use social media to express their feelings. Thus, social media constitute a valuable form of information for the early detection of stress and depression. Although many research works have been introduced targeting the early recognition of stress and depression, there are still limitations. There have been proposed multi-task learning settings, which use depression and emotion (or figurative language) as the primary and auxiliary tasks respectively. However, although stress is inextricably linked with depression, researchers face these two tasks as two separate tasks. To address these limitations, we present the first study, which exploits two different datasets collected under different conditions, and introduce two multitask learning frameworks, which use depression and stress as the main and auxiliary tasks respectively. Specifically, we use a depression dataset and a stressful dataset including stressful posts from ten subreddits of five domains. In terms of the first approach, each post passes through a shared BERT layer, which is updated by both tasks. Next, two separate BERT encoder layers are exploited, which are updated by each task separately. Regarding the second approach, it consists of shared and task-specific layers weighted by attention fusion networks. We conduct a series of experiments and compare our approaches with existing research initiatives, single-task learning, and transfer learning. Experiments show multiple advantages of our approaches over state-of-the-art ones.",
+      "url": "https://arxiv.org/abs/2305.18907v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Loukas Ilias",
+        "Dimitris Askounis"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-05-30",
+      "doi": "10.1016/j.osnem.2023.100270",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2305.18907v2",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Topic Shifts as a Proxy for Assessing Politicization in Social Media",
+      "snippet": "Politicization is a social phenomenon studied by political science characterized by the extent to which ideas and facts are given a political tone. A range of topics, such as climate change, religion and vaccines has been subject to increasing politicization in the media and social media platforms. In this work, we propose a computational method for assessing politicization in online conversations based on topic shifts, i.e., the degree to which people switch topics in online conversations. The intuition is that topic shifts from a non-political topic to politics are a direct measure of politi",
+      "full_text": "Politicization is a social phenomenon studied by political science characterized by the extent to which ideas and facts are given a political tone. A range of topics, such as climate change, religion and vaccines has been subject to increasing politicization in the media and social media platforms. In this work, we propose a computational method for assessing politicization in online conversations based on topic shifts, i.e., the degree to which people switch topics in online conversations. The intuition is that topic shifts from a non-political topic to politics are a direct measure of politicization -- making something political, and that the more people switch conversations to politics, the more they perceive politics as playing a vital role in their daily lives. A fundamental challenge that must be addressed when one studies politicization in social media is that, a priori, any topic may be politicized. Hence, any keyword-based method or even machine learning approaches that rely on topic labels to classify topics are expensive to run and potentially ineffective. Instead, we learn from a seed of political keywords and use Positive-Unlabeled (PU) Learning to detect political comments in reaction to non-political news articles posted on Twitter, YouTube, and TikTok during the 2022 Brazilian presidential elections. Our findings indicate that all platforms show evidence of politicization as discussion around topics adjacent to politics such as economy, crime and drugs tend to shift to politics. Even the least politicized topics had the rate in which their topics shift to politics increased in the lead up to the elections and after other political events in Brazil -- an evidence of politicization.",
+      "url": "https://arxiv.org/abs/2312.11326v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Marcelo Sartori Locatelli",
+        "Pedro Calais",
+        "Matheus Prado Miranda",
+        "João Pedro Junho",
+        "Tomas Lacerda Muniz",
+        "Wagner Meira",
+        "Virgilio Almeida"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-12-18",
+      "doi": "10.1609/icwsm.v18i1.31366",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2312.11326v2",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Coordinated Behavior on Social Media in 2019 UK General Election",
+      "snippet": "Coordinated online behaviors are an essential part of information and influence operations, as they allow a more effective disinformation's spread. Most studies on coordinated behaviors involved manual investigations, and the few existing computational approaches make bold assumptions or oversimplify the problem to make it tractable. Here, we propose a new network-based framework for uncovering and studying coordinated behaviors on social media. Our research extends existing systems and goes beyond limiting binary classifications of coordinated and uncoordinated behaviors. It allows to expose ",
+      "full_text": "Coordinated online behaviors are an essential part of information and influence operations, as they allow a more effective disinformation's spread. Most studies on coordinated behaviors involved manual investigations, and the few existing computational approaches make bold assumptions or oversimplify the problem to make it tractable. Here, we propose a new network-based framework for uncovering and studying coordinated behaviors on social media. Our research extends existing systems and goes beyond limiting binary classifications of coordinated and uncoordinated behaviors. It allows to expose different coordination patterns and to estimate the degree of coordination that characterizes diverse communities. We apply our framework to a dataset collected during the 2019 UK General Election, detecting and characterizing coordinated communities that participated in the electoral debate. Our work conveys both theoretical and practical implications and provides more nuanced and fine-grained results for studying online information manipulation.",
+      "url": "https://arxiv.org/abs/2008.08370v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Leonardo Nizzoli",
+        "Serena Tardelli",
+        "Marco Avvenuti",
+        "Stefano Cresci",
+        "Maurizio Tesconi"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2020-08-19",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2008.08370v2",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Understanding Musical Diversity via Online Social Media",
+      "snippet": "Musicologists and sociologists have long been interested in patterns of music consumption and their relation to socioeconomic status. In particular, the Omnivore Thesis examines the relationship between these variables and the diversity of music a person consumes. Using data from social media users of Last.fm and Twitter, we design and evaluate a measure that reasonably captures diversity of musical tastes. We use that measure to explore associations between musical diversity and variables that capture socioeconomic status, demographics, and personal traits such as openness and degree of inter",
+      "full_text": "Musicologists and sociologists have long been interested in patterns of music consumption and their relation to socioeconomic status. In particular, the Omnivore Thesis examines the relationship between these variables and the diversity of music a person consumes. Using data from social media users of Last.fm and Twitter, we design and evaluate a measure that reasonably captures diversity of musical tastes. We use that measure to explore associations between musical diversity and variables that capture socioeconomic status, demographics, and personal traits such as openness and degree of interest in music (into-ness). Our musical diversity measure can provide a useful means for studies of musical preferences and consumption. Also, our study of the Omnivore Thesis provides insights that extend previous survey and interview-based studies.",
+      "url": "https://arxiv.org/abs/1604.02522v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Minsu Park",
+        "Ingmar Weber",
+        "Mor Naaman",
+        "Sarah Vieweg"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2016-04-09",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1604.02522v2",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Recurrent Neural Network based Part-of-Speech Tagger for Code-Mixed Social Media Text",
+      "snippet": "This paper describes Centre for Development of Advanced Computing's (CDACM) submission to the shared task-'Tool Contest on POS tagging for Code-Mixed Indian Social Media (Facebook, Twitter, and Whatsapp) Text', collocated with ICON-2016. The shared task was to predict Part of Speech (POS) tag at word level for a given text. The code-mixed text is generated mostly on social media by multilingual users. The presence of the multilingual words, transliterations, and spelling variations make such content linguistically complex. In this paper, we propose an approach to POS tag code-mixed social medi",
+      "full_text": "This paper describes Centre for Development of Advanced Computing's (CDACM) submission to the shared task-'Tool Contest on POS tagging for Code-Mixed Indian Social Media (Facebook, Twitter, and Whatsapp) Text', collocated with ICON-2016. The shared task was to predict Part of Speech (POS) tag at word level for a given text. The code-mixed text is generated mostly on social media by multilingual users. The presence of the multilingual words, transliterations, and spelling variations make such content linguistically complex. In this paper, we propose an approach to POS tag code-mixed social media text using Recurrent Neural Network Language Model (RNN-LM) architecture. We submitted the results for Hindi-English (hi-en), Bengali-English (bn-en), and Telugu-English (te-en) code-mixed data.",
+      "url": "https://arxiv.org/abs/1611.04989v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Raj Nath Patel",
+        "Prakash B. Pimpale",
+        "M Sasikumar"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2016-11-15",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1611.04989v2",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Mining Social Media for Newsgathering: A Review",
+      "snippet": "Social media is becoming an increasingly important data source for learning about breaking news and for following the latest developments of ongoing news. This is in part possible thanks to the existence of mobile devices, which allows anyone with access to the Internet to post updates from anywhere, leading in turn to a growing presence of citizen journalism. Consequently, social media has become a go-to resource for journalists during the process of newsgathering. Use of social media for newsgathering is however challenging, and suitable tools are needed in order to facilitate access to usef",
+      "full_text": "Social media is becoming an increasingly important data source for learning about breaking news and for following the latest developments of ongoing news. This is in part possible thanks to the existence of mobile devices, which allows anyone with access to the Internet to post updates from anywhere, leading in turn to a growing presence of citizen journalism. Consequently, social media has become a go-to resource for journalists during the process of newsgathering. Use of social media for newsgathering is however challenging, and suitable tools are needed in order to facilitate access to useful information for reporting. In this paper, we provide an overview of research in data mining and natural language processing for mining social media for newsgathering. We discuss five different areas that researchers have worked on to mitigate the challenges inherent to social media newsgathering: news discovery, curation of news, validation and verification of content, newsgathering dashboards, and other tasks. We outline the progress made so far in the field, summarise the current challenges as well as discuss future directions in the use of computational journalism to assist with social media newsgathering. This review is relevant to computer scientists researching news in social media as well as for interdisciplinary researchers interested in the intersection of computer science and journalism.",
+      "url": "https://arxiv.org/abs/1804.03540v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Arkaitz Zubiaga"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2018-04-10",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1804.03540v2",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

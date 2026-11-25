@@ -27,8 +27,9 @@ class TestWebFetchContext(unittest.TestCase):
     def test_fast_profile_has_zero_fetch(self) -> None:
         self.assertEqual(get_profile_spec(PROFILE_FAST).fetch_url_count, 0)
 
-    def test_balanced_profile_fetches_one(self) -> None:
-        self.assertEqual(get_profile_spec(PROFILE_BALANCED).fetch_url_count, 1)
+    def test_balanced_profile_fetches_two(self) -> None:
+        # S12 (D17): Balanced opens up to two result pages (was one).
+        self.assertEqual(get_profile_spec(PROFILE_BALANCED).fetch_url_count, 2)
 
     def test_fetch_pin_forces_fetch_on_fast_profile(self) -> None:
         ctx = RetrievalContext(

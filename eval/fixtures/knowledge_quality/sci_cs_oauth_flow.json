@@ -1,0 +1,371 @@
+{
+  "schema_version": 2,
+  "id": "sci_cs_oauth_flow",
+  "path": "scientific_evidence",
+  "category": "cs_engineering",
+  "description": "Service mismatch: how-to question sent to scholarly indexes (recorded, not gated).",
+  "query_raw": "@[tool:evidence] How does the OAuth 2.0 authorization code flow work?",
+  "query_clean": "How does the OAuth 2.0 authorization code flow work?",
+  "retrieval_query": "How does the OAuth 2.0 authorization code flow work?",
+  "standalone_question": "How does the OAuth 2.0 authorization code flow work?",
+  "gold_subject": "OAuth 2.0",
+  "gold_facet": "authorization code flow",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:04:49+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "How does the OAuth 2.0 authorization code flow work",
+      "arxiv": "How does the OAuth 2.0 authorization code flow work"
+    }
+  },
+  "candidates": [
+    {
+      "title": "OAuth 2.0 meets Blockchain for Authorization in Constrained IoT Environments",
+      "snippet": "We present models for utilizing blockchain and smart contract technology with the widely used OAuth 2.0 open authorization framework to provide delegated authorization for constrained IoT devices. The models involve different trade-offs in terms of privacy, delay, and cost, while exploiting key advantages of blockchains and smart contracts. These include linking payments to authorization grants, immutably recording authorization information and policies in smart contracts, and offering resilience through the execution of smart contract code on all blockchain nodes.",
+      "full_text": "We present models for utilizing blockchain and smart contract technology with the widely used OAuth 2.0 open authorization framework to provide delegated authorization for constrained IoT devices. The models involve different trade-offs in terms of privacy, delay, and cost, while exploiting key advantages of blockchains and smart contracts. These include linking payments to authorization grants, immutably recording authorization information and policies in smart contracts, and offering resilience through the execution of smart contract code on all blockchain nodes.",
+      "url": "https://openalex.org/W2947752470",
+      "_adapter": "openalex",
+      "authors": [
+        "Vasilios A. Siris",
+        "Dimitrios Dimopoulos",
+        "Nikos Fotiou",
+        "Spyros Voulgaris",
+        "George C. Polyzos"
+      ],
+      "venue": "IEEE World Forum on Internet of Things (WF-IoT)",
+      "publication_date": "2019",
+      "doi": "10.1109/wf-iot.2019.8767223",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Machine learning approach to vulnerability detection in OAuth 2.0 authentication and authorization flow",
+      "snippet": "Technologies for integrating enterprise web applications have improved rapidly over the years. The OAuth framework provides authentication and authorization using the users’ profile and credentials in an existing identity provider. This makes it possible for attackers to exploit any vulnerability arising from exchange of data with the provider. Vulnerability in OAuth authorization flow allows an attacker to alter the normal flow sequence of the OAuth protocol. In this paper, a machine learning-based approach was applied in the detection of potential vulnerability in the OAuth authentication an",
+      "full_text": "Technologies for integrating enterprise web applications have improved rapidly over the years. The OAuth framework provides authentication and authorization using the users’ profile and credentials in an existing identity provider. This makes it possible for attackers to exploit any vulnerability arising from exchange of data with the provider. Vulnerability in OAuth authorization flow allows an attacker to alter the normal flow sequence of the OAuth protocol. In this paper, a machine learning-based approach was applied in the detection of potential vulnerability in the OAuth authentication and authorization flow by analyzing the relationship between changes in the OAuth parameters and the final output. This research models the OAuth protocol as a supervised learning problem where seven classification models were developed, tuned and evaluated. Exploratory Data Analytics (EDA) techniques were applied in the extraction and analysis of specific OAuth features so that each output class could be evaluated to determine the effect of the identified OAuth features. The models developed in this research were trained, tuned and tested. A performance accuracy above 90% was attained for detection of vulnerabilities in the OAuth authentication and authorization flow. Comparison with known vulnerability resulted in a 54% match.",
+      "url": "https://openalex.org/W3162806222",
+      "_adapter": "openalex",
+      "authors": [
+        "Kindson Munonye",
+        "Péter Martinek"
+      ],
+      "venue": "International Journal of Information Security",
+      "publication_date": "2021",
+      "doi": "10.1007/s10207-021-00551-w",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Authentication and Authorization for Native Mobile Applications using OAuth 2.0",
+      "snippet": "OAuth 2.0 has in the recent years become the de-facto standard of doing API authorization and authentication on mobile devices. However, recent critics have claimed that OAuth does not provide sufficient security or ease-of-use for developers on mobile devices. In this thesis, I study four approaches to mobile authorization using OAuth 2.0, and suggest an improved solution based on current industry best-practices for security on Android. The end result is a solution which provides a native authorization flow for third-party developers to integrate with an existing API endpoint. However, the th",
+      "full_text": "OAuth 2.0 has in the recent years become the de-facto standard of doing API authorization and authentication on mobile devices. However, recent critics have claimed that OAuth does not provide sufficient security or ease-of-use for developers on mobile devices. In this thesis, I study four approaches to mobile authorization using OAuth 2.0, and suggest an improved solution based on current industry best-practices for security on Android. The end result is a solution which provides a native authorization flow for third-party developers to integrate with an existing API endpoint. However, the thesis shows that even with current industry best-practices the proposed solution does not provide a completely secure approach, and developers must keep the security consequences of that fact in mind when implementing OAuth on mobile devices.",
+      "url": "https://openalex.org/W30900573",
+      "_adapter": "openalex",
+      "authors": [
+        "Dag-Inge Aas"
+      ],
+      "venue": "NVA (Nasjonalt vitenarkiv)",
+      "publication_date": "2013",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "OAuth 2.0 Threat Model and Security Considerations",
+      "snippet": "This document gives additional security considerations for OAuth, beyond those in the OAuth 2.0 specification, based on a comprehensive threat model for the OAuth 2.0 protocol. This document is not an Internet Standards Track specification; it is published for informational purposes.",
+      "full_text": "This document gives additional security considerations for OAuth, beyond those in the OAuth 2.0 specification, based on a comprehensive threat model for the OAuth 2.0 protocol. This document is not an Internet Standards Track specification; it is published for informational purposes.",
+      "url": "https://openalex.org/W2283736639",
+      "_adapter": "openalex",
+      "authors": [
+        "Melissa McGloin",
+        "Phil Hunt"
+      ],
+      "venue": null,
+      "publication_date": "2013",
+      "doi": "10.17487/rfc6819",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "A Comprehensive Formal Security Analysis of OAuth 2.0",
+      "snippet": "The OAuth 2.0 protocol is one of the most widely deployed authorization/single sign-on (SSO) protocols and also serves as the foundation for the new SSO standard OpenID Connect. Despite the popularity of OAuth, so far analysis efforts were mostly targeted at finding bugs in specific implementations and were based on formal models which abstract from many web features or did not provide a formal treatment at all. In this paper, we carry out the first extensive formal analysis of the OAuth 2.0 standard in an expressive web model. Our analysis aims at establishing strong authorization, authentica",
+      "full_text": "The OAuth 2.0 protocol is one of the most widely deployed authorization/single sign-on (SSO) protocols and also serves as the foundation for the new SSO standard OpenID Connect. Despite the popularity of OAuth, so far analysis efforts were mostly targeted at finding bugs in specific implementations and were based on formal models which abstract from many web features or did not provide a formal treatment at all. In this paper, we carry out the first extensive formal analysis of the OAuth 2.0 standard in an expressive web model. Our analysis aims at establishing strong authorization, authentication, and session integrity guarantees, for which we provide formal definitions. In our formal analysis, all four OAuth grant types (authorization code grant, implicit grant, resource owner password credentials grant, and the client credentials grant) are covered. They may even run simultaneously in the same and different relying parties and identity providers, where malicious relying parties, identity providers, and browsers are considered as well. Our modeling and analysis of the OAuth 2.0 standard assumes that security recommendations and best practices are followed, in order to avoid obvious and known attacks. When proving the security of OAuth in our model, we discovered four attacks which break the security of OAuth. The vulnerabilities can be exploited in practice and are present also in OpenID Connect. We propose fixes for the identified vulnerabilities, and then, for the first time, actually prove the security of OAuth in an expressive web model. In particular, we show that the fixed version of OAuth (with security recommendations and best practices in place) provides the authorization, authentication, and session integrity properties we specify.",
+      "url": "https://openalex.org/W2952382064",
+      "_adapter": "openalex",
+      "authors": [
+        "Daniel Fett",
+        "Ralf Küsters",
+        "Guido Schmitz"
+      ],
+      "venue": "arXiv (Cornell University)",
+      "publication_date": "2016",
+      "doi": "10.48550/arxiv.1601.01229",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Security Issues in OAuth 2.0 SSO Implementations",
+      "snippet": "Security Issues in OAuth 2.0 SSO Implementations",
+      "full_text": null,
+      "url": "https://openalex.org/W88388190",
+      "_adapter": "openalex",
+      "authors": [
+        "Wanpeng Li",
+        "Chris J. Mitchell"
+      ],
+      "venue": "Lecture notes in computer science",
+      "publication_date": "2014",
+      "doi": "10.1007/978-3-319-13257-0_34",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "OAuth 2.0 authorization using blockchain-based tokens",
+      "snippet": "OAuth 2.0 is the industry-standard protocol for authorization. It facilitates secure service provisioning, as well as secure interoperability among diverse stakeholders. All OAuth 2.0 protocol flows result in the creation of an access token, which is then used by a user to request access to a protected resource. Nevertheless, the definition of access tokens is transparent to the OAuth 2.0 protocol, which does not specify any particular token format, how tokens are generated, or how they are used. Instead, the OAuth 2.0 specification leaves all these as design choices for integrators. In this p",
+      "full_text": "OAuth 2.0 is the industry-standard protocol for authorization. It facilitates secure service provisioning, as well as secure interoperability among diverse stakeholders. All OAuth 2.0 protocol flows result in the creation of an access token, which is then used by a user to request access to a protected resource. Nevertheless, the definition of access tokens is transparent to the OAuth 2.0 protocol, which does not specify any particular token format, how tokens are generated, or how they are used. Instead, the OAuth 2.0 specification leaves all these as design choices for integrators. In this paper, we propose a new type of OAuth 2.0 token backed by a distributed ledger. Our construction is secure, and it supports proof-of-possession, auditing, and accountability. Furthermore, we provide added-value token management services, including revocation, delegation, and fair exchange by leveraging smart contracts. We realized a proof-of-concept implementation of our solution using Ethereum smart contracts and the ERC-721 token specification.",
+      "url": "https://arxiv.org/abs/2001.10461v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Nikos Fotiou",
+        "Iakovos Pittaras",
+        "Vasilios A. Siris",
+        "Spyros Voulgaris",
+        "George C. Polyzos"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2020-01-28",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2001.10461v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "OAuth 2.0 meets Blockchain for Authorization in Constrained IoT Environments",
+      "snippet": "We present models for utilizing blockchain and smart contract technology with the widely used OAuth 2.0 open authorization framework to provide delegated authorization for constrained IoT devices. The models involve different tradeoffs in terms of privacy, delay, and cost, while exploiting key advantages of blockchains and smart contracts. These include linking payments to authorization grants, immutably recording authorization information and policies in smart contracts, and offering resilience through the execution of smart contract code on all blockchain nodes.",
+      "full_text": "We present models for utilizing blockchain and smart contract technology with the widely used OAuth 2.0 open authorization framework to provide delegated authorization for constrained IoT devices. The models involve different tradeoffs in terms of privacy, delay, and cost, while exploiting key advantages of blockchains and smart contracts. These include linking payments to authorization grants, immutably recording authorization information and policies in smart contracts, and offering resilience through the execution of smart contract code on all blockchain nodes.",
+      "url": "https://arxiv.org/abs/1905.01665v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Vasilios A. Siris",
+        "Dimitrios Dimopoulos",
+        "Nikos Fotiou",
+        "Spyros Voulgaris",
+        "George C. Polyzos"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-05-05",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1905.01665v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Role of Trust in OAuth 2.0 and OpenID Connect",
+      "snippet": "OAuth 2.0 is a framework for authorization. Being a framework, OAuth 2.0 allows extensions to build on top of it. OpenID Connect is one such extension which adds authentication layer using identity details. OAuth 2.0 define several roles that are required to complete the protocol. Both OAuth 2.0 and OpenID Connect involve interactions between these roles. These interactions require a pre-established trust or a trust establishment while protocol operate. This paper analyzes trust establishments between OAuth 2.0 roles and discuss important aspects of them. Such analysis is required for proper u",
+      "full_text": "OAuth 2.0 is a framework for authorization. Being a framework, OAuth 2.0 allows extensions to build on top of it. OpenID Connect is one such extension which adds authentication layer using identity details. OAuth 2.0 define several roles that are required to complete the protocol. Both OAuth 2.0 and OpenID Connect involve interactions between these roles. These interactions require a pre-established trust or a trust establishment while protocol operate. This paper analyzes trust establishments between OAuth 2.0 roles and discuss important aspects of them. Such analysis is required for proper understanding of the protocols.",
+      "url": "https://arxiv.org/abs/1808.10624v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Kavindu Dodanduwa",
+        "Ishara Kaluthanthri"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2018-08-31",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1808.10624v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "A Comprehensive Formal Security Analysis of OAuth 2.0",
+      "snippet": "The OAuth 2.0 protocol is one of the most widely deployed authorization/single sign-on (SSO) protocols and also serves as the foundation for the new SSO standard OpenID Connect. Despite the popularity of OAuth, so far analysis efforts were mostly targeted at finding bugs in specific implementations and were based on formal models which abstract from many web features or did not provide a formal treatment at all. In this paper, we carry out the first extensive formal analysis of the OAuth 2.0 standard in an expressive web model. Our analysis aims at establishing strong authorization, authentica",
+      "full_text": "The OAuth 2.0 protocol is one of the most widely deployed authorization/single sign-on (SSO) protocols and also serves as the foundation for the new SSO standard OpenID Connect. Despite the popularity of OAuth, so far analysis efforts were mostly targeted at finding bugs in specific implementations and were based on formal models which abstract from many web features or did not provide a formal treatment at all. In this paper, we carry out the first extensive formal analysis of the OAuth 2.0 standard in an expressive web model. Our analysis aims at establishing strong authorization, authentication, and session integrity guarantees, for which we provide formal definitions. In our formal analysis, all four OAuth grant types (authorization code grant, implicit grant, resource owner password credentials grant, and the client credentials grant) are covered. They may even run simultaneously in the same and different relying parties and identity providers, where malicious relying parties, identity providers, and browsers are considered as well. Our modeling and analysis of the OAuth 2.0 standard assumes that security recommendations and best practices are followed, in order to avoid obvious and known attacks. When proving the security of OAuth in our model, we discovered four attacks which break the security of OAuth. The vulnerabilities can be exploited in practice and are present also in OpenID Connect. We propose fixes for the identified vulnerabilities, and then, for the first time, actually prove the security of OAuth in an expressive web model. In particular, we show that the fixed version of OAuth (with security recommendations and best practices in place) provides the authorization, authentication, and session integrity properties we specify.",
+      "url": "https://arxiv.org/abs/1601.01229v4",
+      "_adapter": "arxiv",
+      "authors": [
+        "Daniel Fett",
+        "Ralf Kuesters",
+        "Guido Schmitz"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2016-01-06",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1601.01229v4",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Capability-based access control for multi-tenant systems using OAuth 2.0 and Verifiable Credentials",
+      "snippet": "We propose a capability-based access control technique for sharing Web resources, based on Verifiable Credentials (VCs) and OAuth 2.0. VCs are a secure means for expressing claims about a subject. Although VCs are ideal for encoding capabilities, the lack of standards for exchanging and using VCs impedes their adoption and limits their interoperability. We mitigate this problem by integrating VCs into the OAuth 2.0 authorization flow. To this end, we propose a new form of OAuth 2.0 access token based on VCs. Our approach leverages JSON Web Tokens (JWT) to encode VCs and takes advantage of JWT-",
+      "full_text": "We propose a capability-based access control technique for sharing Web resources, based on Verifiable Credentials (VCs) and OAuth 2.0. VCs are a secure means for expressing claims about a subject. Although VCs are ideal for encoding capabilities, the lack of standards for exchanging and using VCs impedes their adoption and limits their interoperability. We mitigate this problem by integrating VCs into the OAuth 2.0 authorization flow. To this end, we propose a new form of OAuth 2.0 access token based on VCs. Our approach leverages JSON Web Tokens (JWT) to encode VCs and takes advantage of JWT-based mechanisms for proving VC possession. Our solution not only requires minimum changes to existing OAuth 2.0 code bases, but it also removes some of the complexity of verifying VC claims by relying on JSON Web Signatures: a simple, standardized, and well supported signature format. Additionally, we fill the gap of VC generation processes by defining a new protocol that leverages the OAuth 2.0 \"client credentials\" grant.",
+      "url": "https://arxiv.org/abs/2104.11515v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Nikos Fotiou",
+        "Vasilios A. Siris",
+        "George C. Polyzos"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2021-04-23",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2104.11515v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "OAuthGuard: Protecting User Security and Privacy with OAuth 2.0 and OpenID Connect",
+      "snippet": "Millions of users routinely use Google to log in to websites supporting OAuth 2.0 or OpenID Connect; the security of OAuth 2.0 and OpenID Connect is therefore of critical importance. As revealed in previous studies, in practice RPs often implement OAuth 2.0 incorrectly, and so many real-world OAuth 2.0 and OpenID Connect systems are vulnerable to attack. However, users of such flawed systems are typically unaware of these issues, and so are at risk of attacks which could result in unauthorised access to the victim user's account at an RP. In order to address this threat, we have developed OAut",
+      "full_text": "Millions of users routinely use Google to log in to websites supporting OAuth 2.0 or OpenID Connect; the security of OAuth 2.0 and OpenID Connect is therefore of critical importance. As revealed in previous studies, in practice RPs often implement OAuth 2.0 incorrectly, and so many real-world OAuth 2.0 and OpenID Connect systems are vulnerable to attack. However, users of such flawed systems are typically unaware of these issues, and so are at risk of attacks which could result in unauthorised access to the victim user's account at an RP. In order to address this threat, we have developed OAuthGuard, an OAuth 2.0 and OpenID Connect vulnerability scanner and protector, that works with RPs using Google OAuth 2.0 and OpenID Connect services. It protects user security and privacy even when RPs do not implement OAuth 2.0 or OpenID Connect correctly. We used OAuthGuard to survey the 1000 top-ranked websites supporting Google sign-in for the possible presence of five OAuth 2.0 or OpenID Connect security and privacy vulnerabilities, of which one has not previously been described in the literature. Of the 137 sites in our study that employ Google Sign-in, 69 were found to suffer from at least one serious vulnerability. OAuthGuard was able to protect user security and privacy for 56 of these 69 RPs, and for the other 13 was able to warn users that they were using an insecure implementation.",
+      "url": "https://arxiv.org/abs/1901.08960v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Wanpeng Li",
+        "Chris J Mitchell",
+        "Thomas Chen"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-01-24",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1901.08960v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ]
+}

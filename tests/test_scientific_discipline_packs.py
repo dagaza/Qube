@@ -87,21 +87,21 @@ class TestScientificDisciplinePacks(unittest.TestCase):
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_PSYCHOLOGY)
-        self.assertEqual(order, ("pubmed", "openalex", "psyarxiv", "psycinfo"))
+        self.assertEqual(order, ("pubmed", "openalex", "crossref", "psyarxiv", "psycinfo"))  # S8: Crossref fallback
 
     def test_active_sociology_pack_adapter_order(self) -> None:
         pack = get_discipline_pack(SCIENTIFIC_DISCIPLINE_SOCIOLOGY)
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_SOCIOLOGY)
-        self.assertEqual(order, ("openalex", "socarxiv"))
+        self.assertEqual(order, ("openalex", "crossref", "socarxiv"))  # S8: Crossref fallback
 
     def test_active_political_science_pack_adapter_order(self) -> None:
         pack = get_discipline_pack(SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE)
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_POLITICAL_SCIENCE)
-        self.assertEqual(order, ("openalex", "ssrn"))
+        self.assertEqual(order, ("openalex", "crossref", "ssrn"))  # S8: Crossref fallback
 
     def test_active_economics_pack_prefers_repec(self) -> None:
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_ECONOMICS)

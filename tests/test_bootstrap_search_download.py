@@ -28,6 +28,15 @@ def test_resolve_preset_download_spec_balanced_jina_repo():
     assert "preprocessor_config.json" not in spec.files
 
 
+def test_canonical_hf_repo_keeps_known_casing_and_passes_unknown_through():
+    from core.bootstrap_search_download import _canonical_hf_repo
+
+    assert _canonical_hf_repo("balanced", "xenova/jina-embeddings-v2-small-en") == (
+        "Xenova/jina-embeddings-v2-small-en"
+    )
+    assert _canonical_hf_repo("balanced", "someone/other-model") == "someone/other-model"
+
+
 def test_sanitize_hub_repo_file_path_allows_onnx_and_tokenizer_assets():
     assert _sanitize_hub_repo_file_path("onnx/model.onnx") == "onnx/model.onnx"
     assert _sanitize_hub_repo_file_path("config.json") == "config.json"
@@ -91,11 +100,99 @@ def test_download_balanced_search_preset_uses_streaming_helper() -> None:
     with patch(
         "core.bootstrap_search_models.balanced_search_preset_present",
         return_value=False,
-    ), patch("core.bootstrap_search_download.download_embedding_preset") as download:
+    ), patch("core.bootstrap_search_download.download_embedding_preset") as download, patch(
+        "core.bootstrap_search_download.reranker_complete", return_value=True
+    ), patch("core.bootstrap_search_download.download_reranker") as rr:
         _download_balanced_search_preset(lambda *_: None, spec)
 
     download.assert_called_once()
     assert download.call_args.args[0] == "balanced"
+    rr.assert_not_called()
+
+
+def test_balanced_search_also_downloads_missing_reranker() -> None:
+    spec = BOOTSTRAP_MODELS[BootstrapModelId.SEARCH_PRESET_BALANCED]
+    with patch(
+        "core.bootstrap_search_models.balanced_search_preset_present", return_value=True
+    ), patch("core.bootstrap_search_download.download_embedding_preset") as emb, patch(
+        "core.bootstrap_search_download.reranker_complete", return_value=False
+    ), patch("core.app_settings.get_knowledge_reranker_enabled", return_value=True), patch(
+        "core.bootstrap_search_download.download_reranker"
+    ) as rr:
+        _download_balanced_search_preset(lambda *_: None, spec)
+    emb.assert_not_called()
+    rr.assert_called_once()
+
+
+def test_reranker_not_downloaded_when_disabled() -> None:
+    spec = BOOTSTRAP_MODELS[BootstrapModelId.SEARCH_PRESET_BALANCED]
+    with patch(
+        "core.bootstrap_search_models.balanced_search_preset_present", return_value=True
+    ), patch("core.bootstrap_search_download.reranker_complete", return_value=False), patch(
+        "core.app_settings.get_knowledge_reranker_enabled", return_value=False
+    ), patch("core.bootstrap_search_download.download_reranker") as rr:
+        _download_balanced_search_preset(lambda *_: None, spec)
+    rr.assert_not_called()
+
+
+def test_reranker_failure_is_reported_not_fatal() -> None:
+    """A reranker download failure becomes a bootstrap error string; startup continues."""
+    from core.bootstrap_download import download_bootstrap_models
+
+    with patch(
+        "core.bootstrap_search_models.balanced_search_preset_present", return_value=True
+    ), patch("core.bootstrap_search_download.reranker_complete", return_value=False), patch(
+        "core.app_settings.get_knowledge_reranker_enabled", return_value=True
+    ), patch(
+        "core.bootstrap_search_download.download_reranker",
+        side_effect=RuntimeError("network down"),
+    ):
+        errors = download_bootstrap_models(
+            {BootstrapModelId.SEARCH_PRESET_BALANCED}, lambda *_: None
+        )
+    assert len(errors) == 1 and "network down" in errors[0]
+
+
+def test_reranker_failure_marker_backs_off_then_clears(tmp_path: Path) -> None:
+    import core.bootstrap_download as bd
+
+    spec = BOOTSTRAP_MODELS[BootstrapModelId.SEARCH_PRESET_BALANCED]
+    with patch(
+        "core.bootstrap_search_download.reranker_dir", return_value=tmp_path / "reranker"
+    ), patch("core.bootstrap_search_download.reranker_complete", return_value=False), patch(
+        "core.app_settings.get_knowledge_reranker_enabled", return_value=True
+    ):
+        assert bd._reranker_download_backing_off() is False
+        with patch(
+            "core.bootstrap_search_download.download_reranker",
+            side_effect=RuntimeError("offline"),
+        ):
+            try:
+                bd._download_search_reranker(lambda *_: None, spec)
+            except RuntimeError:
+                pass
+        assert bd._reranker_download_backing_off() is True
+        with patch("core.bootstrap_search_download.download_reranker"):
+            bd._download_search_reranker(lambda *_: None, spec)
+        assert bd._reranker_download_backing_off() is False
+
+
+def test_needing_download_includes_balanced_when_only_reranker_missing() -> None:
+    from core.bootstrap_download import selected_models_needing_download
+
+    sel = {BootstrapModelId.SEARCH_PRESET_BALANCED}
+    with patch("core.bootstrap_download.model_is_present", return_value=True), patch(
+        "core.bootstrap_download.search_reranker_missing", return_value=True
+    ), patch("core.bootstrap_download._reranker_download_backing_off", return_value=False):
+        assert selected_models_needing_download(sel) == sel
+    with patch("core.bootstrap_download.model_is_present", return_value=True), patch(
+        "core.bootstrap_download.search_reranker_missing", return_value=True
+    ), patch("core.bootstrap_download._reranker_download_backing_off", return_value=True):
+        assert selected_models_needing_download(sel) == set()
+    with patch("core.bootstrap_download.model_is_present", return_value=True), patch(
+        "core.bootstrap_download.search_reranker_missing", return_value=False
+    ):
+        assert selected_models_needing_download(sel) == set()
 
 
 def test_download_embedding_preset_raises_when_files_missing(tmp_path: Path) -> None:

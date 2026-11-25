@@ -94,6 +94,12 @@ class DiscourseState:
     referent_confidence: float = 0.0
     last_explicit_turn_index: int = -1
     confidence: float = 0.0
+    # Plan S6: conversation subject kept apart from the current turn's facet
+    # (``core.discourse_subject``). ``active_topic`` keeps its legacy meaning
+    # for routing and prompt hints; only the web/retrieval query reads these.
+    subject: Optional[str] = None
+    facet: Optional[str] = None
+    subject_relation: str = "no_prior"
 
     def salience_anchor(self) -> Optional[str]:
         """Prefer resolved referent over topic for prompt injection."""
@@ -116,6 +122,9 @@ class DiscourseState:
             "discourse_referent_type": self.referent_type,
             "discourse_referent_source": self.referent_source,
             "discourse_referent_confidence": round(self.referent_confidence, 3),
+            "discourse_subject": self.subject,
+            "discourse_facet": self.facet,
+            "discourse_subject_relation": self.subject_relation,
         }
 
 
@@ -152,8 +161,15 @@ def _normalize_concept_subject(subject: str) -> Optional[str]:
     return s[:120]
 
 
+# Trailing "?>", "!", "," … but not an abbreviation's period ("the U.S.").
+_TOPIC_TRAILING_JUNK = re.compile(r"(?:[\s?!,;:<>]|(?<![A-Z])\.)+$")
+
+
 def _extract_topic_from_text(text: str) -> tuple[Optional[str], TopicType]:
     topic, topic_type = _extract_topic_candidate(text)
+    if topic:
+        # "What is actor-network theory?>" kept "?>" in the topic (plan S6).
+        topic = _TOPIC_TRAILING_JUNK.sub("", topic) or None
     if topic and is_source_name(topic):
         stripped = strip_source_venue_phrases(text)
         if stripped and stripped != (text or "").strip():
@@ -644,7 +660,27 @@ def update_discourse_state(
 ) -> DiscourseState:
     """
     Derive active topic/referent from explicit mentions, prior context, or history.
+
+    Also records the conversation subject / facet / relation for the current
+    turn (plan S6, ``core.discourse_subject.track_subject``).
     """
+    from core.discourse_subject import track_subject
+
+    state = _update_topic_and_referent(history, prior, current_prompt)
+    track = track_subject(history, current_prompt)
+    return replace(
+        state,
+        subject=track.subject,
+        facet=track.facet,
+        subject_relation=track.relation,
+    )
+
+
+def _update_topic_and_referent(
+    history: list[dict[str, Any]],
+    prior: DiscourseState | None,
+    current_prompt: str,
+) -> DiscourseState:
     prior = prior or DiscourseState()
     turns = list(history or [])
     current_idx = len(turns) - 1 if turns else -1

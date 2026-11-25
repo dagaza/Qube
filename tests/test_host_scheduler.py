@@ -184,5 +184,28 @@ class TestKnowledgeGetScheduling(unittest.TestCase):
         acquire.assert_called_once_with("api.openalex.org")
 
 
+class TestNcbiBurst(unittest.TestCase):
+    """Plan S8: NCBI's limit is per second, so requests are spaced, never burst."""
+
+    def test_requests_are_spaced_at_the_rate(self) -> None:
+        from unittest.mock import patch
+
+        from core.knowledge.host_scheduler import HostScheduler, _HOST_POLICIES
+
+        for rate in (3.0, 10.0):
+            with self.subTest(rate=rate), patch(
+                "core.knowledge.host_scheduler.ncbi_rate_per_sec", return_value=rate
+            ):
+                limiter = HostScheduler()._get_limiter("ncbi", _HOST_POLICIES["ncbi"])
+                self.assertEqual(limiter._burst, 1.0)
+                self.assertEqual(limiter.rate_per_sec, rate)
+
+    def test_other_hosts_keep_their_burst(self) -> None:
+        from core.knowledge.host_scheduler import HostScheduler, _HOST_POLICIES
+
+        limiter = HostScheduler()._get_limiter("api.openalex.org", _HOST_POLICIES["api.openalex.org"])
+        self.assertEqual(limiter._burst, 16.0)
+
+
 if __name__ == "__main__":
     unittest.main()

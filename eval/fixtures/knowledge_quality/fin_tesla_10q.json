@@ -1,0 +1,91 @@
+{
+  "schema_version": 2,
+  "id": "fin_tesla_10q",
+  "path": "finance_knowledge",
+  "category": "finance_filings",
+  "description": "",
+  "query_raw": "@[tool:finance] Tesla latest quarterly report 10-Q",
+  "query_clean": "Tesla latest quarterly report 10-Q",
+  "retrieval_query": "Tesla latest quarterly report 10-Q",
+  "standalone_question": "What does Tesla's latest 10-Q quarterly report say?",
+  "gold_subject": "Tesla 10-Q",
+  "gold_facet": "latest quarterly report",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:02:12+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "sec_edgar": 3,
+    "fred": 3,
+    "world_bank": 3,
+    "eurostat": 3,
+    "bls": 3,
+    "oecd": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "sec_edgar": "Tesla latest",
+      "fred": "Tesla latest",
+      "world_bank": "Tesla latest",
+      "eurostat": "Tesla latest",
+      "bls": "Tesla latest",
+      "oecd": "Tesla latest"
+    },
+    "standalone": {
+      "sec_edgar": "What does Tesla's latest say",
+      "fred": "What does Tesla's latest say",
+      "world_bank": "What does Tesla's latest say",
+      "eurostat": "What does Tesla's latest say",
+      "bls": "What does Tesla's latest say",
+      "oecd": "What does Tesla's latest say"
+    }
+  },
+  "candidates": [
+    {
+      "_adapter": "sec_edgar",
+      "title": "10-Q — Tesla, Inc.",
+      "snippet": "10-Q filed 2026-10-22 (report period 2026-09-30) for Tesla, Inc. (CIK 1318605).",
+      "url": "https://www.sec.gov/Archives/edgar/data/1318605/000162828026066775/tsla-20260930.htm",
+      "document_type": "sec_filing",
+      "publication_date": "2026-10-22",
+      "venue": "SEC EDGAR",
+      "form": "10-Q",
+      "company": "Tesla, Inc.",
+      "cik": "1318605",
+      "accession_number": "0001628280-26-066775",
+      "report_date": "2026-09-30",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "sec_edgar",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "_adapter": "sec_edgar",
+      "title": "10-Q — SentinelOne, Inc.",
+      "snippet": "10-Q filed 2026-08-28 (report period 2026-07-31) for SentinelOne, Inc. (CIK 1583708).",
+      "url": "https://www.sec.gov/Archives/edgar/data/1583708/000158370826000055/s-20260731.htm",
+      "document_type": "sec_filing",
+      "publication_date": "2026-08-28",
+      "venue": "SEC EDGAR",
+      "form": "10-Q",
+      "company": "SentinelOne, Inc.",
+      "cik": "1583708",
+      "accession_number": "0001583708-26-000055",
+      "report_date": "2026-07-31",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "sec_edgar",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

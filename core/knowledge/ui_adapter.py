@@ -107,6 +107,17 @@ def evidence_to_ui_source(obj: EvidenceObject, *, ui_id: int) -> dict:
         row["freshness_score"] = round(float(obj.freshness_score), 4)
     if obj.reliability_score is not None:
         row["reliability_score"] = round(float(obj.reliability_score), 4)
+    # Plan S7 (R9): freshness on turns that ask for current information.
+    meta = obj.raw_metadata or {}
+    # Plan S10: the gate judged this source to address the question directly
+    # (cross-encoder score at or above the service's "strong" threshold).
+    if meta.get("rerank_strong") is not None:
+        row["directly_relevant"] = bool(meta["rerank_strong"])
+    if meta.get("freshness"):
+        row["freshness"] = str(meta["freshness"])
+        if meta.get("source_date"):
+            row["source_date"] = str(meta["source_date"])
+            row["source_date_basis"] = str(meta.get("source_date_basis") or "")
     # Capability provenance (cap: URN) for INSPECT / Sources, when the hit came
     # from a capability provider (e.g. MCP). Preserved end-to-end (P8, KI1).
     capability = (obj.raw_metadata or {}).get("capability")

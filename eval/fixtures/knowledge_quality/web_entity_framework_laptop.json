@@ -1,0 +1,234 @@
+{
+  "schema_version": 2,
+  "id": "web_entity_framework_laptop",
+  "path": "general_web",
+  "category": "entity_lookup",
+  "description": "",
+  "query_raw": "@[tool:internet] Framework Laptop 13 battery life review",
+  "query_clean": "Framework Laptop 13 battery life review",
+  "retrieval_query": "Framework Laptop 13 battery life review",
+  "standalone_question": "How good is the battery life of the Framework Laptop 13?",
+  "gold_subject": "Framework Laptop 13",
+  "gold_facet": "battery life",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T18:30:00+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "Framework Laptop 13 battery life review"
+    },
+    "standalone": {
+      "duckduckgo": "How good is the battery life of the Framework Laptop 13?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Framework Laptop 13 Pro review: Much better battery, much worse price",
+      "snippet": "Framework Laptop 13 Pro review: Much better battery, much worse price Framework's latest modular laptop trades one set of problems for another.",
+      "url": "https://arstechnica.com/gadgets/2026/07/framework-laptop-13-pro-review-much-better-battery-much-worse-price/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Framework | Testing the battery life of Framework Laptop 13 (13th Gen",
+      "snippet": "We hosted a livestream to test the battery life of the Framework Laptop 13 (13th Gen Intel Core) against the Framework Laptop 13 (12th Gen Intel Core), with Q&As with members of the Framework team happening during the stream as well. In the end, the 12th Gen lasted 9 hours and 51 minutes, while 13th Gen made it to 11 hours and 43 minutes!",
+      "url": "https://frame.work/blog/testing-the-battery-life-of-framework-laptop-13-13th-gen-intel-core",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Framework laptop 13 Pro reportedly lasts 2x longer vs ... - Notebookcheck",
+      "snippet": "Initial reviews of the Framework Laptop 13 Pro are now online. Many outlets report that the Framework Laptop 13 Pro manages to improve upon the battery life of the non-Pro Framework Laptop 13 ...",
+      "url": "https://www.notebookcheck.net/Framework-laptop-13-Pro-reportedly-lasts-2x-longer-vs-Framework-Laptop-13.1353469.0.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Framework Laptop 13 Pro Review: A MacBook Rival You Can Tear ... - PCMag",
+      "snippet": "With a sleek all-metal design and impressive battery life, Framework's Laptop 13 Pro elevates its brand of modular, upgradable computing to flagship status. Its sky-high component costs will give ...",
+      "url": "https://www.pcmag.com/reviews/framework-laptop-13-pro",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Framework Laptop 13 (2025) Review - PCMag",
+      "snippet": "The updated Framework Laptop 13 is the best yet, with a quick AMD Ryzen AI 300 processor, long battery life, and the company's signature modular component design for excellent future upgradability ...",
+      "url": "https://www.pcmag.com/reviews/framework-laptop-13-2025",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Framework Laptop 13 (AMD Ryzen AI 300 Series) review: Increased ...",
+      "snippet": "Battery Life on the Framework Laptop 13 (AMD Ryzen AI 300 Series) Battery life was a sore point with last year's version of the Laptop 13, and things haven't improved with this year's model.",
+      "url": "https://www.tomshardware.com/laptops/ultrabooks-ultraportables/framework-laptop-13-amd-ryzen-ai-300-series-review",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Real-world battery life experience FW13 AMD - Framework Laptop 13 ...",
+      "snippet": "I remember seeing a recent video review about 13 battery life (productivity based) and it was close to 10 hours. Seeing as how your workload is minimal, you should be able to get considerably more on that laptop; otherwise it's bad news for future Linux users of Framework 16 like me.",
+      "url": "https://community.frame.work/t/real-world-battery-life-experience-fw13-amd/39112",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Framework claims impressive battery life for Laptop 13 Pro in real life ...",
+      "snippet": "The Framework Laptop 13 Pro is a massive improvement over the original Framework Laptop 13 in almost all departments, and this includes battery life. Thanks to a large 74.5 Wh battery and the ...",
+      "url": "https://www.notebookcheck.net/Framework-claims-impressive-battery-life-for-Laptop-13-Pro-in-real-life-test.1404458.0.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Framework Tests Laptop 13's Battery Life - TechPowerUp",
+      "snippet": "We've made some serious claims around Framework Laptop 13 battery life improvements with the new 13th Gen Intel Core version, and now it's time to put the product to the test! We've hosted a YouTube livestream to test the battery life of the Framework Laptop 13 (13th Gen Intel Core) vs the Framework Laptop 13 (12th Gen Intel Core). The livestream started at 6 am PT yesterday (June 14) and ran ...",
+      "url": "https://www.techpowerup.com/310117/framework-tests-laptop-13s-battery-life",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "27-hour battery life: Framework Laptop 13 Pro beats Apple MacBook Pro 14",
+      "snippet": "Framework markets the Framework Laptop 13 Pro as a direct competitor to the Apple MacBook Pro. This comparison feels quite apt, at least in terms of battery life.",
+      "url": "https://www.notebookcheck.net/27-hour-battery-life-Framework-Laptop-13-Pro-beats-Apple-MacBook-Pro-14.1385921.0.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Framework Laptop 13 (2025) Laptop Review - RTINGS.com",
+      "snippet": "The Framework Laptop 13 (2025) has great battery life. Every configuration has the same 61Wh battery, and it lasts over 10 hours of light web browsing and nearly 8 hours of video playback, so it easily gets through a full day of work or school.",
+      "url": "https://www.rtings.com/laptop/reviews/framework/laptop-13-2025",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Best FW 13 for battery life? (windows) - Framework Laptop 13 ...",
+      "snippet": "Best battery life for high CPU usage If you plan on using your laptop for high-CPU tasks while on battery, and you want it to be battery-efficient, pick an AMD processor. To date, they are supposed to be the most efficient under load. Might as well go for Ryzen AI, purely for the updated parts and length of support. Best battery life for low ...",
+      "url": "https://community.frame.work/t/best-fw-13-for-battery-life-windows/76559",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

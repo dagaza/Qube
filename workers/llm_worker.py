@@ -224,6 +224,7 @@ from core.knowledge.registry import (
 )
 from core.knowledge.types import SERVICE_INTERNAL_CORPUS
 from core.knowledge.web_retrieval import run_web_retrieval
+from core.knowledge.spelling import conversation_terms
 from core.knowledge.fetch_provenance import summarize_web_pipeline_outcome
 from core.knowledge.search_outcome import search_outcome_from_relevance_diag
 from core.knowledge.adapters.duckduckgo import failure_sentinel_reason
@@ -244,7 +245,13 @@ from core.app_settings import (
     get_enable_chat_personality_nudge,
     get_enable_memory_v7_salvage,
 )
-from core.app_settings import get_sidecar_query_rewrite_enabled
+from core.retrieval_budget import estimate_tokens, retrieval_char_budget
+from core.app_settings import (
+    get_sidecar_query_rewrite_enabled,
+    get_sidecar_query_slots_shadow_enabled,
+    get_sidecar_query_slots_timeout_ms,
+)
+from core.query_slots_llm import run_shadow_slot_extraction
 from core.dual_query_retrieval import merge_memory_search_results, merge_rag_search_results
 from core.sidecar_query_rewrite import propose_query_expansion
 from core.shadow_retrieval_policy import (
@@ -636,6 +643,11 @@ class LLMWorker(QThread):
         except Exception:
             logger.debug("[CitationIntegrity] telemetry failed", exc_info=True)
 
+        if phase == "worker_finalize":
+            # Plan S11 (R8): grounding scores for cited WEB turns, off the turn
+            # thread. Telemetry only; the text below is never changed by it.
+            self._schedule_citation_grounding(text or "", src_list)
+
         if not get_citation_integrity_enforce():
             return text or ""
 
@@ -657,6 +669,23 @@ class LLMWorker(QThread):
             except Exception:
                 logger.debug("[CitationIntegrity] repair telemetry failed", exc_info=True)
         return repaired
+
+    def _schedule_citation_grounding(self, text: str, sources: list) -> None:
+        try:
+            from core.app_settings import get_citation_grounding_telemetry_enabled
+            from core.citation_grounding import run_citation_grounding_telemetry
+
+            if not get_citation_grounding_telemetry_enabled():
+                return
+            run_citation_grounding_telemetry(
+                text,
+                sources,
+                execution_route=str(getattr(self, "_turn_execution_route", "") or ""),
+                session_id=str(self.session_id or ""),
+                turn_id=getattr(self, "_routing_debug_turn_seq", None),
+            )
+        except Exception:
+            logger.debug("[CitationGrounding] scheduling failed", exc_info=True)
 
     def _apply_cited_only_citation_renumber(
         self, final_text: str, all_ui_sources: list
@@ -963,6 +992,18 @@ class LLMWorker(QThread):
                 meta_bits.append(venue)
             if pub_date:
                 meta_bits.append(pub_date)
+            # Plan S7 (R9): dates on turns that ask for current information.
+            freshness = str(src.get("freshness") or "")
+            if freshness == "undated":
+                meta_bits.append("date unknown")
+            elif (
+                not pub_date
+                and src.get("source_date")
+                and src.get("source_date_basis") == "mentioned"
+            ):
+                meta_bits.append(f"mentions {src.get('source_date')}")
+            if freshness == "stale":
+                meta_bits.append("may be out of date")
             authors = src.get("authors") or []
             if isinstance(authors, (list, tuple)) and authors:
                 meta_bits.append(
@@ -986,6 +1027,50 @@ class LLMWorker(QThread):
         if budget > 0 and len(joined) > budget:
             return fit_source_blocks_to_budget(parts, budget)
         return joined
+
+    def _active_context_window(self) -> int | None:
+        """n_ctx for this turn: the loaded native window, else the configured limit."""
+        if getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal":
+            engine = getattr(self, "_native_engine", None)
+            loaded = getattr(engine, "loaded_n_ctx", None)
+            if callable(loaded):
+                try:
+                    value = loaded()
+                except Exception:
+                    value = None
+                if value:
+                    return int(value)
+        try:
+            value = int(getattr(self, "context_window", 0) or 0)
+        except (TypeError, ValueError):
+            return None
+        return value if value > 0 else None
+
+    def _retrieval_budget_for_turn(self, history: list, *, extra_context_chars: int = 0):
+        """Plan S10 (R5): retrieval character budget from n_ctx, history and overhead."""
+        messages = [m for m in (history or []) if isinstance(m, dict)]
+        query = ""
+        if not messages or str(messages[-1].get("role") or "") != "user":
+            query = str(getattr(self, "prompt", "") or "")
+        try:
+            skills_chars = int(get_skill_settings().total_prompt_char_budget)
+        except Exception:
+            skills_chars = 1200
+        try:
+            max_output = self._max_tokens_completion(
+                native=getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal"
+            )
+        except Exception:
+            max_output = None
+        return retrieval_char_budget(
+            n_ctx=self._active_context_window(),
+            history=messages,
+            query=query,
+            extra_context_chars=extra_context_chars,
+            skills_chars=skills_chars,
+            max_output_tokens=max_output,
+            cap_chars=self.MAX_TOTAL_RETRIEVAL_CHARS,
+        )
 
     def _stamp_discourse_on_decision(
         self,
@@ -2900,6 +2985,27 @@ class LLMWorker(QThread):
                 execution_route,
             )
 
+        # Plan S9 (shadow): LLM SUBJECT/FACET slots for follow-ups the
+        # deterministic resolver left unresolved. Runs on a background thread,
+        # only logs, and never changes this turn's retrieval.
+        query_slots_gate = "error"
+        try:
+            query_slots_gate = run_shadow_slot_extraction(
+                prompt=original_query,
+                history=history,
+                follow_up=follow_up if discourse_enabled else None,
+                resolved=resolved_retrieval,
+                sidecar_client=self._sidecar_client,
+                enabled=get_sidecar_query_slots_shadow_enabled(),
+                timeout_sec=get_sidecar_query_slots_timeout_ms() / 1000.0,
+                queue_depth=get_sidecar_telemetry().queue_depth(),
+                session_id=str(self.session_id or ""),
+            )
+        except Exception as e:
+            logger.debug("[QuerySlots] shadow scheduling failed: %s", e)
+        if isinstance(decision, dict):
+            decision["query_slots_gate"] = query_slots_gate
+
         retrieval_wrapper_mode = "none"
         self._stamp_discourse_on_decision(
             decision,
@@ -3532,6 +3638,10 @@ class LLMWorker(QThread):
                 composer_tool=getattr(self, "_composer_knowledge_tool", None),
                 site_bias=preset_overrides.get("site_bias"),
                 fetch_url_count=preset_overrides.get("fetch_url_count"),
+                # S8: the user's own wording, searched alongside a rewrite, and
+                # the assistant's words (never spelling-"corrected", D6).
+                query_raw=raw_prompt if search_target.rewritten else None,
+                conversation_terms=conversation_terms(history),
             )
             web_results = _web_outcome.web_results
             web_results_raw_for_audit = _web_outcome.web_results_raw_for_audit
@@ -3561,24 +3671,49 @@ class LLMWorker(QThread):
             )
             if _search_outcome is not None and _search_outcome.is_failure:
                 if _search_outcome.kind.value == "bot_challenge":
-                    self.status_update.emit("🌐 Web search blocked (provider challenge)")
-                    self.web_search_outcome_hint.emit(
-                        "Web search blocked — search engine bot challenge"
-                    )
+                    # S12 (V15): name the real cause; Qube's own limits and a
+                    # provider rate limit are not bot challenges.
+                    _cause = _search_outcome.block_cause
+                    if _cause == "qube_limit":
+                        self.status_update.emit("🌐 Web search paused (Qube's search limit)")
+                        self.web_search_outcome_hint.emit(
+                            "Web search paused — Qube's own search limit; try again shortly"
+                        )
+                    elif _cause == "provider_rate_limit":
+                        self.status_update.emit("🌐 Web search blocked (provider rate limit)")
+                        self.web_search_outcome_hint.emit(
+                            "Web search blocked — search engine rate limit"
+                        )
+                    else:
+                        self.status_update.emit("🌐 Web search blocked (provider challenge)")
+                        self.web_search_outcome_hint.emit(
+                            "Web search blocked — search engine bot challenge"
+                        )
                 else:
                     self.status_update.emit("🌐 Web search returned no usable results")
                     self.web_search_outcome_hint.emit(
                         f"Web search failed — {_search_outcome.label.lower()}"
                     )
             elif (
+                _web_outcome.bundle is not None
+                and getattr(_web_outcome.bundle, "sufficiency", "") == "insufficient"
+            ):
+                self.status_update.emit("🔎 Sources found, none relevant enough")
+                self.web_search_outcome_hint.emit("Sources found, none relevant enough")
+            elif (
                 _search_outcome is not None
                 and _search_outcome.fallback_from
                 and not _web_outcome.skip_enrichment
             ):
+                from core.knowledge.search_outcome import BLOCK_CAUSE_LABELS
+
+                _primary_cause = (_search_outcome.primary_outcome or {}).get("block_cause")
+                _cause_label = BLOCK_CAUSE_LABELS.get(str(_primary_cause or ""), "")
                 self.web_search_outcome_hint.emit(
                     "Web search via "
                     f"{_search_outcome.provider} "
-                    f"(fallback from {_search_outcome.fallback_from})"
+                    f"(fallback from {_search_outcome.fallback_from}"
+                    f"{': ' + _cause_label if _cause_label else ''})"
                 )
 
             from core.knowledge.discovery.backoff import consume_ddg_backoff_notification
@@ -3993,6 +4128,19 @@ class LLMWorker(QThread):
         # ============================================================
         execution_route_pre_downgrade = execution_route
         tier3_success_flag: bool | None = None
+        # S4: the relevance gate found sources but kept none. This is not a failed
+        # or empty search, so the web-empty wording must not be used.
+        _gate_bundle = getattr(self, "_turn_evidence_bundle", None)
+        retrieval_insufficient = bool(
+            _gate_bundle is not None
+            and str(getattr(_gate_bundle, "sufficiency", "") or "") == "insufficient"
+            and not all_ui_sources
+        )
+        retrieval_partial = bool(
+            _gate_bundle is not None
+            and str(getattr(_gate_bundle, "sufficiency", "") or "") == "partial"
+            and all_ui_sources
+        )
 
         if (
             execution_route in ("MEMORY", "RAG", "HYBRID", "WEB", "INTERNET")
@@ -4028,7 +4176,7 @@ class LLMWorker(QThread):
                     "general model knowledge about cases, holdings, or citations. "
                     "Do NOT emit [1], [2], or [W].]\n"
                 )
-            elif composer_tool == "finance":
+            elif composer_tool == "finance" and not retrieval_insufficient:
                 tool_context += (
                     "\n[@finance: No SEC or finance sources were retrieved. Preferred "
                     "finance sources may be disabled in Settings → Knowledge. Tell the "
@@ -4056,7 +4204,7 @@ class LLMWorker(QThread):
                     canonical_id=canonical_id,
                     session_id=self.session_id,
                 )
-            else:
+            elif not retrieval_insufficient:
                 tool_context += (
                     "\n[WEB SEARCH: No live results were returned for this query. "
                     "Your first sentence must state that the web search did not return "
@@ -4066,6 +4214,7 @@ class LLMWorker(QThread):
 
         explicit_web_empty_results = bool(
             web_search_attempted
+            and not retrieval_insufficient
             and not all_ui_sources
             and self.mcp_internet_enabled
             and execution_route in ("NONE", "WEB", "INTERNET")
@@ -4096,7 +4245,9 @@ class LLMWorker(QThread):
         legal_disclaimer = False
         composer_tool = str(getattr(self, "_composer_knowledge_tool", "") or "").lower()
         legal_sources_empty = composer_tool == "legal" and not all_ui_sources
-        finance_sources_empty = composer_tool == "finance" and not all_ui_sources
+        finance_sources_empty = (
+            composer_tool == "finance" and not all_ui_sources and not retrieval_insufficient
+        )
         help_sources_empty = composer_tool == "help" and not all_ui_sources
         composer_help_attached = composer_tool == "help"
         _evidence_bundle = getattr(self, "_turn_evidence_bundle", None)
@@ -4281,21 +4432,74 @@ class LLMWorker(QThread):
         # ============================================================
         # 2.5 UNIFIED RETRIEVAL PROMPT (order: memory → RAG → web; ids [1]..[n] match UI)
         # ============================================================
+        attachment_ctx = getattr(self, "_turn_attachment_context", "").strip()
+        inject_tool_context = bool(tool_context.strip()) and (
+            execution_route == "CAPABILITY"
+            or (
+                getattr(self, "_composer_knowledge_tool", None)
+                and not all_ui_sources
+            )
+        )
+        # Plan S10 (R5): size the retrieval block from the active context window.
+        retrieval_budget = self._retrieval_budget_for_turn(
+            history,
+            extra_context_chars=len(attachment_ctx)
+            + (len(tool_context.strip()) if inject_tool_context else 0),
+        )
+        retrieval_format_mode = (
+            "background"
+            if execution_route == "NONE"
+            and all_ui_sources
+            and all(
+                str(s.get("type", "")).lower() == "memory"
+                for s in all_ui_sources
+                if isinstance(s, dict)
+            )
+            else "grounded"
+        )
         retrieval_prompt_body = self._format_sources_for_llm_prompt(
             all_ui_sources,
-            format_mode=(
-                "background"
-                if execution_route == "NONE"
-                and all_ui_sources
-                and all(
-                    str(s.get("type", "")).lower() == "memory"
-                    for s in all_ui_sources
-                    if isinstance(s, dict)
-                )
-                else "grounded"
-            ),
+            format_mode=retrieval_format_mode,
+            char_budget=retrieval_budget.chars,
         )
-        attachment_ctx = getattr(self, "_turn_attachment_context", "").strip()
+        if (
+            retrieval_prompt_body
+            and retrieval_budget.tokens
+            and estimate_tokens(retrieval_prompt_body) > retrieval_budget.tokens
+        ):
+            # Non-ASCII sources cost more tokens per character than the estimate
+            # assumes; shrink the character budget in proportion.
+            scaled = int(
+                retrieval_budget.chars
+                * retrieval_budget.tokens
+                / max(1, estimate_tokens(retrieval_prompt_body))
+            )
+            retrieval_prompt_body = self._format_sources_for_llm_prompt(
+                all_ui_sources,
+                format_mode=retrieval_format_mode,
+                char_budget=max(1, scaled),
+            )
+        if isinstance(decision, dict):
+            decision["retrieval_budget"] = {
+                **retrieval_budget.as_trace(),
+                "used_chars": len(retrieval_prompt_body or ""),
+            }
+        if retrieval_prompt_body:
+            from core.memory_filters import prefix_evidence_notes, retrieval_coverage_note
+
+            retrieval_prompt_body = prefix_evidence_notes(
+                retrieval_prompt_body,
+                partial=retrieval_partial,
+                bundle_warnings=tuple(getattr(_gate_bundle, "warnings", ()) or ())
+                if _gate_bundle is not None
+                else (),
+                coverage_note=retrieval_coverage_note(
+                    str(getattr(_gate_bundle, "sufficiency", "") or "")
+                    if _gate_bundle is not None
+                    else "",
+                    all_ui_sources,
+                ),
+            )
         if attachment_ctx:
             if retrieval_prompt_body:
                 retrieval_prompt_body = (
@@ -4307,13 +4511,7 @@ class LLMWorker(QThread):
                 "[LLM Worker] Injected composer attachment context (%d chars)",
                 len(attachment_ctx),
             )
-        if tool_context.strip() and (
-            execution_route == "CAPABILITY"
-            or (
-                getattr(self, "_composer_knowledge_tool", None)
-                and not all_ui_sources
-            )
-        ):
+        if inject_tool_context:
             if retrieval_prompt_body:
                 retrieval_prompt_body = (
                     f"{tool_context.strip()}\n\n{retrieval_prompt_body}"
@@ -4531,6 +4729,7 @@ class LLMWorker(QThread):
             web_capability_blocked=web_capability_blocked,
             explicit_web_empty_results=explicit_web_empty_results,
             composer_web_empty=composer_web_empty,
+            retrieval_insufficient=retrieval_insufficient,
             prior_web_empty_follow_up=prior_web_empty_follow_up,
             scientific_medical_disclaimer=scientific_medical_disclaimer,
             financial_disclaimer=financial_disclaimer,

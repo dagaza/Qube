@@ -40,9 +40,23 @@ def make_cache_key(
     knowledge_service: str,
     query: str,
     adapter_filter: tuple[str, ...] | None = None,
+    pool_size: int | None = None,
+    query_variants: tuple[str, ...] = (),
 ) -> str:
+    """Cache key for one retrieval's candidate pool.
+
+    ``pool_size`` (rows requested per adapter) and ``query_variants`` (extra
+    searched wordings, plan S8) are part of the key: a pool fetched 3 rows deep
+    for one wording must not answer a request for 8 rows over two wordings
+    (§3.7). Calls without them keep their previous keys.
+    """
     adapters = ",".join(sorted(adapter_filter or ()))
     raw = f"{knowledge_service}|{query.strip().lower()}|{adapters}"
+    if pool_size is not None:
+        raw += f"|n={int(pool_size)}"
+    variants = sorted({v.strip().lower() for v in query_variants if v and v.strip()})
+    if variants:
+        raw += "|v=" + "\x1f".join(variants)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
 
 

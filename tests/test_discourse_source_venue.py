@@ -144,7 +144,9 @@ class TestWikipediaFollowUpRegression(unittest.TestCase):
         for prompt in ("can you check that?", "can you verify that?"):
             state, resolved = _resolve(prompt)
             self.assertEqual(state.active_topic, "Space", prompt)
-            self.assertIn("Space", resolved.web_text, prompt)
+            # S6: the web anchor is the subject as the user wrote it ("What is
+            # space made of?"); search is case-insensitive.
+            self.assertIn("space", resolved.web_text.lower(), prompt)
             self.assertNotEqual(resolved.web_rewrite_reason, "meta_prior_turn", prompt)
 
     def test_tool_with_new_subject_searches_new_subject(self) -> None:

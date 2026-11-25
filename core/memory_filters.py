@@ -536,6 +536,89 @@ COMPOSER_WEB_EMPTY_SUFFIX: str = (
     "knowledge only if clearly labeled as such."
 )
 
+# Plan S4: the search ran and returned sources, but the relevance gate kept none.
+RETRIEVAL_INSUFFICIENT_SUFFIX: str = (
+    " IMPORTANT: a search ran and found sources for this question, but none of "
+    "them actually address it, so no sources are provided. Your first sentence "
+    "MUST say that the sources found did not address the question. Do NOT say "
+    "the search failed, returned nothing, or that you lack internet access. "
+    "Do NOT emit bracket citation tokens such as [1], [2], or [W]. You may then "
+    "answer from general knowledge, labelled clearly as general knowledge and "
+    "not as findings from the sources."
+)
+
+# Plan S4: one-line note prepended to the evidence pack on a ``partial`` turn.
+RETRIEVAL_PARTIAL_NOTE: str = (
+    "[Evidence note: these sources only partly address the question. Cite them "
+    "only for what they actually support, and say plainly what they do not cover.]"
+)
+
+# Plan S7 (R9): the question asks for current information.
+RETRIEVAL_RECENCY_NOTE: str = (
+    "[Evidence note: this question asks for current information. When you state "
+    "a figure or fact from a source, say how recent that source is (its date is "
+    "shown next to it when known). If a source's date is unknown, say so rather "
+    "than presenting it as current.]"
+)
+RETRIEVAL_STALE_NOTE: str = (
+    "[Evidence note: this question asks for current information, but none of "
+    "these sources is dated recently enough to confirm it. Give the date of the "
+    "source you rely on and say plainly that newer information may exist.]"
+)
+
+
+def retrieval_coverage_note(sufficiency: str, sources: list | tuple) -> str:
+    """Plan S10 (R5): one plain-language line on how well the sources cover the question.
+
+    Counts only sources the relevance gate scored (``directly_relevant`` set by
+    the cross-encoder "strong" threshold); memory and library rows are not
+    counted. Returns "" when the gate did not run or the turn has no scored
+    sources, so unscored turns keep the pre-S10 pack.
+    """
+    state = str(sufficiency or "").strip().lower()
+    if state not in ("sufficient", "partial"):
+        return ""
+    scored = [
+        s for s in (sources or ()) if isinstance(s, dict) and "directly_relevant" in s
+    ]
+    if not scored:
+        return ""
+    strong = sum(1 for s in scored if s.get("directly_relevant"))
+    total = len(scored)
+    noun = "search result" if total == 1 else "search results"
+    verb = "addresses" if strong == 1 else "address"
+    return (
+        f"[Coverage: {state} — {strong} of {total} {noun} directly {verb} "
+        "the question.]"
+    )
+
+
+def prefix_evidence_notes(
+    body: str,
+    *,
+    partial: bool,
+    bundle_warnings: tuple[str, ...] | list[str] = (),
+    coverage_note: str = "",
+) -> str:
+    """Prepend the evidence notes for a gated retrieval body (S4 partial, S7 recency, S10 coverage).
+
+    Order in the prompt: coverage line, recency note, partial note, then the
+    sources. An empty ``body`` (no sources) gets no notes.
+    """
+    if not (body or "").strip():
+        return body
+    notes: list[str] = []
+    if (coverage_note or "").strip():
+        notes.append(coverage_note.strip())
+    warnings = tuple(bundle_warnings or ())
+    if "recency_requested" in warnings:
+        notes.append(RETRIEVAL_STALE_NOTE if "stale_sources" in warnings else RETRIEVAL_RECENCY_NOTE)
+    if partial:
+        notes.append(RETRIEVAL_PARTIAL_NOTE)
+    if not notes:
+        return body
+    return "\n\n".join([*notes, body])
+
 CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX: str = (
     " IMPORTANT: the prior turn attempted a web search but returned no usable "
     "results. The user may be continuing that topic. Do NOT claim you lack "

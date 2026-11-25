@@ -1,0 +1,164 @@
+{
+  "schema_version": 2,
+  "id": "web_homograph_jaguar",
+  "path": "general_web",
+  "category": "acronym_homograph",
+  "description": "Homograph: animal vs car brand.",
+  "query_raw": "@[tool:internet] How fast can a jaguar run?",
+  "query_clean": "How fast can a jaguar run?",
+  "retrieval_query": "How fast can a jaguar run?",
+  "standalone_question": "How fast can a jaguar (the animal) run?",
+  "gold_subject": "jaguar (animal)",
+  "gold_facet": "top speed",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T19:37:33+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "How fast can a jaguar run?"
+    },
+    "standalone": {
+      "duckduckgo": "How fast can a jaguar (the animal) run?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "How Fast Can a Jaguar Run? What Scientists Know - Zooologist",
+      "snippet": "Nobody has timed a wild jaguar at full speed. The figure of 80 km/h (50 mph) that you see online has no published measurement behind it. San Diego Zoo Wildlife Alliance says jaguars can run fairly fast, but that speed is not an important skill for them. Jaguars ambush prey from close range instead of chasing it. How fast can a jaguar run, really? The best we can do is compare. Jaguars weigh 31 ...",
+      "url": "https://zooologist.com/how-fast-can-a-jaguar-run/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Fast Can a Jaguar Run? Top Speed in MPH and KM/H",
+      "snippet": "A jaguar sprints about 50 mph (80 km/h) in short bursts. See how jaguar speed compares with cheetahs, lions and tigers, and why it still hunts by ambush.",
+      "url": "https://simplyecologist.com/how-fast-can-a-jaguar-run/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Fast Can a Jaguar Run: Top Speeds and Facts",
+      "snippet": "If you wish to know more how fast can a tiger run, please check our full article about this topic! In an other hand, you can also check about the leopard top speed, you might be surprised! The Role of Speed in Jaguar's Hunting Techniques For jaguars, speed is about more than chasing. It's a mix of power and smart hunting.",
+      "url": "https://tiger-universe.com/blogs/tiger-blog/how-fast-can-a-jaguar-run-top-speeds-and-facts",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Fast Can Jaguars Run? [Top Speed & Hunting Facts]",
+      "snippet": "How Fast Can Jaguars Run? Essential FAQ Can a human outrun a jaguar? How fast can a jaguar swim compared to run? Are black panthers faster than spotted jaguars? What is a jaguar's acceleration rate? Jaguars can reach top speeds of approximately 50 miles per hour (80 km/h) in short, explosive bursts.",
+      "url": "https://triviatime.blog/how-fast-can-jaguars-run",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Fast Can a Jaguar Run Up To? [Max Speed Explained]",
+      "snippet": "The Mechanics of Jaguar Speed Jaguars reach speeds of 50 mph through powerful muscular builds and flexible spines designed for torque. The question of how fast can a jaguar run up to is answered by looking at its unique Bio-mechanics.",
+      "url": "https://triviatime.blog/how-fast-can-a-jaguar-run",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Fast Can Jaguars Run? [Top Speed & Hunting Facts]",
+      "snippet": "The Maximum Speed of a Jaguar Jaguars reach a top speed of 50 mph (80 km/h) during high-intensity, short-distance sprints. When analyzing how fast can jaguars run, it is vital to distinguish between a casual prowl and a high-stakes hunting burst.",
+      "url": "https://animalpulse.blog/how-fast-can-jaguars-run",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Jaguar Facts: Size, Bite, Weight, Lifespan & Habitat",
+      "snippet": "How Fast Can a Jaguar Run? Jaguars are often credited with a top speed of about 80 km/h (50 mph), but the figure has not been precisely measured and applies only to a very short dash. They are stalk-and-ambush hunters that depend on cover, surprise and a powerful bite rather than on chasing prey. How Long Is a Jaguar Pregnant?",
+      "url": "https://animalstats.org/animals/jaguar/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

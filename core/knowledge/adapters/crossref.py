@@ -34,6 +34,9 @@ def _use_fixtures() -> bool:
     return os.environ.get("QUBE_KNOWLEDGE_FIXTURES", "").strip() == "1"
 
 
+_PEER_REVIEWED_TYPES = frozenset({"journal-article", "proceedings-article"})
+
+
 def _row_from_item(item: dict[str, Any]) -> dict[str, Any] | None:
     title_parts = item.get("title") or []
     title = str(title_parts[0] if title_parts else "").strip()
@@ -60,6 +63,12 @@ def _row_from_item(item: dict[str, Any]) -> dict[str, Any] | None:
     if not title and not abstract:
         return None
     excerpt = abstract[:600] if abstract else title
+    # Crossref ``type`` decides review status (plan S8, the V8 bug fixed for
+    # OpenAlex in S4): "posted-content" is a preprint; only journal and
+    # proceedings articles count as peer reviewed.
+    work_type = str(item.get("type") or "").strip().lower()
+    is_preprint = work_type == "posted-content" or str(item.get("subtype") or "").lower() == "preprint"
+    peer_reviewed = (not is_preprint) and work_type in _PEER_REVIEWED_TYPES
     return {
         "title": title,
         "snippet": excerpt,
@@ -70,10 +79,10 @@ def _row_from_item(item: dict[str, Any]) -> dict[str, Any] | None:
         "venue": venue or None,
         "publication_date": pub_date,
         "doi": doi,
-        "peer_reviewed": True,
-        "preprint": False,
+        "peer_reviewed": peer_reviewed,
+        "preprint": is_preprint,
         "open_access": None,
-        "document_type": "journal_abstract",
+        "document_type": "preprint" if is_preprint else "journal_abstract",
     }
 
 

@@ -59,6 +59,11 @@ def failure_sentinel_reason(results: list[dict[str, Any]] | None) -> str | None:
     if not is_failure_sentinel(results):
         return None
     snippets = " ".join(str((r or {}).get("snippet") or "") for r in results)
+    # S12: provider HTTP 429 / 403 are named apart from a bot challenge.
+    if "DuckDuckGo rate limit" in snippets:
+        return "ddg_rate_limited"
+    if "DuckDuckGo refused the request" in snippets:
+        return "ddg_forbidden"
     if "Internet search blocked" in snippets:
         return "ddg_bot_challenge"
     if "Internet search deferred" in snippets:

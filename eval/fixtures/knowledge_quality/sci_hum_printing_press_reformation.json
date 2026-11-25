@@ -1,0 +1,452 @@
+{
+  "schema_version": 2,
+  "id": "sci_hum_printing_press_reformation",
+  "path": "scientific_evidence",
+  "category": "sts_humanities",
+  "description": "",
+  "query_raw": "@[tool:evidence] What role did the printing press play in the Protestant Reformation?",
+  "query_clean": "What role did the printing press play in the Protestant Reformation?",
+  "retrieval_query": "What role did the printing press play in the Protestant Reformation?",
+  "standalone_question": "What role did the printing press play in the Protestant Reformation?",
+  "gold_subject": "printing press",
+  "gold_facet": "Protestant Reformation",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:04:41+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "What role did the printing press play in the Protestant Reformation",
+      "arxiv": "What role did the printing press play in the Protestant Reformation"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Printing and Protestants: Reforming the Economics of the Reformation",
+      "snippet": "Printing and Protestants: Reforming the Economics of the Reformation",
+      "full_text": null,
+      "url": "https://openalex.org/W2108891798",
+      "_adapter": "openalex",
+      "authors": [
+        "Jared Rubin"
+      ],
+      "venue": "SSRN Electronic Journal",
+      "publication_date": "2011",
+      "doi": "10.2139/ssrn.1742523",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Causes and consequences of the Protestant Reformation",
+      "snippet": "Causes and consequences of the Protestant Reformation",
+      "full_text": null,
+      "url": "https://openalex.org/W2294897896",
+      "_adapter": "openalex",
+      "authors": [
+        "Sascha O. Becker",
+        "Steven J. Pfaff",
+        "Jared Rubin"
+      ],
+      "venue": "Explorations in Economic History",
+      "publication_date": "2016",
+      "doi": "10.1016/j.eeh.2016.07.007",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Religious Competition and Reallocation: the Political Economy of Secularization in the Protestant Reformation*",
+      "snippet": "Using novel microdata, we document an important, unintended consequence of the Protestant Reformation: a reallocation of resources from religious to secular purposes. To understand this process, we propose a conceptual framework in which the introduction of religious competition shifts political markets where religious authorities provide legitimacy to rulers in exchange for control over resources. Consistent with our framework, religious competition changed the balance of power between secular and religious elites: secular authorities acquired enormous amounts of wealth from monasteries close",
+      "full_text": "Using novel microdata, we document an important, unintended consequence of the Protestant Reformation: a reallocation of resources from religious to secular purposes. To understand this process, we propose a conceptual framework in which the introduction of religious competition shifts political markets where religious authorities provide legitimacy to rulers in exchange for control over resources. Consistent with our framework, religious competition changed the balance of power between secular and religious elites: secular authorities acquired enormous amounts of wealth from monasteries closed during the Reformation, particularly in Protestant regions. This transfer of resources had significant consequences. First, it shifted the allocation of upper-tail human capital. Graduates of Protestant universities increasingly took secular, especially administrative, occupations. Protestant university students increasingly studied secular subjects, especially degrees that prepared students for public sector jobs, rather than church sector specific theology. Second, it affected the sectoral composition of fixed investment. Particularly in Protestant regions, new construction shifted from religious toward secular purposes, especially the building of palaces and administrative buildings, which reflected the increased wealth and power of secular lords. Reallocation was not driven by preexisting economic or cultural differences. Our findings indicate that the Reformation played an important causal role in the secularization of the West.",
+      "url": "https://openalex.org/W2898441492",
+      "_adapter": "openalex",
+      "authors": [
+        "Davide Cantoni",
+        "Jeremiah E. Dittmar",
+        "Noam Yuchtman"
+      ],
+      "venue": "The Quarterly Journal of Economics",
+      "publication_date": "2018",
+      "doi": "10.1093/qje/qjy011",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Causes and Consequences of the Protestant Reformation",
+      "snippet": "The Protestant Reformation is one of the defining events of the last millennium. Nearly 500 years after the Reformation, its causes and consequences have seen a renewed interest in the social sciences. Research in economics, sociology, and political science increasingly uses detailed individual-level, city-level, and regional-level data to identify drivers of the adoption of the Reformation, its diffusion pattern, and its socioeconomic consequences. This survey takes stock of the research so far, tries to point out what we know and what we do not know, and which are the most promising areas fo",
+      "full_text": "The Protestant Reformation is one of the defining events of the last millennium. Nearly 500 years after the Reformation, its causes and consequences have seen a renewed interest in the social sciences. Research in economics, sociology, and political science increasingly uses detailed individual-level, city-level, and regional-level data to identify drivers of the adoption of the Reformation, its diffusion pattern, and its socioeconomic consequences. This survey takes stock of the research so far, tries to point out what we know and what we do not know, and which are the most promising areas for future research.",
+      "url": "https://openalex.org/W3125705105",
+      "_adapter": "openalex",
+      "authors": [
+        "Sascha O. Becker",
+        "Steven J. Pfaff",
+        "Jared Rubin"
+      ],
+      "venue": "Warwick Research Archive Portal (University of Warwick)",
+      "publication_date": "2016",
+      "doi": "10.22004/ag.econ.269720",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The Influence of the Protestant Reformation on Education",
+      "snippet": "The Protestant Reformation in the 16th century led not only to deep changes in the doctrine, the rituals and the leadership of the Church, but also to an aftermath that may be seen on an ecclesiastic level, as well as on a larger level, socio-cultural and political. This European movement also had repercussions in point of education, and the Reformers constantly evinced, among others, the necessity of a consistent religious education provided to the young, based on the Scripture. The Protestant Reformation proved favourable to the education of the masses, of all children, regardless of gender ",
+      "full_text": "The Protestant Reformation in the 16th century led not only to deep changes in the doctrine, the rituals and the leadership of the Church, but also to an aftermath that may be seen on an ecclesiastic level, as well as on a larger level, socio-cultural and political. This European movement also had repercussions in point of education, and the Reformers constantly evinced, among others, the necessity of a consistent religious education provided to the young, based on the Scripture. The Protestant Reformation proved favourable to the education of the masses, of all children, regardless of gender and social status.",
+      "url": "https://openalex.org/W2084093891",
+      "_adapter": "openalex",
+      "authors": [
+        "Mihai Androne"
+      ],
+      "venue": "Procedia - Social and Behavioral Sciences",
+      "publication_date": "2014",
+      "doi": "10.1016/j.sbspro.2014.05.256",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Religious Competition and Reallocation: The Political Economy of Secularization in the Protestant Reformation",
+      "snippet": "Using novel microdata, we document an unintended, first-order consequence of the Protestant Reformation: a massive reallocation of resources from religious to secular purposes.To understand this process, we propose a conceptual framework in which the introduction of religious competition shifts political markets where religious authorities provide legitimacy to rulers in exchange for control over resources.Consistent with our framework, religious competition changed the balance of power between secular and religious elites: secular authorities acquired enormous amounts of wealth from monasteri",
+      "full_text": "Using novel microdata, we document an unintended, first-order consequence of the Protestant Reformation: a massive reallocation of resources from religious to secular purposes.To understand this process, we propose a conceptual framework in which the introduction of religious competition shifts political markets where religious authorities provide legitimacy to rulers in exchange for control over resources.Consistent with our framework, religious competition changed the balance of power between secular and religious elites: secular authorities acquired enormous amounts of wealth from monasteries closed during the Reformation, particularly in Protestant regions.This transfer of resources had important consequences.First, it shifted the allocation of upper-tail human capital.Graduates of Protestant universities increasingly took secular, especially administrative, occupations.Protestant university students increasingly studied secular subjects, especially degrees that prepared students for public sector jobs, rather than church sector-specific theology.Second, it affected the sectoral composition of fixed investment.Particularly in Protestant regions, new construction shifted from religious toward secular purposes, especially the building of palaces and administrative buildings, which reflected the increased wealth and power of secular lords.Reallocation was not driven by preexisting economic or cultural differences.Our findings indicate that the Reformation played an important causal role in the secularization of the West.",
+      "url": "https://openalex.org/W2766519282",
+      "_adapter": "openalex",
+      "authors": [
+        "Davide Cantoni",
+        "Jeremiah E. Dittmar",
+        "Noam Yuchtman"
+      ],
+      "venue": "National Bureau of Economic Research",
+      "publication_date": "2017",
+      "doi": "10.3386/w23934",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multi-messenger Observations of a Binary Neutron Star Merger",
+      "snippet": "On 2017 August 17 a binary neutron star coalescence candidate (later designated GW170817) with merger time 12:41:04 UTC was observed through gravitational waves by the Advanced LIGO and Advanced Virgo detectors. The Fermi Gamma-ray Burst Monitor independently detected a gamma-ray burst (GRB 170817A) with a time delay of $\\sim$1.7 s with respect to the merger time. From the gravitational-wave signal, the source was initially localized to a sky region of 31 deg$^2$ at a luminosity distance of $40^{+8}_{-8}$ Mpc and with component masses consistent with neutron stars. The component masses were la",
+      "full_text": "On 2017 August 17 a binary neutron star coalescence candidate (later designated GW170817) with merger time 12:41:04 UTC was observed through gravitational waves by the Advanced LIGO and Advanced Virgo detectors. The Fermi Gamma-ray Burst Monitor independently detected a gamma-ray burst (GRB 170817A) with a time delay of $\\sim$1.7 s with respect to the merger time. From the gravitational-wave signal, the source was initially localized to a sky region of 31 deg$^2$ at a luminosity distance of $40^{+8}_{-8}$ Mpc and with component masses consistent with neutron stars. The component masses were later measured to be in the range 0.86 to 2.26 Msun. An extensive observing campaign was launched across the electromagnetic spectrum leading to the discovery of a bright optical transient (SSS17a, now with the IAU identification of AT 2017gfo) in NGC 4993 (at $\\sim$40 Mpc) less than 11 hours after the merger by the One-Meter, Two Hemisphere (1M2H) team using the 1 m Swope Telescope. The optical transient was independently detected by multiple teams within an hour. Subsequent observations targeted the object and its environment. Early ultraviolet observations revealed a blue transient that faded within 48 hours. Optical and infrared observations showed a redward evolution over $\\sim$10 days. Following early non-detections, X-ray and radio emission were discovered at the transient's position $\\sim$9 and $\\sim$16 days, respectively, after the merger. Both the X-ray and radio emission likely arise from a physical process that is distinct from the one that generates the UV/optical/near-infrared emission. No ultra-high-energy gamma-rays and no neutrino candidates consistent with the source were found in follow-up searches. (Abridged)",
+      "url": "https://arxiv.org/abs/1710.05833v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "LIGO Scientific Collaboration",
+        "Virgo Collaboration",
+        "Fermi GBM",
+        "INTEGRAL",
+        "IceCube Collaboration",
+        "AstroSat Cadmium Zinc Telluride Imager Team",
+        "IPN Collaboration",
+        "The Insight-Hxmt Collaboration",
+        "ANTARES Collaboration",
+        "The Swift Collaboration",
+        "AGILE Team",
+        "The 1M2H Team",
+        "The Dark Energy Camera GW-EM Collaboration",
+        "the DES Collaboration",
+        "The DLT40 Collaboration",
+        "GRAWITA",
+        ":",
+        "GRAvitational Wave Inaf TeAm",
+        "The Fermi Large Area Telescope Collaboration",
+        "ATCA",
+        ":",
+        "Australia Telescope Compact Array",
+        "ASKAP",
+        ":",
+        "Australian SKA Pathfinder",
+        "Las Cumbres Observatory Group",
+        "OzGrav",
+        "DWF",
+        "AST3",
+        "CAASTRO Collaborations",
+        "The VINROUGE Collaboration",
+        "MASTER Collaboration",
+        "J-GEM",
+        "GROWTH",
+        "JAGWAR",
+        "Caltech- NRAO",
+        "TTU-NRAO",
+        "NuSTAR Collaborations",
+        "Pan-STARRS",
+        "The MAXI Team",
+        "TZAC Consortium",
+        "KU Collaboration",
+        "Nordic Optical Telescope",
+        "ePESSTO",
+        "GROND",
+        "Texas Tech University",
+        "SALT Group",
+        "TOROS",
+        ":",
+        "Transient Robotic Observatory of the South Collaboration",
+        "The BOOTES Collaboration",
+        "MWA",
+        ":",
+        "Murchison Widefield Array",
+        "The CALET Collaboration",
+        "IKI-GW Follow-up Collaboration",
+        "H. E. S. S. Collaboration",
+        "LOFAR Collaboration",
+        "LWA",
+        ":",
+        "Long Wavelength Array",
+        "HAWC Collaboration",
+        "The Pierre Auger Collaboration",
+        "ALMA Collaboration",
+        "Euro VLBI Team",
+        "Pi of the Sky Collaboration",
+        "The Chandra Team at McGill University",
+        "DFN",
+        ":",
+        "Desert Fireball Network",
+        "ATLAS",
+        "High Time Resolution Universe Survey",
+        "RIMAS",
+        "RATIR",
+        "SKA South Africa/MeerKAT"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-10-16",
+      "doi": "10.3847/2041-8213/aa91c9",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1710.05833v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Meaningful play and malicious delight: Exploring maldaimonic game UX",
+      "snippet": "Maldaimonia is a new experiential concept that refers to self-actualization and self-expression through egocentric, destructive, and/or exploitative activities. Still, it is unclear whether maldaimonia is an actual facet of real experience. As a subversive orientation, it may be rare or socially challenging to discuss openly. However, video games provide a space in which people can be expressive in different ways without the same repercussions as in real life. Indeed, game spaces may be one of the few contexts in which to study maldaimonic experiences. In this study, we examined whether and ho",
+      "full_text": "Maldaimonia is a new experiential concept that refers to self-actualization and self-expression through egocentric, destructive, and/or exploitative activities. Still, it is unclear whether maldaimonia is an actual facet of real experience. As a subversive orientation, it may be rare or socially challenging to discuss openly. However, video games provide a space in which people can be expressive in different ways without the same repercussions as in real life. Indeed, game spaces may be one of the few contexts in which to study maldaimonic experiences. In this study, we examined whether and how maldaimonia exists as a feature of game user experiences by analyzing critical self-reports of gaming activities, confirming its existence. We contribute this new construct to work on \"dark play\" in games research.",
+      "url": "https://arxiv.org/abs/2310.04733v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Katie Seaborn",
+        "Satoru Iseya"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-10-07",
+      "doi": "10.1145/3573382.3616095",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2310.04733v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Precision Electroweak Measurements on the Z Resonance",
+      "snippet": "We report on the final electroweak measurements performed with data taken at the Z resonance by the experiments operating at the electron-positron colliders SLC and LEP. The data consist of 17 million Z decays accumulated by the ALEPH, DELPHI, L3 and OPAL experiments at LEP, and 600 thousand Z decays by the SLD experiment using a polarised beam at SLC. The measurements include cross-sections, forward-backward asymmetries and polarised asymmetries. The mass and width of the Z boson, $\\MZ$ and $\\GZ$, and its couplings to fermions, for example the $ρ$ parameter and the effective electroweak mixin",
+      "full_text": "We report on the final electroweak measurements performed with data taken at the Z resonance by the experiments operating at the electron-positron colliders SLC and LEP. The data consist of 17 million Z decays accumulated by the ALEPH, DELPHI, L3 and OPAL experiments at LEP, and 600 thousand Z decays by the SLD experiment using a polarised beam at SLC. The measurements include cross-sections, forward-backward asymmetries and polarised asymmetries. The mass and width of the Z boson, $\\MZ$ and $\\GZ$, and its couplings to fermions, for example the $ρ$ parameter and the effective electroweak mixing angle, are precisely measured. The number of light neutrino species is determined to be 2.9840+/-0.0082. The results are compared to the predictions of the Standard Model. Electroweak radiative corrections beyond the running of the QED and QCD coupling constants are observed with a significance of five standard deviations, and in agreement with the Standard Model. Of the many Z-pole measurements, the forward-backward asymmetry in b-quark production shows the largest difference with respect to its Standard Model expectation, at the level of 2.8 standard deviations. Through radiative corrections evaluated in the framework of the Standard Model, the masses of the top quark and the W Boson are predicted. These indirect constraints are compared to the direct measurements, providing a stringent test of the Standard Model. Using in addition the direct measurements of $\\Mt$ and $\\MW$, the mass of the as yet unobserved Standard Model Higgs boson is predicted.",
+      "url": "https://arxiv.org/abs/hep-ex/0509008v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "The ALEPH Collaboration",
+        "the DELPHI Collaboration",
+        "the L3 Collaboration",
+        "the OPAL Collaboration",
+        "the SLD Collaboration",
+        "the LEP Electroweak Working Group",
+        "the SLD electroweak",
+        "heavy flavour groups"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2005-09-07",
+      "doi": "10.1016/j.physrep.2005.12.006",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "hep-ex/0509008v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "We Haven't Gone Paperless Yet: Why the Printing Press Can Help Us Understand Data and AI",
+      "snippet": "How should we understand the social and political effects of the datafication of human life? This paper argues that the effects of data should be understood as a constitutive shift in social and political relations. We explore how datafication, or quantification of human and non-human factors into binary code, affects the identity of individuals and groups. This fundamental shift goes beyond economic and ethical concerns, which has been the focus of other efforts to explore the effects of datafication and AI. We highlight that technologies such as datafication and AI (and previously, the print",
+      "full_text": "How should we understand the social and political effects of the datafication of human life? This paper argues that the effects of data should be understood as a constitutive shift in social and political relations. We explore how datafication, or quantification of human and non-human factors into binary code, affects the identity of individuals and groups. This fundamental shift goes beyond economic and ethical concerns, which has been the focus of other efforts to explore the effects of datafication and AI. We highlight that technologies such as datafication and AI (and previously, the printing press) both disrupted extant power arrangements, leading to decentralization, and triggered a recentralization of power by new actors better adapted to leveraging the new technology. We use the analogy of the printing press to provide a framework for understanding constitutive change. The printing press example gives us more clarity on 1) what can happen when the medium of communication drastically alters how information is communicated and stored; 2) the shift in power from state to private actors; and 3) the tension of simultaneously connecting individuals while driving them towards narrower communities through algorithmic analyses of data.",
+      "url": "https://arxiv.org/abs/2104.12731v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Julian Posada",
+        "Nicholas Weller",
+        "Wendy H. Wong"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2021-04-26",
+      "doi": "10.1145/3461702.3462604",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2104.12731v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "PlayPolicy: Dexterity from Supervised Play",
+      "snippet": "How can robots autonomously collect the contact-rich experience needed to learn dexterous manipulation? We present PlayPolicy: Dexterity from supervised play (DSP), a framework in which a robot learns a play policy from minutes of human play through behavior cloning, then deploys it autonomously to collect hours of interaction data to train a world model. During inference, the same play policy then guides model-predictive control (MPC) by proposing candidate action sequences for evaluation under the learned world model. To accelerate inference, we also introduce a method for distilling a close",
+      "full_text": "How can robots autonomously collect the contact-rich experience needed to learn dexterous manipulation? We present PlayPolicy: Dexterity from supervised play (DSP), a framework in which a robot learns a play policy from minutes of human play through behavior cloning, then deploys it autonomously to collect hours of interaction data to train a world model. During inference, the same play policy then guides model-predictive control (MPC) by proposing candidate action sequences for evaluation under the learned world model. To accelerate inference, we also introduce a method for distilling a closed-loop, goal-conditioned policy through self-play within the learned world model. We evaluate this framework on underactuated pushing and any-to-any in-hand pose reorientation with a multifingered hand, in simulation and real world. In real world experiment, our method outperforms hindsight behavior cloning by 69.6% in success rate and achieves comparable success to reinforcement learning with 490 times less interaction data. These results demonstrate that supervised play can autonomously collect interaction data, guide model-based planning, and enable policy learning without any task-specific demonstrations or sim-to-real transfer. Project page: https://play-policy.github.io/",
+      "url": "https://arxiv.org/abs/2610.22340v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Botao He",
+        "Yiming Dou",
+        "Yiannis Aloimonos",
+        "Jitendra Malik",
+        "Akash Sharma",
+        "Ruoshi Liu"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-10-15",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2610.22340v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Auto-Paízo Games: Towards Understanding the Design of Games that Aim to Unify a Player's Physical Body and the Virtual World",
+      "snippet": "Most digital bodily games focus on the body as they use movement as input. However, they also draw the player's focus away from the body as the output occurs on visual displays, creating a divide between the physical body and the virtual world. We propose a novel approach - the \"Body as a Play Material\" - where a player uses their body as both input and output to unify the physical body and the virtual world. To showcase this approach, we designed three games where a player uses one of their hands (input) to play against the other hand (output) by loaning control over its movements to an Elect",
+      "full_text": "Most digital bodily games focus on the body as they use movement as input. However, they also draw the player's focus away from the body as the output occurs on visual displays, creating a divide between the physical body and the virtual world. We propose a novel approach - the \"Body as a Play Material\" - where a player uses their body as both input and output to unify the physical body and the virtual world. To showcase this approach, we designed three games where a player uses one of their hands (input) to play against the other hand (output) by loaning control over its movements to an Electrical Muscle Stimulation (EMS) system. We conducted a thematic analysis on the data obtained from a field study with 12 participants to articulate four player experience themes. We discuss our results about how participants appreciated the engagement with the variety of bodily movements for play and the ambiguity of using their body as a play material. Ultimately, our work aims to unify the physical body and the virtual world.",
+      "url": "https://arxiv.org/abs/2307.11292v4",
+      "_adapter": "arxiv",
+      "authors": [
+        "Rakesh Patibanda",
+        "Chris Hill",
+        "Aryan Saini",
+        "Xiang Li",
+        "Yuzheng Chen",
+        "Andrii Matviienko",
+        "Jarrod Knibbe",
+        "Elise van den Hoven",
+        "Florian 'Floyd' Mueller"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-07-21",
+      "doi": "10.1145/3611054",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2307.11292v4",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

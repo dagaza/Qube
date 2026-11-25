@@ -256,6 +256,11 @@ class TokenBucket:
         with self._cond:
             self._rate = max(rate_per_sec, 0.001)
 
+    def set_burst(self, burst: float) -> None:
+        with self._cond:
+            self._burst = max(burst, 1.0)
+            self._tokens = min(self._tokens, self._burst)
+
     @property
     def rate_per_sec(self) -> float:
         return self._rate
@@ -437,12 +442,24 @@ class HostScheduler:
                 else:
                     limiter = TokenBucket(
                         rate_per_sec=self._effective_rate(key, spec),
-                        burst=float(spec.burst or DEFAULT_TOKEN_BURST),
+                        burst=self._effective_burst(key, spec),
                     )
                 self._buckets[key] = limiter
             elif key == "ncbi" and isinstance(limiter, TokenBucket):
                 limiter.set_rate(self._effective_rate(key, spec))
+                limiter.set_burst(self._effective_burst(key, spec))
             return limiter
+
+    def _effective_burst(self, key: str, spec: HostPolicySpec) -> float:
+        burst = float(spec.burst or DEFAULT_TOKEN_BURST)
+        if key == "ncbi":
+            # NCBI's limit is requests per second (3 without a key, 10 with one).
+            # Any burst lets a turn exceed it inside one second: burst 8 sent 5
+            # requests at once, and burst = rate still allowed 3 + 1 within a
+            # second. Both drew 429s in the S8 live run, so requests are spaced
+            # at 1 / rate.
+            return 1.0
+        return burst
 
     def acquire(self, hostname: str) -> None:
         """Block until the host may send a request (rate limit only)."""

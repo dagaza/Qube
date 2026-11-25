@@ -1,0 +1,558 @@
+{
+  "schema_version": 2,
+  "id": "sci_econ_minimum_wage",
+  "path": "scientific_evidence",
+  "category": "physical_econ",
+  "description": "",
+  "query_raw": "@[tool:evidence] Effect of minimum wage increases on employment",
+  "query_clean": "Effect of minimum wage increases on employment",
+  "retrieval_query": "Effect of minimum wage increases on employment",
+  "standalone_question": "What is the effect of minimum wage increases on employment?",
+  "gold_subject": "minimum wage",
+  "gold_facet": "employment effects",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:05:17+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "Effect of minimum wage increases on employment",
+      "arxiv": "Effect of minimum wage increases on employment"
+    },
+    "standalone": {
+      "openalex": "What is the effect of minimum wage increases on employment",
+      "arxiv": "What is the effect of minimum wage increases on employment"
+    }
+  },
+  "candidates": [
+    {
+      "title": "The effect of minimum wage increases on employment and firm profits",
+      "snippet": "The effect of minimum wage increases on employment and firm profits",
+      "full_text": "The effect of minimum wage increases on employment and firm profits",
+      "url": "https://openalex.org/W7216565460",
+      "_adapter": "openalex",
+      "authors": [
+        "Ashok Kumar"
+      ],
+      "venue": "Leadership Education Personality An Interdisciplinary Journal",
+      "publication_date": "2025",
+      "doi": "10.1366/xbvtrv76",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "최저임금 인상이 중국노동시장에 미치는 영향",
+      "snippet": "이 연구는 중국 노동시장에서 최저임금이 고용 및 근로시간에 미치는 영향을 분석하였다. 실증분석에 사용된 자료는 중국 사회 조사(CGSS) 2013 데이터에 수록된 20~50세의 고등교육을 받지 못한 노동인구의 월간 최저임금이며, 추정방법은 로지스틱 회귀 분석과 성향 점수 매칭(Propensity Score Matching)이다. 분석결과는 중국 중부지방의 경우 최저임금의 인상이 고용과 노동시간에 미치는 영향은 모두 상당히 부정적으로 나타났다. 산서성의(山西省) 경우 최저 임금이 15% 상승하면 고용은 20% 감소하고 노동시간은 8시간까지 감소하였다. 그리고 중국 서부의 경우에는 표본이 기준을 충족시키지 못하기 때문에 최저임금의 변화가 고용 및 노동시간 미치는 효과를 명확히 언급할 수는 없지만, 산서성과는 달리 긍정적으로 나타났다. 주목해야할 점은 중국의 노동자들은 최저임금의 인상으로 노동시간이 단축되었더라도 중국 노동법에 규정된 노동시간보다 더 많은 시간을 일하고 있다는 것이다. 중국정부는 이러한 현실에 대해 어떠한 형태로든 관심을 기울일 필요가 있는 것으로 사료된다.",
+      "full_text": "이 연구는 중국 노동시장에서 최저임금이 고용 및 근로시간에 미치는 영향을 분석하였다. 실증분석에 사용된 자료는 중국 사회 조사(CGSS) 2013 데이터에 수록된 20~50세의 고등교육을 받지 못한 노동인구의 월간 최저임금이며, 추정방법은 로지스틱 회귀 분석과 성향 점수 매칭(Propensity Score Matching)이다. 분석결과는 중국 중부지방의 경우 최저임금의 인상이 고용과 노동시간에 미치는 영향은 모두 상당히 부정적으로 나타났다. 산서성의(山西省) 경우 최저 임금이 15% 상승하면 고용은 20% 감소하고 노동시간은 8시간까지 감소하였다. 그리고 중국 서부의 경우에는 표본이 기준을 충족시키지 못하기 때문에 최저임금의 변화가 고용 및 노동시간 미치는 효과를 명확히 언급할 수는 없지만, 산서성과는 달리 긍정적으로 나타났다. 주목해야할 점은 중국의 노동자들은 최저임금의 인상으로 노동시간이 단축되었더라도 중국 노동법에 규정된 노동시간보다 더 많은 시간을 일하고 있다는 것이다. 중국정부는 이러한 현실에 대해 어떠한 형태로든 관심을 기울일 필요가 있는 것으로 사료된다.",
+      "url": "https://openalex.org/W2898105796",
+      "_adapter": "openalex",
+      "authors": [
+        "Xixi Fu",
+        "Min Hong Oh",
+        "Namki Chung"
+      ],
+      "venue": "Ordo Economics Journal",
+      "publication_date": "2018",
+      "doi": "10.20436/oej.21.2.075",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The effect of minimum wage increase on employment : panel data evidence from Canadian provinces",
+      "snippet": "This paper studies the effects of a minimum wage increase on the employment rates of immigrants and non-immigrants in Canada's Atlantic region, particularly those with high school or more education. In estimating the effects, we used a balanced panel data across four Canadian provinces from 2008 to 2018. Ordinary least squares estimates suggest that a 1% increase in minimum wage will result in a 1.022% decline in the employment rates of immigrants and a 1.239% decline in the employment rates of non- \\n immigrants. The increase in the minimum wage from 2008-2018 for both groups shows that the e",
+      "full_text": "This paper studies the effects of a minimum wage increase on the employment rates of immigrants and non-immigrants in Canada's Atlantic region, particularly those with high school or more education. In estimating the effects, we used a balanced panel data across four Canadian provinces from 2008 to 2018. Ordinary least squares estimates suggest that a 1% increase in minimum wage will result in a 1.022% decline in the employment rates of immigrants and a 1.239% decline in the employment rates of non- \\n immigrants. The increase in the minimum wage from 2008-2018 for both groups shows that the employment rate of non-immigrants is more affected than immigrants. Furthermore, more attention should be paid to understand why minimum wage affects non-immigrants more. Our results are statistically significant, and the findings are consistent with the predictions of conventional economic theory.",
+      "url": "https://openalex.org/W3187474016",
+      "_adapter": "openalex",
+      "authors": [
+        "Rachel A. Siyanpeter"
+      ],
+      "venue": "Saint Mary's University Institutional Repository (Saint Mary's University)",
+      "publication_date": "2020",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Effect of Minimum Wage Increased on Employment and Total Personal Income: County-Level Estimation from Restaurant and Retail Sector",
+      "snippet": "This research examines the impact of minimum wage policies on employment and personal income in the United States, focusing on food preparation and service occupations and retail occupations. Using state-level and county-level data and employing econometric techniques such as difference-in-differences with continuous treatment and fixed effects, the study finds that moderate increases in the minimum wage do not significantly affect employment levels but lead to modest income effects. Moreover, minimum wage increases result in reduced usual hours worked per week, especially among individuals ag",
+      "full_text": "This research examines the impact of minimum wage policies on employment and personal income in the United States, focusing on food preparation and service occupations and retail occupations. Using state-level and county-level data and employing econometric techniques such as difference-in-differences with continuous treatment and fixed effects, the study finds that moderate increases in the minimum wage do not significantly affect employment levels but lead to modest income effects. Moreover, minimum wage increases result in reduced usual hours worked per week, especially among individuals aged 14 to 21, with females in this age group experiencing a more pronounced effect. The findings highlight the complexity of minimum wage effects across different demographics and geographic regions and the importance of targeted policy considerations for specific demographic groups.",
+      "url": "https://openalex.org/W4394956261",
+      "_adapter": "openalex",
+      "authors": [
+        "Mingzhou Wang"
+      ],
+      "venue": "Advances in Economics Management and Political Sciences",
+      "publication_date": "2024",
+      "doi": "10.54254/2754-1169/73/20230566",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Employment Effect of Minimum Wage Increase",
+      "snippet": "The objective of a minimum wage increase is to improve the quality of low-wage jobs and to narrow wage gaps. The sharp minimum wage increase in 2018 has so far produced no significant declines in employment. However, if drastic increases continue in the next two years, the level of the minimum wage as a ratio to the median wage will exceed those in other advanced economies and employment growth will likely exhibit a large drop distorting the wage structure. Thus, an adjustment in the pace of minimum wage increases is required. - The purpose of theminimum wage increase isto guarantee the wagele",
+      "full_text": "The objective of a minimum wage increase is to improve the quality of low-wage jobs and to narrow wage gaps. The sharp minimum wage increase in 2018 has so far produced no significant declines in employment. However, if drastic increases continue in the next two years, the level of the minimum wage as a ratio to the median wage will exceed those in other advanced economies and employment growth will likely exhibit a large drop distorting the wage structure. Thus, an adjustment in the pace of minimum wage increases is required. - The purpose of theminimum wage increase isto guarantee the wagelevel of the low-paid, thenumber of which isgrowing as personalservice jobs increase. - The share of below-minimum wage workers was 7.6% in the MOEL's 2016 Wage Survey and 13.4% in Statistics Korea's 2017 Economically Active Population Survey. - Other than cutting employment, there are several options available to employers to respond to the minimum wage increase such as raising prices, shortening working hours, reducing employee benefits/allowances and strengthening labor intensity. - Unlike individual companies facing their wage increase, a rise in the legislated minimum wage applies to the overall economy, meaning that companies can adjust prices to spread out the impact. - The majority of job loss resulting from an increase in the minimum wage is observed in the manufacturing industry while the impact has been weak in services sectors. - The higher the minimum-to-median wage ratio, the smaller the impact from the minimum wage increase. In 2016, the ratio marked 35% for the US and 50% for Korea. - Hungary raised the minimum wage by 60% in 2000-2004 in real terms, commensurate with Korea's planned increase. The employment of wage workers retreated by approx. 2%. - If Hungary's estimate is applied, Korea is estimated to see a decrease of 84,000 in employment after the minimum wage increase in 2018. If the US' is applied, the decrease is estimated to be 36,000. As such, Korea's decline in employment is expected at between 36,000 and 84,000. - Growth in employment in April 2018 was smaller by 180,000 than January, but the decrease was more influenced by January's high growth, slowing population growth and manufacturing restructuring than by the minimum wage increase. - If the sharp increase in the minimum wage is repeated in the next two years, the share of minimum wage workers will rise and impact on employment will grow. - The employment effect of the minimum wage increase is estimated to be a decrease of 96,000 in 2019 and 144,000 in 2020, when the effects of the job stabilization fund is not considered. - France experienced other side effects with a very high minimum wage such as disruption of the wage order, etc. Accordingly, France ceased additional minimum wage hikes after reaching 60% of the median. - Germany adjusts its minimum wage level every two years, as evaluation of the impact of the hike takes two years. - Measures must be sought to minimize the unexpected negative impact while efforts are made to maximize the positive.",
+      "url": "https://openalex.org/W2967654151",
+      "_adapter": "openalex",
+      "authors": [
+        "Kyungsoo Choi"
+      ],
+      "venue": "RePEc: Research Papers in Economics",
+      "publication_date": "2018",
+      "doi": "10.22740/kdi.focus.e.2018.90",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Employment Effect in Retail Trade of California's 1988 Minimum Wage Increase",
+      "snippet": "In this article, we study the labor-market effect of California's 1988 minimum wage increase in the retail trade industry. Two different approaches to evaluating the minimum wage effects suggest that the textbook economic analysis of minimum wages pertains; employment growth in California's low-wage retail trade sector appears to have been tempered by the minimum wage increase.",
+      "full_text": "In this article, we study the labor-market effect of California's 1988 minimum wage increase in the retail trade industry. Two different approaches to evaluating the minimum wage effects suggest that the textbook economic analysis of minimum wages pertains; employment growth in California's low-wage retail trade sector appears to have been tempered by the minimum wage increase.",
+      "url": "https://openalex.org/W2143851173",
+      "_adapter": "openalex",
+      "authors": [
+        "Taeil Kim",
+        "Lowell J. Taylor"
+      ],
+      "venue": "Journal of Business and Economic Statistics",
+      "publication_date": "1995",
+      "doi": "10.1080/07350015.1995.10524591",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The effect of minimum wages on employment in the presence of productivity fluctuations",
+      "snippet": "Traditionally, the impact of minimum wages on employment has been studied, and it is generally believed to have a negative effect. Yet, some recent studies have shown that the impact of minimum wages on employment can sometimes be positive. In addition, certain recent proposals set a higher minimum wage than the wage earned by some high-productivity workers. However, the impact of minimum wages on employment has been primarily studied on low-skilled workers, whereas there is limited research on high-skilled workers. To address this gap and examine the effects of minimum wages on high-productiv",
+      "full_text": "Traditionally, the impact of minimum wages on employment has been studied, and it is generally believed to have a negative effect. Yet, some recent studies have shown that the impact of minimum wages on employment can sometimes be positive. In addition, certain recent proposals set a higher minimum wage than the wage earned by some high-productivity workers. However, the impact of minimum wages on employment has been primarily studied on low-skilled workers, whereas there is limited research on high-skilled workers. To address this gap and examine the effects of minimum wages on high-productivity workers' employment, I construct a macroeconomic model incorporating productivity fluctuations, incomplete markets, directed search, and on-the-job search and compare the steady-state distributions between the baseline model and the model with a minimum wage. As a result, binding minimum wages increase the unemployment rate of both low and high-productivity workers.",
+      "url": "https://arxiv.org/abs/2502.18261v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Asahi Sato"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-02-25",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2502.18261v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Long-Term Employment Effects of the Minimum Wage in Germany: New Data and Estimators",
+      "snippet": "We study the long-term effects of the 2015 German minimum wage introduction and its subsequent increases on regional employment. Using data from two waves of the Structure of Earnings Survey allows us to estimate models that account for changes in the minimum wage bite over time. While the introduction mainly affected the labour market in East Germany, the raises are also increasingly affecting low-wage regions in West Germany, such that around one third of regions have changed their (binary) treatment status over time. We apply different specifications and extensions of the classic difference",
+      "full_text": "We study the long-term effects of the 2015 German minimum wage introduction and its subsequent increases on regional employment. Using data from two waves of the Structure of Earnings Survey allows us to estimate models that account for changes in the minimum wage bite over time. While the introduction mainly affected the labour market in East Germany, the raises are also increasingly affecting low-wage regions in West Germany, such that around one third of regions have changed their (binary) treatment status over time. We apply different specifications and extensions of the classic difference-in-differences approach as well as a set of new estimators that enables for unbiased effect estimation with a staggered treatment adoption and heterogeneous treatment effects. Our results indicate a small negative effect on dependent employment of 0.5 percent, no significant effect on employment subject to social security contributions, and a significant negative effect of about 2.4 percent on marginal employment until the first quarter of 2022. The extended specifications suggest additional effects of the minimum wage increases, as well as stronger negative effects on total dependent and marginal employment for those regions that were strongly affected by the minimum wage in 2015 and 2019.",
+      "url": "https://arxiv.org/abs/2310.15964v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Marco Caliendo",
+        "Nico Pestel",
+        "Rebecca Olthaus"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-10-24",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2310.15964v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "From Workplace to Residence: The Spillover Effects of Minimum Wage Policies on Local Housing Markets",
+      "snippet": "The recent rise of sub-national minimum wage (MW) policies in the US has resulted in significant dispersion of MW levels within urban areas. In this paper, we study the spillover effects of these policies on local rental markets through commuting. To do so, for each USPS ZIP code we construct a \"workplace\" MW measure based on the location of its resident's jobs, and use it to estimate the effect of MW policies on rents. We use a novel identification strategy that exploits the fine timing of differential changes in the workplace MW across ZIP codes that share the same \"residence\" MW, defined as",
+      "full_text": "The recent rise of sub-national minimum wage (MW) policies in the US has resulted in significant dispersion of MW levels within urban areas. In this paper, we study the spillover effects of these policies on local rental markets through commuting. To do so, for each USPS ZIP code we construct a \"workplace\" MW measure based on the location of its resident's jobs, and use it to estimate the effect of MW policies on rents. We use a novel identification strategy that exploits the fine timing of differential changes in the workplace MW across ZIP codes that share the same \"residence\" MW, defined as the same location's MW. Our baseline results imply that a 10 percent increase in the workplace MW increases rents at residence ZIP codes by 0.69 percent. To illustrate the importance of commuting patterns, we use our estimates and a simple model to simulate the impact of federal and city counterfactual MW policies. The simulations suggest that landlords pocket approximately 10 cents of each dollar generated by the MW across directly and indirectly affected areas, though the incidence on landlords varies systematically across space.",
+      "url": "https://arxiv.org/abs/2208.01791v4",
+      "_adapter": "arxiv",
+      "authors": [
+        "Gabriele Borg",
+        "Diego Gentile Passaro",
+        "Santiago Hermo"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-08-03",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2208.01791v4",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Nonlinear Impact of Minimum Wage on Labor Employment in China",
+      "snippet": "This paper examines the impact of increasing minimum wages, focusing primarily on their effect on employment. Our research involved analyzing the statistics of panel data, testing fixed effects and stationary, conducting linear regression, and integrating the linear regression model with nonlinear model analysis. The results indicate that fluctuations in the employment rate are almost entirely explained by the selected explanatory variables, and there is a significant negative correlation between minimum wages and the employment rate. This paper contributes to current research by providing mor",
+      "full_text": "This paper examines the impact of increasing minimum wages, focusing primarily on their effect on employment. Our research involved analyzing the statistics of panel data, testing fixed effects and stationary, conducting linear regression, and integrating the linear regression model with nonlinear model analysis. The results indicate that fluctuations in the employment rate are almost entirely explained by the selected explanatory variables, and there is a significant negative correlation between minimum wages and the employment rate. This paper contributes to current research by providing more comprehensive analyses, particularly through the use of nonlinear models, resulting in better-fitting models. We employed multiple fitting methods for time series data and their differentials, combining these results with nonlinear analysis.",
+      "url": "https://arxiv.org/abs/2503.19617v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Junhan Lyu",
+        "Tianle Zhai",
+        "Zicheng Peng",
+        "Xuhang Huang"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-03-25",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2503.19617v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Decomposing Wage Stagnation: Employment Reallocation, Wage Structure,and Demographics",
+      "snippet": "Japan's average log real hourly wages rose from the 1980s to the mid-1990s, declined through the mid-2010s, and partially recovered thereafter. This paper decomposes these changes from 1980 to 2024 into four components: demographic change across worker types, employment reallocation across job types, changes in relative wage structure across job types, and unweighted mean wage growth. The first two represent different margins of adjustment in employment, while the latter two represent different margins of adjustment in wages. The framework combines a shift-share decomposition across worker typ",
+      "full_text": "Japan's average log real hourly wages rose from the 1980s to the mid-1990s, declined through the mid-2010s, and partially recovered thereafter. This paper decomposes these changes from 1980 to 2024 into four components: demographic change across worker types, employment reallocation across job types, changes in relative wage structure across job types, and unweighted mean wage growth. The first two represent different margins of adjustment in employment, while the latter two represent different margins of adjustment in wages. The framework combines a shift-share decomposition across worker types with an augmented Olley-Pakes decomposition across job types within worker types. Employment reallocation reflects changes in employment shares across job types, whereas changes in relative wage structure reflect changes in average log wages within job types that alter wage differences across job types. The contributions of the four components vary across periods. Before 1996, unweighted mean wage growth and changes in relative wage structure contribute positively, while demographic change and employment reallocation contribute negatively. During the 1996-2014 period, unweighted mean wage growth and changes in relative wage structure turn negative, so that all four components are negative. After 2014, the recovery mainly reflects unweighted mean wage growth. The contributions from employment reallocation and changes in relative wage structure differ not only between full-time and part-time jobs but also across establishment sizes and industries within employment type. The paper uses the same framework to decompose changes in Japan's gender wage gap.",
+      "url": "https://arxiv.org/abs/2607.01561v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Ken Yamada"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-07-02",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2607.01561v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "A 22 percent increase in the German minimum wage: nothing crazy!",
+      "snippet": "We present the first empirical evidence on the 22 percent increase in the German minimum wage, implemented in 2022, raising it from Euro 9.82 to 10.45 in July and to Euro 12 in October. Leveraging the German Earnings Survey, a large and novel data source comprising around 8 million employee-level observations reported by employers each month, we apply a difference-in-difference-in-differences approach to analyze the policy's impact on hourly wages, monthly earnings, employment, and working hours. Our findings reveal significant positive effects on wages, affirming the policy's intended benefit",
+      "full_text": "We present the first empirical evidence on the 22 percent increase in the German minimum wage, implemented in 2022, raising it from Euro 9.82 to 10.45 in July and to Euro 12 in October. Leveraging the German Earnings Survey, a large and novel data source comprising around 8 million employee-level observations reported by employers each month, we apply a difference-in-difference-in-differences approach to analyze the policy's impact on hourly wages, monthly earnings, employment, and working hours. Our findings reveal significant positive effects on wages, affirming the policy's intended benefits for low-wage workers. Interestingly, we identify a negative effect on working hours, mainly driven by minijobbers. The hours effect results in an implied labor demand elasticity in terms of the employment volume of -0.2 which only partially offsets the monthly wage gains. We neither observe a negative effect on the individual's employment retention nor the regional employment levels.",
+      "url": "https://arxiv.org/abs/2405.12608v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Mario Bossler",
+        "Lars Chittka",
+        "Thorsten Schank"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-05-21",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2405.12608v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Elusive Employment Effect of the Minimum Wage",
+      "snippet": "It is hard to find a negative effect on the employment effect of rises in the minimum wage: the elusive employment effect. It is much easier to find an impact on wages. This paper argues the elusive employment effect is unlikely to be solved by better data, methodology, or specification. The reasons for the elusive employment effect are the factors contributing to why the link between higher minimum wages and higher labor costs are weaker than one might think and because imperfect competition is pervasive in the labor market.",
+      "full_text": "It is hard to find a negative effect on the employment effect of rises in the minimum wage: the elusive employment effect. It is much easier to find an impact on wages. This paper argues the elusive employment effect is unlikely to be solved by better data, methodology, or specification. The reasons for the elusive employment effect are the factors contributing to why the link between higher minimum wages and higher labor costs are weaker than one might think and because imperfect competition is pervasive in the labor market.",
+      "url": "https://openalex.org/W2377939770",
+      "_adapter": "openalex",
+      "authors": [
+        "Alan Manning"
+      ],
+      "venue": "The Journal of Economic Perspectives",
+      "publication_date": "2021",
+      "doi": "10.1257/jep.35.1.3",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Effect of the Minimum Wage on Employment and Unemployment: A Survey",
+      "snippet": "In this paper, we survey theoretical models of the effect of the minimum wage and, in somewhat greater detail, evidence of its effect on employment and unemployment.Our discussion of the theory emphasizes recent work using two-sector and heterogeneous-worker models.We then summarize and evaluate the large literature on employment and unemployment effects of the minimum on teenagers.Finally, we survey the evidence of the effect of the minimum wage on adult employment, and on employment in low-wage industries and areas.",
+      "full_text": "In this paper, we survey theoretical models of the effect of the minimum wage and, in somewhat greater detail, evidence of its effect on employment and unemployment.Our discussion of the theory emphasizes recent work using two-sector and heterogeneous-worker models.We then summarize and evaluate the large literature on employment and unemployment effects of the minimum on teenagers.Finally, we survey the evidence of the effect of the minimum wage on adult employment, and on employment in low-wage industries and areas.",
+      "url": "https://openalex.org/W1516411653",
+      "_adapter": "openalex",
+      "authors": [
+        "Charles Brown",
+        "Curtis L. Gilroy",
+        "Andrew I. Kohen"
+      ],
+      "venue": "National Bureau of Economic Research",
+      "publication_date": "1982",
+      "doi": "10.3386/w0846",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Employment effects of minimum wage increases in the Czech Republic",
+      "snippet": "This study examines the direct effects of four minimum wage increases in the Czech Republic during 2012-2017 on the employment of low-earning workers in the business sector. This series of minimum wage increases followed a period of 7 years during which the national minimum wage was not raised. During the period studied, the monthly minimum wage was raised by 37.5 % overall, from 8,000 to 11,000 CZK. To estimate the effects of the minimum wage increases we make use of the fact that various companies or parts of companies reported different shares of employees who were paid at or below the leve",
+      "full_text": "This study examines the direct effects of four minimum wage increases in the Czech Republic during 2012-2017 on the employment of low-earning workers in the business sector. This series of minimum wage increases followed a period of 7 years during which the national minimum wage was not raised. During the period studied, the monthly minimum wage was raised by 37.5 % overall, from 8,000 to 11,000 CZK. To estimate the effects of the minimum wage increases we make use of the fact that various companies or parts of companies reported different shares of employees who were paid at or below the level of the new minimum wage. We estimate whether, within a given company, homogeneous groups of employees in which a greater proportion were previously paid less than the new minimum wage were disproportionately badly affected in terms of their employment (or hours worked) after the change than groups of employees unaffected by the raise to the minimum wage. Our results show that the national minimum wage increases in 2013, 2015, 2016 and 2017 did not have any significant negative effects on employment. They did, however, have a positive effect on salaries. Even at the start of 2019, the minimum wage in the Czech Republic remains low in comparison to other European countries and affects only a small proportion of workers. Our findings however cannot be taken as an indication that potential future minimum wage increases would also have negligible effects on employment. It is thus essential to regularly assess in detail what the effects of future increases to the minimum wage would be.",
+      "url": "https://openalex.org/W7135666226",
+      "_adapter": "openalex",
+      "authors": [
+        "J. Grossmann"
+      ],
+      "venue": "Digital Repository (National Repository of Grey Literature)",
+      "publication_date": "2019",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": false,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Minimum Wage Increases, Wages, and Low-Wage Employment: Evidence from Seattle",
+      "snippet": "This paper evaluates the wage, employment, and hours effects of the first and second phase-in of the Seattle Minimum Wage Ordinance, which raised the minimum wage from $9.47 to as much as $11 in 2015 and to as much as $13 in 2016.Using a variety of methods to analyze employment in all sectors paying below a specified real hourly wage rate, we conclude that the second wage increase to $13 reduced hours worked in low-wage jobs by 6-7 percent, while hourly wages in such jobs increased by 3 percent.Consequently, total payroll for such jobs decreased, implying that the Ordinance lowered the amount ",
+      "full_text": "This paper evaluates the wage, employment, and hours effects of the first and second phase-in of the Seattle Minimum Wage Ordinance, which raised the minimum wage from $9.47 to as much as $11 in 2015 and to as much as $13 in 2016.Using a variety of methods to analyze employment in all sectors paying below a specified real hourly wage rate, we conclude that the second wage increase to $13 reduced hours worked in low-wage jobs by 6-7 percent, while hourly wages in such jobs increased by 3 percent.Consequently, total payroll for such jobs decreased, implying that the Ordinance lowered the amount paid to workers in low-wage jobs by an average of $74 per month per job in 2016.Evidence attributes more modest effects to the first wage increase.We estimate an effect of zero when analyzing employment in the restaurant industry at all wage levels, comparable to many prior studies.",
+      "url": "https://openalex.org/W2627661941",
+      "_adapter": "openalex",
+      "authors": [
+        "Ekaterina Jardim",
+        "Mark C. Long",
+        "Robert D. Plotnick",
+        "Emma van Inwegen",
+        "Jacob L. Vigdor",
+        "Hilary Wething"
+      ],
+      "venue": "National Bureau of Economic Research",
+      "publication_date": "2017",
+      "doi": "10.3386/w23532",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Effects of the Minimum Wage on the Employment and Earnings of Youth",
+      "snippet": "The employment and earnings effects of the minimum wage are estimated by parameterizing a hypothesized relationship between underlying market employment and wage relationships versus observed wage and employment distributions in the presence of a legislated minimum. If there had been no minimum during the 1973-78 period, we estimate that employment among out-of-school men 16-24 would have been approximately 4% higher than it was. Among young men 16-19 employment would have been about 7% higher; among those 20-24, 2% higher. Employment among black youth 16-24 would have been almost 6% higher th",
+      "full_text": "The employment and earnings effects of the minimum wage are estimated by parameterizing a hypothesized relationship between underlying market employment and wage relationships versus observed wage and employment distributions in the presence of a legislated minimum. If there had been no minimum during the 1973-78 period, we estimate that employment among out-of-school men 16-24 would have been approximately 4% higher than it was. Among young men 16-19 employment would have been about 7% higher; among those 20-24, 2% higher. Employment among black youth 16-24 would have been almost 6% higher than it was, compared with somewhat less than 4% for white youth. Although it is sometimes argued that the adverse employment effects of the minimum are offset by increased earnings, we find virtually no earnings effect. Had the minimum not been raised over the 1973-78 period, inflation would have greatly moderated the adverse employment effects of the minimum, with approximately two-thirds of the potential employment gains from elimination of the minimum attained. The weight of our evidence is inconsistent with a general increase in youth wage rates with increases in the real minimum. Our findings support the hypothesis that the effects of the minimum are concentrated on youth with subminimum market wage rates.",
+      "url": "https://openalex.org/W3122337130",
+      "_adapter": "openalex",
+      "authors": [
+        "Robert H. Meyer",
+        "David A. Wise"
+      ],
+      "venue": "Journal of Labor Economics",
+      "publication_date": "1983",
+      "doi": "10.1086/298005",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The effect of minimum-wage laws on the distribution of employment: theory and evidence",
+      "snippet": "Recent research casts doubt on the view that minimum-wage laws reduce employment. We show that in a simple model of bilateral search with heterogeneous workers, a minimum-wage law increases employment. However, the increased competition from higher productivity workers makes lower productivity workers worse off without making higher productivity workers better off. We provide evidence that minimum-wage laws shift employment from adults to teenagers and students. This raises concerns about the distributional consequences of minimum wages even when they increase employment.",
+      "full_text": "Recent research casts doubt on the view that minimum-wage laws reduce employment. We show that in a simple model of bilateral search with heterogeneous workers, a minimum-wage law increases employment. However, the increased competition from higher productivity workers makes lower productivity workers worse off without making higher productivity workers better off. We provide evidence that minimum-wage laws shift employment from adults to teenagers and students. This raises concerns about the distributional consequences of minimum wages even when they increase employment.",
+      "url": "https://openalex.org/W1981739276",
+      "_adapter": "openalex",
+      "authors": [
+        "Kevin Lang",
+        "Shulamit Kahn"
+      ],
+      "venue": "Journal of Public Economics",
+      "publication_date": "1998",
+      "doi": "10.1016/s0047-2727(97)00085-6",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

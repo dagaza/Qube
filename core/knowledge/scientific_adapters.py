@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from core.knowledge.adapters.arxiv_api import ADAPTER_ID as ARXIV_ID
 from core.knowledge.adapters.biorxiv import ADAPTER_ID as BIORXIV_ID
+from core.knowledge.adapters.crossref import ADAPTER_ID as CROSSREF_ID
 from core.knowledge.adapters.inspire_hep import ADAPTER_ID as INSPIRE_HEP_ID
 from core.knowledge.adapters.openalex import ADAPTER_ID as OPENALEX_ID
 from core.knowledge.adapters.pubchem import ADAPTER_ID as PUBCHEM_ID
@@ -20,15 +21,16 @@ from core.knowledge.scientific_discipline import (
     is_medical_query,
     preferred_adapters_for_discipline,
 )
-from core.knowledge.scientific_query_type import reorder_adapters_for_query_type
 
 _MEDICAL_ADAPTERS = (PUBMED_ID, OPENALEX_ID, ARXIV_ID)
 _BIOLOGY_ADAPTERS = (PUBMED_ID, BIORXIV_ID, OPENALEX_ID)
 _CHEMISTRY_ADAPTERS = (PUBCHEM_ID, OPENALEX_ID, PUBMED_ID)
-_PSYCHOLOGY_ADAPTERS = (PUBMED_ID, OPENALEX_ID)
-_SOCIAL_SCIENCE_ADAPTERS = (OPENALEX_ID,)
+# Crossref is the keyless widening adapter for general and social science
+# (plan S8, V8); Semantic Scholar is not, since it returns nothing without a key.
+_PSYCHOLOGY_ADAPTERS = (PUBMED_ID, OPENALEX_ID, CROSSREF_ID)
+_SOCIAL_SCIENCE_ADAPTERS = (OPENALEX_ID, CROSSREF_ID)
 _PHYSICS_ADAPTERS = (ARXIV_ID, INSPIRE_HEP_ID, OPENALEX_ID)
-_SCHOLARLY_ADAPTERS = (OPENALEX_ID, ARXIV_ID)
+_SCHOLARLY_ADAPTERS = (OPENALEX_ID, CROSSREF_ID, ARXIV_ID)
 
 _PUBMED_ELIGIBLE = frozenset(
     {
@@ -46,7 +48,7 @@ def discipline_ordered_adapters(
     query: str = "",
     medical_query: bool | None = None,
 ) -> tuple[str, ...]:
-    """Order enabled adapters by discipline pack only (pre query-type routing)."""
+    """Order enabled adapters by discipline pack."""
     match = detect_scientific_discipline(query, medical_query=medical_query)
     preferred = preferred_adapters_for_discipline(match.discipline)
 
@@ -82,13 +84,40 @@ def apply_scientific_adapter_policy(
     query: str = "",
     medical_query: bool | None = None,
 ) -> tuple[str, ...]:
-    """Filter and order user-enabled adapters by discipline and query intent."""
-    ordered = discipline_ordered_adapters(
+    """Filter and order user-enabled adapters by discipline.
+
+    Plan S13 removed query-type routing (institutional adapters moved first for
+    guideline / statistics / standard / patent / trial-registry wording): the
+    A/B changed no kept set with the reranker and lost on the fallback.
+    """
+    return discipline_ordered_adapters(
         enabled,
         query=query,
         medical_query=medical_query,
     )
-    return reorder_adapters_for_query_type(ordered, query=query, enabled=enabled)
+
+
+# Plan S13: the adapter route each A/B arm would query. ``production`` is
+# ``apply_scientific_adapter_policy``; each other arm switches one heuristic off.
+ROUTE_PRODUCTION = "production"
+ROUTE_NO_DISCIPLINE = "no_discipline_routing"
+ROUTE_ARMS: tuple[str, ...] = (ROUTE_PRODUCTION, ROUTE_NO_DISCIPLINE)
+
+
+def scientific_adapter_routes(
+    enabled: tuple[str, ...],
+    *,
+    query: str,
+) -> dict[str, tuple[str, ...]]:
+    """Adapter order per S13 arm, for the eval capture.
+
+    ``no_discipline_routing`` routes every query as ``general_science`` (the
+    route an undetected query gets today).
+    """
+    return {
+        ROUTE_PRODUCTION: apply_scientific_adapter_policy(enabled, query=query),
+        ROUTE_NO_DISCIPLINE: discipline_ordered_adapters(enabled, query=""),
+    }
 
 
 def default_scientific_adapters_for_query(

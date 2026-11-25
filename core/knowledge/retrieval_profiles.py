@@ -40,6 +40,11 @@ class RetrievalProfileSpec:
     fetch_url_count: int = 0
     playwright_allowed: bool = False
     pagination_allowed: bool = False
+    # Plan S8: one adapter call is abandoned after ``adapter_timeout_s``; the
+    # whole collection after ``collection_deadline_s``. Late adapters are
+    # recorded as ``adapter_timeout`` in the trace and the sufficiency rationale.
+    adapter_timeout_s: float = 5.0
+    collection_deadline_s: float = 6.5
 
     def materialize_budget(self, base: RetrievalBudget | None = None) -> RetrievalBudget:
         """Merge profile budget caps with service defaults."""
@@ -69,11 +74,13 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
         cache_policy="aggressive",
         source_ordering="default",
         fetch_url_count=0,
+        adapter_timeout_s=2.5,
+        collection_deadline_s=3.0,
     ),
     PROFILE_BALANCED: RetrievalProfileSpec(
         id=PROFILE_BALANCED,
         label="Balanced",
-        short_description="Default for most users; on web, may open one result page.",
+        short_description="Default for most users; on web, may open up to two result pages.",
         budget=RetrievalBudget(
             max_results=3,
             max_adapter_calls=3,
@@ -83,7 +90,12 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
         max_parallel_adapters=3,
         cache_policy="default",
         source_ordering="default",
-        fetch_url_count=1,
+        # S12 (D17): 2 pages. On the 16 web fixtures with a fetchable result,
+        # page content reached the answer for 12/16 with 1 page and 16/16 with
+        # 2 (a 3rd added none); median fetch time 358 ms -> 828 ms.
+        fetch_url_count=2,
+        adapter_timeout_s=5.0,
+        collection_deadline_s=6.5,
     ),
     PROFILE_THOROUGH: RetrievalProfileSpec(
         id=PROFILE_THOROUGH,
@@ -99,6 +111,8 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
         cache_policy="default",
         source_ordering="default",
         fetch_url_count=3,
+        adapter_timeout_s=8.0,
+        collection_deadline_s=11.0,
     ),
     PROFILE_EVIDENCE_FIRST: RetrievalProfileSpec(
         id=PROFILE_EVIDENCE_FIRST,
@@ -109,6 +123,8 @@ _PROFILES: dict[str, RetrievalProfileSpec] = {
         cache_policy="default",
         source_ordering="default",
         ranking_profile_hint="literature",
+        adapter_timeout_s=6.0,
+        collection_deadline_s=8.0,
     ),
     PROFILE_LOCAL_FIRST: RetrievalProfileSpec(
         id=PROFILE_LOCAL_FIRST,

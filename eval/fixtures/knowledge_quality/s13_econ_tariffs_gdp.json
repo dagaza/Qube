@@ -1,0 +1,538 @@
+{
+  "schema_version": 2,
+  "id": "s13_econ_tariffs_gdp",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: economics discipline route + RePEc slot.",
+  "query_raw": "@[tool:evidence] What is the effect of tariffs on GDP growth?",
+  "query_clean": "What is the effect of tariffs on GDP growth?",
+  "retrieval_query": "What is the effect of tariffs on GDP growth?",
+  "standalone_question": "What is the effect of tariffs on GDP growth?",
+  "gold_subject": "tariffs",
+  "gold_facet": "effect on GDP growth",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:09:58+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "repec": 3,
+    "world_bank": 3,
+    "eurostat": 3,
+    "oecd": 3,
+    "bls": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "repec": "What is the effect of tariffs on GDP growth",
+      "world_bank": "What is the effect of tariffs on GDP growth",
+      "eurostat": "What is the effect of tariffs on GDP growth",
+      "oecd": "What is the effect of tariffs on GDP growth",
+      "bls": "What is the effect of tariffs on GDP growth",
+      "crossref": "What is the effect of tariffs on GDP growth",
+      "arxiv": "What is the effect of tariffs on GDP growth",
+      "openalex": "What is the effect of tariffs on GDP growth"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "repec",
+        "world_bank",
+        "eurostat",
+        "oecd",
+        "bls",
+        "openalex"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "Does the \"new economy\" measure up to the great inventions of the past?",
+      "snippet": "Does the \"new economy\" measure up to the great inventions of the past?. NBER working paper series ; 7833 — 2000 — Produktivität, Productivity, Wirtschaftswachstum, Economic growth, Konjunktur, Business cycle",
+      "full_text": null,
+      "url": "http://papers.nber.org/papers/W7833.pdf",
+      "_adapter": "repec",
+      "authors": [
+        "Gordon, Robert J."
+      ],
+      "venue": "NBER working paper series ; 7833",
+      "publication_date": "2000",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "working_paper",
+      "repec_handle": null,
+      "econbiz_id": "10001499821",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "repec",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Strategic trade policy with endogenous choice of quality and asymmetric costs",
+      "snippet": "Strategic trade policy with endogenous choice of quality and asymmetric costs. NBER working paper series ; 7536 — 2000 — Strategische Handelspolitik, Strategic trade policy, Nichtpreiswettbewerb, Non-price competition, Produktqualität, Product quality",
+      "full_text": null,
+      "url": "http://papers.nber.org/papers/W7536.pdf",
+      "_adapter": "repec",
+      "authors": [
+        "Zhou, Dongsheng",
+        "Spencer, Barbara J.",
+        "Vertinsky, Ilan B."
+      ],
+      "venue": "NBER working paper series ; 7536",
+      "publication_date": "2000",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "working_paper",
+      "repec_handle": null,
+      "econbiz_id": "10001450317",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "repec",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Environmental controls, scarcity rents, and pre-existing distortions",
+      "snippet": "Environmental controls, scarcity rents, and pre-existing distortions. NBER working paper series ; 6091 — 1997 — Ökosteuer, Environmental tax, Steuerwirkung, Tax effects, Wohlfahrtsökonomik, Welfare economics",
+      "full_text": null,
+      "url": null,
+      "_adapter": "repec",
+      "authors": [
+        "Fullerton, Don",
+        "Metcalf, Gilbert E."
+      ],
+      "venue": "NBER working paper series ; 6091",
+      "publication_date": "1997",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "working_paper",
+      "repec_handle": null,
+      "econbiz_id": "10000633189",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "repec",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "3.15_LEARN.TIME.TEACHER.STUDY — Last study on effective learning time and teacher attendance (year)",
+      "snippet": "Date (year) of the most recent study carried out by any national or international entity on the effectiveness of the instruction time devoted to learning activities.",
+      "full_text": "Date (year) of the most recent study carried out by any national or international entity on the effectiveness of the instruction time devoted to learning activities.",
+      "url": "https://data.worldbank.org/indicator/3.15_LEARN.TIME.TEACHER.STUDY",
+      "_adapter": "world_bank",
+      "authors": [
+        "Data were collected from national and other publicly available sources, and validated by the Local Education Group (LEG) in each country. LEGs are typically led by the Ministry of Education and include development partners and other education stakeholders. Data were not processed or analyzed by the Global Partnership for Education. It is reported as it was presented in the original sources, or as it was communicated to us through the Coordinating Agency or Lead Donor of the LEG."
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "3.15_LEARN.TIME.TEACHER.STUDY",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "5.0.AMeanIncGr.All — Annualized Mean Income Growth (2004-2014)",
+      "snippet": "The official indicator to monitor shared prosperity is the growth in real per capita income (or consumption) of the bottom 40 percent of the income (or consumption) distribution in a country.",
+      "full_text": "The official indicator to monitor shared prosperity is the growth in real per capita income (or consumption) of the bottom 40 percent of the income (or consumption) distribution in a country.",
+      "url": "https://data.worldbank.org/indicator/5.0.AMeanIncGr.All",
+      "_adapter": "world_bank",
+      "authors": [
+        "LAC Equity Lab tabulations of SEDLAC (CEDLAS and the World Bank) and World Development Indicators"
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "5.0.AMeanIncGr.All",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "5.0.AMeanIncGr.B40 — Annualized Mean Income Growth Bottom 40 Percent (2004-2014)",
+      "snippet": "The indicator to monitor shared prosperity is the growth in real per capita income (or consumption) of the bottom 40 percent of the income (or consumption) distribution in a country.",
+      "full_text": "The indicator to monitor shared prosperity is the growth in real per capita income (or consumption) of the bottom 40 percent of the income (or consumption) distribution in a country.",
+      "url": "https://data.worldbank.org/indicator/5.0.AMeanIncGr.B40",
+      "_adapter": "world_bank",
+      "authors": [
+        "LAC Equity Lab tabulations of SEDLAC (CEDLAS and the World Bank) and World Development Indicators"
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "5.0.AMeanIncGr.B40",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_CBCR@DF_CBCRIII — Country-by-country reporting (CbCR) - Aggregate totals by the effective tax rate of the MNE group and by tax jurisdiction  - Corporate tax statistics",
+      "snippet": "Country-by-country reporting (CbCR) - Aggregate totals by the effective tax rate of the MNE group and by tax jurisdiction  - Corporate tax statistics",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_CBCR@DF_CBCRIII&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CTP.TPS,DSD_CBCR@DF_CBCRIII",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_CBCR@DF_CBCRIV — Country-by-country reporting (CbCR) - Aggregate totals by the effective tax rate of the MNE sub-group and by tax jurisdiction - Corporate tax statistics",
+      "snippet": "Country-by-country reporting (CbCR) - Aggregate totals by the effective tax rate of the MNE sub-group and by tax jurisdiction - Corporate tax statistics",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_CBCR@DF_CBCRIV&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CTP.TPS,DSD_CBCR@DF_CBCRIV",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_AFDD_STAT_ANNEX@DF_TAB02 — Africa's Development Dynamics (AfDD) Table 02 - Annual real GDP growth rate",
+      "snippet": "Africa's Development Dynamics (AfDD) Table 02 - Annual real GDP growth rate",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_AFDD_STAT_ANNEX@DF_TAB02&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.DEV.EMEA,DSD_AFDD_STAT_ANNEX@DF_TAB02",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What effect does the Monetary Policy of Ghana have on the country’s GDP growth? From 1980 to 2015, a retrospective time series analysis",
+      "snippet": "Using data for the annual period series from 1980 to 2015, this article explores the impact of the Bank of Ghana's monetary policy and whether it has a major impact on Ghana's economic growth. The study used the Ordinary Least Square (OLS) retrieval line model, and the retrospective analysis was done using the SPSS statistical software with F-Statistic and T Statistic. GDP was a model-dependent variable in this study, while income, interest rate, and inflation were independent / descriptive variables. The findings showed that at 5% significant level, both interest rates and income were statist",
+      "full_text": "Using data for the annual period series from 1980 to 2015, this article explores the impact of the Bank of Ghana's monetary policy and whether it has a major impact on Ghana's economic growth. The study used the Ordinary Least Square (OLS) retrieval line model, and the retrospective analysis was done using the SPSS statistical software with F-Statistic and T Statistic. GDP was a model-dependent variable in this study, while income, interest rate, and inflation were independent / descriptive variables. The findings showed that at 5% significant level, both interest rates and income were statistically insignificant, whiles inflation was statistically significant at 5% level, in that, a 1% increase in inflation resulted in a 6.9% drop in GDP. The impact of inflation on GDP has been negative. Fisher (1993), Ghosh and Philips (1998), and Neil (1999) are examples of similar verified investigations (2000). The corrected R2 value of 0.365 clearly reveals that the Bank of Ghana's overall banking policy contributed roughly 36.5 percent to economic growth, whereas other unnamed factors accounted for a large difference in GDP of 65.5 percent. As a result, my policy advice is that the Ghanaian central bank employ suitable monetary policy tools to better control inflation and decrease it to a single digit, as well as pay attention to details in other real economic sector indicators to raise the rate of growth. Information on the Bank of Ghana's (BOG) overall financial strategy on policies that contribute to economic stability, Same should be made available to the Ministry of Finance and Economic Planning (MOFEP) and industry stakeholders.",
+      "url": "https://doi.org/10.47191/jefms/v5-i3-10",
+      "_adapter": "crossref",
+      "authors": [
+        "dept",
+        "Dr. Patrick K Ansah"
+      ],
+      "venue": "Journal of Economics, Finance And Management Studies",
+      "publication_date": "2022",
+      "doi": "10.47191/jefms/v5-i3-10",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Redefining GDP and what we mean by growth",
+      "snippet": "Redefining GDP and what we mean by growth",
+      "full_text": null,
+      "url": "https://doi.org/10.64628/aa.crpshwahk",
+      "_adapter": "crossref",
+      "authors": [
+        "Mark Edwards"
+      ],
+      "venue": null,
+      "publication_date": "2025",
+      "doi": "10.64628/aa.crpshwahk",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "GDP growth",
+      "snippet": "GDP growth",
+      "full_text": null,
+      "url": "https://doi.org/10.1787/210808407214",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2008",
+      "doi": "10.1787/210808407214",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "GDP Forecasting using Payments Transaction Data",
+      "snippet": "UK GDP data is published with a lag time of more than a month and it is often adjusted for prior periods. This paper contemplates breaking away from the historic GDP measure to a more dynamic method using Bank Account, Cheque and Credit Card payment transactions as possible predictors for faster and real time measure of GDP value. Historic timeseries data available from various public domain for various payment types, values, volume and nominal UK GDP was used for this analysis. Low Value Payments was selected for simple Ordinary Least Square Simple Linear Regression with mixed results around ",
+      "full_text": "UK GDP data is published with a lag time of more than a month and it is often adjusted for prior periods. This paper contemplates breaking away from the historic GDP measure to a more dynamic method using Bank Account, Cheque and Credit Card payment transactions as possible predictors for faster and real time measure of GDP value. Historic timeseries data available from various public domain for various payment types, values, volume and nominal UK GDP was used for this analysis. Low Value Payments was selected for simple Ordinary Least Square Simple Linear Regression with mixed results around explanatory power of the model and reliability measured through residuals distribution and variance. Future research could potentially expand this work using datasets split by period of economic shocks to further test the OLS method or explore one of General Least Square method or an autoregression on GDP timeseries itself.",
+      "url": "https://arxiv.org/abs/2101.06478v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Arunav Das"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2021-01-16",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2101.06478v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Latent Estimation of GDP, GDP per capita, and Population from Historic and Contemporary Sources",
+      "snippet": "The concepts of Gross Domestic Product (GDP), GDP per capita, and population are central to the study of political science and economics. However, a growing literature suggests that existing measures of these concepts contain considerable error or are based on overly simplistic modeling choices. We address these problems by creating a dynamic, three-dimensional latent trait model, which uses observed information about GDP, GDP per capita, and population to estimate posterior prediction intervals for each of these important concepts. By combining historical and contemporary sources of informati",
+      "full_text": "The concepts of Gross Domestic Product (GDP), GDP per capita, and population are central to the study of political science and economics. However, a growing literature suggests that existing measures of these concepts contain considerable error or are based on overly simplistic modeling choices. We address these problems by creating a dynamic, three-dimensional latent trait model, which uses observed information about GDP, GDP per capita, and population to estimate posterior prediction intervals for each of these important concepts. By combining historical and contemporary sources of information, we are able to extend the temporal and spatial coverage of existing datasets for country-year units back to 1500 A.D through 2015 A.D. and, because the model makes use of multiple indicators of the underlying concepts, we are able to estimate the relative precision of the different country-year estimates. Overall, our latent variable model offers a principled method for incorporating information from different historic and contemporary data sources. It can be expanded or refined as researchers discover new or alternative sources of information about these concepts.",
+      "url": "https://arxiv.org/abs/1706.01099v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Christopher J. Fariss",
+        "Charles D. Crabtree",
+        "Therese Anders",
+        "Zachary M. Jones",
+        "Fridolin J. Linder",
+        "Jonathan N. Markowitz"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-06-04",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1706.01099v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The energy representation of world GDP",
+      "snippet": "The dependence of world GDP on current energy consumption and total energy produced over the previous period and materialized in the form of production infrastructure is studied. The dependence describes empirical data with high accuracy over the entire observation interval 1965-2018.",
+      "full_text": "The dependence of world GDP on current energy consumption and total energy produced over the previous period and materialized in the form of production infrastructure is studied. The dependence describes empirical data with high accuracy over the entire observation interval 1965-2018.",
+      "url": "https://arxiv.org/abs/2006.07938v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Boris M. Dolgonosov"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2020-06-14",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2006.07938v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Why Did the Tariff-Growth Correlation Reverse After 1950?",
+      "snippet": "This paper uses a new database to establish a key finding: high tariffs were associated with fast growth before World War II, while associated with slow growth thereafter.The paper offers some explanations for the sign switch by controlling for novel measures of the changing world economic environment.Rejecting alternative explanations based on changing export market growth or transportation cost declines, it shows how the oft-quoted Sachs-Warner result might be turned on its head in a world environment characterized by a moderately higher level of generalized tariff protection.We confirm the ",
+      "full_text": "This paper uses a new database to establish a key finding: high tariffs were associated with fast growth before World War II, while associated with slow growth thereafter.The paper offers some explanations for the sign switch by controlling for novel measures of the changing world economic environment.Rejecting alternative explanations based on changing export market growth or transportation cost declines, it shows how the oft-quoted Sachs-Warner result might be turned on its head in a world environment characterized by a moderately higher level of generalized tariff protection.We confirm the spirit of recent findings by Rodrik and Rodríguez that postwar tariffs need not be negatively correlated with growth in an unconditional fashion.Just a 4% increase in average tariff rates among trading partners might suffice to reverse any negative relationship between an average country's tariffs and its growth.An increase in own tariffs after 1970 hurt or at least didn't help growth, but it would have helped growth in a world where average trading partners' tariffs were moderately higher.The world environment matters.Leader-country reaction to big world events matters.",
+      "url": "https://openalex.org/W1809559377",
+      "_adapter": "openalex",
+      "authors": [
+        "Michael Andrew Clemens",
+        "Jeffrey Gale Williamson"
+      ],
+      "venue": "National Bureau of Economic Research",
+      "publication_date": "2002",
+      "doi": "10.3386/w9181",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Tariffs and Growth: Heterogeneity by Economic Structure",
+      "snippet": "This paper provides novel empirical evidence that the medium-term relationship between trade liberalization and growth varies substantially with countries’ economic structure. Using a multi-method strategy, I examine per capita income dynamics after tariff reductions in a panel of 161 countries from 1960 to 2019. Baseline local projections reveal a sharp divergence: GDP per capita rises in manufacturer countries following tariff reductions, and notably falls in nonmanufacturers. A local projections difference-in-differences framework strengthens the analysis by accounting for treatment effect ",
+      "full_text": "This paper provides novel empirical evidence that the medium-term relationship between trade liberalization and growth varies substantially with countries’ economic structure. Using a multi-method strategy, I examine per capita income dynamics after tariff reductions in a panel of 161 countries from 1960 to 2019. Baseline local projections reveal a sharp divergence: GDP per capita rises in manufacturer countries following tariff reductions, and notably falls in nonmanufacturers. A local projections difference-in-differences framework strengthens the analysis by accounting for treatment effect heterogeneity and variation in treatment timing. Finally, I study tariff reductions during the WTO-era reform period (1986 to 1994), a policy episode that historical evidence supports as plausibly exogenous, providing complementary evidence that confirms the observed heterogeneity. An exploration of mechanisms using local projections links these patterns to shifts in productivity, capital stocks, and manufacturing shares in GDP, consistent with theoretical expectations. The findings suggest that rising protectionism in manufacturer countries may be harmful, while further liberalization in nonmanufacturers could have unintended consequences.",
+      "url": "https://openalex.org/W4402476329",
+      "_adapter": "openalex",
+      "authors": [
+        "Mateo Hoyos"
+      ],
+      "venue": "SocArXiv (OSF Preprints)",
+      "publication_date": "2024",
+      "doi": "10.31235/osf.io/v75aw_v2",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Economic growth and tariff levels in the United States: A Granger casality analysis",
+      "snippet": "The objective of this research is to investigate the causal relationship between economic growth and tariff levels (i.e., levels of trade protection) in the United States. This research empirically examines the relationship between trade protectionism and economic growth using US tariff levels and GDP growth data for the period of 1821-2017. By employing Granger causality analysis, this research finds that, for the United States, GDP growth unidirectionally affects nominal tariff levels over the short term. Generalizing the results, this research provides empirical evidence that economic growt",
+      "full_text": "The objective of this research is to investigate the causal relationship between economic growth and tariff levels (i.e., levels of trade protection) in the United States. This research empirically examines the relationship between trade protectionism and economic growth using US tariff levels and GDP growth data for the period of 1821-2017. By employing Granger causality analysis, this research finds that, for the United States, GDP growth unidirectionally affects nominal tariff levels over the short term. Generalizing the results, this research provides empirical evidence that economic growth influences the level of trade protection in the United States. Economic conditions, at least in the United States, do in fact affect its trade policies, though US trade policies for either protectionism or liberalization have little impact on the nation’s economic performance (one-way causation from economic growth to trade protectionism in the US). Lastly, this research provides important theoretical and policy implications regarding hegemonic stability theory and recent economic conflicts over tariffs (in March/April 2018 and thereafter) of the United States with China and the European Union.",
+      "url": "https://openalex.org/W2910166808",
+      "_adapter": "openalex",
+      "authors": [
+        "Hyung Kim"
+      ],
+      "venue": "JOURNAL OF INTERNATIONAL STUDIES",
+      "publication_date": "2018",
+      "doi": "10.14254/2071-8330.2018/11-4/6",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:34+0100"
+}

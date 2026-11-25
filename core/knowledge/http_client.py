@@ -38,6 +38,12 @@ MAX_RATE_LIMIT_RETRIES = 3
 MAX_SERVER_ERROR_RETRIES = 3
 SERVER_ERROR_CODES = frozenset({502, 503, 504})
 DEFAULT_429_FALLBACK_SEC = 3.0
+# S12 (§3.7 "unbounded Retry-After"): the longest wait honoured inside one
+# request. A longer Retry-After (OpenAlex sent 57 688 s) no longer sleeps the
+# adapter thread; the response is returned and the host is skipped for the
+# Retry-After period, at most MAX_RETRY_AFTER_SKIP_SEC.
+MAX_RETRY_WAIT_SEC = 10.0
+MAX_RETRY_AFTER_SKIP_SEC = 3600
 OPENALEX_HOST = "api.openalex.org"
 DEFAULT_EGRESS_POLICY = EgressPolicy()
 
@@ -65,7 +71,15 @@ def _read_bounded_response(
     resp: requests.Response,
     *,
     max_bytes: int,
+    truncate: bool = False,
 ) -> bytes:
+    """Read at most ``max_bytes``; over the limit raise, or with ``truncate`` keep the head.
+
+    ``truncate`` (S12) is for HTML page fetches: a 650 KB Wikipedia article
+    used to fail outright against the 512 KB limit. API callers keep the
+    raise, since a cut JSON body is not usable. ``resp.qube_truncated`` is
+    set when the body was cut.
+    """
     if max_bytes <= 0:
         return resp.content
     chunks: list[bytes] = []
@@ -73,12 +87,18 @@ def _read_bounded_response(
     for chunk in resp.iter_content(chunk_size=65536):
         if not chunk:
             continue
-        total += len(chunk)
-        if total > max_bytes:
+        if total + len(chunk) > max_bytes:
+            if not truncate:
+                resp.close()
+                raise EgressPolicyError(
+                    f"Response exceeds max_fetch_bytes ({max_bytes} bytes)"
+                )
+            chunks.append(chunk[: max_bytes - total])
+            total = max_bytes
             resp.close()
-            raise EgressPolicyError(
-                f"Response exceeds max_fetch_bytes ({max_bytes} bytes)"
-            )
+            resp.qube_truncated = True
+            break
+        total += len(chunk)
         chunks.append(chunk)
     content = b"".join(chunks)
     resp._content = content
@@ -166,6 +186,31 @@ def server_error_backoff_sec(attempt: int) -> float:
 def server_error_wait_sec(resp: requests.Response, attempt: int) -> float:
     """Prefer ``Retry-After`` on server errors; fall back to exponential backoff."""
     return retry_after_seconds(resp.headers) or server_error_backoff_sec(attempt)
+
+
+def _too_long_to_wait(
+    resp: requests.Response,
+    wait_s: float,
+    *,
+    hostname: str,
+    metrics_host: str,
+    reason: str,
+) -> bool:
+    """True (and the host is skipped for a while) when ``wait_s`` exceeds the bound."""
+    if wait_s <= MAX_RETRY_WAIT_SEC:
+        return False
+    skip_s = int(min(MAX_RETRY_AFTER_SKIP_SEC, wait_s))
+    record_http_retry_reason(f"{metrics_host}:{resp.status_code}_retry_after_too_long_{wait_s:.0f}s")
+    _record_circuit_outcome(hostname, resp.status_code)
+    mark_host_negative(metrics_host, reason=reason, ttl_seconds=skip_s)
+    logger.warning(
+        "[HTTP] %s asked to wait %.0f s (HTTP %s); not waiting, skipping the host for %d s",
+        metrics_host,
+        wait_s,
+        resp.status_code,
+        skip_s,
+    )
+    return True
 
 
 def _sleep(seconds: float) -> None:
@@ -277,9 +322,14 @@ def knowledge_get(
     is_retry: bool = False,
     egress_policy: EgressPolicy | None = None,
     max_response_bytes: int | None = None,
+    truncate_oversize: bool = False,
     **kwargs: Any,
 ) -> requests.Response:
-    """Rate-limited ``requests.get`` with metrics and header-aware retries."""
+    """Rate-limited ``requests.get`` with metrics and header-aware retries.
+
+    ``truncate_oversize`` keeps the first ``max_response_bytes`` of a larger
+    body instead of raising (HTML page fetches only, S12).
+    """
     _ = is_retry  # Retries are tracked internally; external flag is ignored.
     try:
         url, kwargs, policy = _prepare_request(url, kwargs, egress_policy=egress_policy)
@@ -321,7 +371,7 @@ def knowledge_get(
             raise
 
         if byte_limit > 0:
-            _read_bounded_response(resp, max_bytes=byte_limit)
+            _read_bounded_response(resp, max_bytes=byte_limit, truncate=truncate_oversize)
 
         if (
             hostname == OPENALEX_HOST
@@ -349,6 +399,10 @@ def knowledge_get(
                 _record_circuit_outcome(hostname, resp.status_code)
                 return resp
             wait_s = retry_after_seconds(resp.headers) or DEFAULT_429_FALLBACK_SEC
+            if _too_long_to_wait(
+                resp, wait_s, hostname=hostname, metrics_host=metrics_host, reason="rate_limited"
+            ):
+                return resp
             record_http_retry_reason(
                 f"{metrics_host}:429_retry_after_{wait_s:.1f}s"
             )
@@ -361,6 +415,10 @@ def knowledge_get(
                 _record_circuit_outcome(hostname, resp.status_code)
                 return resp
             wait_s = server_error_wait_sec(resp, server_error_attempts)
+            if _too_long_to_wait(
+                resp, wait_s, hostname=hostname, metrics_host=metrics_host, reason="server_unavailable"
+            ):
+                return resp
             record_http_retry_reason(
                 f"{metrics_host}:{resp.status_code}_backoff_{wait_s:.1f}s"
             )
@@ -430,6 +488,10 @@ def knowledge_post(
                 _record_circuit_outcome(hostname, resp.status_code)
                 return resp
             wait_s = retry_after_seconds(resp.headers) or DEFAULT_429_FALLBACK_SEC
+            if _too_long_to_wait(
+                resp, wait_s, hostname=hostname, metrics_host=metrics_host, reason="rate_limited"
+            ):
+                return resp
             record_http_retry_reason(
                 f"{metrics_host}:429_retry_after_{wait_s:.1f}s"
             )
@@ -442,6 +504,10 @@ def knowledge_post(
                 _record_circuit_outcome(hostname, resp.status_code)
                 return resp
             wait_s = server_error_wait_sec(resp, server_error_attempts)
+            if _too_long_to_wait(
+                resp, wait_s, hostname=hostname, metrics_host=metrics_host, reason="server_unavailable"
+            ):
+                return resp
             record_http_retry_reason(
                 f"{metrics_host}:{resp.status_code}_backoff_{wait_s:.1f}s"
             )

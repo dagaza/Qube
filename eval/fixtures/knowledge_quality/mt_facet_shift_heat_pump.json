@@ -1,0 +1,283 @@
+{
+  "schema_version": 2,
+  "id": "mt_facet_shift_heat_pump",
+  "path": "general_web",
+  "category": "multi_turn",
+  "description": "Facet shift with pronoun 'one'.",
+  "query_raw": "@[tool:internet] And how much does it cost to install one?",
+  "query_clean": "And how much does it cost to install one?",
+  "retrieval_query": "And how much does it cost to install one?",
+  "standalone_question": "How much does it cost to install a heat pump?",
+  "gold_subject": "heat pump",
+  "gold_facet": "installation cost",
+  "budget": 3,
+  "history": [
+    {
+      "role": "user",
+      "content": "How does a heat pump work?"
+    },
+    {
+      "role": "assistant",
+      "content": "A heat pump moves heat from outside air or ground into your home using a refrigerant cycle, and can reverse to cool in summer."
+    }
+  ],
+  "captured_at": "2026-11-23T19:57:01+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "And how much does it cost to install one?"
+    },
+    "standalone": {
+      "duckduckgo": "How much does it cost to install a heat pump?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Level 2 EV Charger Installation Cost 2026: What You'll Actually Pay ...",
+      "snippet": "Level 2 EV charger installation costs $400 to $1,200 for most homeowners. Covers NEMA 14-50 outlet costs, electrician labor, panel upgrades, and how to claim the federal tax credit.",
+      "url": "https://thegarage.guide/guides/ev-charger-installation",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Much Does It Cost to Install an EV Charger at Home?",
+      "snippet": "Installing a Level 2 charger at home typically costs $800 to $3,000 in 2026, but the final number depends heavily on your electrical panel and how far the charger sits from it. This guide breaks down every cost driver so you can budget accurately and spot an inflated quote.",
+      "url": "https://evseekers.com/how-much-does-it-cost-to-install-an-ev-charger-at-home/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Cost to Install a Tesla Charger at Home: 2026 Price Breakdown",
+      "snippet": "Full breakdown of the cost to install a Tesla charger at home in 2026: equipment, electrician, panel upgrades, permits, and per-mile charging costs.",
+      "url": "https://autoedgeview.com/charging-guides/cost-install-tesla-charger-home",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Typical EV Charging Installation Prices in 2026 | homeyou",
+      "snippet": "EV charging installation in 2026 covers pricing from $949 to $2,497 with an average of $1,592. See cost factors and tips for hiring wisely.",
+      "url": "https://www.homeyou.com/ev-charging-installation-cost",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "EV Charger Installation Cost (2026 Pricing Guide)",
+      "snippet": "How much does EV charger installation cost in 2026? Residential $1,200-$3,500, commercial $8k-$100k+. Full cost breakdown, rebates, and 30C tax credit.",
+      "url": "https://evchargeracademy.com/ev-charger-installation-cost",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Much Does EV Charger Installation Really Cost?",
+      "snippet": "Cost breakdown: Electrician labor: $200-$800 (2-4 hours at $50-$150/hr) Materials (wire, breaker, conduit): $150-$400 Permit: $50-$200 Key variable: Distance from your panel to the charger. Every foot of wire run adds $6-$12. A charger 10 feet from your panel costs much less than one 50 feet away on the other side of the garage.",
+      "url": "https://evchargerchoice.com/articles/ev-charger-installation-cost.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "EV Charger Installation Cost Calculator 2026: Level 1 and Level 2 Home ...",
+      "snippet": "How Much Does It Cost to Install a Home EV Charger in 2026? Installing a Level 2 home EV charger typically costs $1,200 to $2,500 including the charger, or about $1,750 for a 40A plug-in charger 25 feet from the panel. The electrical work alone usually runs $1,000 to $1,500.",
+      "url": "https://garagecalculator.com/ev-charger-installation-cost-calculator/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Much Does It Cost to Install an EV Charger at Home? (2026 Guide)",
+      "snippet": "Learn how much it costs to install an EV charger at home. Discover average installation prices, cost factors, Level 2 charger requirements, and ways to save.",
+      "url": "https://www.setecpower.com/blogs/home-ev-charger-installation-cost-2026-guide.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Much Does a Heat Pump Cost? | 2026 Price Guide - Carrier",
+      "snippet": "Wondering how much does a heat pump cost in 2026? Explore current heat pump prices, installation factors, and replacement costs to find the right solution for your home comfort.",
+      "url": "https://www.carrier.com/us/en/residential/hvac-resources/heat-pumps/how-much-does-a-heat-pump-cost/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Much Does a Heat Pump Cost? (2026 Pricing) - This Old House",
+      "snippet": "A heat pump costs an average of $8,042 to install, according to our 2026 HVAC survey of 1,000 homeowners. What you pay depends on the equipment type, capacity, and efficiency rating. Unlike furnaces, boilers, and electric heaters, heat pumps deliver energy-efficient heating and cooling from a single system.",
+      "url": "https://thisoldhouse.com/heating-cooling/heat-pump-cost",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Cost to Install Heat Pump Guide (2026) - ConsumerAffairs",
+      "snippet": "Installing a heat pump typically costs between $4,000 and $14,000, but the cost can range from $2,000 up to $40,000 or more, depending on system type, home size and installation complexity.",
+      "url": "https://www.consumeraffairs.com/homeowners/heat-pump-installation-cost.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Much Does It Cost to Install a Heat Pump? [2025 Data]",
+      "snippet": "Cost Overview: Heat pump installation costs between $4,236 and $7,942, with most homeowners paying around $6,087 for your new system. Your heat pump type and capacity determine your final total, with geothermal and solar systems costing more than air source models.",
+      "url": "https://www.homeadvisor.com/cost/heating-and-cooling/install-a-heat-pump/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Heat Pump Installation Cost by System Type | HVACBase",
+      "snippet": "Heat Pump Installation Cost by System Type A ducted 3-ton, 15-SEER heat pump costs about $7,450 to $19,250 installed; geothermal about $7,050 to $14,450 a ton. Federal tax credits ended after 2025.",
+      "url": "https://www.hvacbase.org/heat-pump-cost-to-install",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Cost to Install a Heat Pump: What You'll Actually Pay",
+      "snippet": "Here's the real cost to install heat pump systems in 2026 — by type, home size, and hidden line items. Current rebates and what's changed.",
+      "url": "https://acarainstitute.org/cost-to-install-heat-pump/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Much Does a Heat Pump Cost? — 2026 Installation Price Guide ...",
+      "snippet": "Heat pump installation costs from $3,000 to $30,000 depending on system type. See cost ranges, what affects pricing, panel upgrade costs, and rebate offsets.",
+      "url": "https://heatpumplocator.com/heat-pump-cost-guide",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Heat Pump Cost (2026) | Prices, Installation & Savings",
+      "snippet": "How Much Does a Heat Pump Cost by Type? Ducted Heat Pumps: $6,000-$25,000 Ducted heat pumps are air-source heat pumps that connect to a home's existing ductwork, replacing a furnace and/or an air conditioner to provide whole-home heating and cooling. Ducted heat pump installation or replacement typically falls between $6,000 and $25,000.",
+      "url": "https://www.bryant.com/en/us/products/heat-pumps/heat-pump-cost/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

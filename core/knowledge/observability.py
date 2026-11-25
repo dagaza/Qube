@@ -45,6 +45,7 @@ class RetrievalTrace:
     context_fingerprint: Mapping[str, Any] | None = None
     pipeline_stages: tuple[Mapping[str, Any], ...] = ()
     capability_steps: tuple[Mapping[str, Any], ...] = ()
+    sufficiency: str = "unscored"
 
 
 def _serialize_evidence(obj: EvidenceObject) -> dict[str, Any]:
@@ -110,6 +111,7 @@ def build_retrieval_trace(
         context_fingerprint=context_fingerprint,
         pipeline_stages=tuple(pipeline_stages or ()),
         capability_steps=tuple(capability_steps or ()),
+        sufficiency=str(getattr(bundle, "sufficiency", "unscored") or "unscored"),
     )
 
 
@@ -138,6 +140,7 @@ def serialize_retrieval_trace(
         "coverage": trace.coverage,
         "coverage_rationale": trace.coverage_rationale,
         "stop_reason": trace.stop_reason,
+        "sufficiency": trace.sufficiency,
         "latency_ms": trace.latency_ms,
         "warnings": list(trace.warnings),
         "sources": [_serialize_evidence(s) for s in sources],
@@ -169,6 +172,35 @@ def record_retrieval_trace(
         payload = serialize_retrieval_trace(trace, sources=sources)
         logging.getLogger(WEB_SEARCH_AUDIT_LOGGER_NAME).info(
             json.dumps(payload, ensure_ascii=False, default=str)
+        )
+    except Exception:
+        pass
+
+
+CITATION_GROUNDING_EVENT = "citation_grounding"
+
+
+def record_citation_grounding_event(payload: Mapping[str, Any]) -> None:
+    """Plan S11: append the post-stream grounding scores next to the turn's trace.
+
+    Same JSONL sink and opt-in as ``record_retrieval_trace``; joined to the
+    trace by ``session_id`` / ``turn_id`` in ``retrieval_trace_reader``.
+    """
+    if not web_search_audit_log_enabled():
+        return
+    try:
+        body = {"event": CITATION_GROUNDING_EVENT, "ts": time.time(), **dict(payload)}
+        from core.web_search_audit import web_search_audit_redact_enabled
+
+        if web_search_audit_redact_enabled():
+            # Answer text stays out of a redacted audit log; scores and ids remain.
+            body["grounding_scores"] = [
+                {k: v for k, v in row.items() if k != "preview"}
+                for row in body.get("grounding_scores") or []
+            ]
+            body["previews_redacted"] = True
+        logging.getLogger(WEB_SEARCH_AUDIT_LOGGER_NAME).info(
+            json.dumps(body, ensure_ascii=False, default=str)
         )
     except Exception:
         pass

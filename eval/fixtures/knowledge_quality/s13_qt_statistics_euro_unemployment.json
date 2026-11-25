@@ -1,0 +1,604 @@
+{
+  "schema_version": 2,
+  "id": "s13_qt_statistics_euro_unemployment",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: query-type routing (statistics) on an economics route: adds US Census, reorders.",
+  "query_raw": "@[tool:evidence] What is the current unemployment rate in the euro area?",
+  "query_clean": "What is the current unemployment rate in the euro area?",
+  "retrieval_query": "What is the current unemployment rate in the euro area?",
+  "standalone_question": "What is the current unemployment rate in the euro area?",
+  "gold_subject": "euro area unemployment",
+  "gold_facet": "current rate",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:10:15+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "bls": 3,
+    "world_bank": 3,
+    "eurostat": 3,
+    "oecd": 3,
+    "us_census": 3,
+    "repec": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "bls": "What is the current unemployment rate in the euro area",
+      "world_bank": "What is the current unemployment rate in the euro area",
+      "eurostat": "What is the current unemployment rate in the euro area",
+      "oecd": "What is the current unemployment rate in the euro area",
+      "us_census": "What is the current unemployment rate in the euro area",
+      "repec": "What is the current unemployment rate in the euro area",
+      "crossref": "What is the current unemployment rate in the euro area",
+      "arxiv": "What is the current unemployment rate in the euro area",
+      "openalex": "What is the current unemployment rate in the euro area"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "repec",
+        "world_bank",
+        "eurostat",
+        "oecd",
+        "bls",
+        "openalex"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "5.1.1_GEO.TOTA.AID.EC — International aid disbursed to total education, European Commission to Georgia (USD million)",
+      "snippet": "International concessional aid disbursed by the reporting development partner to the total education sector in the specific developing country. Targets indicate scheduled or projected aid. Accounted aid includes activities, projects, technical cooperation and sector and budget support (20%), as it was reported by the donor to the Global Partnership for Education.",
+      "full_text": "International concessional aid disbursed by the reporting development partner to the total education sector in the specific developing country. Targets indicate scheduled or projected aid. Accounted aid includes activities, projects, technical cooperation and sector and budget support (20%), as it was reported by the donor to the Global Partnership for Education.",
+      "url": "https://data.worldbank.org/indicator/5.1.1_GEO.TOTA.AID.EC",
+      "_adapter": "world_bank",
+      "authors": [
+        "The 2011 Monitoring Exercise on Aid Effectiveness in the Education Sector was produced by the Global Partnership for Education in parallel to the OECD’s 2011 Survey on Monitoring the Paris Declaration. Through this exercise participating donors reported on the international aid allocated and projected to specific developing countries. Data were later validated and/or updated when preparing the GPE Results Report in 2012. Most of the figures were reported in 2011 and in USD. When it was not the case, currencies were converted to USD. Data are relative to a calendar year, unless it is specified otherwise in the country notes. For further details in this 2012 Monitoring Exercise, please refer to the following web site: http://www.globalpartnership.org/our-work/areas-of-focus/aid-effectiveness/2011-monitoring-exercise-on-aid-effectiveness-2/"
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "5.1.1_GEO.TOTA.AID.EC",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "5.1.1_GNB.TOTA.AID.ADPP.EU — International aid disbursed to total education, ADPP (European Union) to Guinea Bissau (USD million)",
+      "snippet": "International concessional aid disbursed by the reporting development partner to the total education sector in the specific developing country. Targets indicate scheduled or projected aid. Accounted aid includes activities, projects, technical cooperation and sector and budget support (20%), as it was reported by the donor to the Global Partnership for Education.",
+      "full_text": "International concessional aid disbursed by the reporting development partner to the total education sector in the specific developing country. Targets indicate scheduled or projected aid. Accounted aid includes activities, projects, technical cooperation and sector and budget support (20%), as it was reported by the donor to the Global Partnership for Education.",
+      "url": "https://data.worldbank.org/indicator/5.1.1_GNB.TOTA.AID.ADPP.EU",
+      "_adapter": "world_bank",
+      "authors": [
+        "The 2011 Monitoring Exercise on Aid Effectiveness in the Education Sector was produced by the Global Partnership for Education in parallel to the OECD’s 2011 Survey on Monitoring the Paris Declaration. Through this exercise participating donors reported on the international aid allocated and projected to specific developing countries. Data were later validated and/or updated when preparing the GPE Results Report in 2012. Most of the figures were reported in 2011 and in USD. When it was not the case, currencies were converted to USD. Data are relative to a calendar year, unless it is specified otherwise in the country notes. For further details in this 2012 Monitoring Exercise, please refer to the following web site: http://www.globalpartnership.org/our-work/areas-of-focus/aid-effectiveness/2011-monitoring-exercise-on-aid-effectiveness-2/"
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "5.1.1_GNB.TOTA.AID.ADPP.EU",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "5.1.1_KGZ.TOTA.AID.ADPP.EU — International aid disbursed to total education, European Commission to Kyrgyzstan (USD million)",
+      "snippet": "International concessional aid disbursed by the reporting development partner to the total education sector in the specific developing country. Targets indicate scheduled or projected aid. Accounted aid includes activities, projects, technical cooperation and sector and budget support (20%), as it was reported by the donor to the Global Partnership for Education.",
+      "full_text": "International concessional aid disbursed by the reporting development partner to the total education sector in the specific developing country. Targets indicate scheduled or projected aid. Accounted aid includes activities, projects, technical cooperation and sector and budget support (20%), as it was reported by the donor to the Global Partnership for Education.",
+      "url": "https://data.worldbank.org/indicator/5.1.1_KGZ.TOTA.AID.ADPP.EU",
+      "_adapter": "world_bank",
+      "authors": [
+        "The 2011 Monitoring Exercise on Aid Effectiveness in the Education Sector was produced by the Global Partnership for Education in parallel to the OECD’s 2011 Survey on Monitoring the Paris Declaration. Through this exercise participating donors reported on the international aid allocated and projected to specific developing countries. Data were later validated and/or updated when preparing the GPE Results Report in 2012. Most of the figures were reported in 2011 and in USD. When it was not the case, currencies were converted to USD. Data are relative to a calendar year, unless it is specified otherwise in the country notes. For further details in this 2012 Monitoring Exercise, please refer to the following web site: http://www.globalpartnership.org/our-work/areas-of-focus/aid-effectiveness/2011-monitoring-exercise-on-aid-effectiveness-2/"
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "5.1.1_KGZ.TOTA.AID.ADPP.EU",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_CBCR@DF_CBCRIII — Country-by-country reporting (CbCR) - Aggregate totals by the effective tax rate of the MNE group and by tax jurisdiction  - Corporate tax statistics",
+      "snippet": "Country-by-country reporting (CbCR) - Aggregate totals by the effective tax rate of the MNE group and by tax jurisdiction  - Corporate tax statistics",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_CBCR@DF_CBCRIII&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CTP.TPS,DSD_CBCR@DF_CBCRIII",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_CBCR@DF_CBCRIV — Country-by-country reporting (CbCR) - Aggregate totals by the effective tax rate of the MNE sub-group and by tax jurisdiction - Corporate tax statistics",
+      "snippet": "Country-by-country reporting (CbCR) - Aggregate totals by the effective tax rate of the MNE sub-group and by tax jurisdiction - Corporate tax statistics",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_CBCR@DF_CBCRIV&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CTP.TPS,DSD_CBCR@DF_CBCRIV",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_CBCR@DF_CBCRVI — Country-by-country reporting (CbCR) - Aggregate totals by the size of the MNE group and by tax jurisdictions - Corporate tax statistics",
+      "snippet": "Country-by-country reporting (CbCR) - Aggregate totals by the size of the MNE group and by tax jurisdictions - Corporate tax statistics",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_CBCR@DF_CBCRVI&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CTP.TPS,DSD_CBCR@DF_CBCRVI",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Inquiry into the future monetary policy framework : report of the Finance and Expenditure Committee ; Forty-eighth Parliament (Charles Chauvel MP, Chairperson)",
+      "snippet": "Inquiry into the future monetary policy framework : report of the Finance and Expenditure Committee ; Forty-eighth Parliament (Charles Chauvel MP, Chairperson). [Wellington] : New Zealand House of Representatives — 2008 — Geldpolitik, Monetary policy, Inflationssteuerung, Inflation targeting, Wirkungsanalyse, Impact assessment",
+      "full_text": null,
+      "url": "http://www.parliament.nz/NR/rdonlyres/51084E05-C9EC-4C7F-889B-5F1F52A5A8CC/93817/DBSCH_SCR_4210_6281.pdf",
+      "_adapter": "repec",
+      "authors": [
+        "Chauvel, Charles"
+      ],
+      "venue": "[Wellington] : New Zealand House of Representatives",
+      "publication_date": "2008",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "working_paper",
+      "repec_handle": null,
+      "econbiz_id": "10003784077",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "repec",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Does the \"new economy\" measure up to the great inventions of the past?",
+      "snippet": "Does the \"new economy\" measure up to the great inventions of the past?. NBER working paper series ; 7833 — 2000 — Produktivität, Productivity, Wirtschaftswachstum, Economic growth, Konjunktur, Business cycle",
+      "full_text": null,
+      "url": "http://papers.nber.org/papers/W7833.pdf",
+      "_adapter": "repec",
+      "authors": [
+        "Gordon, Robert J."
+      ],
+      "venue": "NBER working paper series ; 7833",
+      "publication_date": "2000",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "working_paper",
+      "repec_handle": null,
+      "econbiz_id": "10001499821",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "repec",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Strategic trade policy with endogenous choice of quality and asymmetric costs",
+      "snippet": "Strategic trade policy with endogenous choice of quality and asymmetric costs. NBER working paper series ; 7536 — 2000 — Strategische Handelspolitik, Strategic trade policy, Nichtpreiswettbewerb, Non-price competition, Produktqualität, Product quality",
+      "full_text": null,
+      "url": "http://papers.nber.org/papers/W7536.pdf",
+      "_adapter": "repec",
+      "authors": [
+        "Zhou, Dongsheng",
+        "Spencer, Barbara J.",
+        "Vertinsky, Ilan B."
+      ],
+      "venue": "NBER working paper series ; 7536",
+      "publication_date": "2000",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "working_paper",
+      "repec_handle": null,
+      "econbiz_id": "10001450317",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "repec",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The structuralist perspective on real exchange rate, share price level, and employment path: What room is left for money?",
+      "snippet": "The structuralist perspective on real exchange rate, share price level, and employment path: What room is left for money?",
+      "full_text": null,
+      "url": "https://doi.org/10.4324/9780203329580-15",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Monetary Policy and Unemployment",
+      "publication_date": "2004",
+      "doi": "10.4324/9780203329580-15",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Unemployment and competitiveness: Euro area",
+      "snippet": "Unemployment and competitiveness: Euro area",
+      "full_text": null,
+      "url": "https://doi.org/10.1787/888933220983",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2015",
+      "doi": "10.1787/888933220983",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Unemployment and competitiveness: Euro area",
+      "snippet": "Unemployment and competitiveness: Euro area",
+      "full_text": null,
+      "url": "https://doi.org/10.1787/888933049116",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2014",
+      "doi": "10.1787/888933049116",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Multi-messenger Observations of a Binary Neutron Star Merger",
+      "snippet": "On 2017 August 17 a binary neutron star coalescence candidate (later designated GW170817) with merger time 12:41:04 UTC was observed through gravitational waves by the Advanced LIGO and Advanced Virgo detectors. The Fermi Gamma-ray Burst Monitor independently detected a gamma-ray burst (GRB 170817A) with a time delay of $\\sim$1.7 s with respect to the merger time. From the gravitational-wave signal, the source was initially localized to a sky region of 31 deg$^2$ at a luminosity distance of $40^{+8}_{-8}$ Mpc and with component masses consistent with neutron stars. The component masses were la",
+      "full_text": "On 2017 August 17 a binary neutron star coalescence candidate (later designated GW170817) with merger time 12:41:04 UTC was observed through gravitational waves by the Advanced LIGO and Advanced Virgo detectors. The Fermi Gamma-ray Burst Monitor independently detected a gamma-ray burst (GRB 170817A) with a time delay of $\\sim$1.7 s with respect to the merger time. From the gravitational-wave signal, the source was initially localized to a sky region of 31 deg$^2$ at a luminosity distance of $40^{+8}_{-8}$ Mpc and with component masses consistent with neutron stars. The component masses were later measured to be in the range 0.86 to 2.26 Msun. An extensive observing campaign was launched across the electromagnetic spectrum leading to the discovery of a bright optical transient (SSS17a, now with the IAU identification of AT 2017gfo) in NGC 4993 (at $\\sim$40 Mpc) less than 11 hours after the merger by the One-Meter, Two Hemisphere (1M2H) team using the 1 m Swope Telescope. The optical transient was independently detected by multiple teams within an hour. Subsequent observations targeted the object and its environment. Early ultraviolet observations revealed a blue transient that faded within 48 hours. Optical and infrared observations showed a redward evolution over $\\sim$10 days. Following early non-detections, X-ray and radio emission were discovered at the transient's position $\\sim$9 and $\\sim$16 days, respectively, after the merger. Both the X-ray and radio emission likely arise from a physical process that is distinct from the one that generates the UV/optical/near-infrared emission. No ultra-high-energy gamma-rays and no neutrino candidates consistent with the source were found in follow-up searches. (Abridged)",
+      "url": "https://arxiv.org/abs/1710.05833v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "LIGO Scientific Collaboration",
+        "Virgo Collaboration",
+        "Fermi GBM",
+        "INTEGRAL",
+        "IceCube Collaboration",
+        "AstroSat Cadmium Zinc Telluride Imager Team",
+        "IPN Collaboration",
+        "The Insight-Hxmt Collaboration",
+        "ANTARES Collaboration",
+        "The Swift Collaboration",
+        "AGILE Team",
+        "The 1M2H Team",
+        "The Dark Energy Camera GW-EM Collaboration",
+        "the DES Collaboration",
+        "The DLT40 Collaboration",
+        "GRAWITA",
+        ":",
+        "GRAvitational Wave Inaf TeAm",
+        "The Fermi Large Area Telescope Collaboration",
+        "ATCA",
+        ":",
+        "Australia Telescope Compact Array",
+        "ASKAP",
+        ":",
+        "Australian SKA Pathfinder",
+        "Las Cumbres Observatory Group",
+        "OzGrav",
+        "DWF",
+        "AST3",
+        "CAASTRO Collaborations",
+        "The VINROUGE Collaboration",
+        "MASTER Collaboration",
+        "J-GEM",
+        "GROWTH",
+        "JAGWAR",
+        "Caltech- NRAO",
+        "TTU-NRAO",
+        "NuSTAR Collaborations",
+        "Pan-STARRS",
+        "The MAXI Team",
+        "TZAC Consortium",
+        "KU Collaboration",
+        "Nordic Optical Telescope",
+        "ePESSTO",
+        "GROND",
+        "Texas Tech University",
+        "SALT Group",
+        "TOROS",
+        ":",
+        "Transient Robotic Observatory of the South Collaboration",
+        "The BOOTES Collaboration",
+        "MWA",
+        ":",
+        "Murchison Widefield Array",
+        "The CALET Collaboration",
+        "IKI-GW Follow-up Collaboration",
+        "H. E. S. S. Collaboration",
+        "LOFAR Collaboration",
+        "LWA",
+        ":",
+        "Long Wavelength Array",
+        "HAWC Collaboration",
+        "The Pierre Auger Collaboration",
+        "ALMA Collaboration",
+        "Euro VLBI Team",
+        "Pi of the Sky Collaboration",
+        "The Chandra Team at McGill University",
+        "DFN",
+        ":",
+        "Desert Fireball Network",
+        "ATLAS",
+        "High Time Resolution Universe Survey",
+        "RIMAS",
+        "RATIR",
+        "SKA South Africa/MeerKAT"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-10-16",
+      "doi": "10.3847/2041-8213/aa91c9",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1710.05833v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Network topology of the Euro Area interbank market",
+      "snippet": "The rapidly increasing availability of large amounts of granular financial data, paired with the advances of big data related technologies induces the need of suitable analytics that can represent and extract meaningful information from such data. In this paper we propose a multi-layer network approach to distill the Euro Area (EA) banking system in different distinct layers. Each layer of the network represents a specific type of financial relationship between banks, based on various sources of EA granular data collections. The resulting multi-layer network allows one to describe, analyze and",
+      "full_text": "The rapidly increasing availability of large amounts of granular financial data, paired with the advances of big data related technologies induces the need of suitable analytics that can represent and extract meaningful information from such data. In this paper we propose a multi-layer network approach to distill the Euro Area (EA) banking system in different distinct layers. Each layer of the network represents a specific type of financial relationship between banks, based on various sources of EA granular data collections. The resulting multi-layer network allows one to describe, analyze and compare the topology and structure of EA banks from different perspectives, eventually yielding a more complete picture of the financial market. This granular information representation has the potential to enable researchers and practitioners to better apprehend financial system dynamics as well as to support financial policies to manage and monitor financial risk from a more holistic point of view.",
+      "url": "https://arxiv.org/abs/2502.15611v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Ilias Aarab",
+        "Thomas Gottron"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-02-21",
+      "doi": "10.1007/978-3-031-63630-1_1",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2502.15611v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Impact of Banking Competition on Interest Rates for Household Consumption Loans in the Euro Area",
+      "snippet": "This paper investigates the impact of banking competition on interest rates for household consumption loans in the Euro Area from 2014 to 2020. Utilizing a panel data regression approach, we analyze how various factors, including local banking competition, influence the interest rates set by banks across 13 Euro-area countries. Our key independent variable, local banking competition, is measured by the number of commercial bank branches per 100,000 adults. Control variables include the ECB interest rate, euro exchange rate, real GDP growth rate, inflation rate, unemployment rate, bank business",
+      "full_text": "This paper investigates the impact of banking competition on interest rates for household consumption loans in the Euro Area from 2014 to 2020. Utilizing a panel data regression approach, we analyze how various factors, including local banking competition, influence the interest rates set by banks across 13 Euro-area countries. Our key independent variable, local banking competition, is measured by the number of commercial bank branches per 100,000 adults. Control variables include the ECB interest rate, euro exchange rate, real GDP growth rate, inflation rate, unemployment rate, bank business volumes, and country risk. We address potential endogeneity and heterogeneity biases and employ both Fixed Effects and Hausman-Taylor models to ensure robust results. Our findings indicate that higher local banking competition is associated with a slight increase in interest rates for household loans. Additionally, factors such as ECB interest rate, country risk, and euro appreciation significantly affect interest rates. The results offer insights into how competitive dynamics in the banking sector influence borrowing costs for households, providing valuable implications for policymakers and financial institutions in the Euro Area.",
+      "url": "https://arxiv.org/abs/2411.17723v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Alexander Rom"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-11-20",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2411.17723v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Towards shared unemployment insurance in the euro area",
+      "snippet": "The divergences developed within the euro area represent the main threat to the existence of the single currency and to the stability of the EU as a whole. Without proper automatic stabilisers, a monetary union can only deliver suboptimal results and may not even be sustainable. In the recent years, common unemployment insurance has been examined as one of the possible ways to improve the functioning of the Economic and Monetary Union (EMU) through automatic stabilisation. Among various options, a partial pooling of unemployment benefit schemes stands out as the model with continuous impact an",
+      "full_text": "The divergences developed within the euro area represent the main threat to the existence of the single currency and to the stability of the EU as a whole. Without proper automatic stabilisers, a monetary union can only deliver suboptimal results and may not even be sustainable. In the recent years, common unemployment insurance has been examined as one of the possible ways to improve the functioning of the Economic and Monetary Union (EMU) through automatic stabilisation. Among various options, a partial pooling of unemployment benefit schemes stands out as the model with continuous impact and direct connection with the citizens, while the political process may favour less permanent features and more conditionality. There is a strong case for connecting the EMU reform with the EU social agenda and appreciating risk-sharing in Europe from a political as well as economic point of view. Jel codes: E24, E63, F45, H12, H53, J65",
+      "url": "https://openalex.org/W2406372605",
+      "_adapter": "openalex",
+      "authors": [
+        "László Andor"
+      ],
+      "venue": "IZA Journal of European Labor Studies",
+      "publication_date": "2016",
+      "doi": "10.1186/s40174-016-0060-7",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "An analysis of youth unemployment in the euro area",
+      "snippet": "The paper starts by presenting some stylised facts on youth unemployment over the last two decades, both at the euro area and the country level. It shows that despite declining considerably over the last few years, youth unemployment has remained at a high level relative to other age groups in most euro area countries. The paper finds that there is a positive relationship between the share of young people in the total population and the youth unemployment rate, i.e. the smaller the share of young people in the population, the lower the risk of them being unemployed. At the same time, economic ",
+      "full_text": "The paper starts by presenting some stylised facts on youth unemployment over the last two decades, both at the euro area and the country level. It shows that despite declining considerably over the last few years, youth unemployment has remained at a high level relative to other age groups in most euro area countries. The paper finds that there is a positive relationship between the share of young people in the total population and the youth unemployment rate, i.e. the smaller the share of young people in the population, the lower the risk of them being unemployed. At the same time, economic conditions are negatively correlated with the youth unemployment rate, i.e. the youth unemployment rate increases when the economic situation worsens. Moreover, robust results across the regression scenarios show that higher employment protection and minimum wages imply a higher youth unemployment rate, while active labour market policies (ALMPs) tend to reduce it. The results also indicate that the increasing share of services employment in total employment is helping to reduce unemployment among young persons. Furthermore, the increase in the youth inactivity rate, which is mainly due to the fact that there are more young people in education, is also linked to the overall decline in youth unemployment. Finally, as regards education, the results indicate that the number of years of education, the number of young people with vocational training and, to a lesser extent high scores in the PISA study, are associated with lower youth unemployment rates. The share of the young population not in school, however, is positively correlated with the unemployment rate. As youth unemployment is subject to certain country-specific features, each country should identify the relevant underlying sources of youth unemployment and react accordingly. Governments can make a positive contribution to the smooth transition of young persons fromeducation to the labour market by providing a well-functioning education system and labour market institutions that do not introduce distortions into the labour market. JEL Classification: I2, J11, J13, J21, J64.",
+      "url": "https://openalex.org/W3121356544",
+      "_adapter": "openalex",
+      "authors": [
+        "Ramon Gómez-Salvador",
+        "Nadine Leiner-Killinger"
+      ],
+      "venue": "RePEc: Research Papers in Economics",
+      "publication_date": "2008",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Background of the Unemployment in the Euro Area",
+      "snippet": "Unemployment has been a macroeconomic problem of every economy for decades, requiring a detailed analysis. The paper focuses on the sources of unemployment in the Euro Area during 2000-2021. The article aims to identify the essential cause as well as sources of unemployment during the two decades of the 21st century and whether it should be sought in the financial crisis during 2008-2014, in the short period of recovery until 2018, or during the COVID-19 period from 2019 to 2021. The analysis of unemployment in the countries of the Eurozone is conducted using the fundamental macroeconomic indi",
+      "full_text": "Unemployment has been a macroeconomic problem of every economy for decades, requiring a detailed analysis. The paper focuses on the sources of unemployment in the Euro Area during 2000-2021. The article aims to identify the essential cause as well as sources of unemployment during the two decades of the 21st century and whether it should be sought in the financial crisis during 2008-2014, in the short period of recovery until 2018, or during the COVID-19 period from 2019 to 2021. The analysis of unemployment in the countries of the Eurozone is conducted using the fundamental macroeconomic indicators of balance in the economy: gross domestic product (GDP), inflation, and unemployment. The methodological concept is based on usual macroeconomic relationships, and panel regression model estimates are presented in the STATA software package. The analysis results indicate the nonlinearity of the Phillips curve and Okun’s law during the analysed period. Deviations from theoretical concepts are significantly expressed in some sub-periods. External effects distort market mechanisms, causing large and significant differences between individual countries of the Eurozone. However, common to all sub-periods is a deflationary output gap. The gap between the current and the optimal output deepened the unemployment problems. The long-term deflationary output gap hurt the inflation rate, showing the gap between those economic theory developers and policy makers. These results can be the basis for further analysis by including more macroeconomic determinants of the economy.",
+      "url": "https://openalex.org/W4390134883",
+      "_adapter": "openalex",
+      "authors": [
+        "Vladimir Ristanović"
+      ],
+      "venue": "Economy of Regions",
+      "publication_date": "2023",
+      "doi": "10.17059/ekon.reg.2023-4-12",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:39+0100"
+}

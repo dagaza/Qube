@@ -1,0 +1,518 @@
+{
+  "schema_version": 2,
+  "id": "sci_bio_microplastics",
+  "path": "scientific_evidence",
+  "category": "biomedical",
+  "description": "",
+  "query_raw": "@[tool:evidence] Long-term effects of microplastics on human health",
+  "query_clean": "Long-term effects of microplastics on human health",
+  "retrieval_query": "Long-term effects of microplastics on human health",
+  "standalone_question": "What are the long-term effects of microplastics on human health?",
+  "gold_subject": "microplastics",
+  "gold_facet": "human health effects",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:02:34+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "Long-term effects of microplastics on human health",
+      "arxiv": "Long-term effects of microplastics on human health"
+    },
+    "standalone": {
+      "openalex": "What are the long-term effects of microplastics on human health",
+      "arxiv": "What are the long-term effects of microplastics on human health"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Effects of Microplastics on Fish and in Human Health",
+      "snippet": "Microplastics (MPs) are regarded as a global issue due to their toxicity effects on fish and humans. Fish is a vital origin of human protein, which is necessary for body growth. Contamination of fish by MPs is a major hazard that requires special focus. After exposure to MPs alone or in combination with other pollutants, fish may experience a variety of health issues. MPs can cause tissue damage, oxidative stress, and changes in immune-related gene expression as well as antioxidant status in fish. After being exposed to MPs, fish suffer from neurotoxicity, growth retardation, and behavioral ab",
+      "full_text": "Microplastics (MPs) are regarded as a global issue due to their toxicity effects on fish and humans. Fish is a vital origin of human protein, which is necessary for body growth. Contamination of fish by MPs is a major hazard that requires special focus. After exposure to MPs alone or in combination with other pollutants, fish may experience a variety of health issues. MPs can cause tissue damage, oxidative stress, and changes in immune-related gene expression as well as antioxidant status in fish. After being exposed to MPs, fish suffer from neurotoxicity, growth retardation, and behavioral abnormalities. The consequences of MPs on human health are poorly understood. Due to the abundance of MPs in environment, exposure may occurviaconsumption, inhalation, and skin contact. Humans may experience oxidative stress, cytotoxicity, neurotoxicity, immune system disruption, and transfer of MPs to other tissues after being exposed to them. The toxic effects of MPs in both fish and human are still unknown. This detailed review has the potential to add to existing knowledge about the ecotoxicity effects of MPs in both fish and humans, which will be useful for the forthcoming study.",
+      "url": "https://openalex.org/W4220941527",
+      "_adapter": "openalex",
+      "authors": [
+        "Md. Simul Bhuyan"
+      ],
+      "venue": "Frontiers in Environmental Science",
+      "publication_date": "2022",
+      "doi": "10.3389/fenvs.2022.827289",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Toxicological Effects of Ingested Microplastics on Human Health",
+      "snippet": "Toxicological Effects of Ingested Microplastics on Human Health",
+      "full_text": null,
+      "url": "https://openalex.org/W4401398419",
+      "_adapter": "openalex",
+      "authors": [
+        "Daniel A. Ayejoto",
+        "Johnbosco C. Egbueri",
+        "Leonard N. Onuba",
+        "Johnson C. Agbasi",
+        "Nchekwube D. Nweke"
+      ],
+      "venue": "Emerging contaminants and associated treatment technologies",
+      "publication_date": "2024",
+      "doi": "10.1007/978-3-031-64253-1_21",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Animal exposure to microplastics and health effects: A review",
+      "snippet": "Microplastic (MP) contamination has become a pervasive global issue, affecting terrestrial and aquatic environments, and its potential health hazards are of widespread concern. This review examined the intricate relationship between animal exposure to MPs and their health effects, revealing that MP contamination affects a broad spectrum of animal species across terrestrial and aquatic habitats. Crucially, interspecies differences in ingestion, accumulation, and responses to MPs emerge as central themes arising from various factors, including feeding behavior, physiology, and ecological niches.",
+      "full_text": "Microplastic (MP) contamination has become a pervasive global issue, affecting terrestrial and aquatic environments, and its potential health hazards are of widespread concern. This review examined the intricate relationship between animal exposure to MPs and their health effects, revealing that MP contamination affects a broad spectrum of animal species across terrestrial and aquatic habitats. Crucially, interspecies differences in ingestion, accumulation, and responses to MPs emerge as central themes arising from various factors, including feeding behavior, physiology, and ecological niches. The health implications of MP exposure are multifarious; animals may suffer physical harm, endure chemical exposure to adsorbed contaminants, provoke inflammatory responses, and undergo behavioral modifications. Chronic exposure to MPs raises concerns about their long-term health consequences, and the ability of MPs to adsorb and transport chemicals has implications for the bioaccumulation of pollutants within food webs. The ecological ramifications of MP contamination are profound, impacting animal behavior, population dynamics, and ecosystem processes. The intricate interplay between animals and MPs underscores the need for interdisciplinary research that unites fields such as biology, ecology, chemistry, and toxicology. Recognizing the relationship between animal exposure to MPs and their health effects has significant implications, particularly as the potential for MPs to enter the human food chain through animals underscores the need for research on human health risks.",
+      "url": "https://openalex.org/W4396887471",
+      "_adapter": "openalex",
+      "authors": [
+        "Eunju Jeong",
+        "Jin‐Yong Lee",
+        "Mostafa Redwan"
+      ],
+      "venue": "Emerging contaminants",
+      "publication_date": "2024",
+      "doi": "10.1016/j.emcon.2024.100369",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Impact of Microplastics and Nanoplastics on Human Health",
+      "snippet": "Plastics have enormous impacts to every aspect of daily life including technology, medicine and treatments, and domestic appliances. Most of the used plastics are thrown away by consumers after a single use, which has become a huge environmental problem as they will end up in landfill, oceans and other waterways. These plastics are discarded in vast numbers each day, and the breaking down of the plastics from micro- to nano-sizes has led to worries about how toxic these plastics are to the environment and humans. While, there are several earlier studies reported the effects of micro- and nano-",
+      "full_text": "Plastics have enormous impacts to every aspect of daily life including technology, medicine and treatments, and domestic appliances. Most of the used plastics are thrown away by consumers after a single use, which has become a huge environmental problem as they will end up in landfill, oceans and other waterways. These plastics are discarded in vast numbers each day, and the breaking down of the plastics from micro- to nano-sizes has led to worries about how toxic these plastics are to the environment and humans. While, there are several earlier studies reported the effects of micro- and nano-plastics have on the environment, there is scant research into their impact on the human body at subcellular or molecular levels. In particular, the potential of how nano-plastics move through the gut, lungs and skin epithelia in causing systemic exposure has not been examined thoroughly. This review explores thoroughly on how nanoplastics are created, how they behave/breakdown within the environment, levels of toxicity and pollution of these nanoplastics, and the possible health impacts on humans, as well as suggestions for additional research. This paper aims to inspire future studies into core elements of micro- and nano-plastics, the biological reactions caused by their specific and unusual qualities.",
+      "url": "https://openalex.org/W3129687012",
+      "_adapter": "openalex",
+      "authors": [
+        "Maxine Swee-Li Yee",
+        "Ling‐Wei Hii",
+        "Chin-King Looi",
+        "Wei‐Meng Lim",
+        "Shew Fung Wong",
+        "Yih-Yih Kok",
+        "Boon-Keat Tan",
+        "Chiew-Yen Wong",
+        "Chee‐Onn Leong"
+      ],
+      "venue": "Nanomaterials",
+      "publication_date": "2021",
+      "doi": "10.3390/nano11020496",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Microplastics in Seafood and the Implications for Human Health",
+      "snippet": "PURPOSE OF REVIEW: We describe evidence regarding human exposure to microplastics via seafood and discuss potential health effects. RECENT FINDINGS: Shellfish and other animals consumed whole pose particular concern for human exposure. If there is toxicity, it is likely dependent on dose, polymer type, size, surface chemistry, and hydrophobicity. Human activity has led to microplastic contamination throughout the marine environment. As a result of widespread contamination, microplastics are ingested by many species of wildlife including fish and shellfish. Because microplastics are associated ",
+      "full_text": "PURPOSE OF REVIEW: We describe evidence regarding human exposure to microplastics via seafood and discuss potential health effects. RECENT FINDINGS: Shellfish and other animals consumed whole pose particular concern for human exposure. If there is toxicity, it is likely dependent on dose, polymer type, size, surface chemistry, and hydrophobicity. Human activity has led to microplastic contamination throughout the marine environment. As a result of widespread contamination, microplastics are ingested by many species of wildlife including fish and shellfish. Because microplastics are associated with chemicals from manufacturing and that sorb from the surrounding environment, there is concern regarding physical and chemical toxicity. Evidence regarding microplastic toxicity and epidemiology is emerging. We characterize current knowledge and highlight gaps. We also recommend mitigation and adaptation strategies targeting the life cycle of microplastics and recommend future research to assess impacts of microplastics on humans. Addressing these research gaps is a critical priority due to the nutritional importance of seafood consumption.",
+      "url": "https://openalex.org/W2885126584",
+      "_adapter": "openalex",
+      "authors": [
+        "Madeleine P. Smith",
+        "David C. Love",
+        "Chelsea M. Rochman",
+        "Roni Neff"
+      ],
+      "venue": "Current Environmental Health Reports",
+      "publication_date": "2018",
+      "doi": "10.1007/s40572-018-0206-z",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Microplastics and environmental effects: investigating the effects of microplastics on aquatic habitats and their impact on human health",
+      "snippet": "Microplastics (MPs) are particles with a diameter of <5 mm. The disposal of plastic waste into the environment poses a significant and pressing issue concern globally. Growing worry has been expressed in recent years over the impact of MPs on both human health and the entire natural ecosystem. MPs impact the feeding and digestive capabilities of marine organisms, as well as hinder the development of plant roots and leaves. Numerous studies have shown that the majority of individuals consume substantial quantities of MPs either through their dietary intake or by inhaling them. MPs have been ide",
+      "full_text": "Microplastics (MPs) are particles with a diameter of <5 mm. The disposal of plastic waste into the environment poses a significant and pressing issue concern globally. Growing worry has been expressed in recent years over the impact of MPs on both human health and the entire natural ecosystem. MPs impact the feeding and digestive capabilities of marine organisms, as well as hinder the development of plant roots and leaves. Numerous studies have shown that the majority of individuals consume substantial quantities of MPs either through their dietary intake or by inhaling them. MPs have been identified in various human biological samples, such as lungs, stool, placenta, sputum, breast milk, liver, and blood. MPs can cause various illnesses in humans, depending on how they enter the body. Healthy and sustainable ecosystems depend on the proper functioning of microbiota, however, MPs disrupt the balance of microbiota. Also, due to their high surface area compared to their volume and chemical characteristics, MPs act as pollutant absorbers in different environments. Multiple policies and initiatives exist at both the domestic and global levels to mitigate pollution caused by MPs. Various techniques are currently employed to remove MPs, such as biodegradation, filtration systems, incineration, landfill disposal, and recycling, among others. In this review, we will discuss the sources and types of MPs, the presence of MPs in different environments and food, the impact of MPs on human health and microbiota, mechanisms of pollutant adsorption on MPs, and the methods of removing MPs with algae and microbes.",
+      "url": "https://openalex.org/W4399523571",
+      "_adapter": "openalex",
+      "authors": [
+        "Aref Yarahmadi",
+        "SeyedeMozhgan Heidari",
+        "Parisa Sepahvand",
+        "Hamed Afkhami",
+        "Hadis Kheradjoo"
+      ],
+      "venue": "Frontiers in Public Health",
+      "publication_date": "2024",
+      "doi": "10.3389/fpubh.2024.1411389",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Rights by Architecture: A Human-Compatible Sociotechnical Layer for Digital Protection Across Regulatory Regimes",
+      "snippet": "Digital rights increasingly exist in law but remain difficult to exercise through the information systems that mediate them. Using disciplined conceptual synthesis and problematization, this critical-conceptual IS paper explains the gap through the interaction of legal heterogeneity, conflicting organizational and commercial incentives, fragmented architectures, and asymmetrical control over rights-relevant acts. It then theorizes a human-compatible rights layer: a governed sociotechnical capability for standardized, machine-readable, bidirectional, and jurisdictionally plural communication of",
+      "full_text": "Digital rights increasingly exist in law but remain difficult to exercise through the information systems that mediate them. Using disciplined conceptual synthesis and problematization, this critical-conceptual IS paper explains the gap through the interaction of legal heterogeneity, conflicting organizational and commercial incentives, fragmented architectures, and asymmetrical control over rights-relevant acts. It then theorizes a human-compatible rights layer: a governed sociotechnical capability for standardized, machine-readable, bidirectional, and jurisdictionally plural communication of requests, consent, refusal, withdrawal, objection, records, and support. Comparing California-style opt-out signals, the EU's mixed lawful-basis regime, and P3P, DNT, GPC, and ADPC, the paper derives seven normative requirements, develops rights by architecture as a bounded emancipatory policy argument, and treats a proposed GDPR provision on automated and machine-readable privacy management as a policy case for moving from banner-based compliance toward rights-supporting digital infrastructure.",
+      "url": "https://arxiv.org/abs/2609.02455v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Soheil Human"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-09-02",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2609.02455v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Needs-aware Artificial Intelligence: AI that 'serves [human] needs'",
+      "snippet": "By defining the current limits (and thereby the frontiers), many boundaries are shaping, and will continue to shape, the future of Artificial Intelligence (AI). We push on these boundaries in order to make further progress into what were yesterday's frontiers. They are both pliable and resilient - always creating new boundaries of what AI can (or should) achieve. Among these are technical boundaries (such as processing capacity), psychological boundaries (such as human trust in AI systems), ethical boundaries (such as with AI weapons), and conceptual boundaries (such as the AI people can imagi",
+      "full_text": "By defining the current limits (and thereby the frontiers), many boundaries are shaping, and will continue to shape, the future of Artificial Intelligence (AI). We push on these boundaries in order to make further progress into what were yesterday's frontiers. They are both pliable and resilient - always creating new boundaries of what AI can (or should) achieve. Among these are technical boundaries (such as processing capacity), psychological boundaries (such as human trust in AI systems), ethical boundaries (such as with AI weapons), and conceptual boundaries (such as the AI people can imagine). It is within this final category while it can play a fundamental role in all other boundaries} that we find the construct of needs and the limitations that our current concept of need places on the future AI.",
+      "url": "https://arxiv.org/abs/2202.04977v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Ryan Watkins",
+        "Soheil Human"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-02-10",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2202.04977v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Marine Microplastics and Infant Health",
+      "snippet": "A century of plastic usage has led to an accumulation of plastic waste in waterways and oceans. Over time, these wastes break down into particles smaller than 5 microns -- or ''microplastics'' -- which can infiltrate human biological systems. Despite decades of research into this emerging source of environmental pollution, there is a paucity of direct evidence on the health impacts of microplastics exposure at a population scale. This paper reports the first empirical link between in-utero microplastic exposure and adverse birth outcomes. Our analysis is based on a compiled dataset of 3 millio",
+      "full_text": "A century of plastic usage has led to an accumulation of plastic waste in waterways and oceans. Over time, these wastes break down into particles smaller than 5 microns -- or ''microplastics'' -- which can infiltrate human biological systems. Despite decades of research into this emerging source of environmental pollution, there is a paucity of direct evidence on the health impacts of microplastics exposure at a population scale. This paper reports the first empirical link between in-utero microplastic exposure and adverse birth outcomes. Our analysis is based on a compiled dataset of 3 million births that occurred in coastal areas of 15 countries spanning four continents, which we merge with a novel remote-sensing measurements of marine microplastic concentrations. We show that in-utero exposure to microplastics, particularly during the third trimester of pregnancy, leads to a significant increase in the likelihood of low birth weight. A doubling of exposure increases low birth weight hazard by 0.37 per 1,000 births, which implies over 205,000 cases per year globally can be attributed to microplastic exposure. We further show that aerosolization -- whereby microplastic particles become airborne and inhalable due to seawater evaporation -- is an important pathway for health impact, a challenge that is likely to escalate as ocean temperatures continue to rise.",
+      "url": "https://arxiv.org/abs/2410.17391v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Xinming Du",
+        "Shan Zhang",
+        "Eric Zou"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-10-22",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2410.17391v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Advanced Data Protection Control (ADPC): An Interdisciplinary Overview",
+      "snippet": "The Advanced Data Protection Control (ADPC) is a technical specification - and a set of sociotechnical mechanisms surrounding it - that can change the current practice of Internet-based personal data protection and consenting by providing novel and standardized means for the communication of privacy and consenting data, meta-data, information, requests, preferences, and decisions. The ADPC supports humans in practicing their rights to privacy and agency by giving them more human-centric control over the processing of their personal data and consent. It helps the data controllers to improve the",
+      "full_text": "The Advanced Data Protection Control (ADPC) is a technical specification - and a set of sociotechnical mechanisms surrounding it - that can change the current practice of Internet-based personal data protection and consenting by providing novel and standardized means for the communication of privacy and consenting data, meta-data, information, requests, preferences, and decisions. The ADPC supports humans in practicing their rights to privacy and agency by giving them more human-centric control over the processing of their personal data and consent. It helps the data controllers to improve their users' experiences and provides them with easy-to-adopt means to comply with the relevant legal and ethical requirements and expectations.",
+      "url": "https://arxiv.org/abs/2209.09724v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Soheil Human"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-09-20",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2209.09724v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Digital Transformation in Health: How AI Can Improve the Performance of Health Systems",
+      "snippet": "Mobile health has the potential to revolutionize health care delivery and patient engagement. In this work, we discuss how integrating Artificial Intelligence into digital health applications-focused on supply chain, patient management, and capacity building, among other use cases-can improve the health system and public health performance. We present an Artificial Intelligence and Reinforcement Learning platform that allows the delivery of adaptive interventions whose impact can be optimized through experimentation and real-time monitoring. The system can integrate multiple data sources and d",
+      "full_text": "Mobile health has the potential to revolutionize health care delivery and patient engagement. In this work, we discuss how integrating Artificial Intelligence into digital health applications-focused on supply chain, patient management, and capacity building, among other use cases-can improve the health system and public health performance. We present an Artificial Intelligence and Reinforcement Learning platform that allows the delivery of adaptive interventions whose impact can be optimized through experimentation and real-time monitoring. The system can integrate multiple data sources and digital health applications. The flexibility of this platform to connect to various mobile health applications and digital devices and send personalized recommendations based on past data and predictions can significantly improve the impact of digital tools on health system outcomes. The potential for resource-poor settings, where the impact of this approach on health outcomes could be more decisive, is discussed specifically. This framework is, however, similarly applicable to improving efficiency in health systems where scarcity is not an issue.",
+      "url": "https://arxiv.org/abs/2409.16098v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "África Periáñez",
+        "Ana Fernández del Río",
+        "Ivan Nazarov",
+        "Enric Jané",
+        "Moiz Hassan",
+        "Aditya Rastogi",
+        "Dexian Tang"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-09-24",
+      "doi": "10.1080/23288604.2024.2387138",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2409.16098v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Can You Explain That? Lucid Explanations Help Human-AI Collaborative Image Retrieval",
+      "snippet": "While there have been many proposals on making AI algorithms explainable, few have attempted to evaluate the impact of AI-generated explanations on human performance in conducting human-AI collaborative tasks. To bridge the gap, we propose a Twenty-Questions style collaborative image retrieval game, Explanation-assisted Guess Which (ExAG), as a method of evaluating the efficacy of explanations (visual evidence or textual justification) in the context of Visual Question Answering (VQA). In our proposed ExAG, a human user needs to guess a secret image picked by the VQA agent by asking natural la",
+      "full_text": "While there have been many proposals on making AI algorithms explainable, few have attempted to evaluate the impact of AI-generated explanations on human performance in conducting human-AI collaborative tasks. To bridge the gap, we propose a Twenty-Questions style collaborative image retrieval game, Explanation-assisted Guess Which (ExAG), as a method of evaluating the efficacy of explanations (visual evidence or textual justification) in the context of Visual Question Answering (VQA). In our proposed ExAG, a human user needs to guess a secret image picked by the VQA agent by asking natural language questions to it. We show that overall, when AI explains its answers, users succeed more often in guessing the secret image correctly. Notably, a few correct explanations can readily improve human performance when VQA answers are mostly incorrect as compared to no-explanation games. Furthermore, we also show that while explanations rated as \"helpful\" significantly improve human performance, \"incorrect\" and \"unhelpful\" explanations can degrade performance as compared to no-explanation games. Our experiments, therefore, demonstrate that ExAG is an effective means to evaluate the efficacy of AI-generated explanations on a human-AI collaborative task.",
+      "url": "https://arxiv.org/abs/1904.03285v4",
+      "_adapter": "arxiv",
+      "authors": [
+        "Arijit Ray",
+        "Yi Yao",
+        "Rakesh Kumar",
+        "Ajay Divakaran",
+        "Giedrius Burachas"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-04-05",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1904.03285v4",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Microplastics and human health: Integrating pharmacokinetics",
+      "snippet": "Microplastics are widespread contaminants leading to environmental exposure. While studies on the prevalence in human tissues have multiplied, little is known about their pharmacokinetics. Mechanisms of absorption, distribution, metabolism, and excretion (ADME) must be addressed before effects on human health (i.e. pharmacodynamics) can be understood. Therefore, the objective of this review was to provide an integrated assessment on the fate of microplastics in the human body by gathering information from multiple fields of research (e.g. implants and microspheres). Absorption of microplastics",
+      "full_text": "Microplastics are widespread contaminants leading to environmental exposure. While studies on the prevalence in human tissues have multiplied, little is known about their pharmacokinetics. Mechanisms of absorption, distribution, metabolism, and excretion (ADME) must be addressed before effects on human health (i.e. pharmacodynamics) can be understood. Therefore, the objective of this review was to provide an integrated assessment on the fate of microplastics in the human body by gathering information from multiple fields of research (e.g. implants and microspheres). Absorption of microplastics mainly occurs through transcytosis in enterocytes, while larger particles may be internalized through gaps (e.g. persorption) or by uptake by phagocytes. Only microplastics <5 µm may reach the alveolar region, while large particles found in the lungs usually result from entrapment of circulating particles in the narrow pulmonary capillary network. Overall, absorption rates of microplastics are expected to be low. Microplastics are then distributed by the circulatory system, accumulating in the respiratory system, digestive system, liver, spleen, and brain. Metabolism may lead to the biodegradation of microplastics, mainly through enzymes and reactive oxygen species of macrophages, exposure to physiologic fluids, and microbiologic activity in the gut lumen. Finally, most microplastics will be removed by the liver or spleen and excreted in the feces. While this work provides an initial attempt at constructing a pharmacokinetics model for microplastics, further research is required. Ideally, future works should be conducted using histopathology techniques to obtain the precise location in the tissues and radiolabelled particles to allow tracking through time.",
+      "url": "https://openalex.org/W4362722076",
+      "_adapter": "openalex",
+      "authors": [
+        "Joana C. Prata"
+      ],
+      "venue": "Critical Reviews in Environmental Science and Technology",
+      "publication_date": "2023",
+      "doi": "10.1080/10643389.2023.2195798",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "A One Health perspective of the impacts of microplastics on animal, human and environmental health",
+      "snippet": "A One Health perspective of the impacts of microplastics on animal, human and environmental health",
+      "full_text": null,
+      "url": "https://openalex.org/W3133608816",
+      "_adapter": "openalex",
+      "authors": [
+        "Joana C. Prata",
+        "João Pinto da Costa",
+        "Isabel Lopes",
+        "Anthony L. Andrady",
+        "Armando C. Duarte",
+        "Teresa Rocha‐Santos"
+      ],
+      "venue": "The Science of The Total Environment",
+      "publication_date": "2021",
+      "doi": "10.1016/j.scitotenv.2021.146094",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "An emerging class of air pollutants: Potential effects of microplastics to respiratory human health?",
+      "snippet": "An emerging class of air pollutants: Potential effects of microplastics to respiratory human health?",
+      "full_text": null,
+      "url": "https://openalex.org/W3049540251",
+      "_adapter": "openalex",
+      "authors": [
+        "Luís Fernando Amato‐Lourenço",
+        "Luciana dos Santos Galvão",
+        "Letty A. de Weger",
+        "Pieter Sicco Hiemstra",
+        "Martina G. Vijver",
+        "Thaís Mauad"
+      ],
+      "venue": "The Science of The Total Environment",
+      "publication_date": "2020",
+      "doi": "10.1016/j.scitotenv.2020.141676",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

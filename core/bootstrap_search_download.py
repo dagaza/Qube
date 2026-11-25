@@ -53,6 +53,19 @@ def _dedupe_files(*groups: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(path for group in groups for path in group))
 
 
+def _canonical_hf_repo(mode_id: ModeId, hf_repo: str) -> str:
+    """Prefer the canonical repo casing when fastembed reports the same repo.
+
+    fastembed 0.8 lists e.g. ``xenova/jina-embeddings-v2-small-en`` (lowercase
+    owner). The Hub resolves it, but the casing then depends on the installed
+    fastembed version; keep Qube's known canonical id (``Xenova/...``) stable.
+    """
+    known = _PRESET_DOWNLOAD_SPECS.get(mode_id)
+    if known is not None and known.hf_repo.lower() == hf_repo.lower():
+        return known.hf_repo
+    return hf_repo
+
+
 def _try_fastembed_download_spec(mode_id: ModeId) -> FastembedPresetDownloadSpec | None:
     """Resolve preset files from fastembed when installed (keeps us aligned with library)."""
     try:
@@ -70,7 +83,7 @@ def _try_fastembed_download_spec(mode_id: ModeId) -> FastembedPresetDownloadSpec
             additional = tuple(str(path) for path in (entry.get("additional_files") or ()))
             files = _dedupe_files(_STANDARD_TOKENIZER_FILES, (model_file,), additional)
             return FastembedPresetDownloadSpec(
-                hf_repo=str(hf_repo),
+                hf_repo=_canonical_hf_repo(mode_id, str(hf_repo)),
                 files=files,
                 model_marker=model_file,
             )
@@ -204,3 +217,96 @@ def download_embedding_preset_no_progress(mode_id: str | None) -> None:
         return None
 
     download_embedding_preset(mode_id, _noop)
+
+
+# ---------------------------------------------------------------------------
+# Cross-encoder reranker (knowledge retrieval relevance; plan S3, decision D1)
+# ---------------------------------------------------------------------------
+
+RERANKER_MODEL_ID = "Xenova/ms-marco-MiniLM-L-6-v2"
+RERANKER_SUBDIR = "reranker"
+RERANKER_DOWNLOAD_SPEC = FastembedPresetDownloadSpec(
+    hf_repo=RERANKER_MODEL_ID,
+    files=_STANDARD_TOKENIZER_FILES + ("onnx/model.onnx",),
+    model_marker="onnx/model.onnx",
+)
+RERANKER_LABEL = "Relevance reranker"
+
+
+def reranker_dir() -> Path:
+    """``~/.qube/models/search/reranker`` (streamed download target)."""
+    configure_user_model_paths()
+    return search_models_cache_dir() / RERANKER_SUBDIR
+
+
+def reranker_complete() -> bool:
+    base = reranker_dir()
+    spec = RERANKER_DOWNLOAD_SPEC
+    if not (base / spec.model_marker).is_file():
+        return False
+    return all((base / rel_path).is_file() for rel_path in spec.files)
+
+
+def resolve_reranker_path() -> str | None:
+    """On-disk reranker directory when the download is complete, else ``None``."""
+    return str(reranker_dir()) if reranker_complete() else None
+
+
+def download_reranker(
+    on_progress: DownloadProgressCallback,
+    *,
+    step_label: str | None = None,
+    source_display: str = "Hugging Face",
+) -> None:
+    """Download the cross-encoder ONNX + tokenizer files with streamed progress.
+
+    Same transport and per-file completeness rule as the embedding presets;
+    partial files are written by ``_download_hf_hub_file`` via a temp path, so
+    an interrupted download leaves ``reranker_complete()`` False.
+    """
+    from core.bootstrap_download import _download_hf_hub_file
+    from core.bootstrap_trace import record_bootstrap_trace
+
+    spec = RERANKER_DOWNLOAD_SPEC
+    label = step_label or f"Downloading {RERANKER_LABEL.lower()}"
+    if reranker_complete():
+        on_progress(label, RERANKER_MODEL_ID, 100, source_display)
+        return
+    base = reranker_dir()
+    base.mkdir(parents=True, exist_ok=True)
+    logger.info("Downloading reranker repo=%s into %s", spec.hf_repo, base)
+    on_progress(label, RERANKER_MODEL_ID, 0, source_display)
+
+    def _report(_step: str, _file: str, percent: int, src: str) -> None:
+        on_progress(label, RERANKER_MODEL_ID, percent, src)
+
+    try:
+        for repo_file in spec.files:
+            dest = base / repo_file
+            if dest.is_file():
+                continue
+            _download_hf_hub_file(
+                repo_id=spec.hf_repo,
+                filename=repo_file,
+                dest_path=dest,
+                on_progress=_report,
+                step_label=label,
+                source_display=source_display,
+                progress_label=Path(repo_file).name,
+            )
+    except Exception as exc:
+        record_bootstrap_trace("reranker_download_failed", repo=spec.hf_repo, error=str(exc))
+        raise RuntimeError(
+            f"{RERANKER_LABEL} download failed. Retrieval keeps working without it; "
+            "retry from Settings → Knowledge."
+        ) from exc
+    if not reranker_complete():
+        raise RuntimeError(f"{RERANKER_LABEL} download incomplete.")
+    on_progress(label, RERANKER_MODEL_ID, 100, source_display)
+
+
+def download_reranker_no_progress() -> None:
+    def _noop(*_args: object) -> None:
+        return None
+
+    download_reranker(_noop)

@@ -37,6 +37,8 @@ class DdgHttpResponse:
     status_code: int
     text: str
     transport: str
+    # Raw ``Retry-After`` header (S12: bounded backoff on HTTP 429).
+    retry_after: str | None = None
 
 
 def browser_impersonation_available() -> bool:
@@ -168,10 +170,16 @@ class _DdgBrowserSession:
                 headers=headers,
                 timeout=timeout,
             )
+            headers = getattr(response, "headers", None) or {}
+            try:
+                retry_after = headers.get("Retry-After") or headers.get("retry-after")
+            except Exception:
+                retry_after = None
             return DdgHttpResponse(
                 status_code=int(response.status_code),
                 text=response.text or "",
                 transport=self._transport,
+                retry_after=str(retry_after) if retry_after else None,
             )
 
 

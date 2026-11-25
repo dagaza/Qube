@@ -1,0 +1,840 @@
+{
+  "schema_version": 2,
+  "id": "sci_cs_self_attention",
+  "path": "scientific_evidence",
+  "category": "cs_engineering",
+  "description": "",
+  "query_raw": "@[tool:evidence] How does self-attention work in transformer models?",
+  "query_clean": "How does self-attention work in transformer models?",
+  "retrieval_query": "How does self-attention work in transformer models?",
+  "standalone_question": "How does self-attention work in transformer models?",
+  "gold_subject": "transformer self-attention",
+  "gold_facet": "mechanism",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:05:01+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "arxiv": 3,
+    "dblp": 3,
+    "openreview": 3,
+    "acl_anthology": 3,
+    "openalex": 3,
+    "crossref": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "arxiv": "How does self-attention work in transformer models",
+      "dblp": "How does self-attention work in transformer models",
+      "openreview": "How does self-attention work in transformer models",
+      "acl_anthology": "How does self-attention work in transformer models",
+      "openalex": "How does self-attention work in transformer models",
+      "crossref": "How does self-attention work in transformer models"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Attention Guided CAM: Visual Explanations of Vision Transformer Guided by Self-Attention",
+      "snippet": "Vision Transformer(ViT) is one of the most widely used models in the computer vision field with its great performance on various tasks. In order to fully utilize the ViT-based architecture in various applications, proper visualization methods with a decent localization performance are necessary, but these methods employed in CNN-based models are still not available in ViT due to its unique structure. In this work, we propose an attention-guided visualization method applied to ViT that provides a high-level semantic explanation for its decision. Our method selectively aggregates the gradients d",
+      "full_text": "Vision Transformer(ViT) is one of the most widely used models in the computer vision field with its great performance on various tasks. In order to fully utilize the ViT-based architecture in various applications, proper visualization methods with a decent localization performance are necessary, but these methods employed in CNN-based models are still not available in ViT due to its unique structure. In this work, we propose an attention-guided visualization method applied to ViT that provides a high-level semantic explanation for its decision. Our method selectively aggregates the gradients directly propagated from the classification output to each self-attention, collecting the contribution of image features extracted from each location of the input image. These gradients are additionally guided by the normalized self-attention scores, which are the pairwise patch correlation scores. They are used to supplement the gradients on the patch-level context information efficiently detected by the self-attention mechanism. This approach of our method provides elaborate high-level semantic explanations with great localization performance only with the class labels. As a result, our method outperforms the previous leading explainability methods of ViT in the weakly-supervised localization task and presents great capability in capturing the full instances of the target class object. Meanwhile, our method provides a visualization that faithfully explains the model, which is demonstrated in the perturbation comparison test.",
+      "url": "https://arxiv.org/abs/2402.04563v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Saebom Leem",
+        "Hyunseok Seo"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-02-07",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2402.04563v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Self-Attention as Distributional Projection: A Unified Interpretation of Transformer Architecture",
+      "snippet": "This paper presents a mathematical interpretation of self-attention by connecting it to distributional semantics principles. We show that self-attention emerges from projecting corpus-level co-occurrence statistics into sequence context. Starting from the co-occurrence matrix underlying GloVe embeddings, we demonstrate how the projection naturally captures contextual influence, with the query-key-value mechanism arising as the natural asymmetric extension for modeling directional relationships. Positional encodings and multi-head attention then follow as structured refinements of this same pro",
+      "full_text": "This paper presents a mathematical interpretation of self-attention by connecting it to distributional semantics principles. We show that self-attention emerges from projecting corpus-level co-occurrence statistics into sequence context. Starting from the co-occurrence matrix underlying GloVe embeddings, we demonstrate how the projection naturally captures contextual influence, with the query-key-value mechanism arising as the natural asymmetric extension for modeling directional relationships. Positional encodings and multi-head attention then follow as structured refinements of this same projection principle. Our analysis demonstrates that the Transformer architecture's particular algebraic form follows from these projection principles rather than being an arbitrary design choice.",
+      "url": "https://arxiv.org/abs/2511.13780v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Nihal Mehta"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-11-16",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2511.13780v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Primal-Attention: Self-attention through Asymmetric Kernel SVD in Primal Representation",
+      "snippet": "Recently, a new line of works has emerged to understand and improve self-attention in Transformers by treating it as a kernel machine. However, existing works apply the methods for symmetric kernels to the asymmetric self-attention, resulting in a nontrivial gap between the analytical understanding and numerical implementation. In this paper, we provide a new perspective to represent and optimize self-attention through asymmetric Kernel Singular Value Decomposition (KSVD), which is also motivated by the low-rank property of self-attention normally observed in deep layers. Through asymmetric KS",
+      "full_text": "Recently, a new line of works has emerged to understand and improve self-attention in Transformers by treating it as a kernel machine. However, existing works apply the methods for symmetric kernels to the asymmetric self-attention, resulting in a nontrivial gap between the analytical understanding and numerical implementation. In this paper, we provide a new perspective to represent and optimize self-attention through asymmetric Kernel Singular Value Decomposition (KSVD), which is also motivated by the low-rank property of self-attention normally observed in deep layers. Through asymmetric KSVD, $i$) a primal-dual representation of self-attention is formulated, where the optimization objective is cast to maximize the projection variances in the attention outputs; $ii$) a novel attention mechanism, i.e., Primal-Attention, is proposed via the primal representation of KSVD, avoiding explicit computation of the kernel matrix in the dual; $iii$) with KKT conditions, we prove that the stationary solution to the KSVD optimization in Primal-Attention yields a zero-value objective. In this manner, KSVD optimization can be implemented by simply minimizing a regularization loss, so that low-rank property is promoted without extra decomposition. Numerical experiments show state-of-the-art performance of our Primal-Attention with improved efficiency. Moreover, we demonstrate that the deployed KSVD optimization regularizes Primal-Attention with a sharper singular value decay than that of the canonical self-attention, further verifying the great potential of our method. To the best of our knowledge, this is the first work that provides a primal-dual representation for the asymmetric kernel in self-attention and successfully applies it to modeling and optimization.",
+      "url": "https://arxiv.org/abs/2305.19798v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Yingyi Chen",
+        "Qinghua Tao",
+        "Francesco Tonin",
+        "Johan A. K. Suykens"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-05-31",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2305.19798v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Toward Interpretable Music Tagging with Self-Attention",
+      "snippet": "Self-attention is an attention mechanism that learns a representation by relating different positions in the sequence. The transformer, which is a sequence model solely based on self-attention, and its variants achieved state-of-the-art results in many natural language processing tasks. Since music composes its semantics based on the relations between components in sparse positions, adopting the self-attention mechanism to solve music information retrieval (MIR) problems can be beneficial. Hence, we propose a self-attention based deep sequence model for music tagging. The proposed architecture",
+      "full_text": "Self-attention is an attention mechanism that learns a representation by relating different positions in the sequence. The transformer, which is a sequence model solely based on self-attention, and its variants achieved state-of-the-art results in many natural language processing tasks. Since music composes its semantics based on the relations between components in sparse positions, adopting the self-attention mechanism to solve music information retrieval (MIR) problems can be beneficial. Hence, we propose a self-attention based deep sequence model for music tagging. The proposed architecture consists of shallow convolutional layers followed by stacked Transformer encoders. Compared to conventional approaches using fully convolutional or recurrent neural networks, our model is more interpretable while reporting competitive results. We validate the performance of our model with the MagnaTagATune and the Million Song Dataset. In addition, we demonstrate the interpretability of the proposed architecture with a heat map visualization.",
+      "url": "https://arxiv.org/abs/1906.04972v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Minz Won",
+        "Sanghyuk Chun",
+        "Xavier Serra"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-06-12",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1906.04972v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Music Transformer",
+      "snippet": "Music relies heavily on repetition to build structure and meaning. Self-reference occurs on multiple timescales, from motifs to phrases to reusing of entire sections of music, such as in pieces with ABA structure. The Transformer (Vaswani et al., 2017), a sequence model based on self-attention, has achieved compelling results in many generation tasks that require maintaining long-range coherence. This suggests that self-attention might also be well-suited to modeling music. In musical composition and performance, however, relative timing is critically important. Existing approaches for represe",
+      "full_text": "Music relies heavily on repetition to build structure and meaning. Self-reference occurs on multiple timescales, from motifs to phrases to reusing of entire sections of music, such as in pieces with ABA structure. The Transformer (Vaswani et al., 2017), a sequence model based on self-attention, has achieved compelling results in many generation tasks that require maintaining long-range coherence. This suggests that self-attention might also be well-suited to modeling music. In musical composition and performance, however, relative timing is critically important. Existing approaches for representing relative positional information in the Transformer modulate attention based on pairwise distance (Shaw et al., 2018). This is impractical for long sequences such as musical compositions since their memory complexity for intermediate relative information is quadratic in the sequence length. We propose an algorithm that reduces their intermediate memory requirement to linear in the sequence length. This enables us to demonstrate that a Transformer with our modified relative attention mechanism can generate minute-long compositions (thousands of steps, four times the length modeled in Oore et al., 2018) with compelling structure, generate continuations that coherently elaborate on a given motif, and in a seq2seq setup generate accompaniments conditioned on melodies. We evaluate the Transformer with our relative attention mechanism on two datasets, JSB Chorales and Piano-e-Competition, and obtain state-of-the-art results on the latter.",
+      "url": "https://arxiv.org/abs/1809.04281v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Cheng-Zhi Anna Huang",
+        "Ashish Vaswani",
+        "Jakob Uszkoreit",
+        "Noam Shazeer",
+        "Ian Simon",
+        "Curtis Hawthorne",
+        "Andrew M. Dai",
+        "Matthew D. Hoffman",
+        "Monica Dinculescu",
+        "Douglas Eck"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2018-09-12",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1809.04281v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Improving Sample Quality of Diffusion Models Using Self-Attention Guidance",
+      "snippet": "Denoising diffusion models (DDMs) have attracted attention for their exceptional generation quality and diversity. This success is largely attributed to the use of class- or text-conditional diffusion guidance methods, such as classifier and classifier-free guidance. In this paper, we present a more comprehensive perspective that goes beyond the traditional guidance methods. From this generalized perspective, we introduce novel condition- and training-free strategies to enhance the quality of generated images. As a simple solution, blur guidance improves the suitability of intermediate samples",
+      "full_text": "Denoising diffusion models (DDMs) have attracted attention for their exceptional generation quality and diversity. This success is largely attributed to the use of class- or text-conditional diffusion guidance methods, such as classifier and classifier-free guidance. In this paper, we present a more comprehensive perspective that goes beyond the traditional guidance methods. From this generalized perspective, we introduce novel condition- and training-free strategies to enhance the quality of generated images. As a simple solution, blur guidance improves the suitability of intermediate samples for their fine-scale information and structures, enabling diffusion models to generate higher quality samples with a moderate guidance scale. Improving upon this, Self-Attention Guidance (SAG) uses the intermediate self-attention maps of diffusion models to enhance their stability and efficacy. Specifically, SAG adversarially blurs only the regions that diffusion models attend to at each iteration and guides them accordingly. Our experimental results show that our SAG improves the performance of various diffusion models, including ADM, IDDPM, Stable Diffusion, and DiT. Moreover, combining SAG with conventional guidance methods leads to further improvement.",
+      "url": "https://arxiv.org/abs/2210.00939v6",
+      "_adapter": "arxiv",
+      "authors": [
+        "Susung Hong",
+        "Gyuseong Lee",
+        "Wooseok Jang",
+        "Seungryong Kim"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-10-03",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2210.00939v6",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Understanding How Positional Encodings Work in Transformer Model",
+      "snippet": "A transformer model is used in general tasks such as pre-trained language models and specific tasks including machine translation. Such a model mainly relies on positional encodings (PEs) to handle the sequential order of input vectors. There are variations of PEs, such as absolute and relative, and several studies have reported on the superiority of relative PEs. In this paper, we focus on analyzing in which part of a transformer model PEs work and the different characteristics between absolute and relative PEs through a series of experiments. Experimental results indicate that PEs work in bo",
+      "full_text": "A transformer model is used in general tasks such as pre-trained language models and specific tasks including machine translation. Such a model mainly relies on positional encodings (PEs) to handle the sequential order of input vectors. There are variations of PEs, such as absolute and relative, and several studies have reported on the superiority of relative PEs. In this paper, we focus on analyzing in which part of a transformer model PEs work and the different characteristics between absolute and relative PEs through a series of experiments. Experimental results indicate that PEs work in both self- and cross-attention blocks in a transformer model, and PEs should be added only to the query and key of an attention mechanism, not to the value. We also found that applying two PEs in combination, a relative PE in the self-attention block and an absolute PE in the cross-attention block, can improve translation quality.",
+      "url": "https://aclanthology.org/2024.lrec-main.1478.pdf",
+      "_adapter": "openreview",
+      "authors": [
+        "Taro Miyazaki",
+        "Hideya Mino",
+        "Hiroyuki Kaneko"
+      ],
+      "venue": "LREC/COLING 2024",
+      "publication_date": "1704",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "openreview_forum_id": "2FOIOMX02s",
+      "retrieval_method": "openreview_note_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The underlying structures of self-attention: symmetry, directionality, and emergent dynamics in Transformer training",
+      "snippet": "Self-attention is essential to Transformer architectures, yet how information is embedded in the self-attention matrices and how different objective functions impact this process remains unclear. We present a mathematical framework to analyze self-attention matrices by deriving the structures governing their weight updates. Using this framework, we demonstrate that bidirectional training induces symmetry in the weight matrices, while autoregressive training results in directionality and column dominance. Our theoretical findings are validated across multiple Transformer models - including Mode",
+      "full_text": "Self-attention is essential to Transformer architectures, yet how information is embedded in the self-attention matrices and how different objective functions impact this process remains unclear. We present a mathematical framework to analyze self-attention matrices by deriving the structures governing their weight updates. Using this framework, we demonstrate that bidirectional training induces symmetry in the weight matrices, while autoregressive training results in directionality and column dominance. Our theoretical findings are validated across multiple Transformer models - including ModernBERT, GPT, LLaMA3, and Mistral - and input modalities like text, vision, and audio. Finally, we apply these insights by showing that symmetric initialization improves the performance of encoder-only models on language tasks. This mathematical analysis offers a novel theoretical perspective on how information is embedded through self-attention, thereby improving the interpretability of Transformer models.",
+      "url": "https://arxiv.org/pdf/2502.10927v2",
+      "_adapter": "openreview",
+      "authors": [
+        "Matteo Saponati",
+        "Pascal Sager",
+        "Pau Vilimelis Aceituno",
+        "Thilo Stadelmann",
+        "Benjamin F. Grewe"
+      ],
+      "venue": "CoRR 2025",
+      "publication_date": "1767",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "openreview_forum_id": "CAoHJwqcTp",
+      "retrieval_method": "openreview_note_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The underlying structures of self-attention: symmetry, directionality, and emergent dynamics in Transformer training",
+      "snippet": "Self-attention is essential to Transformer architectures, yet how information is embedded in the self-attention matrices and how different objective functions impact this process remains unclear. We present a mathematical framework to analyze self-attention matrices by deriving the structures governing their weight updates. Using this framework, we demonstrate that bidirectional training induces symmetry in the weight matrices, while autoregressive training results in directionality and column dominance. Our theoretical findings are validated across multiple Transformer models — including Mode",
+      "full_text": "Self-attention is essential to Transformer architectures, yet how information is embedded in the self-attention matrices and how different objective functions impact this process remains unclear. We present a mathematical framework to analyze self-attention matrices by deriving the structures governing their weight updates. Using this framework, we demonstrate that bidirectional training induces symmetry in the weight matrices, while autoregressive training results in directionality and column dominance. Our theoretical findings are validated across multiple Transformer models — including ModernBERT, GPT, LLaMA3, and Mistral — and input modalities like text, vision, and audio. Finally, we apply these insights by showing that symmetric initialization improves the performance of encoder-only models on language tasks. This mathematical analysis offers a novel theoretical perspective on how information is embedded through self-attention, thereby improving the interpretability of Transformer models.",
+      "url": "https://openreview.net/forum?id=gpizm0I3lp",
+      "_adapter": "openreview",
+      "authors": [
+        "Matteo Saponati",
+        "Pascal Josef Sager",
+        "Pau Vilimelis Aceituno",
+        "Thilo Stadelmann",
+        "Benjamin F Grewe"
+      ],
+      "venue": "ICML 2025 poster",
+      "publication_date": "1746",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "openreview_forum_id": "gpizm0I3lp",
+      "retrieval_method": "openreview_note_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Namescape",
+      "snippet": "The project Namescape: Mapping the Landscape of Names in Modern Dutch Literature (2012–2013) was a demonstrator project granted in the third CLARIN-NL call. Partners in the project were the Huygens Institute for the History of the Netherlands, the University of Amsterdam, and the Institute for Dutch Lexicology (CLARIN centre). The project dealt with Named Entity Recognition (NER) for modern Dutch fiction and delivered two new NER tools for this purpose. It also addressed Named Entity Resolution and focused on a set of visualisations of names in individual texts from the corpus. This chapter gi",
+      "full_text": "The project Namescape: Mapping the Landscape of Names in Modern Dutch Literature (2012–2013) was a demonstrator project granted in the third CLARIN-NL call. Partners in the project were the Huygens Institute for the History of the Netherlands, the University of Amsterdam, and the Institute for Dutch Lexicology (CLARIN centre). The project dealt with Named Entity Recognition (NER) for modern Dutch fiction and delivered two new NER tools for this purpose. It also addressed Named Entity Resolution and focused on a set of visualisations of names in individual texts from the corpus. This chapter gives an overview of the results of the project, starting with a description of the background of the research questions in the discipline of comparative literary onomastics. It then goes on to describe the tools that were delivered, and which can be found on the project website, http://www.namescape.nl/.",
+      "url": "https://openreview.net/forum?id=9d7TLm3v99",
+      "_adapter": "openreview",
+      "authors": [
+        "{'fullname': 'J. de Does', 'username': 'https://orcid.org/orcid-search/search?searchQuery=J.%20de%20Does'}",
+        "{'fullname': 'K. Depuydt', 'username': 'https://orcid.org/orcid-search/search?searchQuery=K.%20Depuydt'}",
+        "{'fullname': 'K. van Dalen-Oskam', 'username': 'https://orcid.org/orcid-search/search?searchQuery=K.%20van%20Dalen-Oskam'}",
+        "{'fullname': 'M. Marx', 'username': '~Maarten_Marx2'}"
+      ],
+      "venue": "Clarin in the Low Countries",
+      "publication_date": "1483",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "openreview_forum_id": "9d7TLm3v99",
+      "retrieval_method": "openreview_note_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Selective Forgetting in Tool-Augmented Language-Model Agents",
+      "snippet": "Tool-augmented reinforcement learning can improve language-model agents when external tools are useful, but it may also change how the model behaves when tools are absent or unnecessary. We study this effect in HotpotQA and ToolACE-style tool-use training on Qwen-based models. Our results suggest a form of selective forgetting: tool-use fine-tuning does not cause uniform collapse on standard math, commonsense, or instruction-following benchmarks, but it can shift the model away from deliberative reasoning. This appears as a growing Tool-on vs. Tool-off withdrawal gap, substantial response-leng",
+      "full_text": "Tool-augmented reinforcement learning can improve language-model agents when external tools are useful, but it may also change how the model behaves when tools are absent or unnecessary. We study this effect in HotpotQA and ToolACE-style tool-use training on Qwen-based models. Our results suggest a form of selective forgetting: tool-use fine-tuning does not cause uniform collapse on standard math, commonsense, or instruction-following benchmarks, but it can shift the model away from deliberative reasoning. This appears as a growing Tool-on vs. Tool-off withdrawal gap, substantial response-length compression, reduced reflection-marker density, and transient drops on reasoning-sensitive evaluations. Qualitative GSM8K rollouts show that shorter responses can be cleaner on simple arithmetic, but the same compression can remove useful intermediate reasoning on harder tasks. We argue that tool-use fine-tuning should preserve not only final-answer accuracy, but also the model’s reasoning policy.",
+      "url": "https://openreview.net/forum?id=RjRwnuuov0",
+      "_adapter": "openreview",
+      "authors": [
+        "Fatemeh Nourzad",
+        "Amirhossein Roknilamouki",
+        "Qinhang Wu",
+        "Eylem Ekici",
+        "Yingbin Liang",
+        "Ness Shroff"
+      ],
+      "venue": "CoLLAs 2026 - Work-In-Progress Track (Non-Archival) Poster",
+      "publication_date": "1787",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "openreview_forum_id": "RjRwnuuov0",
+      "retrieval_method": "openreview_note_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multi-View Self-Attention Based Transformer for Speaker Recognition",
+      "snippet": "Initially developed for natural language processing (NLP), Transformer model is now widely used for speech processing tasks such as speaker recognition, due to its powerful sequence modeling capabilities. However, conventional self-attention mechanisms are originally designed for modeling textual sequence without considering the characteristics of speech and speaker modeling. Besides, different Transformer variants for speaker recognition have not been well studied. In this work, we propose a novel multi-view self-attention mechanism and present an empirical study of different Transformer vari",
+      "full_text": "Initially developed for natural language processing (NLP), Transformer model is now widely used for speech processing tasks such as speaker recognition, due to its powerful sequence modeling capabilities. However, conventional self-attention mechanisms are originally designed for modeling textual sequence without considering the characteristics of speech and speaker modeling. Besides, different Transformer variants for speaker recognition have not been well studied. In this work, we propose a novel multi-view self-attention mechanism and present an empirical study of different Transformer variants with or without the proposed attention mechanism for speaker recognition. Specifically, to balance the capabilities of capturing global dependencies and modeling the locality, we propose a multi-view self-attention mechanism for speaker Transformer, in which different attention heads can attend to different ranges of the receptive field. Furthermore, we introduce and compare five Transformer variants with different network architectures, embedding locations, and pooling methods to learn speaker embeddings. Experimental results on the VoxCeleb1 and VoxCeleb2 datasets show that the proposed multi-view self-attention mechanism achieves improvement in the performance of speaker recognition, and the proposed speaker Transformer network attains excellent results compared with state-of-the-art models.",
+      "url": "http://arxiv.org/pdf/2110.05036v2",
+      "_adapter": "openreview",
+      "authors": [
+        "Rui Wang",
+        "Junyi Ao",
+        "Long Zhou",
+        "Shujie Liu",
+        "Zhihua Wei",
+        "Tom Ko",
+        "Qing Li",
+        "Yu Zhang"
+      ],
+      "venue": "CoRR 2021",
+      "publication_date": "1609",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "openreview_forum_id": "MwxfNBs3ks",
+      "retrieval_method": "openreview_note_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openreview",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The Annotated Transformer",
+      "snippet": "## 2 Background\n\nThe goal of reducing sequential computation also forms the foundation of the Extended Neural GPU, ByteNet and ConvS2S, all of which use convolutional neural networks as basic building block, computing hidden representations in parallel for all input and output positions. In these models, the number of operations required to relate signals from two arbitrary input or output positions grows in the distance between positions, linearly for ConvS2S and logarithmically for ByteNet. Th",
+      "full_text": "## 2 Background\n\nThe goal of reducing sequential computation also forms the foundation of the Extended Neural GPU, ByteNet and ConvS2S, all of which use convolutional neural networks as basic building block, computing hidden representations in parallel for all input and output positions. In these models, the number of operations required to relate signals from two arbitrary input or output positions grows in the distance between positions, linearly for ConvS2S and logarithmically for ByteNet. Th",
+      "url": "https://aclanthology.org/W18-2509/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Alexander Rush"
+      ],
+      "venue": "Proceedings of Workshop for NLP Open Source Software (NLP-OSS)",
+      "publication_date": "2018",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "W18-2509",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Sockeye Neural Machine Translation Toolkit at AMTA 2018",
+      "snippet": "## 2.2 Self-attentional Transformer\n\nThe transformer model [Vaswani et al., 2017] uses attention to replace recurrent dependencies, making the representation at time step i independent from the other time steps. This requires the explicit encoding of positional information in the sequence by adding fixed or learned positional embeddings to the embedding vectors.\n\nThe encoder uses several identical blocks consisting of two core sublayers, self-attention and a feed-forward network. The self-attent",
+      "full_text": "## 2.2 Self-attentional Transformer\n\nThe transformer model [Vaswani et al., 2017] uses attention to replace recurrent dependencies, making the representation at time step i independent from the other time steps. This requires the explicit encoding of positional information in the sequence by adding fixed or learned positional embeddings to the embedding vectors.\n\nThe encoder uses several identical blocks consisting of two core sublayers, self-attention and a feed-forward network. The self-attent",
+      "url": "https://aclanthology.org/W18-1820/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Felix Hieber",
+        "Tobias Domhan",
+        "Michael Denkowski",
+        "David Vilar",
+        "Artem Sokolov",
+        "Ann Clifton",
+        "Matt Post"
+      ],
+      "venue": "Proceedings of the 13th Conference of the Association for Machine Translation in the Americas (Volume 1: Research Track)",
+      "publication_date": "2018",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "W18-1820",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Why Self-Attention? A Targeted Evaluation of Neural Machine Translation Architectures",
+      "snippet": "## 3.1.3 Transformer-based NMT\n\nTransformers rely heavily on self-attention networks. Each token is connected to any other token in the same sentence directly via selfattention. Moreover, Transformers feature attention networks with multiple attention heads . Multi-head attention is more fine-grained, compared to conventional 1 -head attention mechanisms. Figure 1 (c) illustrates that any two tokens are connected directly: the path length between the first and the fifth tokens is 1 . Similar to",
+      "full_text": "## 3.1.3 Transformer-based NMT\n\nTransformers rely heavily on self-attention networks. Each token is connected to any other token in the same sentence directly via selfattention. Moreover, Transformers feature attention networks with multiple attention heads . Multi-head attention is more fine-grained, compared to conventional 1 -head attention mechanisms. Figure 1 (c) illustrates that any two tokens are connected directly: the path length between the first and the fifth tokens is 1 . Similar to",
+      "url": "https://aclanthology.org/D18-1458/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Gongbo Tang",
+        "Mathias Müller",
+        "Annette Rios",
+        "Rico Sennrich"
+      ],
+      "venue": "Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing",
+      "publication_date": "2018",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "D18-1458",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Self-Attentional Models Application in Task-Oriented Dialogue Generation Systems",
+      "snippet": "## 3.2 Transformer\n\nAs discussed before, Transformer is the first model that entirely relies on the self-attention mechanism for both the encoder and the decoder. The Transformer uses the self-attention mechanism to learn a representation of a sentence by relating different positions of that sentence. Like many of the sequence modelling methods, Transformer follows the encoder-decoder architecture in which the input is given to the encoder and the results of the encoder is passed to the decoder",
+      "full_text": "## 3.2 Transformer\n\nAs discussed before, Transformer is the first model that entirely relies on the self-attention mechanism for both the encoder and the decoder. The Transformer uses the self-attention mechanism to learn a representation of a sentence by relating different positions of that sentence. Like many of the sequence modelling methods, Transformer follows the encoder-decoder architecture in which the input is given to the encoder and the results of the encoder is passed to the decoder",
+      "url": "https://aclanthology.org/R19-1119/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Mansour Saffar Mehrjardi",
+        "Amine Trabelsi",
+        "Osmar R. Zaiane"
+      ],
+      "venue": "Proceedings of the International Conference on Recent Advances in Natural Language Processing (RANLP 2019)",
+      "publication_date": "2019",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "R19-1119",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How Much Attention Do You Need? A Granular Analysis of Neural Machine Translation Architectures",
+      "snippet": "## 4.4 Self-attention variations\n\nAt the core of the Transformer are self-attentional layers, which take the role previously occupied by RNNsand CNNs. Self-attention has the advantage that any two positions are directly connected and that, similar to CNNs, there are no dependencies between consecutive time steps so that the computation can be fully parallelized across time. One disadvantage is that relative positional information is not directly represented and one needs to rely on the different",
+      "full_text": "## 4.4 Self-attention variations\n\nAt the core of the Transformer are self-attentional layers, which take the role previously occupied by RNNsand CNNs. Self-attention has the advantage that any two positions are directly connected and that, similar to CNNs, there are no dependencies between consecutive time steps so that the computation can be fully parallelized across time. One disadvantage is that relative positional information is not directly represented and one needs to rely on the different",
+      "url": "https://aclanthology.org/P18-1167/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Tobias Domhan"
+      ],
+      "venue": "Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)",
+      "publication_date": "2018",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "P18-1167",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Does Self-Attention Need Separate Weights in Transformers?",
+      "snippet": "## References\n\nAli Mohamed Nabil Allam and Mohamed Hassan Haggag. 2012. The question answering systems: A survey. International Journal of Research and Reviews in Information Sciences (IJRRIS) , 2(3).\n\nDzmitry Bahdanau, Kyunghyun Cho, and Yoshua Bengio. 2014. Neural machine translation by jointly learning to align and translate. arXiv preprint arXiv:1409.0473 .\n\nIz Beltagy, Matthew E Peters, and Arman Cohan. 2020. Longformer: The long-document transformer. arXiv preprint arXiv:2004.05150 .\n\nPavo",
+      "full_text": "## References\n\nAli Mohamed Nabil Allam and Mohamed Hassan Haggag. 2012. The question answering systems: A survey. International Journal of Research and Reviews in Information Sciences (IJRRIS) , 2(3).\n\nDzmitry Bahdanau, Kyunghyun Cho, and Yoshua Bengio. 2014. Neural machine translation by jointly learning to align and translate. arXiv preprint arXiv:1409.0473 .\n\nIz Beltagy, Matthew E Peters, and Arman Cohan. 2020. Longformer: The long-document transformer. arXiv preprint arXiv:2004.05150 .\n\nPavo",
+      "url": "https://aclanthology.org/2025.naacl-industry.44/",
+      "_adapter": "acl_anthology",
+      "authors": [
+        "Md Kowsher",
+        "Nusrat Jahan Prottasha",
+        "Chun-Nam Yu",
+        "Ozlem Garibay",
+        "Niloofar Yousefi"
+      ],
+      "venue": "Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 3: Industry Track)",
+      "publication_date": "2025",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "conference_paper",
+      "anthology_id": "2025.naacl-industry.44",
+      "retrieval_method": "acl_anthology_verbatim_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "acl_anthology",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How Do Vision Transformers Work?",
+      "snippet": "The success of multi-head self-attentions (MSAs) for computer vision is now indisputable. However, little is known about how MSAs work. We present fundamental explanations to help better understand the nature of MSAs. In particular, we demonstrate the following properties of MSAs and Vision Transformers (ViTs): (1) MSAs improve not only accuracy but also generalization by flattening the loss landscapes. Such improvement is primarily attributable to their data specificity, not long-range dependency. On the other hand, ViTs suffer from non-convex losses. Large datasets and loss landscape smoothi",
+      "full_text": "The success of multi-head self-attentions (MSAs) for computer vision is now indisputable. However, little is known about how MSAs work. We present fundamental explanations to help better understand the nature of MSAs. In particular, we demonstrate the following properties of MSAs and Vision Transformers (ViTs): (1) MSAs improve not only accuracy but also generalization by flattening the loss landscapes. Such improvement is primarily attributable to their data specificity, not long-range dependency. On the other hand, ViTs suffer from non-convex losses. Large datasets and loss landscape smoothing methods alleviate this problem; (2) MSAs and Convs exhibit opposite behaviors. For example, MSAs are low-pass filters, but Convs are high-pass filters. Therefore, MSAs and Convs are complementary; (3) Multi-stage neural networks behave like a series connection of small individual models. In addition, MSAs at the end of a stage play a key role in prediction. Based on these insights, we propose AlterNet, a model in which Conv blocks at the end of a stage are replaced with MSA blocks. AlterNet outperforms CNNs not only in large data regimes but also in small data regimes. The code is available at https://github.com/xxxnell/how-do-vits-work.",
+      "url": "https://openalex.org/W4225871896",
+      "_adapter": "openalex",
+      "authors": [
+        "Namuk Park",
+        "Songkuk Kim"
+      ],
+      "venue": "arXiv (Cornell University)",
+      "publication_date": "2022",
+      "doi": "10.48550/arxiv.2202.06709",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Keyword Transformer: A Self-Attention Model for Keyword Spotting",
+      "snippet": "The Transformer architecture has been successful across many domains, including natural language processing, computer vision and speech recognition. In keyword spotting, self-attention has primarily been used on top of convolutional or recurrent encoders. We investigate a range of ways to adapt the Transformer architecture to keyword spotting and introduce the Keyword Transformer (KWT), a fully self-attentional architecture that exceeds state-of-the-art performance across multiple tasks without any pre-training or additional data. Surprisingly, this simple architecture outperforms more complex",
+      "full_text": "The Transformer architecture has been successful across many domains, including natural language processing, computer vision and speech recognition. In keyword spotting, self-attention has primarily been used on top of convolutional or recurrent encoders. We investigate a range of ways to adapt the Transformer architecture to keyword spotting and introduce the Keyword Transformer (KWT), a fully self-attentional architecture that exceeds state-of-the-art performance across multiple tasks without any pre-training or additional data. Surprisingly, this simple architecture outperforms more complex models that mix convolutional, recurrent and attentive layers. KWT can be used as a drop-in replacement for these models, setting two new benchmark records on the Google Speech Commands dataset with 98.6% and 97.7% accuracy on the 12 and 35-command tasks respectively.",
+      "url": "https://openalex.org/W3141838378",
+      "_adapter": "openalex",
+      "authors": [
+        "Axel Berg",
+        "Mark O’Connor",
+        "Miguel Tairum Cruz"
+      ],
+      "venue": "Interspeech (USB)",
+      "publication_date": "2021",
+      "doi": "10.21437/interspeech.2021-1286",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Attention Mechanism, Transformers, BERT, and GPT: Tutorial and Survey",
+      "snippet": "This is a tutorial and survey paper on the attention mechanism, transformers, BERT, and GPT. We first explain attention mechanism, sequence-to-sequence model without and with attention, self-attention, and attention in different areas such as natural language processing and computer vision. Then, we explain transformers which do not use any recurrence. We explain all the parts of encoder and decoder in the transformer, including positional encoding, multihead self-attention and cross-attention, and masked multihead attention. Thereafter, we introduce the Bidirectional Encoder Representations f",
+      "full_text": "This is a tutorial and survey paper on the attention mechanism, transformers, BERT, and GPT. We first explain attention mechanism, sequence-to-sequence model without and with attention, self-attention, and attention in different areas such as natural language processing and computer vision. Then, we explain transformers which do not use any recurrence. We explain all the parts of encoder and decoder in the transformer, including positional encoding, multihead self-attention and cross-attention, and masked multihead attention. Thereafter, we introduce the Bidirectional Encoder Representations from Transformers (BERT) and Generative Pre-trained Transformer (GPT) as the stacks of encoders and decoders of transformer, respectively. We explain their characteristics and how they work.",
+      "url": "https://openalex.org/W4243640523",
+      "_adapter": "openalex",
+      "authors": [
+        "Benyamin Ghojogh",
+        "Ali Ghodsi"
+      ],
+      "venue": "HAL",
+      "publication_date": "2020",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "A Multiscale Visualization of Attention in the Transformer Model",
+      "snippet": "The Transformer is a sequence model that forgoes traditional recurrent architectures in favor of a fully attention-based approach. Besides improving performance, an advantage of using attention is that it can also help to interpret a model by showing how the model assigns weight to different input elements. However, the multi-layer, multi-head attention mechanism in the Transformer model can be difficult to decipher. To make the model more accessible, we introduce an open-source tool that visualizes attention at multiple scales, each of which provides a unique perspective on the attention mech",
+      "full_text": "The Transformer is a sequence model that forgoes traditional recurrent architectures in favor of a fully attention-based approach. Besides improving performance, an advantage of using attention is that it can also help to interpret a model by showing how the model assigns weight to different input elements. However, the multi-layer, multi-head attention mechanism in the Transformer model can be difficult to decipher. To make the model more accessible, we introduce an open-source tool that visualizes attention at multiple scales, each of which provides a unique perspective on the attention mechanism. We demonstrate the tool on BERT and OpenAI GPT-2 and present three example use cases: detecting model bias, locating relevant attention heads, and linking neurons to model behavior.",
+      "url": "https://openalex.org/W2949202705",
+      "_adapter": "openalex",
+      "authors": [
+        "Jesse Vig"
+      ],
+      "venue": "Annual Meeting of the Association for Computational Linguistics: System Demonstrations (ACL Demo)",
+      "publication_date": "2019",
+      "doi": "10.18653/v1/p19-3007",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Anisotropy Is Inherent to Self-Attention in Transformers",
+      "snippet": "The representation degeneration problem is a phenomenon that is widely observed among self-supervised learning methods based on Transformers. In NLP, it takes the form of anisotropy, a singular property of hidden representations which makes them unexpectedly close to each other in terms of angular distance (cosine-similarity). Some recent works tend to show that anisotropy is a consequence of optimizing the cross-entropy loss on long-tailed distributions of tokens. We show in this paper that anisotropy can also be observed empirically in language models with specific objectives that should not",
+      "full_text": "The representation degeneration problem is a phenomenon that is widely observed among self-supervised learning methods based on Transformers. In NLP, it takes the form of anisotropy, a singular property of hidden representations which makes them unexpectedly close to each other in terms of angular distance (cosine-similarity). Some recent works tend to show that anisotropy is a consequence of optimizing the cross-entropy loss on long-tailed distributions of tokens. We show in this paper that anisotropy can also be observed empirically in language models with specific objectives that should not suffer directly from the same consequences. We also show that the anisotropy problem extends to Transformers trained on other modalities. Our observations tend to demonstrate that anisotropy might actually be inherent to Transformers-based models.",
+      "url": "https://openalex.org/W4411630354",
+      "_adapter": "openalex",
+      "authors": [
+        "Nathan Godey",
+        "Éric Villemonte de la Clergerie",
+        "Benoît Sagot"
+      ],
+      "venue": "Conference of the European Chapter of the Association for Computational Linguistics",
+      "publication_date": "2024",
+      "doi": "10.18653/v1/2024.eacl-long.3",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Enhancing heart disease prediction using a self-attention-based transformer model",
+      "snippet": "Cardiovascular diseases (CVDs) continue to be the leading cause of more than 17 million mortalities worldwide. The early detection of heart failure with high accuracy is crucial for clinical trials and therapy. Patients will be categorized into various types of heart disease based on characteristics like blood pressure, cholesterol levels, heart rate, and other characteristics. With the use of an automatic system, we can provide early diagnoses for those who are prone to heart failure by analyzing their characteristics. In this work, we deploy a novel self-attention-based transformer model, th",
+      "full_text": "Cardiovascular diseases (CVDs) continue to be the leading cause of more than 17 million mortalities worldwide. The early detection of heart failure with high accuracy is crucial for clinical trials and therapy. Patients will be categorized into various types of heart disease based on characteristics like blood pressure, cholesterol levels, heart rate, and other characteristics. With the use of an automatic system, we can provide early diagnoses for those who are prone to heart failure by analyzing their characteristics. In this work, we deploy a novel self-attention-based transformer model, that combines self-attention mechanisms and transformer networks to predict CVD risk. The self-attention layers capture contextual information and generate representations that effectively model complex patterns in the data. Self-attention mechanisms provide interpretability by giving each component of the input sequence a certain amount of attention weight. This includes adjusting the input and output layers, incorporating more layers, and modifying the attention processes to collect relevant information. This also makes it possible for physicians to comprehend which features of the data contributed to the model's predictions. The proposed model is tested on the Cleveland dataset, a benchmark dataset of the University of California Irvine (UCI) machine learning (ML) repository. Comparing the proposed model to several baseline approaches, we achieved the highest accuracy of 96.51%. Furthermore, the outcomes of our experiments demonstrate that the prediction rate of our model is higher than that of other cutting-edge approaches used for heart disease prediction.",
+      "url": "https://openalex.org/W4390588437",
+      "_adapter": "openalex",
+      "authors": [
+        "Atta Rahman",
+        "Yousef S. Alsenani",
+        "Adeel Zafar",
+        "Kalim Ullah",
+        "Khaled Maaiuf Rabie",
+        "Thokozani Shongwe"
+      ],
+      "venue": "Scientific Reports",
+      "publication_date": "2024",
+      "doi": "10.1038/s41598-024-51184-7",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "snippet": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "full_text": null,
+      "url": "https://doi.org/10.1088/2058-9565/ae8b21/v1/review2",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.1088/2058-9565/ae8b21/v1/review2",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "snippet": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "full_text": null,
+      "url": "https://doi.org/10.1088/2058-9565/ae8b21/v3/review1",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.1088/2058-9565/ae8b21/v3/review1",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "snippet": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "full_text": null,
+      "url": "https://doi.org/10.1088/2058-9565/ae8b21/v2/review1",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.1088/2058-9565/ae8b21/v2/review1",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ],
+  "routes": {
+    "production": {
+      "production": [
+        "arxiv",
+        "dblp",
+        "openreview",
+        "acl_anthology",
+        "openalex"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "routes_added_at": "2026-11-24T16:11:35+0100"
+}

@@ -183,6 +183,8 @@ def _section_to_evidence(
         full_text=full_text,
         url=document.url,
         document_type=document_type,
+        # Page date from the extractor, when it found one (S7: dates in the prompt).
+        publication_date=(str(document.date).strip() or None) if document.date else None,
         relevance_score=max(0.0, min(1.0, ranked.relevance_score)),
         authority_score=authority,
         reliability_score=max(0.0, min(1.0, ranked.relevance_score * 0.85)),

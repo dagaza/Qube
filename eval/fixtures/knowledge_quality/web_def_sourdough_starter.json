@@ -1,0 +1,214 @@
+{
+  "schema_version": 2,
+  "id": "web_def_sourdough_starter",
+  "path": "general_web",
+  "category": "definition",
+  "description": "",
+  "query_raw": "@[tool:internet] what is a sourdough starter and how do i keep it alive",
+  "query_clean": "what is a sourdough starter and how do i keep it alive",
+  "retrieval_query": "what is a sourdough starter and how do i keep it alive",
+  "standalone_question": "What is a sourdough starter and how do you maintain it?",
+  "gold_subject": "sourdough starter",
+  "gold_facet": "maintenance",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:24:57+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "what is a sourdough starter and how do i keep it alive"
+    },
+    "standalone": {
+      "duckduckgo": "What is a sourdough starter and how do you maintain it?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Feeding and Maintaining Your Sourdough Starter - King Arthur Baking",
+      "snippet": "Once you've successfully created your own sourdough starter, you'll want to keep it healthy with regular feedings. While there are many ways to successfully maintain a starter, there are two basic options to choose from: Here's how to feed and maintain your sourdough starter.",
+      "url": "https://www.kingarthurbaking.com/recipes/feeding-and-maintaining-your-sourdough-starter-recipe",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Make Sourdough Starter (With Step-by-Step)",
+      "snippet": "Learn how to make a sourdough starter from scratch with our recipe, which is adapted from Artisan Bryan. The starter is alive—it's an active colony of wild yeast formed by continuously combining flour and water until it is bubbly enough to create the leavening needed to bake a loaf of bread. (You don't add any yeast yourself; instead, you allow the wild yeast present in the flour to develop ...",
+      "url": "https://www.marthastewart.com/how-to-make-sourdough-starter-8547141",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The Ultimate Sourdough Starter Guide - The Perfect Loaf",
+      "snippet": "Everything you ever wanted to know about creating, maintaining, and using and maintaining a sourdough starter. Plus starter discard recipes!",
+      "url": "https://www.theperfectloaf.com/guides/sourdough-starter/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sourdough Starter Care: The Complete Beginner's Guide to Keeping It ...",
+      "snippet": "Good sourdough starter care is the foundation of every great loaf — and keeping one alive is a lot simpler than most people think. This covers everything you need to know: daily feeding routines, the right flour to use, how to read your starter's signals, and what to do when things go sideways. Whether you're just getting started or working with an established culture, you'll find ...",
+      "url": "https://www.mydailysourdoughbread.com/sourdough-starter-care/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Make a Sourdough Starter From Scratch (And Actually Keep It Alive)",
+      "snippet": "Learn how to make a sourdough starter from scratch with this simple step-by-step guide. Discover easy feeding techniques, starter maintenance tips, and how to keep your sourdough starter healthy and active for years.",
+      "url": "https://thesourdoughscience.com/how-to-make-a-sourdough-starter-from-scratch-and-actually-keep-it-alive/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sourdough Starter Health and Maintenance: How to Keep It Active",
+      "snippet": "Struggling with starter health and maintenance? Learn the feeding schedule, warning signs, and tips to keep your sourdough thriving.",
+      "url": "https://www.mydailysourdoughbread.com/starter-health-and-maintenance/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Keep Sourdough Starter Alive: A Complete Guide",
+      "snippet": "Master how to keep your sourdough starter alive with tips on feeding, storage, reviving neglected cultures, and spotting signs of a healthy starter.",
+      "url": "https://rusticrootsliving.com/how-to-keep-sourdough-starter-alive/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Feed and Maintain a Sourdough Starter (Beginner Guide)",
+      "snippet": "Not sure how often to feed your sourdough starter? Learn simple ratios, fridge storage, and troubleshooting tips to keep it healthy and active.",
+      "url": "https://sourdougharchive.com/how-to-feed-and-maintain-sourdough-starter/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sourdough Starter Recipe | King Arthur Baking",
+      "snippet": "This is the tried-and-true method we use for making homemade sourdough starter here at King Arthur. The method you'll read in our sourdough starter recipe has evolved over time to best serve home bakers' needs; making a sourdough starter is equal parts science and art, after all.",
+      "url": "https://www.kingarthurbaking.com/recipes/sourdough-starter-recipe",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Feed, Maintain, and Store a Sourdough Starter",
+      "snippet": "A sourdough starter simply needs flour and water to survive. Here, I've outlined how to purchase, maintain, & store a sourdough starter.",
+      "url": "https://alexandracooks.com/2019/11/07/how-to-activate-feed-and-maintain-a-sourdough-starter/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

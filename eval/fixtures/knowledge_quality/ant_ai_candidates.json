@@ -1,9 +1,16 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "ant_ai_followup",
-  "description": "Replay of 2026-11-21 @evidence follow-up: ANT + AI. Candidate pool was off-topic (swarm ants, XAI healthcare, AGI).",
+  "path": "scientific_evidence",
+  "category": "sts_humanities",
+  "expect": "insufficient",
+  "description": "Replay of 2026-11-21 @evidence follow-up: ANT + AI. Candidate pool was off-topic (swarm ants, XAI healthcare, AGI). Real recorded pool has no relevant row; the 'relevant' candidate is synthetic (S1 flags it and excludes it from metrics).",
   "query_raw": "@[tool:evidence] Yes, please tell me how ANT analyzes Artificial Inteligence for example.",
   "query_clean": "Yes, please tell me how ANT analyzes Artificial Inteligence for example.",
+  "standalone_question": "How does actor-network theory (ANT) analyze artificial intelligence systems?",
+  "gold_subject": "actor-network theory",
+  "gold_facet": "analysis of artificial intelligence",
+  "budget": 3,
   "history": [
     {
       "role": "user",
@@ -14,8 +21,19 @@
       "content": "Actor-network theory (ANT) is a sociological approach that treats both human and non-human entities—like tools, documents, or technologies—as \"actors\" capable of influencing social outcomes. It argues that these elements form interconnected networks where meaning and power are distributed dynamically rather than residing solely with humans. Would you like an example of how ANT analyzes a specific technology?"
     }
   ],
-  "expect_topic_tokens": ["actor", "network", "theory", "latour", "sociotechnical", "sts"],
-  "reject_title_patterns": ["ant colon", "artificial ant", "explainable artificial intelligence for healthcare"],
+  "expect_topic_tokens": [
+    "actor",
+    "network",
+    "theory",
+    "latour",
+    "sociotechnical",
+    "sts"
+  ],
+  "reject_title_patterns": [
+    "ant colon",
+    "artificial ant",
+    "explainable artificial intelligence for healthcare"
+  ],
   "candidates": [
     {
       "title": "A Review on Explainable Artificial Intelligence for Healthcare: Why, How, and When?",
@@ -23,14 +41,19 @@
       "full_text": "Artificial intelligence (AI) models are increasingly finding applications in the field of medicine. Concerns have been raised about the explainability of the decisions that are made by these AI models. In this article, we give a systematic analysis of explainable artificial intelligence (XAI), with a primary focus on models that are currently being used in the field of healthcare.",
       "url": "https://arxiv.org/abs/2304.04780v1",
       "_adapter": "arxiv",
-      "authors": ["Subrato Bharati", "M. Rubaiyat Hossain Mondal", "Prajoy Podder"],
+      "authors": [
+        "Subrato Bharati",
+        "M. Rubaiyat Hossain Mondal",
+        "Prajoy Podder"
+      ],
       "venue": "arXiv",
       "publication_date": "2023-04-10",
       "doi": "10.1109/TAI.2023.3266418",
       "peer_reviewed": false,
       "preprint": true,
       "document_type": "preprint",
-      "label": "irrelevant"
+      "label": "irrelevant",
+      "label_source": "model"
     },
     {
       "title": "Artificial Ant Colonies in Digital Image Habitats - A Mass Behaviour Effect Study on Pattern Recognition",
@@ -38,13 +61,17 @@
       "full_text": "Some recent studies have pointed that, the self-organization of neurons into brain-like structures, and the self-organization of ants into a swarm are similar in many respects. KEYWORDS: Swarm Intelligence, Self-Organization, Stigmergy, Artificial Ant Systems, Pattern Recognition.",
       "url": "https://arxiv.org/abs/cs/0412086v1",
       "_adapter": "arxiv",
-      "authors": ["Vitorino Ramos", "Filipe Almeida"],
+      "authors": [
+        "Vitorino Ramos",
+        "Filipe Almeida"
+      ],
       "venue": "arXiv",
       "publication_date": "2004-12-17",
       "peer_reviewed": false,
       "preprint": true,
       "document_type": "preprint",
-      "label": "irrelevant"
+      "label": "irrelevant",
+      "label_source": "model"
     },
     {
       "title": "The Artificial Scientist: Logicist, Emergentist, and Universalist Approaches to Artificial General Intelligence",
@@ -52,14 +79,18 @@
       "full_text": "We attempt to define what is necessary to construct an Artificial Scientist, explore and evaluate several approaches to artificial general intelligence (AGI) which may facilitate this, conclude that a unified or hybrid approach is necessary.",
       "url": "https://arxiv.org/abs/2110.01831v1",
       "_adapter": "arxiv",
-      "authors": ["Michael Timothy Bennett", "Yoshihiro Maruyama"],
+      "authors": [
+        "Michael Timothy Bennett",
+        "Yoshihiro Maruyama"
+      ],
       "venue": "arXiv",
       "publication_date": "2021-10-05",
       "doi": "10.1007/978-3-030-93758-4_6",
       "peer_reviewed": false,
       "preprint": true,
       "document_type": "preprint",
-      "label": "irrelevant"
+      "label": "irrelevant",
+      "label_source": "model"
     },
     {
       "title": "Actor-Network Theory and the Study of AI Assemblages",
@@ -67,13 +98,17 @@
       "full_text": "This paper applies actor-network theory (ANT) to artificial intelligence systems, treating algorithms, datasets, developers, and institutions as actants in a sociotechnical network. Drawing on Latour and Callon, we examine how agency is distributed across human and non-human elements in machine learning pipelines.",
       "url": "https://example.org/ant-ai-assemblages",
       "_adapter": "openalex",
-      "authors": ["Example, A"],
+      "authors": [
+        "Example, A"
+      ],
       "venue": "Science & Technology Studies",
       "publication_date": "2022",
       "peer_reviewed": true,
       "preprint": false,
       "document_type": "journal_abstract",
-      "label": "relevant"
+      "label": "relevant",
+      "label_source": "model",
+      "synthetic": true
     }
   ]
 }

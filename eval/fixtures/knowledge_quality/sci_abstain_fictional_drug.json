@@ -1,0 +1,1140 @@
+{
+  "schema_version": 2,
+  "id": "sci_abstain_fictional_drug",
+  "path": "scientific_evidence",
+  "category": "abstain",
+  "description": "Fictional drug: expect abstention.",
+  "query_raw": "@[tool:evidence] Clinical trials of zelvoraxine for migraine",
+  "query_clean": "Clinical trials of zelvoraxine for migraine",
+  "retrieval_query": "Clinical trials of zelvoraxine for migraine",
+  "standalone_question": "What do clinical trials show about zelvoraxine for migraine?",
+  "gold_subject": "zelvoraxine",
+  "gold_facet": "migraine trials",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:06:51+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "pubmed": 3,
+    "nice": 3,
+    "cdc": 3,
+    "who": 3,
+    "clinicaltrials_gov": 3,
+    "openfda": 3,
+    "openalex": 3,
+    "europe_pmc": 3,
+    "crossref": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "pubmed": "Clinical trials of zelvoraxine for migraine",
+      "nice": "Clinical trials of zelvoraxine for migraine",
+      "cdc": "Clinical trials of zelvoraxine for migraine",
+      "who": "Clinical trials of zelvoraxine for migraine",
+      "clinicaltrials_gov": "Clinical trials of zelvoraxine for migraine",
+      "openfda": "Clinical trials of zelvoraxine for migraine",
+      "openalex": "Clinical trials of zelvoraxine for migraine",
+      "europe_pmc": "Clinical trials of zelvoraxine for migraine",
+      "crossref": "Clinical trials of zelvoraxine for migraine",
+      "arxiv": "Clinical trials of zelvoraxine for migraine"
+    },
+    "standalone": {
+      "pubmed": "What do clinical trials show about zelvoraxine for migraine",
+      "nice": "What do clinical trials show about zelvoraxine for migraine",
+      "cdc": "What do clinical trials show about zelvoraxine for migraine",
+      "who": "What do clinical trials show about zelvoraxine for migraine",
+      "clinicaltrials_gov": "What do clinical trials show about zelvoraxine for migraine",
+      "openfda": "What do clinical trials show about zelvoraxine for migraine",
+      "openalex": "What do clinical trials show about zelvoraxine for migraine",
+      "europe_pmc": "What do clinical trials show about zelvoraxine for migraine",
+      "crossref": "What do clinical trials show about zelvoraxine for migraine",
+      "arxiv": "What do clinical trials show about zelvoraxine for migraine"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Patient depressive symptoms and reciprocity are associated with distress in the caregiver of patients with migraine: insights from the MI-DEAR observational cohort study.",
+      "snippet": "As awareness of migraine disability is becoming higher, the recognition of the pivotal role of caregivers of people with migraine and their burden is still scarce. We aimed to investigate the factors associated with the distress of informal caregivers of patients affected by high-frequency or chronic migraine with depressive symptoms. All consecutive adult patients with high-frequency or chronic migraine and depressive symptoms were considered, along with their caregivers. Sociodemographic characteristics and the average weekly hours spent together were assessed among patients and their caregi",
+      "full_text": "As awareness of migraine disability is becoming higher, the recognition of the pivotal role of caregivers of people with migraine and their burden is still scarce. We aimed to investigate the factors associated with the distress of informal caregivers of patients affected by high-frequency or chronic migraine with depressive symptoms. All consecutive adult patients with high-frequency or chronic migraine and depressive symptoms were considered, along with their caregivers. Sociodemographic characteristics and the average weekly hours spent together were assessed among patients and their caregivers (dyads). In patients, we evaluated monthly migraine days (MMDs), monthly acute medications (MAMs), pain intensity, migraine-related disability, the composite 4D score on migraine burden, and depressive symptoms (Patient Health Questionnaire-9-PHQ-9). Caregivers filled in the Relative Stress Scale (RSS). The mutuality scale (MS) was also collected in the dyads. 154 dyads (308 participants) were enrolled (patients aged 42.6 years, SD 12.7; 80.5% female; and their caregivers aged 48.1 years, SD 12.2; 36.4% female). The mean shared reported time was 89.7, SD 29.7 h per week. In patients, PHQ-9 scores were higher in those with higher disability scores (MIDAS; p < 0.001), whereas MMDs were not directly related (p = 0.356). The RSS score in caregivers was 20.6 (SD 10.9). Among caregivers' features, the reciprocity subdomain of the MS was inversely related (p = 0.009) to the perceived distress (RSS). The MS total scores and subdomains (p consistently < 0.05) were highly related within the dyad. A positive, mild relation was observed between caregiver RSS and patient PHQ-9 (r = 0.197; p = 0.014) and 4D (r = 0.234; p = 0.004) scores. Finally, when both caregiver and patient characteristics were included, the caregiver reciprocity MS subdomain (p < 0.001) was the main factor associated with RSS scores. The MI-DEAR study highlighted the elevated perceived distress of caregivers of hard-to-treat patients with migraine and depressive symptoms. Low caregiver reciprocity, more severe patients' depressive symptoms, and multidimensional migraine burden were associated with higher caregivers' distress. The study was preregistered on clinicaltrials.gov, NCT07029126 on Jun 11th 2025. © 2026. The Author(s).",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43069056/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Altamura, Claudia",
+        "Fofi, Luisa",
+        "Aurilia, Cinzia",
+        "Cresta, Elena",
+        "Onofri, Agnese",
+        "Montisano, Danilo Antonio",
+        "Silvestro, Marcello",
+        "Favoni, Valentina",
+        "Viticchi, Giovanna",
+        "Marcosano, Marilena",
+        "Egeo, Gabriella",
+        "Bartolini, Marco",
+        "Peresson, Marco",
+        "Cepparulo, Mario",
+        "Russo, Antonio",
+        "Cevoli, Sabina",
+        "Rao, Renata",
+        "Grazzi, Licia",
+        "Sacco, Simona",
+        "Vernieri, Fabrizio",
+        "MI-DEAR Study Group"
+      ],
+      "venue": "The journal of headache and pain",
+      "publication_date": "2026-Aug",
+      "doi": "10.1186/s10194-026-02498-6",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43069056",
+      "publication_types": [
+        "Journal Article",
+        "Observational Study"
+      ],
+      "mesh_terms": [
+        "Humans",
+        "Female",
+        "Caregivers",
+        "Migraine Disorders",
+        "Adult",
+        "Middle Aged",
+        "Male",
+        "Depression",
+        "Stress, Psychological",
+        "Cohort Studies",
+        "Psychological Distress"
+      ],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Efficacy and Safety of 2 Rimegepant Dosing Regimens for the Prevention of Episodic Migraine: A Randomized Controlled Study.",
+      "snippet": "Traditional preventive treatments for migraine have limitations (e.g., efficacy, adverse events [AEs], contraindications, and interactions). The aim of this study was to evaluate the efficacy and safety of 2 rimegepant dosing regimens relative to placebo as preventive treatment for episodic migraine. This was a phase 4, randomized, placebo-controlled study. Adults with a ≥1-year history of episodic migraine (with or without aura) and 4-14 migraine attacks/month were enrolled from outpatient/research sites in 10 countries. After a 28-day observation phase, participants were randomly assigned to",
+      "full_text": "Traditional preventive treatments for migraine have limitations (e.g., efficacy, adverse events [AEs], contraindications, and interactions). The aim of this study was to evaluate the efficacy and safety of 2 rimegepant dosing regimens relative to placebo as preventive treatment for episodic migraine. This was a phase 4, randomized, placebo-controlled study. Adults with a ≥1-year history of episodic migraine (with or without aura) and 4-14 migraine attacks/month were enrolled from outpatient/research sites in 10 countries. After a 28-day observation phase, participants were randomly assigned to placebo once daily, rimegepant 75 mg every other day/alternating placebo, or rimegepant 75 mg once daily for 12-weeks of double-blind treatment. The primary end point was mean reduction from the observation phase in monthly migraine days over the entire 12-week double-blind phase analyzed using linear mixed effects modeling. Hierarchical testing was used for key secondary end points to control type I error. Safety assessments included AEs. Participants (n = 692; median age 44.0 years, 86.7% female) were treated double blind with rimegepant every other day (n = 232), rimegepant once daily (n = 229), or placebo (n = 231). The primary end point was met for both rimegepant dosing regimens, with significantly greater reductions from the observation phase in monthly migraine days over the entire double-blind phase vs placebo (least squares mean change difference [97.5% CI]) for rimegepant every other day (-0.6 [-1.22 to -0.01], p = 0.0220) and rimegepant once daily (-1.8 [-2.35 to -1.19], p < 0.0001). All 5 key secondary end points were significant vs placebo for rimegepant once daily ( p < 0.0001), while for rimegepant every other day, the first key secondary end point in the hierarchy was not significant vs placebo. Most AEs were mild or moderate. Both rimegepant dosing regimens were superior to placebo for the preventive treatment of migraine and were well tolerated. This study demonstrates the efficacy and safety of rimegepant 75 mg QD in a double-blind study. The study was not designed to directly compare the rimegepant EOD and QD dosing regimens. ClinicalTrials.gov NCT05217927 (clinicaltrials.gov/study/NCT05217927); registered January 20, 2022; first enrollment March 4, 2022. This study provides Class I evidence that in adults with more than 1-year history of episodic migraine and 4-14 migraine attacks/month, both rimegepant 75 mg every other day and rimegepant 75 mg daily were superior to placebo in reducing monthly migraine days up to 12 weeks of follow-up.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43056654/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Goadsby, Peter J",
+        "Tassorelli, Cristina",
+        "Fountaine, Robert J",
+        "Antinew, Jeremias",
+        "de Besi, Patrizia",
+        "Dubrovin, Sergey",
+        "Russell, Kim",
+        "Kopf, Silvia Rosalia",
+        "Hughes, Jim H",
+        "Loprinzo, Vittorio",
+        "Fullerton, Terence"
+      ],
+      "venue": "Neurology",
+      "publication_date": "2026-Dec",
+      "doi": "10.1212/WNL.0000000000218773",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43056654",
+      "publication_types": [
+        "Journal Article",
+        "Randomized Controlled Trial",
+        "Multicenter Study",
+        "Clinical Trial, Phase IV"
+      ],
+      "mesh_terms": [
+        "Humans",
+        "Female",
+        "Adult",
+        "Double-Blind Method",
+        "Male",
+        "Migraine Disorders",
+        "Middle Aged",
+        "Pyridines",
+        "Treatment Outcome",
+        "Piperidines",
+        "Dose-Response Relationship, Drug"
+      ],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Implementing Intravenous Eptinezumab in Routine Migraine Care: A Mixed-Methods Study of Patient and Healthcare Professional Perspectives.",
+      "snippet": "Eptinezumab is a calcitonin gene-related peptide monoclonal antibody (CGRP mAb) for migraine prevention, offering rapid onset and quarterly intravenous administration. However, evidence regarding patient and healthcare professional (HCP) experiences and its implementation in routine practice remains limited. This study has explored the opportunities and challenges of eptinezumab treatment. This convergent mixed-methods study was conducted at King Chulalongkorn Memorial Hospital, Bangkok, Thailand. A total of 20 patients with migraine who received eptinezumab and 10 HCPs participated. Monthly h",
+      "full_text": "Eptinezumab is a calcitonin gene-related peptide monoclonal antibody (CGRP mAb) for migraine prevention, offering rapid onset and quarterly intravenous administration. However, evidence regarding patient and healthcare professional (HCP) experiences and its implementation in routine practice remains limited. This study has explored the opportunities and challenges of eptinezumab treatment. This convergent mixed-methods study was conducted at King Chulalongkorn Memorial Hospital, Bangkok, Thailand. A total of 20 patients with migraine who received eptinezumab and 10 HCPs participated. Monthly headache days (MHDs) and Migraine Disability Assessment (MIDAS) scores were evaluated over 6 months for patients. Semi-structured in-depth interviews explored experiences with eptinezumab treatment for both participant groups, with transcripts analyzed using thematic analysis. Median MHDs decreased from 18.5 (IQR 8.5-28.0) at baseline to 5.0 (2.0-8.0) at Month 3 and 2.5 (1.0-5.0) at Month 6. Median MIDAS scores decreased from 63.5 (30.0-77.5) to 15.0 (1.0-33.0) and 5.0 (0.5-19.5), respectively. Qualitative findings identified three opportunities: improved migraine symptoms and quality of life, favorable treatment experience and acceptability, and addressing unmet needs in patients with migraine who had experienced multiple preventive treatment failures. Patients and HCPs described improved migraine control, restored daily functioning, and favorable tolerability. Three major challenges emerged: financial and access barriers, health-system and service delivery challenges, and treatment-related concerns. High costs and limited reimbursement were the predominant barriers identified by both participant groups. Patients and HCPs perceived eptinezumab as an effective and well-accepted preventive treatment. Although quarterly intravenous administration was viewed favorably, financial barriers and healthcare system constraints remain major obstacles to broader implementation. These findings offer practical insights into integrating CGRP-targeting therapies into routine care. NCT07035197 (ClinicalTrials.gov). © 2026. The Author(s).",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43049833/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Anukoolwittaya, Prakit",
+        "Hiransuthikul, Akarin",
+        "Sinchai, Kanokwan",
+        "Payuha, Tanabodee",
+        "Pongpitakmetha, Thanakit",
+        "Rattanawong, Wanakorn",
+        "Thanprasertsuk, Sekh"
+      ],
+      "venue": "Neurology and therapy",
+      "publication_date": "2026-Nov",
+      "doi": "10.1007/s40120-026-01089-6",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43049833",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Psychedelic treatment for headache disorders.",
+      "snippet": "Headache disorders are common neurological conditions with numerous treatment options depending on the specific disorder and the needs of the individual. Psychedelic drugs, such as psilocybin, dimethyltryptamine and lysergic acid diethylamide, have important historical roles in headache medicine and are re-emerging as potential therapeutic options, particularly in cluster headache. The renewed interest in psychedelic treatment for headache is largely attributable to the patient community, who have advocated for their preferred forms of treatment, including psychedelic drugs. Clinical trials in",
+      "full_text": "Headache disorders are common neurological conditions with numerous treatment options depending on the specific disorder and the needs of the individual. Psychedelic drugs, such as psilocybin, dimethyltryptamine and lysergic acid diethylamide, have important historical roles in headache medicine and are re-emerging as potential therapeutic options, particularly in cluster headache. The renewed interest in psychedelic treatment for headache is largely attributable to the patient community, who have advocated for their preferred forms of treatment, including psychedelic drugs. Clinical trials in cluster headache and migraine have supported the reported efficacy and safety of psilocybin in the transitional treatment of these disorders, and additional studies of other compounds and modes of treatment are ongoing or on the horizon. In this Perspective, we provide an overview of psychedelic drugs in headache medicine, including historical context, relationship to conventional headache medications, and the limited clinical and scientific evidence to date. Safety, logistical and legal concerns are also discussed to set the stage for future work in the field. © 2026. This is a U.S. Government work and not under copyright protection in the US; foreign copyright protection may apply.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43045758/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Zorrilla, Erik",
+        "Schindler, Emmanuelle A D"
+      ],
+      "venue": "Nature reviews. Neurology",
+      "publication_date": "2026-Nov",
+      "doi": "10.1038/s41582-026-01285-w",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43045758",
+      "publication_types": [
+        "Journal Article",
+        "Review"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "From pelvis to brain: Clinical implications emerging from shared biology in endometriosis and migraine.",
+      "snippet": "Migraine and endometriosis are chronic pain disorders that mainly affect women of reproductive age and co-occur more often than expected by chance. Evidence suggests this comorbidity reflects shared biological mechanisms rather than a direct causal link. This perspective examines overlapping pathways, including estrogen-dependent pain regulation, genetic susceptibility related to hormone signaling and inflammation, neuroimmune interactions, and peripheral and central sensitization. Genetic studies show modest but consistent shared heritability, especially involving genes linked to estrogen rec",
+      "full_text": "Migraine and endometriosis are chronic pain disorders that mainly affect women of reproductive age and co-occur more often than expected by chance. Evidence suggests this comorbidity reflects shared biological mechanisms rather than a direct causal link. This perspective examines overlapping pathways, including estrogen-dependent pain regulation, genetic susceptibility related to hormone signaling and inflammation, neuroimmune interactions, and peripheral and central sensitization. Genetic studies show modest but consistent shared heritability, especially involving genes linked to estrogen receptors, inflammatory pathways, and nociceptive processing. Hormonal fluctuations across the menstrual cycle influence neuronal excitability and immune responses in both conditions. Emerging data indicate that calcitoningene-relatedpeptide-mediated neurogenic inflammation may be a key converging mechanism connecting hormonal regulation, immune activation, and pain amplification, though its role in endometriosis is less established. Understanding these shared pathways may improve diagnosis and support more integrated, mechanism-based treatment strategies. Copyright © 2026. Published by Elsevier Inc.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43044567/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Hoehne, Carolin Luisa",
+        "Jensen, Mette Nyholm",
+        "Gecse, Kinga",
+        "Kukumägi, Kadri-Hebo",
+        "Ibrahim, Christelle",
+        "Baksa, Daniel",
+        "Azizova, Ilaha",
+        "Ferro, Floriana",
+        "Sharia, Nino",
+        "Ioseliani, Mariam",
+        "Saleh, Langeza",
+        "Lampl, Christian",
+        "MaassenVanDenBrink, Antoinette",
+        "School of Advanced Studies of the European Headache Federation (EHF-SAS)"
+      ],
+      "venue": "Cell reports. Medicine",
+      "publication_date": "2026-Nov",
+      "doi": "10.1016/j.xcrm.2026.103163",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43044567",
+      "publication_types": [
+        "Journal Article",
+        "Review"
+      ],
+      "mesh_terms": [
+        "Humans",
+        "Endometriosis",
+        "Female",
+        "Migraine Disorders",
+        "Brain",
+        "Genetic Predisposition to Disease",
+        "Calcitonin Gene-Related Peptide",
+        "Estrogens",
+        "Animals",
+        "Inflammation"
+      ],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sustained response to atogepant in episodic and chronic migraine: Post-hoc analyses of ELEVATE and PROGRESS, and their open-label extension.",
+      "snippet": "BackgroundThese post-hoc analyses evaluated the proportions of participants who experienced sustained responses to atogepant, an oral calcitonin gene-related peptide receptor antagonist, over two 3-month, double-blind, randomized controlled trials (RCTs) (ELEVATE and PROGRESS) and a 12-month interim analysis of the open-label extension (OLE) study that was composed of participants from ELEVATE and PROGRESS.MethodsPost-hoc analyses were conducted to assess the sustained responses with atogepant 60 mg once daily (QD). Sustained responses, based on predefined thresholds for reductions in monthly ",
+      "full_text": "BackgroundThese post-hoc analyses evaluated the proportions of participants who experienced sustained responses to atogepant, an oral calcitonin gene-related peptide receptor antagonist, over two 3-month, double-blind, randomized controlled trials (RCTs) (ELEVATE and PROGRESS) and a 12-month interim analysis of the open-label extension (OLE) study that was composed of participants from ELEVATE and PROGRESS.MethodsPost-hoc analyses were conducted to assess the sustained responses with atogepant 60 mg once daily (QD). Sustained responses, based on predefined thresholds for reductions in monthly migraine days (MMDs) over a specified period, allow for evaluation of long-term efficacy of atogepant. The ELEVATE trial enrolled participants with episodic migraine who had inadequate response to two to four classes of conventional oral preventive medications; the PROGRESS trial enrolled participants with chronic migraine. These post-hoc analyses were conducted in the modified intent-to-treat (mITT) populations for the atogepant 60 mg QD group from the RCTs ELEVATE (151 participants) and PROGRESS (256 participants). An initial response was defined as ≥ 50%, ≥ 75%, or 100% reduction in MMDs from baseline to month 1 of each respective RCT. Proportions of participants who maintained or exceeded their month 1 response threshold through months 2 and 3 of each RCT were calculated. For the OLE, (ELEVATE, 240 participants and PROGRESS, 284 participants in the mITT population), initial response was defined as ≥ 50%, ≥ 75%, or 100% reduction in MMDs from baseline to month 4 of the OLE. Proportions of participants who maintained or exceeded their month 4 response threshold at month 12 of the OLE were calculated.ResultsIn the two 12-week RCTs, 61.3% (49/80) of ELEVATE participants and 74.2% (69/93) of PROGRESS participants who experienced an initial ≥ 50% reduction in MMDs during month 1 of each RCT continued to have a ≥ 50% reduction in MMDs during both months 2 and 3. During the OLE, 83.4% (121/145) of participants from ELEVATE and 88.5% (131/148) of participants from PROGRESS who experienced a ≥ 50% reduction in MMDs from the RCT baseline to month 4 of the OLE continued to have a ≥ 50% reduction in MMDs at month 12 of the OLE. High rates of sustained responses were similarly observed across the other response thresholds.ConclusionsParticipants who experienced an initial clinically meaningful response with atogepant continued to experience sustained responses over the 3-month RCTs as well as at 12 months of their OLE study.Trial registrationELEVATE (3101-304-002), NCT04740827 (https://clinicaltrials.gov/study/NCT04740827?cond = ELEVATE,%20NCT04740827&rank=1&tab = results), 2021-02-05; PROGRESS (3101-303-002), NCT03855137 (https://clinicaltrials.gov/study/NCT03855137?cond = PROGRESS,%20NCT03855137&rank=1&tab = results); 2019-02-25; Open-label Extension (3101-312-002), NCT04686136 (https://clinicaltrials.gov/study/NCT04686136?cond = NCT04686136&rank=1); 2021-02-19.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43042641/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Cho, Soo-Jin",
+        "Friedman, Deborah I",
+        "Chalermpalanupap, Natty",
+        "Nahas, Stephanie J",
+        "Dabruzzo, Brett",
+        "Najib, Umer",
+        "Liu, Yingyi",
+        "Carr, Karen",
+        "Sakai, Fumihiko",
+        "Smith, Jonathan H",
+        "Pozo-Rosich, Patricia"
+      ],
+      "venue": "Cephalalgia : an international journal of headache",
+      "publication_date": "2026-Nov",
+      "doi": "10.1177/03331024261499722",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43042641",
+      "publication_types": [
+        "Journal Article",
+        "Randomized Controlled Trial"
+      ],
+      "mesh_terms": [
+        "Humans",
+        "Migraine Disorders",
+        "Female",
+        "Double-Blind Method",
+        "Male",
+        "Adult",
+        "Calcitonin Gene-Related Peptide Receptor Antagonists",
+        "Treatment Outcome",
+        "Pyridines",
+        "Middle Aged",
+        "Chronic Disease",
+        "Piperidines",
+        "Pyrroles",
+        "Spiro Compounds"
+      ],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "pubmed",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ClinicalTrials.gov",
+      "snippet": "Provides patients, family members, health care professionals, and members of the public easy access to information on clinical trials for a wide range of diseases and conditions.",
+      "full_text": "Provides patients, family members, health care professionals, and members of the public easy access to information on clinical trials for a wide range of diseases and conditions.",
+      "url": "https://data.cdc.gov/d/mfxe-bas8",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-07-17",
+      "document_type": "government_publication",
+      "dataset_id": "mfxe-bas8",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ClinicalTrials.gov",
+      "snippet": "Provides patients, family members, health care professionals, and members of the public easy access to information on clinical trials for a wide range of diseases and conditions.",
+      "full_text": "Provides patients, family members, health care professionals, and members of the public easy access to information on clinical trials for a wide range of diseases and conditions.",
+      "url": "https://data.cdc.gov/d/k4z8-wtxk",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-07-16",
+      "document_type": "government_publication",
+      "dataset_id": "k4z8-wtxk",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Current Active Clinical Trials - Roswell Park Cancer Institute",
+      "snippet": "List of active studies submitted by Roswell Park Cancer Institute (RPCI) to National Cancer Institute (NCI) annually as part of the Cancer Center Report Grant reporting. It includes the primary site, protocol, principal investigator, date opened, phase and study name.",
+      "full_text": "List of active studies submitted by Roswell Park Cancer Institute (RPCI) to National Cancer Institute (NCI) annually as part of the Cancer Center Report Grant reporting. It includes the primary site, protocol, principal investigator, date opened, phase and study name.",
+      "url": "https://data.cdc.gov/d/2ig8-yxf8",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-04-14",
+      "document_type": "government_publication",
+      "dataset_id": "2ig8-yxf8",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Who has been studied in PTSD clinical trials?",
+      "snippet": "The PTSD Repository includes 601 studies. This story describes the participants in these clinical trials.",
+      "full_text": "The PTSD Repository includes 601 studies. This story describes the participants in these clinical trials.",
+      "url": "https://data.cdc.gov/d/3ny5-ne96",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-11-05",
+      "document_type": "government_publication",
+      "dataset_id": "3ny5-ne96",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "National Database for Clinical Trials Related to Mental Illness (NDCT)",
+      "snippet": "<p>The National Database for Clinical Trials Related to Mental Illness (NDCT) is an extensible informatics platform for relevant data at all levels of biological and behavioral organization (molecules, genes, neural tissue, behavioral, social and environmental interactions) and for all data types (text, numeric, image, time series, etc.) related to clinical trials funded by the National Institute of Mental Health. Sharing data, associated tools, methodologies and results, rather than just summaries or interpretations, accelerates research progress. Community-wide sharing requires common data d",
+      "full_text": "<p>The National Database for Clinical Trials Related to Mental Illness (NDCT) is an extensible informatics platform for relevant data at all levels of biological and behavioral organization (molecules, genes, neural tissue, behavioral, social and environmental interactions) and for all data types (text, numeric, image, time series, etc.) related to clinical trials funded by the National Institute of Mental Health. Sharing data, associated tools, methodologies and results, rather than just summaries or interpretations, accelerates research progress. Community-wide sharing requires common data definitions and standards, as well as comprehensive and coherent informatics approaches for the sharing of de-identified human subject research data. Built on the National Database for Autism Research (NDAR) informatics platform, NDCT provides a comprehensive data sharing platform for NIMH grantees supporting clinical trials.</p>",
+      "url": "https://data.cdc.gov/d/8365-cn5u",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2023-07-25",
+      "document_type": "government_publication",
+      "dataset_id": "8365-cn5u",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sildenafil (Viagra) for male erectile dysfunction: a meta-analysis of clinical trial reports",
+      "snippet": "Background\n          Evaluation of company clinical trial reports could provide information for meta-analysis at the commercial introduction of a new technology.\n        \n        \n          Methods\n          Clinical trial reports of sildenafil for erectile dysfunction from September 1997 were used for meta-analysis of randomised trials (at least four weeks duration) and using fixed or dose optimisation regimens. The main outcome sought was an erection, sufficiently rigid for penetration, followed by successful intercourse, and conducted at home.\n        \n        \n          Results\n          T",
+      "full_text": "Background\n          Evaluation of company clinical trial reports could provide information for meta-analysis at the commercial introduction of a new technology.\n        \n        \n          Methods\n          Clinical trial reports of sildenafil for erectile dysfunction from September 1997 were used for meta-analysis of randomised trials (at least four weeks duration) and using fixed or dose optimisation regimens. The main outcome sought was an erection, sufficiently rigid for penetration, followed by successful intercourse, and conducted at home.\n        \n        \n          Results\n          Ten randomised controlled trials fulfilled the inclusion criteria (2123 men given sildenafil and 1131 placebo). NNT or NNH were calculated for important efficacy, adverse event and discontinuation outcomes. Dose optimisation led to at least 60% of attempts at sexual intercourse being successful in 49% of men, compared with 11% with placebo; the NNT was 2.7 (95% confidence interval 2.3 to 3.3). For global improvement in erections the NNT was 1.7 (1.6 to 1.9). Treatment-related adverse events occurred in 30% of men on dose optimised sildenafil compared with 11% on placebo; the NNH was 5.4 (4.3 to 7.3). All cause discontinuations were less frequent with sildenafil (10%) than with placebo (20%). Sildenafil dose optimisation gave efficacy equivalent to the highest fixed doses, and adverse events equivalent to the lowest fixed doses.\n        \n        \n          Conclusion\n          This review of clinical trial reports available at the time of licensing agreed with later reviews that had many more trials and patients. Making reports submitted for marketing approval available publicly would provide better information when it was most needed, and would improve evidence-based introduction of new technologies.",
+      "url": "https://data.cdc.gov/d/8zeu-fjz4",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "8zeu-fjz4",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "GDO_q16x1x1_1 — Data sources used to routinely monitor people with dementia (Clinical records)",
+      "snippet": "Data sources used to routinely monitor people with dementia (Clinical records)",
+      "full_text": "Data sources used to routinely monitor people with dementia (Clinical records)",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/GDO_q16x1x1_1",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "GDO_q16x1x1_1",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "GDO_q18x2x3_2 — Total expenditure on dementia clinical/translational research (local currency, self-report)",
+      "snippet": "Total expenditure on dementia clinical/translational research (local currency, self-report)",
+      "full_text": "Total expenditure on dementia clinical/translational research (local currency, self-report)",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/GDO_q18x2x3_2",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "GDO_q18x2x3_2",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "GOE_Q169 — To address patient safety and quality of care based on data quality, data transmission standards, or clinical competency criteria",
+      "snippet": "To address patient safety and quality of care based on data quality, data transmission standards, or clinical competency criteria",
+      "full_text": "To address patient safety and quality of care based on data quality, data transmission standards, or clinical competency criteria",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/GOE_Q169",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "GOE_Q169",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PRISON_B20_CLINICALREP — In-prison clinical health records",
+      "snippet": "In-prison clinical health records",
+      "full_text": "In-prison clinical health records",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/PRISON_B20_CLINICALREP",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "PRISON_B20_CLINICALREP",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "RSUD_58 — Methadone provision in clinical and community-based settings",
+      "snippet": "Methadone provision in clinical and community-based settings",
+      "full_text": "Methadone provision in clinical and community-based settings",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/RSUD_58",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "RSUD_58",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "RSUD_59 — Buprenorphine provision in clinical and community-based settings",
+      "snippet": "Buprenorphine provision in clinical and community-based settings",
+      "full_text": "Buprenorphine provision in clinical and community-based settings",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/RSUD_59",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "RSUD_59",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "MeSH Publication Types",
+      "snippet": "(Last updated - 2023) Publication Types (Publication Characteristics) are Descriptors that indicate what an indexed item is, (i.e., its genre, rather than what it is about - for example, Historical Article). They may include Publication Components, such as Charts; Publication Formats, such as Editorial; and Study Characteristics, such as Clinical Trial.\n\nThey function as metadata, rather than being about the content. These records are searchable in PubMed as Publication Type [PT], and the terms in MEDLINE records are labeled as \"PT\" or <PublicationType> rather than \"MH\" or <MeSHHeading>. They ",
+      "full_text": "(Last updated - 2023) Publication Types (Publication Characteristics) are Descriptors that indicate what an indexed item is, (i.e., its genre, rather than what it is about - for example, Historical Article). They may include Publication Components, such as Charts; Publication Formats, such as Editorial; and Study Characteristics, such as Clinical Trial.\n\nThey function as metadata, rather than being about the content. These records are searchable in PubMed as Publication Type [PT], and the terms in MEDLINE records are labeled as \"PT\" or <PublicationType> rather than \"MH\" or <MeSHHeading>. They are listed in category V of the MeSH Tree Structures.",
+      "url": "https://data.cdc.gov/d/vwzh-6q7y",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-02-11",
+      "document_type": "government_publication",
+      "dataset_id": "vwzh-6q7y",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Cook County Budget 1993-2011",
+      "snippet": "Every year your Cook County government budgets and spends more than $3 billion. Your County's budget impacts your life every day. All of its funding comes from you - your sales and property taxes, your purchase fees on gas and other goods. All of its spending exists to support you, too. County funding drives the forest preserve district, the jail, public hospitals and clinics, the Cook County courts and dozens of other civic institutions designed to make our region prosperous, efficient and fair.\r\n\r\nYet too many residents don't understand what Cook County government is or what it does. They ke",
+      "full_text": "Every year your Cook County government budgets and spends more than $3 billion. Your County's budget impacts your life every day. All of its funding comes from you - your sales and property taxes, your purchase fees on gas and other goods. All of its spending exists to support you, too. County funding drives the forest preserve district, the jail, public hospitals and clinics, the Cook County courts and dozens of other civic institutions designed to make our region prosperous, efficient and fair.\r\n\r\nYet too many residents don't understand what Cook County government is or what it does. They keep asking, \"where exactly does our money go?\"\r\n\r\nCommissioner John Fritchey created this budget transparency tool to answer that question, but it's only a first step. We need your help. What questions do you have about County spending? What do you want to know about the County budget that this visualization isn't explaining to you? What do you think of our spending? What can we do to make Cook County government better?",
+      "url": "https://data.cdc.gov/d/hd8u-wzhx",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-01-27",
+      "document_type": "government_publication",
+      "dataset_id": "hd8u-wzhx",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Do bronchodilators have an effect on bronchiolitis?",
+      "snippet": "Over the past 12 years there have been 12 randomised control trials, involving 843 infants, evaluating the effect of salbutamol or albuterol on bronchiolitis. Of these, nine (75%) showed that bronchodilators had no effect. In three studies a small transient improvement in the acute clinical score was seen. Ipratropium bromide had no significant effect. There have been five recent randomised trials involving 225 infants, evaluating the effect of nebulised adrenaline (epinephrine) on bronchiolitis. All five (100%) have shown significant clinical improvement, with reductions in oxygen requirement",
+      "full_text": "Over the past 12 years there have been 12 randomised control trials, involving 843 infants, evaluating the effect of salbutamol or albuterol on bronchiolitis. Of these, nine (75%) showed that bronchodilators had no effect. In three studies a small transient improvement in the acute clinical score was seen. Ipratropium bromide had no significant effect. There have been five recent randomised trials involving 225 infants, evaluating the effect of nebulised adrenaline (epinephrine) on bronchiolitis. All five (100%) have shown significant clinical improvement, with reductions in oxygen requirement, respiratory rate and wheeze after nebulised adrenaline. Two showed lower hospital admission rates and earlier discharge with adrenaline. A significant improvement in pulmonary resistance was observed after nebulised adrenaline but not after salbutamol or albuterol. Currently there is no compelling evidence that bronchodilators have a role in the routine management of infants with bronchiolitis. There is better evidence for the use of nebulised adrenaline.",
+      "url": "https://data.cdc.gov/d/4mei-yy5t",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "4mei-yy5t",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Cannabis Pesticide Guide List",
+      "snippet": "The intent of the list is to assist growers in distinguishing those pesticide products whose labels do not legally prohibit use on cannabis from those that clearly do not allow use. The list is not an endorsement or recommendation to use these products in the production of cannabis in Oregon. Do not hesitate to contact Pesticide staff with questions or for label clarification. \n\n***Alert regarding the use of pyrethrins and/or piperonyl butoxide***\n\nRecent lab results show high levels of the active ingredients pyrethrins and/or piperonyl butoxide in some cannabis samples. Pyrethrins and piperon",
+      "full_text": "The intent of the list is to assist growers in distinguishing those pesticide products whose labels do not legally prohibit use on cannabis from those that clearly do not allow use. The list is not an endorsement or recommendation to use these products in the production of cannabis in Oregon. Do not hesitate to contact Pesticide staff with questions or for label clarification. \n\n***Alert regarding the use of pyrethrins and/or piperonyl butoxide***\n\nRecent lab results show high levels of the active ingredients pyrethrins and/or piperonyl butoxide in some cannabis samples. Pyrethrins and piperonyl butoxide are on ODA's Guide List for Pesticides and Cannabis. ODA is investigating why some samples indicate levels of one or both of these pesticides, which far exceed the Oregon Health Authority (OHA) Action Levels, and yet others do not. To retain the listing of these two pesticides on the Guidelist, ODA, OHA, and Oregon Liquor Control Commission (OLCC) need to learn more about what influences pesticide residue levels on cannabis. If you used pyrethrins and/or piperonyl butoxide, and your cannabis tested below OHA’s Action level, please contact ODA at (503) 986-4553.",
+      "url": "https://data.cdc.gov/d/b8ki-p9ef",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-11-02",
+      "document_type": "government_publication",
+      "dataset_id": "b8ki-p9ef",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Zoning By Address",
+      "snippet": "Do not use this data to make zoning determinations.  This data does not show all zoning regulations for an address, including overlays and situations where an address has more than one zoning.  Also, the data may be out of date. <a href=\"https://maps.austintexas.gov/GIS/PropertyProfile/\" target=\"_blank\">Use the interactive mapping application to make zoning determinations.</a> Call 311 if you have questions about zoning. Zoning only applies to addresses within the City of Austin city limits.  \n\nThis dataset is a list of addresses with their zoning provided to answer questions such as \"what pro",
+      "full_text": "Do not use this data to make zoning determinations.  This data does not show all zoning regulations for an address, including overlays and situations where an address has more than one zoning.  Also, the data may be out of date. <a href=\"https://maps.austintexas.gov/GIS/PropertyProfile/\" target=\"_blank\">Use the interactive mapping application to make zoning determinations.</a> Call 311 if you have questions about zoning. Zoning only applies to addresses within the City of Austin city limits.  \n\nThis dataset is a list of addresses with their zoning provided to answer questions such as \"what property addresses have CS zoning.\"  This data is derived from GIS layer for address and zoning.  The place_id field is provided for linking to the addresses GIS layer.\n\nThis product is produced by the City of Austin for informational purposes.  No warranty is made they City of Austin regarding specific accuracy or completeness.",
+      "url": "https://data.cdc.gov/d/nbzi-qabm",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-11-23",
+      "document_type": "government_publication",
+      "dataset_id": "nbzi-qabm",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Do we need clinical trials to test the ability of transdermal HRT to prevent coronary heart disease?",
+      "snippet": "Postmenopausal hormone replacement therapy (HRT) with oral oestrogen was predicted to reduce coronary heart disease (CHD) risk by 50%. Randomized controlled trials show no such benefit, however, pointing instead to an initial increase in CHD events. Although the cardiovascular effects of transdermal HRT are largely unknown, improvements in arterial function are maintained when oestrogen is administered transdermally. Transdermal HRT also avoids the increased plasma levels of C-reactive protein (CRP) that are seen with oral HRT. However, the clinical significance of this general reduction in he",
+      "full_text": "Postmenopausal hormone replacement therapy (HRT) with oral oestrogen was predicted to reduce coronary heart disease (CHD) risk by 50%. Randomized controlled trials show no such benefit, however, pointing instead to an initial increase in CHD events. Although the cardiovascular effects of transdermal HRT are largely unknown, improvements in arterial function are maintained when oestrogen is administered transdermally. Transdermal HRT also avoids the increased plasma levels of C-reactive protein (CRP) that are seen with oral HRT. However, the clinical significance of this general reduction in hepatic over-synthesis of plasma proteins is difficult to assess. Nevertheless, the available evidence on transdermal HRT appears to justify a formal clinical trial.",
+      "url": "https://data.cdc.gov/d/4n3w-c3pb",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "4n3w-c3pb",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "cdc",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Methodology of clinical trials in migraine",
+      "snippet": "Methodology of clinical trials in migraine",
+      "full_text": null,
+      "url": "https://doi.org/10.1007/978-1-349-08943-7_5",
+      "_adapter": "crossref",
+      "authors": [
+        "Jes Olesen",
+        "Peer Tfelt-Hansen"
+      ],
+      "venue": "Methods in Clinical Trials in Neurology",
+      "publication_date": "1988",
+      "doi": "10.1007/978-1-349-08943-7_5",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Conduct of Clinical Trials in Acute Migraine Treatment and Their Interpretation",
+      "snippet": "Conduct of Clinical Trials in Acute Migraine Treatment and Their Interpretation",
+      "full_text": null,
+      "url": "https://doi.org/10.1159/000061604",
+      "_adapter": "crossref",
+      "authors": [
+        "P. Tfelt-Hansen",
+        "B.H. Rasmussen"
+      ],
+      "venue": "Monographs in Clinical Neuroscience",
+      "publication_date": "2000",
+      "doi": "10.1159/000061604",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How transparent are migraine clinical trials?",
+      "snippet": "How transparent are migraine clinical trials?",
+      "full_text": null,
+      "url": "https://doi.org/10.1212/wnl.0000000000000866",
+      "_adapter": "crossref",
+      "authors": [
+        "Faustine L. Dufka",
+        "Robert H. Dworkin",
+        "Michael C. Rowbotham"
+      ],
+      "venue": "Neurology",
+      "publication_date": "2014",
+      "doi": "10.1212/wnl.0000000000000866",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Enhancing Longitudinal Clinical Trial Efficiency with Digital Twins and Prognostic Covariate-Adjusted Mixed Models for Repeated Measures (PROCOVA-MMRM)",
+      "snippet": "Clinical trials are critical in advancing medical treatments but often suffer from immense time and financial burden. Advances in statistical methodologies and artificial intelligence (AI) present opportunities to address these inefficiencies. Here we introduce Prognostic Covariate-Adjusted Mixed Models for Repeated Measures (PROCOVA-MMRM) as an advantageous combination of prognostic covariate adjustment (PROCOVA) and Mixed Models for Repeated Measures (MMRM). PROCOVA-MMRM utilizes time-matched prognostic scores generated from AI models to enhance the precision of treatment effect estimators f",
+      "full_text": "Clinical trials are critical in advancing medical treatments but often suffer from immense time and financial burden. Advances in statistical methodologies and artificial intelligence (AI) present opportunities to address these inefficiencies. Here we introduce Prognostic Covariate-Adjusted Mixed Models for Repeated Measures (PROCOVA-MMRM) as an advantageous combination of prognostic covariate adjustment (PROCOVA) and Mixed Models for Repeated Measures (MMRM). PROCOVA-MMRM utilizes time-matched prognostic scores generated from AI models to enhance the precision of treatment effect estimators for longitudinal continuous outcomes, enabling reductions in sample size and enrollment times. We first provide a description of the background and implementation of PROCOVA-MMRM, followed by two case study reanalyses where we compare the performance of PROCOVA-MMRM versus the unadjusted MMRM. These reanalyses demonstrate significant improvements in statistical power and precision in clinical indications with unmet medical need, specifically Alzheimer's Disease (AD) and Amyotrophic Lateral Sclerosis (ALS). We also explore the potential for sample size reduction with the prospective implementation of PROCOVA-MMRM, finding that the same or better results could have been achieved with fewer participants in these historical trials if the enhanced precision provided by PROCOVA-MMRM had been prospectively leveraged. We also confirm the robustness of the statistical properties of PROCOVA-MMRM in a variety of realistic simulation scenarios. Altogether, PROCOVA-MMRM represents a rigorous method of incorporating advances in the prediction of time-matched prognostic scores generated by AI into longitudinal analysis, potentially reducing both the cost and time required to bring new treatments to patients while adhering to regulatory standards.",
+      "url": "https://arxiv.org/abs/2404.17576v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Jessica L. Ross",
+        "Arman Sabbaghi",
+        "Run Zhuang",
+        "Daniele Bertolini",
+        "the Alzheimer's Disease Cooperative Study",
+        "Alzheimer's Disease Neuroimaging Initiative",
+        "the Critical Path for Alzheimer's Disease Database",
+        "the European Prevention of Alzheimer's Disease",
+        "Consortium",
+        "the Pooled Resource Open-Access ALS Clinical Trials Consortium"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-04-26",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2404.17576v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Small-Sample Behavior of Novel Phase I Cancer Trial Designs",
+      "snippet": "Novel dose-finding designs, using estimation to assign the best estimated maximum- tolerated-dose (MTD) at each point in the experiment, most commonly via Bayesian techniques, have recently entered large-scale implementation in Phase I cancer clinical trials. We examine the small-sample behavior of these \"Bayesian Phase I\" (BP1) designs, and also of non-Bayesian designs sharing the same main \"long-memory\" traits (hereafter: LMP1s). For all LMP1s examined, the number of cohorts treated at the true MTD (denoted here as n*) was highly variable between numerical runs drawn from the same toxicity-t",
+      "full_text": "Novel dose-finding designs, using estimation to assign the best estimated maximum- tolerated-dose (MTD) at each point in the experiment, most commonly via Bayesian techniques, have recently entered large-scale implementation in Phase I cancer clinical trials. We examine the small-sample behavior of these \"Bayesian Phase I\" (BP1) designs, and also of non-Bayesian designs sharing the same main \"long-memory\" traits (hereafter: LMP1s). For all LMP1s examined, the number of cohorts treated at the true MTD (denoted here as n*) was highly variable between numerical runs drawn from the same toxicity-threshold distribution, especially when compared with \"up-and-down\" (U&D) short-memory designs. Further investigation using the same set of thresholds in permuted order, produced a nearly-identical magnitude of variability in n*. Therefore, this LMP1 behavior is driven by a strong sensitivity to the order in which toxicity thresholds appear in the experiment. We suggest that the sensitivity is related to LMP1's tendency to \"settle\" early on a specific dose level - a tendency caused by the repeated likelihood-based \"winner-takes-all\" dose assignment rule, which grants the early cohorts a disproportionately large influence upon experimental trajectories. Presently, U&D designs offer a simpler and more stable alternative, with roughly equivalent MTD estimation performance. A promising direction for combining the two approaches is briefly discussed (note: the '3+3' protocol is not a U&D design).",
+      "url": "https://arxiv.org/abs/1202.4962v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Assaf P. Oron",
+        "Peter D. Hoff"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2012-02-22",
+      "doi": "10.1177/1740774512469311",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1202.4962v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Leveraging contact network structure in the design of cluster randomized trials",
+      "snippet": "Background: In settings where proof-of-principle trials have succeeded but the effectiveness of different forms of implementation remains uncertain, trials that not only generate information about intervention effects but also provide public health benefit would be useful. Cluster randomized trials (CRT) capture both direct and indirect intervention effects; the latter depends heavily on contact networks within and across clusters. We propose a novel class of connectivity-informed trial designs that leverages information about such networks in order to improve public health impact and preserve",
+      "full_text": "Background: In settings where proof-of-principle trials have succeeded but the effectiveness of different forms of implementation remains uncertain, trials that not only generate information about intervention effects but also provide public health benefit would be useful. Cluster randomized trials (CRT) capture both direct and indirect intervention effects; the latter depends heavily on contact networks within and across clusters. We propose a novel class of connectivity-informed trial designs that leverages information about such networks in order to improve public health impact and preserve ability to detect intervention effects. Methods: We consider CRTs in which the order of enrollment is based on the total number of ties between individuals across clusters (based either on the total number of inter-cluster connections or on connections only to untreated clusters). We include options analogous both to traditional Parallel and Stepped Wedge designs. We also allow for control clusters to be \"held-back\" from re-randomization for some period. We investigate the performance epidemic control and power to detect vaccine effect performance of these designs by simulating vaccination trials during an SEIR-type epidemic using a network-structured agent-based model. Results: In our simulations, connectivity-informed designs have lower peak infectiousness than comparable traditional designs and reduce cumulative incidence by 20%, but with little impact on time to end of epidemic and reduced power to detect differences in incidence across clusters. However even a brief \"holdback\" period restores most of the power lost compared to traditional approaches. Conclusion: Incorporating information about cluster connectivity in design of CRTs can increase their public health impact, especially in acute outbreak settings, with modest cost in power to detect an effective intervention.",
+      "url": "https://arxiv.org/abs/1610.09926v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Guy Harling",
+        "Rui Wang",
+        "Jukka-Pekka Onnela",
+        "Victor De Gruttola"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2016-10-28",
+      "doi": "10.1177/1740774516673355",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1610.09926v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What can we do about exploratory analyses in clinical trials?",
+      "snippet": "What can we do about exploratory analyses in clinical trials?",
+      "full_text": null,
+      "url": "https://doi.org/10.1016/j.cct.2015.09.012",
+      "_adapter": "crossref",
+      "authors": [
+        "Lem Moyé"
+      ],
+      "venue": "Contemporary Clinical Trials",
+      "publication_date": "2015",
+      "doi": "10.1016/j.cct.2015.09.012",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Middle meningeal artery embolization: what clinical trials demonstrate, and what their results do not show",
+      "snippet": "Middle meningeal artery embolization: what clinical trials demonstrate, and what their results do not show",
+      "full_text": null,
+      "url": "https://doi.org/10.1016/j.neurad.2026.101609",
+      "_adapter": "crossref",
+      "authors": [
+        "Jildaz Caroff"
+      ],
+      "venue": "Journal of Neuroradiology",
+      "publication_date": "2026",
+      "doi": "10.1016/j.neurad.2026.101609",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Inference Without Stakes: What Large Language Models Do-and Do Not-Show About Intelligence",
+      "snippet": "Large language models have made a powerful case for the reach of statistical inference. They produce fluent language, solve heterogeneous problems, and exhibit forms of abstraction that cannot be dismissed as simple retrieval. Their success, however, does not establish that inference is sufficient for intelligence. That conclusion follows only by sliding between distinct ideas: inferential competence, task performance, agency, and phenomenal awareness. This essay separates them. It argues that inference is always organized by a prior structure of relevance-a specification of which distinctions",
+      "full_text": "Large language models have made a powerful case for the reach of statistical inference. They produce fluent language, solve heterogeneous problems, and exhibit forms of abstraction that cannot be dismissed as simple retrieval. Their success, however, does not establish that inference is sufficient for intelligence. That conclusion follows only by sliding between distinct ideas: inferential competence, task performance, agency, and phenomenal awareness. This essay separates them. It argues that inference is always organized by a prior structure of relevance-a specification of which distinctions, errors, goals, and outcomes matter. In biological agents, that relevance is continually shaped through self-maintenance, embodied action, developmental history, and exposure to the consequences of action. Present language models largely inherit it from humangenerated corpora, training objectives, prompts, evaluation procedures, and deployment institutions. They therefore possess what I call borrowed worldliness: genuine competence acquired from the traces of human engagement with the world, without yet displaying the autonomous normative organization characteristic of ecological agency. Drawing on active inference, ecological psychology, Umwelt theory, and enactivism, the essay develops a substrate-neutral account of this distinction. The argument neither denies the capacities of language models nor rules out artificial agency. It establishes a narrower conclusion: successful inference, even when remarkably general, is not by itself sufficient evidence of an agent for whom anything is at stake.",
+      "url": "https://doi.org/10.2139/ssrn.7537048",
+      "_adapter": "crossref",
+      "authors": [
+        "Balaraju Battu"
+      ],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.2139/ssrn.7537048",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ],
+  "routes": {
+    "production": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    },
+    "standalone": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "routes_added_at": "2026-11-24T16:11:55+0100"
+}

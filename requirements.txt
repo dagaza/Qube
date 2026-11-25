@@ -64,6 +64,7 @@ Pygments==2.20.0
 pynvml==13.0.1
 pyparsing==3.3.2
 pypdf==6.21.4
+pyspellchecker==0.9.1
 pymupdf
 PyQt6==6.11.0
 PyQt6-Qt6==6.11.0

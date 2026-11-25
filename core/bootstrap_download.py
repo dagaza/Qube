@@ -195,8 +195,20 @@ def resolve_model_destination(model_id: BootstrapModelId) -> Path | None:
 def selected_models_needing_download(
     selected: set[BootstrapModelId],
 ) -> set[BootstrapModelId]:
-    """Return bootstrap catalogue entries that are selected but absent on disk."""
-    return {mid for mid in selected if not model_is_present(mid)}
+    """Return bootstrap catalogue entries that are selected but absent on disk.
+
+    Balanced search also counts as needing download when only its relevance
+    reranker is missing (existing installs pick it up on the next start; a
+    failure is non-fatal — the splash continues with available models).
+    """
+    out = {mid for mid in selected if not model_is_present(mid)}
+    if (
+        BootstrapModelId.SEARCH_PRESET_BALANCED in selected
+        and search_reranker_missing()
+        and not _reranker_download_backing_off()
+    ):
+        out.add(BootstrapModelId.SEARCH_PRESET_BALANCED)
+    return out
 
 
 def model_is_present(model_id: BootstrapModelId) -> bool:
@@ -427,14 +439,90 @@ def _download_balanced_search_preset(on_progress: DownloadProgressCallback, spec
         from core.embedding_modes import get_mode_spec
 
         on_progress(step_label, get_mode_spec(DEFAULT_MODE).fastembed_model, 100, spec.source_display)
-        return
+    else:
+        download_embedding_preset(
+            DEFAULT_MODE,
+            on_progress,
+            step_label=step_label,
+            source_display=spec.source_display,
+        )
+    _download_search_reranker(on_progress, spec)
 
-    download_embedding_preset(
-        DEFAULT_MODE,
-        on_progress,
-        step_label=step_label,
-        source_display=spec.source_display,
-    )
+
+def _download_search_reranker(on_progress: DownloadProgressCallback, spec) -> None:
+    """Relevance reranker shipped with Balanced search (plan S3, decision D1).
+
+    Raises on failure so the caller records a non-fatal error; the embedding
+    preset is already in place and retrieval falls back to the legacy scorer.
+    """
+    from core.bootstrap_search_download import download_reranker, reranker_complete
+
+    if reranker_complete() or not _search_reranker_wanted():
+        return
+    try:
+        download_reranker(
+            on_progress,
+            step_label=f"Downloading {spec.label} (relevance reranker)",
+            source_display="huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2",
+        )
+    except Exception:
+        _mark_reranker_download_failed()
+        raise
+    _clear_reranker_download_failed()
+
+
+# After a failed automatic attempt, startup skips the reranker for this long so an
+# offline install does not retry (and show a failure) on every launch. Settings →
+# Knowledge → Search quality can still download it at any time.
+_RERANKER_RETRY_BACKOFF_S = 24 * 3600
+
+
+def _reranker_fail_marker() -> Path:
+    from core.bootstrap_search_download import reranker_dir
+
+    return reranker_dir().parent / "reranker.download_failed"
+
+
+def _mark_reranker_download_failed() -> None:
+    try:
+        marker = _reranker_fail_marker()
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(str(int(time.time())), encoding="utf-8")
+    except Exception:
+        logger.debug("Could not write reranker failure marker", exc_info=True)
+
+
+def _clear_reranker_download_failed() -> None:
+    try:
+        _reranker_fail_marker().unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def _reranker_download_backing_off() -> bool:
+    try:
+        marker = _reranker_fail_marker()
+        if not marker.is_file():
+            return False
+        return time.time() - marker.stat().st_mtime < _RERANKER_RETRY_BACKOFF_S
+    except Exception:
+        return False
+
+
+def _search_reranker_wanted() -> bool:
+    try:
+        from core.app_settings import get_knowledge_reranker_enabled
+
+        return bool(get_knowledge_reranker_enabled())
+    except Exception:
+        return True
+
+
+def search_reranker_missing() -> bool:
+    """True when the reranker is wanted (setting on) but not fully on disk."""
+    from core.bootstrap_search_download import reranker_complete
+
+    return _search_reranker_wanted() and not reranker_complete()
 
 
 def download_bootstrap_models(

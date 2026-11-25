@@ -283,6 +283,28 @@ class KnowledgeHandlersMixin:
             is_dark=is_dark,
         )
 
+    def _on_knowledge_reranker_toggled(self, checked: bool) -> None:
+        QTimer.singleShot(0, lambda: self._apply_knowledge_reranker_enabled(checked))
+
+    def _apply_knowledge_reranker_enabled(self, checked: bool) -> None:
+        from core.app_settings import (
+            KEY_KNOWLEDGE_RERANKER_ENABLED,
+            get_knowledge_reranker_enabled,
+            set_knowledge_reranker_enabled,
+        )
+        from core.knowledge.ranking.rerank import unload_reranker, warm_up_reranker_async
+
+        if get_knowledge_reranker_enabled() == bool(checked):
+            return
+        set_knowledge_reranker_enabled(checked)
+        if checked:
+            warm_up_reranker_async()
+        else:
+            unload_reranker()
+        if hasattr(self, "_sync_bootstrap_download_visibility"):
+            self._sync_bootstrap_download_visibility()
+        self._emit_external_settings_changed(KEY_KNOWLEDGE_RERANKER_ENABLED)
+
     def _on_discovery_pacing_toggled(self, checked: bool) -> None:
         # Defer persistence until after the toggle animation/layout pass completes.
         QTimer.singleShot(0, lambda: self._apply_discovery_pacing_enabled(checked))

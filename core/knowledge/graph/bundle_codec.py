@@ -77,6 +77,7 @@ def bundle_to_dict(bundle: EvidenceBundle) -> dict[str, Any]:
         "conflicts": [_conflict_to_dict(c) for c in conflicts],
         "stop_reason": bundle.stop_reason,
         "adapter_calls": list(bundle.adapter_calls),
+        "sufficiency": bundle.sufficiency,
     }
 
 
@@ -154,4 +155,5 @@ def bundle_from_dict(data: dict[str, Any]) -> EvidenceBundle:
         conflicts=conflicts,
         stop_reason=str(data.get("stop_reason") or "no_evidence"),
         adapter_calls=tuple(str(a) for a in (data.get("adapter_calls") or [])),
+        sufficiency=str(data.get("sufficiency") or "unscored"),
     )

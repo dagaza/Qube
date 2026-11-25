@@ -9,6 +9,8 @@ from typing import Any
 from core.knowledge.conflicts.detect import detect_evidence_conflicts
 from core.knowledge.ranking.authority import authority_score_for_url, tier_label_for_url
 from core.knowledge.ranking.freshness import freshness_score
+from core.knowledge.ranking.recency import BASIS_PUBLISHED, BASIS_URL, row_source_date
+from core.knowledge.ranking.sufficiency import relevance_probability
 from core.knowledge.types import (
     COVERAGE_ADEQUATE,
     COVERAGE_EXCELLENT,
@@ -37,6 +39,70 @@ STRATEGY_LEGAL_COURTLISTENER = "courtlistener_search"
 STRATEGY_GENERIC_PARALLEL = "generic_parallel_ranked"
 
 
+# Plan S4: EvidenceBundle.sufficiency when the relevance reranker did not run.
+_SUFFICIENCY_UNSCORED = "unscored"
+# Confidence ceiling for a ``partial`` bundle (S4 scientific, S7 web/trusted/finance).
+_PARTIAL_CONFIDENCE_CAP = 0.55
+
+
+def _gate_relevance(row: dict[str, Any]) -> float | None:
+    """p(relevant) from the S7 web gate's cross-encoder score, if the row was scored."""
+    score = row.get("_rerank_score")
+    if score is None:
+        return None
+    try:
+        return relevance_probability(float(score))
+    except (TypeError, ValueError):
+        return None
+
+
+def _row_dates(row: dict[str, Any]) -> tuple[str | None, float | None, dict[str, Any]]:
+    """(publication_date, freshness_score, raw_metadata extras) for a search row (S7)."""
+    basis = row.get("_source_date_basis")
+    source_date = row.get("_source_date")
+    publication = row.get("publication_date") or (
+        source_date if basis in (BASIS_PUBLISHED, BASIS_URL) else None
+    )
+    fresh = freshness_score(publication or row_source_date(row))
+    extras: dict[str, Any] = {}
+    if row.get("_rerank_score") is not None:
+        extras["rerank_score"] = row.get("_rerank_score")
+    if row.get("_rerank_strong") is not None:
+        extras["rerank_strong"] = bool(row.get("_rerank_strong"))
+    if row.get("_freshness"):
+        extras["freshness"] = row.get("_freshness")
+        extras["source_date"] = source_date
+        extras["source_date_basis"] = basis
+    return (str(publication) if publication else None), fresh, extras
+
+
+def _apply_sufficiency(
+    sources: tuple[EvidenceObject, ...],
+    *,
+    coverage: str,
+    coverage_rationale: str,
+    confidence: float,
+    sufficiency: str,
+    sufficiency_rationale: str,
+) -> tuple[str, str, float]:
+    """Coverage / confidence of a gated web, trusted or finance bundle (S7).
+
+    ``unscored`` keeps the service's legacy values. Otherwise the S4 mapping:
+    ``sufficient`` keeps the legacy coverage; ``partial`` is ``poor`` with
+    confidence capped at 0.55; ``insufficient`` / ``none`` are ``none`` / 0.0.
+    """
+    if sufficiency == _SUFFICIENCY_UNSCORED:
+        return coverage, coverage_rationale, confidence
+    if not sources or sufficiency not in ("sufficient", "partial"):
+        return COVERAGE_NONE, sufficiency_rationale or "No source passed the relevance threshold.", 0.0
+    if sufficiency == "partial":
+        return (
+            COVERAGE_POOR,
+            sufficiency_rationale or f"{len(sources)} source(s) only partly match the question.",
+            min(confidence, _PARTIAL_CONFIDENCE_CAP),
+        )
+    return coverage, f"{sufficiency_rationale} {coverage_rationale}".strip(), confidence
+
 def _legacy_row_to_evidence(
     row: dict[str, Any],
     *,
@@ -51,27 +117,37 @@ def _legacy_row_to_evidence(
 
     token_overlap = float(row.get("_web_token_overlap") or 0.0)
     semantic = row.get("_web_semantic_score")
-    relevance = float(semantic) if semantic is not None else token_overlap
+    gated = _gate_relevance(row)
+    if gated is not None:
+        relevance = gated
+    else:
+        relevance = float(semantic) if semantic is not None else token_overlap
+    publication, fresh, date_meta = _row_dates(row)
 
+    # Plan S10 (R7): the provider that found the row (Brave, SearXNG, …).
+    adapter = str(row.get("_discovery_provider") or "duckduckgo")
     source_id = url or f"ddg:{title[:96]}"
     return EvidenceObject(
         id=f"ek_{index}",
         source_id=source_id,
-        adapter="duckduckgo",
+        adapter=adapter,
         retrieval_method="serp",
         title=title,
         excerpt=snippet,
         full_text=None,
         url=url,
         document_type="web_snippet",
+        publication_date=publication,
         relevance_score=max(0.0, min(1.0, relevance)),
         authority_score=0.35,
         reliability_score=max(0.0, min(1.0, relevance * 0.8)),
+        freshness_score=fresh,
         retrieved_at=retrieved_at,
         fetch_status="snippet_only",
         raw_metadata={
             "token_overlap": row.get("_web_token_overlap"),
             "semantic_score": row.get("_web_semantic_score"),
+            **date_meta,
         },
     )
 
@@ -132,8 +208,15 @@ def build_general_web_bundle(
     latency_ms: float,
     adapter_calls: tuple[str, ...] = ("duckduckgo",),
     stop_reason: str = "budget_exhausted",
+    sufficiency: str = _SUFFICIENCY_UNSCORED,
+    sufficiency_rationale: str = "",
+    extra_warnings: tuple[str, ...] = (),
 ) -> EvidenceBundle:
-    """Build a Phase-0 general-web bundle from gated DDG rows."""
+    """Build a Phase-0 general-web bundle from gated DDG rows.
+
+    ``sufficiency`` other than ``"unscored"`` means the S7 relevance gate scored
+    the rows (see ``_apply_sufficiency``).
+    """
     retrieved_at = time.time()
     sources = tuple(
         _legacy_row_to_evidence(row, index=i, retrieved_at=retrieved_at)
@@ -141,8 +224,16 @@ def build_general_web_bundle(
     )
     coverage, coverage_rationale = _compute_coverage(sources)
     confidence = _compute_confidence(sources)
+    coverage, coverage_rationale, confidence = _apply_sufficiency(
+        sources,
+        coverage=coverage,
+        coverage_rationale=coverage_rationale,
+        confidence=confidence,
+        sufficiency=sufficiency,
+        sufficiency_rationale=sufficiency_rationale,
+    )
 
-    warnings: list[str] = []
+    warnings: list[str] = list(extra_warnings)
     if sources and all(s.fetch_status == "snippet_only" for s in sources):
         warnings.append("serp_snippet_only")
 
@@ -167,6 +258,7 @@ def build_general_web_bundle(
         query_resolved=query_resolved,
         knowledge_service=SERVICE_GENERAL_WEB,
         retrieval_strategy=STRATEGY_DDG_RELEVANCE_GATE,
+        sufficiency=sufficiency,
         profile_version=PROFILE_VERSION,
         retrieved_at=retrieved_at,
         latency_ms=latency_ms,
@@ -220,6 +312,8 @@ def build_fetched_general_web_bundle(
     adapter_calls: tuple[str, ...] = ("duckduckgo", "fetch_engine"),
     stop_reason: str = "budget_exhausted",
     warnings: tuple[str, ...] | None = None,
+    sufficiency: str = _SUFFICIENCY_UNSCORED,
+    sufficiency_rationale: str = "",
 ) -> EvidenceBundle:
     """Build a general-web bundle from fetched page sections."""
     retrieved_at = time.time()
@@ -232,6 +326,14 @@ def build_fetched_general_web_bundle(
     confidence = _compute_confidence(source_tuple)
     if source_tuple:
         confidence = max(confidence, min(0.85, confidence + 0.1))
+    coverage, coverage_rationale, confidence = _apply_sufficiency(
+        source_tuple,
+        coverage=coverage,
+        coverage_rationale=coverage_rationale,
+        confidence=confidence,
+        sufficiency=sufficiency,
+        sufficiency_rationale=sufficiency_rationale,
+    )
 
     bundle_warnings = list(warnings or ())
     authority_summary = (
@@ -259,6 +361,7 @@ def build_fetched_general_web_bundle(
         query_resolved=query_resolved,
         knowledge_service=SERVICE_GENERAL_WEB,
         retrieval_strategy=STRATEGY_DDG_SELECTIVE_FETCH,
+        sufficiency=sufficiency,
         profile_version=PROFILE_VERSION,
         retrieved_at=retrieved_at,
         latency_ms=latency_ms,
@@ -285,8 +388,14 @@ def build_empty_bundle(
     rejected_count: int = 0,
     stop_reason: str = "no_evidence",
     knowledge_service: str = SERVICE_GENERAL_WEB,
+    sufficiency: str = _SUFFICIENCY_UNSCORED,
+    sufficiency_rationale: str = "",
 ) -> EvidenceBundle:
-    """Empty bundle after sentinel drop, gate failure, or no results."""
+    """Empty bundle after sentinel drop, gate failure, or no results.
+
+    ``sufficiency`` is honoured by the scientific (S4) and the web, trusted and
+    finance builders (S7); internal-corpus and legal keep ``"unscored"``.
+    """
     if knowledge_service == SERVICE_TRUSTED_KNOWLEDGE:
         return build_trusted_knowledge_bundle(
             query_raw=query_raw,
@@ -295,6 +404,8 @@ def build_empty_bundle(
             rejected_count=rejected_count,
             latency_ms=latency_ms,
             stop_reason=stop_reason,
+            sufficiency=sufficiency,
+            sufficiency_rationale=sufficiency_rationale,
         )
     if knowledge_service == SERVICE_WIKIPEDIA:
         return build_trusted_knowledge_bundle(
@@ -314,6 +425,8 @@ def build_empty_bundle(
             rejected_count=rejected_count,
             latency_ms=latency_ms,
             stop_reason=stop_reason,
+            sufficiency=sufficiency,
+            sufficiency_rationale=sufficiency_rationale,
         )
     if knowledge_service == SERVICE_INTERNAL_CORPUS:
         return build_internal_corpus_bundle(
@@ -332,6 +445,8 @@ def build_empty_bundle(
             rejected_count=rejected_count,
             latency_ms=latency_ms,
             stop_reason=stop_reason,
+            sufficiency=sufficiency,
+            sufficiency_rationale=sufficiency_rationale,
         )
     if knowledge_service == SERVICE_LEGAL_KNOWLEDGE:
         return build_legal_knowledge_bundle(
@@ -349,6 +464,8 @@ def build_empty_bundle(
         rejected_count=rejected_count,
         latency_ms=latency_ms,
         stop_reason=stop_reason,
+        sufficiency=sufficiency,
+        sufficiency_rationale=sufficiency_rationale,
     )
 
 
@@ -370,13 +487,18 @@ def _trusted_row_to_evidence(
         url = None
 
     is_wiki = bool(row.get("_wiki_source"))
-    adapter = "wikipedia_api" if is_wiki else "duckduckgo"
+    adapter = (
+        "wikipedia_api" if is_wiki else str(row.get("_discovery_provider") or "duckduckgo")
+    )
     retrieval_method = "api_extract" if is_wiki else "serp"
     document_type = "encyclopedia" if is_wiki else tier_label_for_url(url)
 
     token_overlap = float(row.get("_web_token_overlap") or 0.0)
     semantic = row.get("_web_semantic_score")
-    if is_wiki:
+    gated = _gate_relevance(row)
+    if gated is not None:
+        relevance = gated
+    elif is_wiki:
         relevance = 0.85
     else:
         relevance = float(semantic) if semantic is not None else token_overlap
@@ -385,7 +507,7 @@ def _trusted_row_to_evidence(
     fetch_status = "abstract" if full_text else "snippet_only"
     source_id = url or f"{adapter}:{title[:96]}"
     reliability = max(0.0, min(1.0, relevance * 0.85))
-    fresh = freshness_score(row.get("publication_date"))
+    publication, fresh, date_meta = _row_dates(row)
 
     return EvidenceObject(
         id=f"ek_{index}",
@@ -397,6 +519,7 @@ def _trusted_row_to_evidence(
         full_text=full_text,
         url=url,
         document_type=document_type,
+        publication_date=publication,
         relevance_score=max(0.0, min(1.0, relevance)),
         authority_score=authority,
         reliability_score=reliability,
@@ -407,6 +530,7 @@ def _trusted_row_to_evidence(
             "token_overlap": row.get("_web_token_overlap"),
             "semantic_score": row.get("_web_semantic_score"),
             "wiki_pageid": row.get("pageid"),
+            **date_meta,
         },
     )
 
@@ -454,6 +578,9 @@ def build_trusted_knowledge_bundle(
     adapter_calls: tuple[str, ...] = ("wikipedia_api",),
     stop_reason: str = "budget_exhausted",
     knowledge_service: str = SERVICE_TRUSTED_KNOWLEDGE,
+    sufficiency: str = _SUFFICIENCY_UNSCORED,
+    sufficiency_rationale: str = "",
+    extra_warnings: tuple[str, ...] = (),
 ) -> EvidenceBundle:
     """Build a Phase-1 trusted-knowledge bundle from wiki + allowlisted rows."""
     retrieved_at = time.time()
@@ -463,8 +590,16 @@ def build_trusted_knowledge_bundle(
     )
     coverage, coverage_rationale = _compute_trusted_coverage(sources)
     confidence = _compute_trusted_confidence(sources)
+    coverage, coverage_rationale, confidence = _apply_sufficiency(
+        sources,
+        coverage=coverage,
+        coverage_rationale=coverage_rationale,
+        confidence=confidence,
+        sufficiency=sufficiency,
+        sufficiency_rationale=sufficiency_rationale,
+    )
 
-    warnings: list[str] = []
+    warnings: list[str] = list(extra_warnings)
     if sources and not any(s.adapter == "wikipedia_api" for s in sources):
         warnings.append("no_wikipedia_hit")
     if sources and all(s.fetch_status == "snippet_only" for s in sources):
@@ -484,6 +619,7 @@ def build_trusted_knowledge_bundle(
         query_resolved=query_resolved,
         knowledge_service=knowledge_service,
         retrieval_strategy=STRATEGY_WIKI_API_ALLOWLIST,
+        sufficiency=sufficiency,
         profile_version=PROFILE_VERSION,
         retrieved_at=retrieved_at,
         latency_ms=latency_ms,
@@ -566,7 +702,8 @@ def _scientific_row_to_evidence(
     else:
         full_text = None
     url = str(row.get("url") or "").strip() or None
-    adapter = str(row.get("_adapter") or "pubmed")
+    # Plan S10 (R7): an untagged row is not credited to PubMed (or its authority).
+    adapter = str(row.get("_adapter") or "unknown")
     authors_raw = row.get("authors") or ()
     authors = tuple(str(a).strip() for a in authors_raw if str(a).strip())
     relevance = float(row.get("_scientific_relevance") or 0.75)
@@ -609,6 +746,12 @@ def _scientific_row_to_evidence(
         raw_metadata={
             "pmid": row.get("pmid"),
             "arxiv_id": row.get("arxiv_id"),
+            **({"rerank_score": row.get("_rerank_score")} if row.get("_rerank_score") is not None else {}),
+            **(
+                {"rerank_strong": bool(row.get("_rerank_strong"))}
+                if row.get("_rerank_strong") is not None
+                else {}
+            ),
         },
     )
 
@@ -680,6 +823,48 @@ def _compute_scientific_confidence(sources: tuple[EvidenceObject, ...]) -> float
     )
 
 
+
+def _scored_scientific_coverage(
+    sources: tuple[EvidenceObject, ...],
+    *,
+    sufficiency: str,
+    sufficiency_rationale: str,
+) -> tuple[str, str, float]:
+    """Coverage / confidence when the relevance reranker scored the pool (S4).
+
+    Mapping (``core.knowledge.ranking.sufficiency.Sufficiency``):
+
+    * ``sufficient``   → ``excellent`` with ≥ 3 sources, ≥ 2 abstracts and
+      ≥ 2 indexes; otherwise ``adequate``. Confidence: the legacy formula
+      (``relevance_score`` is now sigmoid(logit), one meaning everywhere).
+    * ``partial``      → ``poor``; confidence capped at 0.55 — something
+      relevant passed the gate, but not enough to call it well supported.
+    * ``insufficient`` / ``none`` (no sources) → ``none``, confidence 0.0.
+    """
+    if not sources or sufficiency not in ("sufficient", "partial"):
+        rationale = sufficiency_rationale or "No source passed the relevance threshold."
+        return COVERAGE_NONE, rationale, 0.0
+    confidence = _compute_scientific_confidence(sources)
+    abstract_count = sum(1 for s in sources if s.fetch_status == "abstract")
+    adapters = {s.adapter for s in sources}
+    if sufficiency == "partial":
+        return (
+            COVERAGE_POOR,
+            sufficiency_rationale
+            or f"{len(sources)} source(s) only partly match the question.",
+            min(confidence, _PARTIAL_CONFIDENCE_CAP),
+        )
+    if len(sources) >= 3 and abstract_count >= 2 and len(adapters) >= 2:
+        coverage = COVERAGE_EXCELLENT
+    else:
+        coverage = COVERAGE_ADEQUATE
+    rationale = (
+        f"{sufficiency_rationale} {len(sources)} source(s) across {len(adapters)} "
+        f"index(es); {abstract_count} with abstracts."
+    ).strip()
+    return coverage, rationale, confidence
+
+
 def build_scientific_evidence_bundle(
     *,
     query_raw: str,
@@ -691,15 +876,31 @@ def build_scientific_evidence_bundle(
     stop_reason: str = "budget_exhausted",
     medical_query: bool = False,
     knowledge_service: str = SERVICE_SCIENTIFIC_EVIDENCE,
+    sufficiency: str = _SUFFICIENCY_UNSCORED,
+    sufficiency_rationale: str = "",
 ) -> EvidenceBundle:
-    """Build a Phase-2 scientific-evidence bundle from adapter rows."""
+    """Build a Phase-2 scientific-evidence bundle from adapter rows.
+
+    ``sufficiency`` other than ``"unscored"`` means the relevance reranker scored
+    the pool (S4); coverage / confidence then derive from it instead of the
+    legacy count-based heuristics, and an empty insufficient bundle keeps
+    ``stop_reason="relevance_filtered"``.
+    """
     retrieved_at = time.time()
     sources = tuple(
         _scientific_row_to_evidence(row, index=i, retrieved_at=retrieved_at)
         for i, row in enumerate(kept_rows, start=1)
     )
-    coverage, coverage_rationale = _compute_scientific_coverage(sources)
-    confidence = _compute_scientific_confidence(sources)
+    scored = sufficiency != _SUFFICIENCY_UNSCORED
+    if scored:
+        coverage, coverage_rationale, confidence = _scored_scientific_coverage(
+            sources,
+            sufficiency=sufficiency,
+            sufficiency_rationale=sufficiency_rationale,
+        )
+    else:
+        coverage, coverage_rationale = _compute_scientific_coverage(sources)
+        confidence = _compute_scientific_confidence(sources)
 
     warnings: list[str] = []
     snippet_only = [s for s in sources if s.fetch_status == "snippet_only"]
@@ -739,8 +940,13 @@ def build_scientific_evidence_bundle(
         rejected_count=rejected_count,
         warnings=tuple(warnings),
         conflicts=(),
-        stop_reason=stop_reason if sources else "no_evidence",
+        stop_reason=(
+            stop_reason
+            if sources or (scored and stop_reason == "relevance_filtered")
+            else "no_evidence"
+        ),
         adapter_calls=adapter_calls,
+        sufficiency=sufficiency,
     )
 
 
@@ -889,9 +1095,10 @@ def _finance_row_to_evidence(
     snippet = str(row.get("snippet") or "").strip()
     url = str(row.get("url") or "").strip() or None
     form = str(row.get("form") or "").strip()
-    adapter = str(row.get("_adapter") or "sec_edgar")
+    adapter = str(row.get("_adapter") or "unknown")
     retrieval_method = str(row.get("retrieval_method") or _finance_retrieval_method(adapter))
-    relevance = float(row.get("_web_token_overlap") or 0.82)
+    gated = _gate_relevance(row)
+    relevance = gated if gated is not None else float(row.get("_web_token_overlap") or 0.82)
     authority = _finance_authority(adapter)
     venue = str(row.get("venue") or _finance_venue(adapter))
     document_type = str(row.get("document_type") or _finance_document_type(adapter))
@@ -914,7 +1121,7 @@ def _finance_row_to_evidence(
         url=url,
         document_type=document_type,
         publication_date=row.get("publication_date"),
-        venue=venue,
+        venue=venue or None,
         authors=(),
         relevance_score=max(0.0, min(1.0, relevance)),
         authority_score=authority,
@@ -935,6 +1142,12 @@ def _finance_row_to_evidence(
             "symbol": row.get("symbol"),
             "region": row.get("region"),
             "currency": row.get("currency"),
+            **({"rerank_score": row.get("_rerank_score")} if row.get("_rerank_score") is not None else {}),
+            **(
+                {"rerank_strong": bool(row.get("_rerank_strong"))}
+                if row.get("_rerank_strong") is not None
+                else {}
+            ),
         },
     )
 
@@ -945,7 +1158,8 @@ def _finance_retrieval_method(adapter: str) -> str:
         "companies_house": "companies_house_search",
         "alpha_vantage": "alpha_vantage_symbol_search",
         "bloomberg_api": "bloomberg_instrument_search",
-    }.get(adapter, "sec_submissions")
+        "sec_edgar": "sec_submissions",
+    }.get(adapter, "api")
 
 
 def _finance_venue(adapter: str) -> str:
@@ -958,7 +1172,8 @@ def _finance_venue(adapter: str) -> str:
         "eurostat": "Eurostat",
         "bls": "BLS",
         "oecd": "OECD",
-    }.get(adapter, "SEC EDGAR")
+        "sec_edgar": "SEC EDGAR",
+    }.get(adapter, "")  # S10 (R7): no invented venue for other sources
 
 
 def _finance_document_type(adapter: str) -> str:
@@ -971,7 +1186,8 @@ def _finance_document_type(adapter: str) -> str:
         "eurostat": "statistical_release",
         "bls": "statistical_release",
         "oecd": "statistical_release",
-    }.get(adapter, "sec_filing")
+        "sec_edgar": "sec_filing",
+    }.get(adapter, "finance_record")
 
 
 def _finance_authority(adapter: str) -> float:
@@ -1022,7 +1238,7 @@ def _compute_finance_coverage(
         )
     if len(sources) >= 1:
         if len(adapters) > 1:
-            labels = ", ".join(sorted(_finance_venue(a) for a in adapters))
+            labels = ", ".join(sorted(_finance_venue(a) or a for a in adapters))
             return (
                 COVERAGE_ADEQUATE,
                 f"{len(sources)} finance source(s) from {labels}.",
@@ -1057,6 +1273,9 @@ def build_finance_knowledge_bundle(
     adapter_calls: tuple[str, ...] = ("sec_edgar",),
     stop_reason: str = "budget_exhausted",
     knowledge_service: str = SERVICE_FINANCE_KNOWLEDGE,
+    sufficiency: str = _SUFFICIENCY_UNSCORED,
+    sufficiency_rationale: str = "",
+    extra_warnings: tuple[str, ...] = (),
 ) -> EvidenceBundle:
     """Build a finance-knowledge bundle from SEC EDGAR rows."""
     retrieved_at = time.time()
@@ -1066,8 +1285,16 @@ def build_finance_knowledge_bundle(
     )
     coverage, coverage_rationale = _compute_finance_coverage(sources)
     confidence = _compute_finance_confidence(sources)
+    coverage, coverage_rationale, confidence = _apply_sufficiency(
+        sources,
+        coverage=coverage,
+        coverage_rationale=coverage_rationale,
+        confidence=confidence,
+        sufficiency=sufficiency,
+        sufficiency_rationale=sufficiency_rationale,
+    )
 
-    warnings: list[str] = ["not_financial_advice"]
+    warnings: list[str] = ["not_financial_advice", *extra_warnings]
     if not sources:
         warnings.append("no_sec_filings")
 
@@ -1085,6 +1312,7 @@ def build_finance_knowledge_bundle(
         query_resolved=query_resolved,
         knowledge_service=knowledge_service,
         retrieval_strategy=STRATEGY_FINANCE_SEC,
+        sufficiency=sufficiency,
         profile_version=PROFILE_VERSION,
         retrieved_at=retrieved_at,
         latency_ms=latency_ms,
@@ -1113,7 +1341,7 @@ def _legal_row_to_evidence(
     snippet = str(row.get("snippet") or "").strip()
     url = str(row.get("url") or "").strip() or None
     relevance = float(row.get("_web_token_overlap") or 0.82)
-    adapter = str(row.get("_adapter") or "courtlistener")
+    adapter = str(row.get("_adapter") or "unknown")
     authority = float(row.get("authority_score") or _legal_authority(adapter))
     retrieval_method = str(row.get("retrieval_method") or _legal_retrieval_method(adapter))
     document_type = str(row.get("document_type") or _legal_document_type(adapter))
@@ -1136,7 +1364,7 @@ def _legal_row_to_evidence(
         url=url,
         document_type=document_type,
         publication_date=row.get("publication_date"),
-        venue=venue,
+        venue=venue or None,
         authors=(),
         relevance_score=max(0.0, min(1.0, relevance)),
         authority_score=max(0.0, min(1.0, authority)),
@@ -1167,7 +1395,7 @@ def _legal_retrieval_method(adapter: str) -> str:
         "congress_gov": "congress_gov_bill_search",
         "govinfo": "govinfo_search",
         "legislation_uk": "legislation_uk_search",
-    }.get(adapter, "courtlistener_search")
+    }.get(adapter, "api")
 
 
 def _legal_venue(adapter: str) -> str:
@@ -1179,7 +1407,7 @@ def _legal_venue(adapter: str) -> str:
         "congress_gov": "Congress.gov",
         "govinfo": "GovInfo",
         "legislation_uk": "legislation.gov.uk",
-    }.get(adapter, "CourtListener")
+    }.get(adapter, "")  # S10 (R7): no invented venue for other sources
 
 
 def _legal_document_type(adapter: str) -> str:
@@ -1188,7 +1416,10 @@ def _legal_document_type(adapter: str) -> str:
         "congress_gov": "federal_bill",
         "govinfo": "federal_publication",
         "legislation_uk": "uk_legislation",
-    }.get(adapter, "court_opinion")
+        "courtlistener": "court_opinion",
+        "canlii": "court_opinion",
+        "bailii": "court_opinion",
+    }.get(adapter, "legal_document")
 
 
 def _legal_authority(adapter: str) -> float:
@@ -1229,7 +1460,7 @@ def _compute_legal_coverage(
         for s in sources
     }
     if len(sources) >= 2 and len(adapters) > 1:
-        labels = ", ".join(sorted(_legal_venue(a) for a in adapters))
+        labels = ", ".join(sorted(_legal_venue(a) or a for a in adapters))
         return (
             COVERAGE_ADEQUATE,
             f"{len(sources)} legal source(s) from {labels}.",

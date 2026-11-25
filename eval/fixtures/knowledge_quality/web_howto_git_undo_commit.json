@@ -1,0 +1,229 @@
+{
+  "schema_version": 2,
+  "id": "web_howto_git_undo_commit",
+  "path": "general_web",
+  "category": "how_to",
+  "description": "",
+  "query_raw": "@[tool:internet] how do I undo the last git commit but keep my changes",
+  "query_clean": "how do I undo the last git commit but keep my changes",
+  "retrieval_query": "how do I undo the last git commit but keep my changes",
+  "standalone_question": "How do I undo the last git commit while keeping the changes?",
+  "gold_subject": "git",
+  "gold_facet": "undo last commit",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:53:43+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "how do I undo the last git commit but keep my changes"
+    },
+    "standalone": {
+      "duckduckgo": "How do I undo the last git commit while keeping the changes?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "How to undo the last commit in git, but keep my changes as unstaged?",
+      "snippet": "The difference is that a soft reset leaves the files staged for commit, which is not what it sounds like you want to do. If you really want to undo the commit, you should also probably unstage the changes, which is what the default does.",
+      "url": "https://stackoverflow.com/questions/22355612/how-to-undo-the-last-commit-in-git-but-keep-my-changes-as-unstaged",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Can I delete (or undo) a git commit but keep the changes?",
+      "snippet": "But just using a \"git checkout master\" preserved the changes I also made in my development branch, thus breaking some of the functionality in master. So what I did was commit the changes on my development branch with a commit message \"temporary commit\" and then checkout master for the demo.",
+      "url": "https://stackoverflow.com/questions/15772134/can-i-delete-or-undo-a-git-commit-but-keep-the-changes",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Undo Last Commit in Git? - GeeksforGeeks",
+      "snippet": "Whether you need to keep your changes, modify the commit message, or discard the changes altogether, understanding these methods ensures you can manage your repository with confidence. Use git reset, git revert, or git commit --amend depending on your specific needs, and use the power of Git to maintain a clean and accurate project history.",
+      "url": "https://www.geeksforgeeks.org/git/how-to-undo-last-commit-in-git/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Undo a Commit in Git - GeeksforGeeks",
+      "snippet": "Undoing a commit in Git allows you to reverse changes made in previous commits while preserving or modifying the project history as needed. git reset is used to undo commits locally (soft, mixed, hard options).",
+      "url": "https://www.geeksforgeeks.org/git/how-to-undo-a-commit-in-git/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How do I undo the last commit without losing changes?",
+      "snippet": "just committed but realized I need to edit some files before finalizing. How can I undo the last commit but keep my changes in the files?",
+      "url": "https://github.com/orgs/community/discussions/169763",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Git - Undoing Things",
+      "snippet": "Any local changes you made to that file are gone — Git just replaced that file with the last staged or committed version. Don't ever use this command unless you absolutely know that you don't want those unsaved local changes.",
+      "url": "https://git-scm.com/book/en/v2/Git-Basics-Undoing-Things",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Git - Undoing Things",
+      "snippet": "The nice part is that the command you use to determine the state of those two areas also reminds you how to undo changes to them. For example, let's say you've changed two files and want to commit them as two separate changes, but you accidentally type git add * and stage them both.",
+      "url": "https://git-scm.com/book/id/v2/Git-Basics-Undoing-Things",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Git Undo Last Commit - Keep or Discard Changes | Coddy",
+      "snippet": "How to undo the last commit in Git: git reset --soft to keep the work, --hard to discard it, --amend to fix it, and git revert if you already pushed.",
+      "url": "https://coddy.tech/git-commands/git-undo-last-commit",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to un-commit last un-pushed git commit without losing the changes ...",
+      "snippet": "Is there a way to revert a commit so that my local copy keeps the changes made in that commit, but they become non-committed changes in my working copy? Rolling back a commit takes you to the previous commit - I want to keep the changes made but I committed them to the wrong branch. This has not been pushed, only committed.",
+      "url": "https://stackoverflow.com/questions/19859486/how-to-un-commit-last-un-pushed-git-commit-without-losing-the-changes",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How to Revert to Last Commit? - GeeksforGeeks",
+      "snippet": "Reverting to the last commit in Git is an important skill for developers who need to undo changes and return their project to a previous state. This article will guide you through various approaches to revert to the last commit, detailing each step to ensure you can effectively manage your Git repository.",
+      "url": "https://www.geeksforgeeks.org/git/how-to-revert-to-last-commit/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How can I undo a `git commit` locally and on a remote after `git push`",
+      "snippet": "At this point you have unstaged changes because you used --mixed, which is the default. You may first want to update the remote tree first (i.e. remove the commit): git push -f <remote> <branch> Since you still have your changes locally you can create another branch and commit them there (and push as you see fit).",
+      "url": "https://stackoverflow.com/questions/6459080/how-can-i-undo-a-git-commit-locally-and-on-a-remote-after-git-push",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Reverting a Git Commit - GeeksforGeeks",
+      "snippet": "Git provides multiple ways to undo commits based on your workflow and repository state. Revert changes safely using git revert. Modify commit history using git reset. Reasons for Reverting a Git Commit To safely undo unwanted changes while keeping the commit history clear and reliable. Fix Mistakes: If a commit introduces a bug or an error, reverting it can help fix the issue. Undo Changes: If ...",
+      "url": "https://www.geeksforgeeks.org/git/overturning-changes-in-git/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ]
+}

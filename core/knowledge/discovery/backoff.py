@@ -8,6 +8,11 @@ import time
 from dataclasses import dataclass
 
 DEFAULT_DDG_BOT_BACKOFF_SECONDS = 1800
+# S12: HTTP 429 pauses DuckDuckGo for its Retry-After, bounded to this range;
+# without the header, for the default.
+DDG_RATE_LIMIT_BACKOFF_DEFAULT_SECONDS = 600
+DDG_RATE_LIMIT_BACKOFF_MIN_SECONDS = 60
+DDG_RATE_LIMIT_BACKOFF_MAX_SECONDS = DEFAULT_DDG_BOT_BACKOFF_SECONDS
 
 _lock = threading.Lock()
 _entries: dict[str, tuple[float, str]] = {}
@@ -40,6 +45,18 @@ class DiscoveryBackoffEntry:
     @property
     def remaining_seconds(self) -> int:
         return max(0, int(self.expires_at - time.time()))
+
+
+def rate_limit_backoff_seconds(retry_after_s: float | None) -> int:
+    """Bounded pause after a provider's HTTP 429 (S12, §3.7 "unbounded Retry-After")."""
+    if retry_after_s is None:
+        return DDG_RATE_LIMIT_BACKOFF_DEFAULT_SECONDS
+    return int(
+        min(
+            DDG_RATE_LIMIT_BACKOFF_MAX_SECONDS,
+            max(DDG_RATE_LIMIT_BACKOFF_MIN_SECONDS, float(retry_after_s)),
+        )
+    )
 
 
 def mark_provider_backoff(
@@ -137,4 +154,6 @@ def format_backoff_summary(entry: DiscoveryBackoffEntry | None) -> str | None:
             f"{label} paused for ~{minutes} min after bot challenge "
             "(using fallbacks; no further DDG requests until pause ends)."
         )
+    if entry.reason == "rate_limited":
+        return f"{label} paused for ~{minutes} min after an HTTP 429 rate limit (using fallbacks)."
     return f"{label} paused for ~{minutes} min ({entry.reason})."

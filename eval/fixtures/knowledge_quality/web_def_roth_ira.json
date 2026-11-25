@@ -1,0 +1,224 @@
+{
+  "schema_version": 2,
+  "id": "web_def_roth_ira",
+  "path": "general_web",
+  "category": "definition",
+  "description": "",
+  "query_raw": "@[tool:internet] What is a Roth IRA?",
+  "query_clean": "What is a Roth IRA?",
+  "retrieval_query": "What is a Roth IRA?",
+  "standalone_question": "What is a Roth IRA and how does it work?",
+  "gold_subject": "Roth IRA",
+  "gold_facet": "",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:19:57+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "What is a Roth IRA?"
+    },
+    "standalone": {
+      "duckduckgo": "What is a Roth IRA and how does it work?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "What is a Roth IRA and how does it work? | Fidelity",
+      "snippet": "A Roth individual retirement account (IRA) lets you invest post-tax money and withdraw it tax-free in retirement. But not everyone is eligible. Here's what you need to know.",
+      "url": "https://www.fidelity.com/learning-center/smart-money/what-is-a-roth-ira",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Roth IRA - Wikipedia",
+      "snippet": "A Roth IRA can be an individual retirement account containing investments in securities, usually common stocks and bonds, often through mutual funds (although other investments, including derivatives, notes, certificates of deposit, and real estate are possible). A Roth IRA can also be an individual retirement annuity, which is an annuity contract or an endowment contract purchased from a life ...",
+      "url": "https://en.wikipedia.org/wiki/Roth_IRA",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Roth IRA: What It Is and How to Open One - Investopedia",
+      "snippet": "Discover what a Roth IRA is and how it works, including income-based eligibility and tax-free growth, and why it may be ideal if your tax rate is higher in retirement.",
+      "url": "https://www.investopedia.com/terms/r/rothira.asp",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Roth IRA vs. traditional IRA: What's the difference? | Fidelity",
+      "snippet": "Both traditional and Roth IRAs are retirement savings accounts designed to help you save for retirement. Traditional IRAs' and Roth IRAs' primary difference is the type of tax advantage you can receive for contributing to and investing in the account. Although almost anyone can contribute to a traditional IRA, only those whose income is below the IRS's annual limit are eligible to contribute ...",
+      "url": "https://www.fidelity.com/learning-center/smart-money/roth-ira-vs-traditional-ira",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Roth IRAs - Internal Revenue Service",
+      "snippet": "Roth IRAs A Roth IRA is an IRA that, except as explained below, is subject to the rules that apply to a traditional IRA.",
+      "url": "https://www.irs.gov/retirement-plans/roth-iras",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What Is a Roth IRA? A Beginner's Guide - NerdWallet",
+      "snippet": "A Roth IRA is an individual retirement account funded with after-tax money. Contributions aren't deductible, but earnings and withdrawals are tax-free.",
+      "url": "https://www.nerdwallet.com/retirement/learn/what-is-a-roth-ira",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What Is a Roth IRA & How Does It Work? | Citi.com",
+      "snippet": "A Roth IRA is a type of retirement account in which after-tax dollars grow tax-free and withdrawals are tax-free. Here's how a Roth IRA works.",
+      "url": "https://www.citi.com/banking/personal-banking-guide/retirement/what-is-a-roth-ira",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Roth IRA: What is a Roth IRA? | Charles Schwab",
+      "snippet": "A Roth IRA is a retirement account that lets you invest money you've already paid taxes on. While you don't get a tax break the year you contribute, once invested, your money grows tax-free. After age 59½, you can withdraw your funds without taxes or penalties, as long as the account has been open for at least five years.",
+      "url": "https://www.schwab.com/ira/roth-ira",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What Is a Roth IRA and How Does It Work? | Charles Schwab",
+      "snippet": "A Roth IRA's main appeal is the potential for tax-free retirement income — but Roth IRAs have specific rules for contributions, income limits, withdrawals, and taxes. Understanding how those rules work can help you decide whether a Roth IRA may fit into your retirement plan.",
+      "url": "https://www.schwab.com/learn/story/what-is-roth-ira",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What is a Roth IRA and How Does It Work? - Ramsey",
+      "snippet": "A Roth IRA is a tax-advantaged account that lets you save up to a certain amount each year for retirement. With a Roth IRA, you pay taxes on your contributions up front, the money inside the account grows tax-free, and you aren't taxed on the qualified withdrawals you take out in retirement. The IRS sets income and contribution limits that determine whether you're eligible to open a Roth IRA ...",
+      "url": "https://www.ramseysolutions.com/retirement/roth-ira-101",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What is a Roth IRA and How Does it Work? - eztaxreturn.com",
+      "snippet": "Learn what a Roth IRA is, how it works, who qualifies, contribution limits, tax benefits, and how to start saving for retirement.",
+      "url": "https://www.eztaxreturn.com/blog/what-is-a-roth-ira-and-how-does-it-work/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

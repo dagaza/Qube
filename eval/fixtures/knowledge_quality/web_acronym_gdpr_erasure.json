@@ -1,0 +1,234 @@
+{
+  "schema_version": 2,
+  "id": "web_acronym_gdpr_erasure",
+  "path": "general_web",
+  "category": "acronym_homograph",
+  "description": "",
+  "query_raw": "@[tool:internet] GDPR right to erasure exceptions",
+  "query_clean": "GDPR right to erasure exceptions",
+  "retrieval_query": "GDPR right to erasure exceptions",
+  "standalone_question": "What are the exceptions to the GDPR right to erasure?",
+  "gold_subject": "GDPR right to erasure",
+  "gold_facet": "exceptions",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T19:40:03+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "GDPR right to erasure exceptions"
+    },
+    "standalone": {
+      "duckduckgo": "What are the exceptions to the GDPR right to erasure?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Right to Erasure Under GDPR: How to Handle Article 17 Requests and When ...",
+      "snippet": "The right to erasure under the General Data Protection Regulation (GDPR), also called the \"right to be forgotten\", allows a data subject to ask a controller to delete personal data without undue delay. It is set out in Article 17 GDPR. The right is not absolute, and mishandling it is one of the most common compliance failures that supervisory authorities identify.",
+      "url": "https://www.gdprregister.eu/articles/right-to-erasure-under-gdpr-how-to-handle-article/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Art. 17 GDPR - Right to erasure ('right to be forgotten') - General ...",
+      "snippet": "The data subject shall have the right to obtain from the controller the erasure of personal data concerning him or her without undue delay and the controller shall have the obligation to erase personal data without undue delay where one of the following grounds applies: the personal data are no longer necessary in relation to … Continue reading Art. 17 GDPR - Right to erasure ('right to ...",
+      "url": "https://gdpr-info.eu/art-17-gdpr/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Everything you need to know about the \"Right to be forgotten\" - GDPR.eu",
+      "snippet": "However, an organization's right to process someone's data might override their right to be forgotten. Here are the reasons cited in the GDPR that trump the right to erasure: The data is being used to exercise the right of freedom of expression and information. The data is being used to comply with a legal ruling or obligation.",
+      "url": "https://gdpr.eu/right-to-be-forgotten/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "GDPR Erasure Rights: Conditions, Exceptions, Penalties",
+      "snippet": "Do you know your right to erase personal data under the GDPR? This critical regulation empowers individuals to request data deletion, but it comes with specific grounds and notable exceptions. In this article, we will explore how to exercise this right effectively, the circumstances that may prevent erasure, and the penalties for non-compliance, ensuring you stay informed and in control of ...",
+      "url": "https://schwartzcohenlaw.com/gdpr-erasure-rights-conditions-exceptions-penalties/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "GDPR Right to Erasure: How to Handle Deletion Requests (and When You ...",
+      "snippet": "The GDPR right to erasure, enshrined in Article 17, is one of the regulation's most misunderstood provisions. Controllers routinely either over-comply (deleting data they were entitled to keep) or under-comply (citing exemptions that don't actually apply to their situation). Both errors carry risk: one operational, one regulatory.",
+      "url": "https://www.gdpr-advisor.com/gdpr-right-to-erasure-how-to-handle-deletion-requests-and-when-you-can-refuse/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Right to Erasure Under GDPR: What You Need to Know",
+      "snippet": "Understand the GDPR right to erasure (right to be forgotten) under Article 17 — when it applies, the exceptions, and how to handle deletion requests properly.",
+      "url": "https://www.legiscope.com/blog/right-to-erasure-gdpr.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Coordinated Enforcement Action, implementation of the right to erasure ...",
+      "snippet": "EDPB identifies challenges hindering the full implementation of the right to erasure 18 February 2026 EDPB Brussels, 18 February - The European Data Protection Board (EDPB) has adopted a report on its Coordinated Enforcement Framework (CEF) action on the right to be forgotten (Art.17 GDPR). The Board selected this topic as it is one of the most frequently exercised GDPR rights and one about ...",
+      "url": "https://www.edpb.europa.eu/documents/coordinated-enforcement-framework/coordinated-enforcement-action-implementation-of-the-0_en",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Erasure Rights: GDPR vs U.S. Laws and Exceptions",
+      "snippet": "The right to erasure, or the \"right to be forgotten,\" allows individuals to request the removal of their personal data. This article explores how GDPR regulations in Europe compare to U.S. laws, highlighting key exceptions and implications for consumers.",
+      "url": "https://workerscomplawattorney.com/erasure-rights-gdpr-vs-u-s-laws-and-exceptions/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "GDPR Right to Be Forgotten: Article 17 Erasure (2026)",
+      "snippet": "GDPR Article 17 gives you the right to demand erasure of personal data in 6 grounds. Learn the exceptions, Google Spain ruling, and how to make a request.",
+      "url": "https://www.recordinglaw.com/world-laws/world-data-privacy-laws/eu-data-privacy-laws/gdpr-right-to-be-forgotten/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What are the exceptions to the GDPR right to erasure?",
+      "snippet": "Short answer: The right to erasure (right to be forgotten) under Article 17 is not absolute. Organisations can refuse erasure requests when the data is needed for exercising freedom of expression, legal obligation compliance, public health purposes, archiving in the public interest, or establishing, exercising, or defending legal claims.",
+      "url": "https://presencis.com/questions/gdpr-right-to-erasure-exceptions/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Right to erasure | Autoriteit Persoonsgegevens",
+      "snippet": "In addition, the GDPR contains some general exceptions to the privacy rights. These enable you to reject a request in a special case. It is, for example, not the intention that someone relies on the right to erasure for erasing traces of criminal conduct. Also erase the data from backups Backups also fall under the right to erasure.",
+      "url": "https://www.autoriteitpersoonsgegevens.nl/en/themes/basic-gdpr/privacy-rights-under-the-gdpr/right-to-erasure",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The right to erasure (Articles 17 & 19 of the GDPR)",
+      "snippet": "The right of erasure is also restricted in certain circumstances under Section 60 of the Data Protection Act 2018, which provides for restrictions that are necessary for important objectives of public interest, and by Section 43 of the Act which seeks to balance the right of erasure with the right of freedom of expression and information.",
+      "url": "https://www.dataprotection.ie/en/individuals/know-your-rights/right-erasure-articles-17-19-gdpr",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

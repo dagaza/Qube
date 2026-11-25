@@ -1,0 +1,382 @@
+{
+  "schema_version": 2,
+  "id": "mt_acronym_ms_treatment",
+  "path": "trusted_knowledge",
+  "category": "multi_turn",
+  "description": "Acronym defined in history; 'MS' is ambiguous (Microsoft, master of science).",
+  "query_raw": "@[tool:trusted] Yes, tell me how MS is treated",
+  "query_clean": "Yes, tell me how MS is treated",
+  "retrieval_query": "Yes, tell me how MS is treated",
+  "standalone_question": "How is multiple sclerosis (MS) treated?",
+  "gold_subject": "multiple sclerosis",
+  "gold_facet": "treatment",
+  "budget": 3,
+  "history": [
+    {
+      "role": "user",
+      "content": "What is multiple sclerosis?"
+    },
+    {
+      "role": "assistant",
+      "content": "Multiple sclerosis (MS) is a chronic autoimmune disease in which the immune system attacks the myelin sheath of nerves. Would you like to know how MS is treated?"
+    }
+  ],
+  "captured_at": "2026-11-23T20:18:06+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "wikipedia_api": 2,
+    "duckduckgo": 6
+  },
+  "adapter_queries": {
+    "production": {
+      "wikipedia_api": "Yes, tell me how MS is treated",
+      "duckduckgo": "Yes, tell me how MS is treated"
+    },
+    "standalone": {
+      "wikipedia_api": "How is multiple sclerosis (MS) treated?",
+      "duckduckgo": "How is multiple sclerosis (MS) treated?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Jennifer Garner",
+      "snippet": "Jennifer Anne Garner (born April 17, 1972) is an American actress. Born in Houston, Texas and raised in Charleston, West Virginia, Garner studied theater at Denison University and began acting as an understudy for the Roundabout Theatre Company in New York City. She had a starring role on the Fox teen drama series Time of Your Life (1999–2000) and supporting roles in the films Pearl Harbor (2001) and Catch Me If You Can (2002). \nGarner rose to fame in the early 2000s for playing the secret agent Sydney Bristow in the ABC action thriller series Alias (2001–2006), for which she earned a Golden G",
+      "full_text": "Jennifer Anne Garner (born April 17, 1972) is an American actress. Born in Houston, Texas and raised in Charleston, West Virginia, Garner studied theater at Denison University and began acting as an understudy for the Roundabout Theatre Company in New York City. She had a starring role on the Fox teen drama series Time of Your Life (1999–2000) and supporting roles in the films Pearl Harbor (2001) and Catch Me If You Can (2002). \nGarner rose to fame in the early 2000s for playing the secret agent Sydney Bristow in the ABC action thriller series Alias (2001–2006), for which she earned a Golden Globe and four Primetime Emmy Award nominations, among other honors. She received further recognition for her starring roles in the romantic comedies 13 Going on 30 (2004), Juno (2007), Ghosts of Girlfriends Past (2009) and Valentine's Day (2010), and for playing Elektra in the superhero films Daredevil (2003), Elektra (2005), and Deadpool & Wolverine (2024).\nGarner has since starred in the films Dallas Buyers Club (2013), Alexander and the Terrible, Horrible, No Good, Very Bad Day (2014), Love, Simon (2018), Peppermint (2018), Yes Day (2021), and The Adam Project (2022). She also starred in the Apple TV drama series The Last Thing He Told Me (2023—present).\nAside from acting, Garner works as an advocate for early childhood education and serves on the board of Save the Children USA. She is also the co-founder and chief brand officer of Once Upon a Farm, an organic baby food company. Additionally, Garner is a vocal advocate for anti-paparazzi campaigns aimed at protecting the children of celebrities.",
+      "url": "https://en.wikipedia.org/wiki/Jennifer_Garner",
+      "pageid": 20949091,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Orgasm",
+      "snippet": "Orgasm (from Greek ὀργασμός, orgasmos; \"excitement, swelling\"), sexual climax, or simply climax, is the sudden release of accumulated sexual excitement during the sexual response cycle, characterized by intense sexual pleasure resulting in rhythmic, involuntary muscular contractions in the pelvic region. Orgasms are controlled by the involuntary or autonomic nervous system and are experienced by both males and females; the body's response includes muscular spasms (in multiple areas), a general euphoric sensation, and, frequently, body movements and vocalizations. The period after orgasm (known",
+      "full_text": "Orgasm (from Greek ὀργασμός, orgasmos; \"excitement, swelling\"), sexual climax, or simply climax, is the sudden release of accumulated sexual excitement during the sexual response cycle, characterized by intense sexual pleasure resulting in rhythmic, involuntary muscular contractions in the pelvic region. Orgasms are controlled by the involuntary or autonomic nervous system and are experienced by both males and females; the body's response includes muscular spasms (in multiple areas), a general euphoric sensation, and, frequently, body movements and vocalizations. The period after orgasm (known as the resolution phase) is typically a relaxing experience due to the release of the neurohormones oxytocin and prolactin, as well as endorphins (or \"endogenous morphine\").\nHuman orgasms usually result from physical sexual stimulation of the penis in males (typically accompanied by ejaculation) and of the clitoris (and vagina) in females. Sexual stimulation can be by masturbation or with a sexual partner (penetrative sex, non-penetrative sex, or other sexual activity). Physical stimulation is not a requisite, as it is possible to reach orgasm through psychological means. Reaching orgasm may be difficult without a suitable psychological state. During sleep, a sex dream can trigger an orgasm and the release of sexual fluids (nocturnal emission).\nThe health effects surrounding the human orgasm are diverse. There are many physiological responses during sexual activity, including a relaxed state, as well as changes in the central nervous system, such as a temporary decrease in the metabolic activity of large parts of the cerebral cortex, while there is no change or increased metabolic activity in the limbic (i.e., \"bordering\") areas of the brain. There are sexual dysfunctions involving orgasm, such as anorgasmia. The importance of reaching orgasm for sex to be satisfying varies between individuals, and theories about the biological and evolutionary functions of orgasm differ.",
+      "url": "https://en.wikipedia.org/wiki/Orgasm",
+      "pageid": 22546,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Penny Marshall",
+      "snippet": "Carole Penny Marshall (October 15, 1943 – December 17, 2018) was an American actress, film director, and producer. She starred as Laverne DeFazio on the television sitcom Laverne & Shirley from 1976 to 1983, and received three nominations for the Golden Globe Award for Best Actress – Television Series Musical or Comedy for her portrayal.\nMarshall made her directorial debut with Jumpin' Jack Flash (1986) before directing Big (1988), which became the first film directed by a woman to gross more than $100 million at the U.S. box office. Her subsequent directing credits included Awakenings (1990) ",
+      "full_text": "Carole Penny Marshall (October 15, 1943 – December 17, 2018) was an American actress, film director, and producer. She starred as Laverne DeFazio on the television sitcom Laverne & Shirley from 1976 to 1983, and received three nominations for the Golden Globe Award for Best Actress – Television Series Musical or Comedy for her portrayal.\nMarshall made her directorial debut with Jumpin' Jack Flash (1986) before directing Big (1988), which became the first film directed by a woman to gross more than $100 million at the U.S. box office. Her subsequent directing credits included Awakenings (1990) (which was nominated for Academy Award for Best Picture), A League of Their Own (1992), Renaissance Man (1994), The Preacher's Wife (1996), and Riding in Cars with Boys (2001). She also produced Cinderella Man and Bewitched (both 2005), and directed episodes of the television series According to Jim and United States of Tara.",
+      "url": "https://en.wikipedia.org/wiki/Penny_Marshall",
+      "pageid": 458216,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Yes Minister",
+      "snippet": "Yes Minister is a British political satire sitcom written by Antony Jay and Jonathan Lynn. It comprises three series of seven episodes each, first transmitted on BBC2 from 1980 to 1984. A sequel, Yes, Prime Minister, ran for 16 episodes from 1986 to 1988. All but one of the episodes lasted half an hour, and almost all ended with a variation of the title of the series spoken as the answer to a question posed by Minister (later, Prime Minister) Jim Hacker. Several episodes were adapted for BBC Radio; the series also spawned a 2010 stage play that led to a new television series on Gold in 2013.\nS",
+      "full_text": "Yes Minister is a British political satire sitcom written by Antony Jay and Jonathan Lynn. It comprises three series of seven episodes each, first transmitted on BBC2 from 1980 to 1984. A sequel, Yes, Prime Minister, ran for 16 episodes from 1986 to 1988. All but one of the episodes lasted half an hour, and almost all ended with a variation of the title of the series spoken as the answer to a question posed by Minister (later, Prime Minister) Jim Hacker. Several episodes were adapted for BBC Radio; the series also spawned a 2010 stage play that led to a new television series on Gold in 2013.\nSet principally in the private office of a British cabinet minister in the fictional Department of Administrative Affairs in Whitehall, Yes Minister follows the ministerial career of Jim Hacker, played by Paul Eddington. His various struggles to formulate and enact policy or effect departmental changes are opposed by the British Civil Service, in particular his Permanent Secretary, Sir Humphrey Appleby, played by Nigel Hawthorne. His Principal Private Secretary Bernard Woolley, played by Derek Fowlds, is usually caught between the two. The sequel, Yes, Prime Minister, continued with the same cast and followed Hacker after his unexpected elevation to prime ministerial office.\nThere were 21 half-hour episodes in three series, a two-minute Christmas sketch in The Funny Side of Christmas, and a one-hour Christmas special of Yes Minister. There were 16 episodes in two series of Yes, Prime Minister, bringing the combined number of full episodes to 38.\nThe series received several BAFTAs, and in 2004, was voted sixth in the Britain's Best Sitcom poll. It was the favourite television programme of Margaret Thatcher, the then-British prime minister. The series was also a big hit on Public Broadcasting System (PBS) stations throughout the United States.",
+      "url": "https://en.wikipedia.org/wiki/Yes_Minister",
+      "pageid": 89289,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multiple Sclerosis Treatments: Drugs, Exercises, and More",
+      "snippet": "There's no cure for multiple sclerosis, but treatment can help slow the disease progression and reduce symptoms. Learn about these treatments and more.",
+      "url": "https://www.healthline.com/health/multiple-sclerosis/treatment",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Treatment for Multiple Sclerosis: What to Expect - WebMD",
+      "snippet": "Learn about your options for treating multiple sclerosis (MS), including different types of disease-modifying drugs, various therapies, and lifestyle changes.",
+      "url": "https://www.webmd.com/multiple-sclerosis/ms-treatment",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How is MS treated? | MS Trust",
+      "snippet": "Treatment for MS may include medication, therapies, such as physiotherapy, and self-management techniques. Some people explore the use of complementary or alternative medicines (CAMs). Please consult with your neurologist, MS nurse or GP about the best treatments for you.",
+      "url": "https://mstrust.org.uk/information-support/ms-drugs-treatments/how-is-ms-treated",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multiple Sclerosis: Treatment Options - Health",
+      "snippet": "Multiple sclerosis (MS) has no cure, but many treatments—including medications and lifestyle changes—can slow the disease and decrease symptoms.",
+      "url": "https://www.health.com/multiple-sclerosis-treatment-7100601",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How is MS Treated | Multiple Sclerosis Center",
+      "snippet": "There is currently no cure for Multiple Sclerosis (MS). Patients rarely do well with no therapy at all, and it is generally recommended that patients with a confident diagnosis of MS begin treatment with one of several FDA-approved Disease Modifying Drugs (DMD) to modulate the immune system and reduce the risk of new relapses and disability accumulation. It has been shown in multiple studies ...",
+      "url": "https://www.uab.edu/mscenter/resources/about-ms/how-is-ms-treated",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multiple sclerosis treatment: A guide - Medical News Today",
+      "snippet": "There is no cure for multiple sclerosis (MS). However, doctors may recommend certain medications or lifestyle adjustments to help people with MS manage symptoms.",
+      "url": "https://www.medicalnewstoday.com/articles/multiple-sclerosis-treatment",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multiple sclerosis - Diagnosis and treatment - Mayo Clinic",
+      "snippet": "A comprehensive MS center is the best place for management of multiple sclerosis, and this typically includes physicians with expertise in multiple sclerosis, neurologists, but also urologists, physiatrists or physical medicine and rehabilitation providers, psychologists, and many other providers who have specialty interest in multiple sclerosis.",
+      "url": "https://www.mayoclinic.org/diseases-conditions/multiple-sclerosis/diagnosis-treatment/drc-20350274",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multiple Sclerosis Foundation - How is MS treated?",
+      "snippet": "How is MS treated? A good MS treatment plan must address four key areas: disease management, relapse management, symptom management, and general health. Disease Management Although there currently is not a cure for MS, there are disease-modifying treatments (DMTs) that can decrease the number of attacks, slow the worsening of the disease, and decrease the number of lesions on the brain. Early ...",
+      "url": "https://msfocus.org/Get-Educated/Common-Questions/How-is-MS-treated.aspx?lang=en-us",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Inflammatory demyelinating diseases",
+      "snippet": "Inflammatory demyelinating diseases (IDDs), sometimes called Idiopathic (IIDDs) due to the unknown etiology of some of them, are a heterogenous group of demyelinating diseases - conditions that cause damage to myelin, the protective sheath of nerve fibers - that occur against the background of an acute or chronic inflammatory process. IDDs share characteristics with and are often grouped together under Multiple Sclerosis. They are sometimes considered different diseases from Multiple Sclerosis, but considered by others to form a spectrum differing only in terms of chronicity, severity, and cli",
+      "full_text": "Inflammatory demyelinating diseases (IDDs), sometimes called Idiopathic (IIDDs) due to the unknown etiology of some of them, are a heterogenous group of demyelinating diseases - conditions that cause damage to myelin, the protective sheath of nerve fibers - that occur against the background of an acute or chronic inflammatory process. IDDs share characteristics with and are often grouped together under Multiple Sclerosis. They are sometimes considered different diseases from Multiple Sclerosis, but considered by others to form a spectrum differing only in terms of chronicity, severity, and clinical course.\nMultiple sclerosis for some people is a syndrome more than a single disease. As of 2019, three auto-antibodies have been found in atypical MS giving birth to separate diseases: Anti-AQP4 diseases, Anti-MOG and Anti-NF spectrums. A LHON-associated MS has also been reported, and in addition there have been inconclusive reports of TNF-α blockers inducing demyelinating disorders.\nThe subject is under intense research and the list of MS autoantibodies is expected to grow in the near future.",
+      "url": "https://en.wikipedia.org/wiki/Inflammatory_demyelinating_diseases",
+      "pageid": 8576311,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Management of multiple sclerosis",
+      "snippet": "Multiple sclerosis (MS) is a chronic inflammatory demyelinating disease that affects the central nervous system (CNS). Several therapies for it exist, although there is no known cure.\nThe most common initial course of the disease is the relapsing-remitting subtype, which is characterized by unpredictable attacks (relapses) followed by periods of relative remission with no new signs of disease activity. After some years, many of the people who have this subtype begin to experience neurologic decline without acute relapses. When this happens it is called secondary progressive multiple sclerosis.",
+      "full_text": "Multiple sclerosis (MS) is a chronic inflammatory demyelinating disease that affects the central nervous system (CNS). Several therapies for it exist, although there is no known cure.\nThe most common initial course of the disease is the relapsing-remitting subtype, which is characterized by unpredictable attacks (relapses) followed by periods of relative remission with no new signs of disease activity. After some years, many of the people who have this subtype begin to experience neurologic decline without acute relapses. When this happens it is called secondary progressive multiple sclerosis. Other, less common, courses of the disease are the primary progressive (decline from the beginning without attacks) and the progressive-relapsing (steady neurologic decline and superimposed attacks). Different therapies are used for patients experiencing acute attacks, for patients who have the relapsing-remitting subtype, for patients who have the progressive subtypes, for patients without a diagnosis of MS who have a demyelinating event, and for managing the various consequences of MS.\nThe primary aims of therapy are returning function after an attack, preventing new attacks, and preventing disability. As with any medical treatment, medications used in the management of MS may have several adverse effects, and many possible therapies are still under investigation. At the same time different alternative treatments are pursued by many people, despite the fact that there is little supporting, comparable, replicated scientific study. Stem cell therapy is being studied.\nThis article focuses on therapies for standard MS; borderline forms of MS have particular treatments that are excluded.",
+      "url": "https://en.wikipedia.org/wiki/Management_of_multiple_sclerosis",
+      "pageid": 7663818,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multiple sclerosis",
+      "snippet": "Multiple sclerosis (MS) is a chronic and neurodegenerative autoimmune disease in which the immune system attacks myelin, the insulating cover of nerve cells, causing damage to the central nervous system. This impairs the nervous system's ability to transmit signals. Symptoms include double vision, vision loss, eye pain, muscle weakness, loss of coordination, as well as cognitive issues like problems with memory.\nMS may be a rare complication of an Epstein-Barr virus (EBV) infection. Genetics and environmental factors like exposure to sunlight also impact the risk of MS. MS can be diagnosed bas",
+      "full_text": "Multiple sclerosis (MS) is a chronic and neurodegenerative autoimmune disease in which the immune system attacks myelin, the insulating cover of nerve cells, causing damage to the central nervous system. This impairs the nervous system's ability to transmit signals. Symptoms include double vision, vision loss, eye pain, muscle weakness, loss of coordination, as well as cognitive issues like problems with memory.\nMS may be a rare complication of an Epstein-Barr virus (EBV) infection. Genetics and environmental factors like exposure to sunlight also impact the risk of MS. MS can be diagnosed based on symptoms, MRI scans, and sometimes a lumbar puncture to investigate spinal fluid.\nThere is no cure for MS. Current treatments aim to manage symptoms during acute flares and prevent further attacks with disease-modifying therapies. With effective treatment, it is possible to reduce attacks strongly, but the disease progress is not fully stopped. In addition, symptoms of MS like balance issues can be managed with drugs and with non-drug treatments (e.g. physical therapy). On average, life expectancy is slightly lower than normal.\nIn 2024, about 3.1 million people were affected by MS globally, with rates much higher further from the equator. The disease usually begins between the ages of 20 and 40 and is almost three times more common in women than in men. MS was first described in 1868 by French neurologist Jean-Martin Charcot.",
+      "url": "https://en.wikipedia.org/wiki/Multiple_sclerosis",
+      "pageid": 50603,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "National Multiple Sclerosis Society",
+      "snippet": "The National Multiple Sclerosis Society (NMSS) is an American nonprofit organization founded in 1946. It is dedicated to supporting individuals affected by multiple sclerosis (MS) and funding research to find a cure for the disease. It provides resources, support services, advocacy, and educational programs to improve the lives of people with MS, and their families.",
+      "full_text": "The National Multiple Sclerosis Society (NMSS) is an American nonprofit organization founded in 1946. It is dedicated to supporting individuals affected by multiple sclerosis (MS) and funding research to find a cure for the disease. It provides resources, support services, advocacy, and educational programs to improve the lives of people with MS, and their families.",
+      "url": "https://en.wikipedia.org/wiki/National_Multiple_Sclerosis_Society",
+      "pageid": 2885836,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Treatment of Multiple Sclerosis: A Review - PMC",
+      "snippet": "Multiple sclerosis (MS) is an autoimmune demyelinating and neurodegenerative disease of the central nervous system, and the leading cause of non-traumatic neurological disability in young adults. Effective management requires a multifaceted approach ...",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7704606/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Multiple Sclerosis (MS): What It Is, Symptoms & Treatment",
+      "snippet": "Multiple sclerosis (MS) is a central nervous system autoimmune condition. Damage to myelin causes symptoms like muscle weakness and vision changes.",
+      "url": "https://my.clevelandclinic.org/health/diseases/17248-multiple-sclerosis",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How Multiple Sclerosis Is Treated - Verywell Health",
+      "snippet": "Options for treating multiple sclerosis include disease-modifying drugs, drugs to manage symptoms, lifestyle changes, and complementary therapies.",
+      "url": "https://www.verywellhealth.com/multiple-sclerosis-treatment-4014270",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Treatments & Medications for MS | National MS Society",
+      "snippet": "Multiple sclerosis symptoms are variable and unpredictable. No two people have exactly the same symptoms, and each person's symptoms can change or fluctuate over time. In addition to early and ongoing treatment with a disease-modifying therapy, you have many options for managing your MS.You may consider: Medications, including the FDA-approved medications below Stem cell therapy (aHSCT ...",
+      "url": "https://www.nationalmssociety.org/managing-ms/treating-ms/treatments-and-medications",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

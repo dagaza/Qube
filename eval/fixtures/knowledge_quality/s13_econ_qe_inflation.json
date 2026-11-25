@@ -1,0 +1,532 @@
+{
+  "schema_version": 2,
+  "id": "s13_econ_qe_inflation",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: economics discipline route + RePEc slot.",
+  "query_raw": "@[tool:evidence] Does quantitative easing raise inflation?",
+  "query_clean": "Does quantitative easing raise inflation?",
+  "retrieval_query": "Does quantitative easing raise inflation?",
+  "standalone_question": "Does quantitative easing raise inflation?",
+  "gold_subject": "quantitative easing",
+  "gold_facet": "effect on inflation",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:09:54+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "repec": 3,
+    "world_bank": 3,
+    "eurostat": 3,
+    "oecd": 3,
+    "bls": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "repec": "Does quantitative easing raise inflation",
+      "world_bank": "Does quantitative easing raise inflation",
+      "eurostat": "Does quantitative easing raise inflation",
+      "oecd": "Does quantitative easing raise inflation",
+      "bls": "Does quantitative easing raise inflation",
+      "crossref": "Does quantitative easing raise inflation",
+      "arxiv": "Does quantitative easing raise inflation",
+      "openalex": "Does quantitative easing raise inflation"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "repec",
+        "world_bank",
+        "eurostat",
+        "oecd",
+        "bls",
+        "openalex"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "Inquiry into the future monetary policy framework : report of the Finance and Expenditure Committee ; Forty-eighth Parliament (Charles Chauvel MP, Chairperson)",
+      "snippet": "Inquiry into the future monetary policy framework : report of the Finance and Expenditure Committee ; Forty-eighth Parliament (Charles Chauvel MP, Chairperson). [Wellington] : New Zealand House of Representatives — 2008 — Geldpolitik, Monetary policy, Inflationssteuerung, Inflation targeting, Wirkungsanalyse, Impact assessment",
+      "full_text": null,
+      "url": "http://www.parliament.nz/NR/rdonlyres/51084E05-C9EC-4C7F-889B-5F1F52A5A8CC/93817/DBSCH_SCR_4210_6281.pdf",
+      "_adapter": "repec",
+      "authors": [
+        "Chauvel, Charles"
+      ],
+      "venue": "[Wellington] : New Zealand House of Representatives",
+      "publication_date": "2008",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "working_paper",
+      "repec_handle": null,
+      "econbiz_id": "10003784077",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "repec",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Does the \"new economy\" measure up to the great inventions of the past?",
+      "snippet": "Does the \"new economy\" measure up to the great inventions of the past?. NBER working paper series ; 7833 — 2000 — Produktivität, Productivity, Wirtschaftswachstum, Economic growth, Konjunktur, Business cycle",
+      "full_text": null,
+      "url": "http://papers.nber.org/papers/W7833.pdf",
+      "_adapter": "repec",
+      "authors": [
+        "Gordon, Robert J."
+      ],
+      "venue": "NBER working paper series ; 7833",
+      "publication_date": "2000",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "working_paper",
+      "repec_handle": null,
+      "econbiz_id": "10001499821",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "repec",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Japan : 2015 Article IV consultation ; press release, staff report, and statement by the Executive Director for Japan",
+      "snippet": "Japan : 2015 Article IV consultation ; press release, staff report, and statement by the Executive Director for Japan. IMF country report ; 15/197 — 2015 — Wirtschaftslage, Macroeconomic performance, Schuldenmanagement, Debt management, Japan",
+      "full_text": null,
+      "url": "http://elibrary.imf.org/view/journals/002/2015/197/002.2015.issue-197-en.xml",
+      "_adapter": "repec",
+      "authors": [
+        "Kochhar, Kalpana"
+      ],
+      "venue": "IMF country report ; 15/197",
+      "publication_date": "2015",
+      "doi": "10.5089/9781513506180.002",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "working_paper",
+      "repec_handle": null,
+      "econbiz_id": "10011377395",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "repec",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "2.0.cov.Cel — Coverage: Mobile Phone",
+      "snippet": "The coverage rate is the childhood access rate of a given opportunity used in calculating the Human Opportunities Index (HOI). The coverage rate does not take into account inequality of access between different circumstance groups.",
+      "full_text": "The coverage rate is the childhood access rate of a given opportunity used in calculating the Human Opportunities Index (HOI). The coverage rate does not take into account inequality of access between different circumstance groups.",
+      "url": "https://data.worldbank.org/indicator/2.0.cov.Cel",
+      "_adapter": "world_bank",
+      "authors": [
+        "LAC Equity Lab tabulations of SEDLAC (CEDLAS and the World Bank)."
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "2.0.cov.Cel",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "2.0.cov.Ele — Coverage: Electricity",
+      "snippet": "The coverage rate is the childhood access rate of a given opportunity used in calculating the Human Opportunities Index (HOI). The coverage rate does not take into account inequality of access between different circumstance groups.",
+      "full_text": "The coverage rate is the childhood access rate of a given opportunity used in calculating the Human Opportunities Index (HOI). The coverage rate does not take into account inequality of access between different circumstance groups.",
+      "url": "https://data.worldbank.org/indicator/2.0.cov.Ele",
+      "_adapter": "world_bank",
+      "authors": [
+        "LAC Equity Lab tabulations of SEDLAC (CEDLAS and the World Bank)."
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "2.0.cov.Ele",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "2.0.cov.FPS — Coverage: Finished Primary School",
+      "snippet": "The coverage rate is the childhood access rate of a given opportunity used in calculating the Human Opportunities Index (HOI). The coverage rate does not take into account inequality of access between different circumstance groups.",
+      "full_text": "The coverage rate is the childhood access rate of a given opportunity used in calculating the Human Opportunities Index (HOI). The coverage rate does not take into account inequality of access between different circumstance groups.",
+      "url": "https://data.worldbank.org/indicator/2.0.cov.FPS",
+      "_adapter": "world_bank",
+      "authors": [
+        "LAC Equity Lab tabulations of SEDLAC (CEDLAS and the World Bank)."
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "2.0.cov.FPS",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_REG_ECO_ROPI@DF_ECO_ROPI — Economic statistics ROPI-adjusted for inflation - Regions (for 'Developer API')",
+      "snippet": "Economic statistics ROPI-adjusted for inflation - Regions (for 'Developer API')",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_REG_ECO_ROPI@DF_ECO_ROPI&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CFE.EDS,DSD_REG_ECO_ROPI@DF_ECO_ROPI",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_REG_ECO_ROPI@DF_GDP_ROPI — Real gross domestic product (ROPI-adjusted for inflation) - Regions",
+      "snippet": "Real gross domestic product (ROPI-adjusted for inflation) - Regions",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_REG_ECO_ROPI@DF_GDP_ROPI&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CFE.EDS,DSD_REG_ECO_ROPI@DF_GDP_ROPI",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_REG_ECO_ROPI@DF_GVA_ROPI — Real gross value added by main economic activity (ROPI-adjusted for inflation) - Regions",
+      "snippet": "Real gross value added by main economic activity (ROPI-adjusted for inflation) - Regions",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_REG_ECO_ROPI@DF_GVA_ROPI&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CFE.EDS,DSD_REG_ECO_ROPI@DF_GVA_ROPI",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Why Does High Inflation Raise Inflation Uncertainty?",
+      "snippet": "Why Does High Inflation Raise Inflation Uncertainty?",
+      "full_text": null,
+      "url": "https://doi.org/10.3386/w3224",
+      "_adapter": "crossref",
+      "authors": [
+        "Laurence Ball"
+      ],
+      "venue": null,
+      "publication_date": "1990",
+      "doi": "10.3386/w3224",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Quantitative Easing and Inflation: A Retrospective",
+      "snippet": "Beginning with the onset of the global financial crisis in 2008 until late-2022, the Federal Reserve pursued a near zero interest-rate monetary policy. The mechanism used to accomplish this was quantitative easing. While quantitative easing was instrumental in avoiding a systemic global financial and economic meltdown, the program was extended well beyond the end of the crisis in 2010. The result has been increased price instability resulting in an inflation-asset elasticity of 0.069 accounting for about a third of the 33 percent overall increase in consumer prices between 2008Q4 and 2021Q4. T",
+      "full_text": "Beginning with the onset of the global financial crisis in 2008 until late-2022, the Federal Reserve pursued a near zero interest-rate monetary policy. The mechanism used to accomplish this was quantitative easing. While quantitative easing was instrumental in avoiding a systemic global financial and economic meltdown, the program was extended well beyond the end of the crisis in 2010. The result has been increased price instability resulting in an inflation-asset elasticity of 0.069 accounting for about a third of the 33 percent overall increase in consumer prices between 2008Q4 and 2021Q4. The analysis presented in this paper indicates that since the appointment of Jerome Powell, quantitative easing exacerbated consumer price inflation with inflation-asset elasticity increasing to 0.099. The belief that the Fed was a source of price instability has resurrected the debate about monetary policy independence and the influence of special interests in the formulation of monetary policy.",
+      "url": "https://doi.org/10.2139/ssrn.4543913",
+      "_adapter": "crossref",
+      "authors": [
+        "Thomas Joseph Webster"
+      ],
+      "venue": null,
+      "publication_date": "2023",
+      "doi": "10.2139/ssrn.4543913",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Does Demand Volatility Lower Growth and Raise Inflation? Evidence from the Caribbean",
+      "snippet": "Does Demand Volatility Lower Growth and Raise Inflation? Evidence from the Caribbean",
+      "full_text": null,
+      "url": "https://doi.org/10.5089/9781484359679.001.a001",
+      "_adapter": "crossref",
+      "authors": [
+        "Magda Kandil"
+      ],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.5089/9781484359679.001.a001",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Quantitative easing is an incomplete strategy that must be accompanied by the nullification of debt",
+      "snippet": "Compound interest as well as inflation grows exponentially with time, whereas other means to repay debt grow polynomially. For this and other, mostly political, reasons, debt without inflation is unsustainable. We suggest a discontinuous way to eliminate debt by nullifying it. This scenario is preferable to current central bank strategies of quantitative easing because it allows the disposal of debt without hyperinflation or bloated balance sheets.",
+      "full_text": "Compound interest as well as inflation grows exponentially with time, whereas other means to repay debt grow polynomially. For this and other, mostly political, reasons, debt without inflation is unsustainable. We suggest a discontinuous way to eliminate debt by nullifying it. This scenario is preferable to current central bank strategies of quantitative easing because it allows the disposal of debt without hyperinflation or bloated balance sheets.",
+      "url": "https://arxiv.org/abs/1303.6183v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Karl Svozil"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2013-03-25",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1303.6183v3",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Does Gravity Care About Electric Charge? A Minimalist Model and Experimental Test",
+      "snippet": "Does gravity care about electric charge? Precision tests of the weak equivalence principle achieve remarkable sensitivity but deliberately minimize electric charge on test masses, leaving this fundamental question experimentally open. We present a minimalist framework coupling electromagnetism to linearized gravity through conservation of a complex charge-mass current, predicting charge-dependent violations $Δa/g = κ(q/m)$. Remarkably, this prediction occupies unexplored experimental territory precisely because precision gravity tests avoid charge variation. We identify this as a significant g",
+      "full_text": "Does gravity care about electric charge? Precision tests of the weak equivalence principle achieve remarkable sensitivity but deliberately minimize electric charge on test masses, leaving this fundamental question experimentally open. We present a minimalist framework coupling electromagnetism to linearized gravity through conservation of a complex charge-mass current, predicting charge-dependent violations $Δa/g = κ(q/m)$. Remarkably, this prediction occupies unexplored experimental territory precisely because precision gravity tests avoid charge variation. We identify this as a significant gap and propose a modified torsion balance experiment where $q/m$ is treated as a controlled variable. Such an experiment could test whether gravitational acceleration depends on electric charge, probing physics in genuinely new parameter space. This work exemplifies how theoretical minimalism can reveal overlooked opportunities in fundamental physics.",
+      "url": "https://arxiv.org/abs/2601.16325v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Renato Vieira dos Santos"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-01-22",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2601.16325v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "When Agents Need to Consolidate Memories: What RRR Consolidation Explains, and What It Does Not Explain, in Conversation ESAA",
+      "snippet": "Language-model agents can share conversational history across sessions, but persistence does not guarantee retrieval of current decisions and their provenance. This engineering study presents Memory-TCG, a Conversation ESAA extension inspired by ringing, resonance and renormalization (RRR), and an exploratory synthetic evaluation comparing chronological retrieval, two simplified baselines (B, recency-aware, and B', authority-aware), full RRR, and variants under three output budgets. With 480 facts and 1,024 tokens, full RRR recalled 0.44 of current decisions, versus 0.06 for chronological retr",
+      "full_text": "Language-model agents can share conversational history across sessions, but persistence does not guarantee retrieval of current decisions and their provenance. This engineering study presents Memory-TCG, a Conversation ESAA extension inspired by ringing, resonance and renormalization (RRR), and an exploratory synthetic evaluation comparing chronological retrieval, two simplified baselines (B, recency-aware, and B', authority-aware), full RRR, and variants under three output budgets. With 480 facts and 1,024 tokens, full RRR recalled 0.44 of current decisions, versus 0.06 for chronological retrieval and 0.58 for the oracle ceiling; with 4,096 tokens it recalled all of them. B' and the no-resonance variant matched full RRR in decision recall across all nine scale-budget combinations, as expected when the active decision set and the adapter ordering are the same. The isolated contribution of ringing to decisions was not measured: comparator D1 cuts facts before the graph is built, and the product retains active decisions by rule. Before the output limit, full-RRR conflict F1 was 0.615 at all three scales; after it, at 480 facts and 1,024 tokens, it was 0.000. Reserving 20% of the budget for conflicts raised that F1 to 0.431 in that scenario, at the cost of lowering decision recall from 0.44 to 0.34, and to 0.930 at 4,096 tokens without decision loss. Fixtures are repetitive, comparators are simplified, and the evaluation was not independently replicated; the results support an engineering analysis, not a claim of selectionist superiority.",
+      "url": "https://arxiv.org/abs/2611.15644v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Elzo Brito dos Santos Filho"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-11-11",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2611.15644v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Funding Quantitative Easing to Target Inflation",
+      "snippet": "The study of quantitative easing (QE) policies has so far focused on which assets the central bank should buy, and on how it can pursue its targets for real and financial stability. This paper emphasizes instead the funding of QE by central bank liabilities, with an eye on achieving the inflation target. Looking backwards, it shows evidence that post-QE1, the U.S. banking sector became saturated with reserves, so the central bank can control the size of the balance sheet independently of its interest-rate policy. Using options data for U.S. inflation, it shows that while QE1 had an effect on e",
+      "full_text": "The study of quantitative easing (QE) policies has so far focused on which assets the central bank should buy, and on how it can pursue its targets for real and financial stability. This paper emphasizes instead the funding of QE by central bank liabilities, with an eye on achieving the inflation target. Looking backwards, it shows evidence that post-QE1, the U.S. banking sector became saturated with reserves, so the central bank can control the size of the balance sheet independently of its interest-rate policy. Using options data for U.S. inflation, it shows that while QE1 had an effect on expected inflation, further rounds of QE did not. Looking forward, it estimates the feasibility of keeping the liabilities of the central bank at a high level in terms of a solvency upper bound. Finally, it argues that the central bank’s interest-rate policy is not out of ammunition when it comes to targeting inflation, since there are radical proposals on the composition of its liabilities, their maturity and the way to remunerate them that could be employed.",
+      "url": "https://openalex.org/W2521391347",
+      "_adapter": "openalex",
+      "authors": [
+        "Ricardo A.M.R. Reis"
+      ],
+      "venue": "London School of Economics and Political Science Research Online (London School of Economics and Political Science)",
+      "publication_date": "2016",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Effects of the Bank of Japan’s current quantitative and qualitative easing",
+      "snippet": "Effects of the Bank of Japan’s current quantitative and qualitative easing",
+      "full_text": null,
+      "url": "https://openalex.org/W1872654157",
+      "_adapter": "openalex",
+      "authors": [
+        "Takashi Matsuki",
+        "Kimiko Sugimoto",
+        "Katsuhiko Satoma"
+      ],
+      "venue": "Economics Letters",
+      "publication_date": "2015",
+      "doi": "10.1016/j.econlet.2015.05.025",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Quantitative Easing Impact on Market Liquidity and Inflation",
+      "snippet": "Quantitative easing (QE), mainly including large-scale purchasing, affects the market and economy by liquidity channel. This channel includes two aspects: loan supply and liquidity increases caused by large-scale purchasing. The influence of QE on liquidity is not clear enough. Also, whether such a liquidity creation will lead to inflation needs to be emphasized. This article provides an in-depth analysis of the impact of quantitative easing (QE) on liquidity creation and explores the potential relationship between QE and inflation. The article, based on investigating previous research, gives ",
+      "full_text": "Quantitative easing (QE), mainly including large-scale purchasing, affects the market and economy by liquidity channel. This channel includes two aspects: loan supply and liquidity increases caused by large-scale purchasing. The influence of QE on liquidity is not clear enough. Also, whether such a liquidity creation will lead to inflation needs to be emphasized. This article provides an in-depth analysis of the impact of quantitative easing (QE) on liquidity creation and explores the potential relationship between QE and inflation. The article, based on investigating previous research, gives an overview of the process of quantitative easing’s impact on liquidity creation through large-scale purchasing and lending channels. Meanwhile, the article discusses the possibility of quantitative easing leading to inflation. In conclusion, large-scale purchasing creates market liquidity by increasing loan supply and affecting the securities market. Furthermore, the investment shows that quantitative easing would not generate inflation. The article provides an overview of liquidity creation caused by QE and the potential possible relation between QE and inflation and provides a reference to the future.",
+      "url": "https://openalex.org/W4402209087",
+      "_adapter": "openalex",
+      "authors": [
+        "Yiduo Chen"
+      ],
+      "venue": "Highlights in Business Economics and Management",
+      "publication_date": "2024",
+      "doi": "10.54097/b4jrfp35",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:33+0100"
+}

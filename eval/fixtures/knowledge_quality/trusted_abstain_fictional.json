@@ -1,0 +1,267 @@
+{
+  "schema_version": 2,
+  "id": "trusted_abstain_fictional",
+  "path": "trusted_knowledge",
+  "category": "abstain",
+  "description": "Fictional device: expect abstention.",
+  "query_raw": "@[tool:trusted] Official WHO guidance on the Varnex-7 nasal implant",
+  "query_clean": "Official WHO guidance on the Varnex-7 nasal implant",
+  "retrieval_query": "Official WHO guidance on the Varnex-7 nasal implant",
+  "standalone_question": "What is the official WHO guidance on the Varnex-7 nasal implant?",
+  "gold_subject": "Varnex-7 nasal implant",
+  "gold_facet": "WHO guidance",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T20:21:56+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "wikipedia_api": 2,
+    "duckduckgo": 6
+  },
+  "adapter_queries": {
+    "production": {
+      "wikipedia_api": "Official WHO guidance on the Varnex-7 nasal implant",
+      "duckduckgo": "Official WHO guidance on the Varnex-7 nasal implant"
+    },
+    "standalone": {
+      "wikipedia_api": "What is the official WHO guidance on the Varnex-7 nasal implant?",
+      "duckduckgo": "What is the official WHO guidance on the Varnex-7 nasal implant?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "WHO recommendations on newborn health: guidelines approved by the WHO ...",
+      "snippet": "Overview Please note that this publication is being updated. This publication on WHO recommendations related to newborn health is one of four in a series; the others relate to maternal, child and adolescent health. The objective of this document is to make available WHO recommendations on newborn health in one easy-to-access document for WHO staff, policy-makers, programme managers, and health ...",
+      "url": "https://www.who.int/publications/i/item/WHO-MCA-17.07",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO guidelines",
+      "snippet": "The development of global guidelines ensuring the appropriate use of evidence represents one of the core functions of WHO. A WHO guideline is defined broadly as any information product developed by WHO that contains recommendations for clinical practice or public health policy. Recommendations are statements designed to help end-users make informed decisions on whether, when and how to ...",
+      "url": "https://www.who.int/publications/who-guidelines",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WHO Public Assessment Reports (WHOPARs) Medicines",
+      "snippet": "Each WHO Public Assessment Report is listed by WHO reference number and therapeutic area. Each listing also provides the relevant International Nonproprietary Name (INN), the dosage formulation and dosage strength, and the name of the supplier. The summary of product characteristics/patient information leaflet included in these WHOPARs focus on uses of the medicines covered by WHO ...",
+      "url": "https://extranet.who.int/prequal/medicines/prequalification-reports/whopars",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Project information | LATERA absorbable nasal implant for Nasal valve ...",
+      "snippet": "LATERA absorbable nasal implant for Nasal valve collapse causing nasal obstruction Topic prioritisation Project information Status: Topic prioritisation Technology type: Procedure Decision: Awaiting decision Decision publication date: 06 July 2026 Prioritisation programme: Interventional procedures Rationale: Project Team Project lead Corrina ...",
+      "url": "https://www.nice.org.uk/guidance/prioritisation/gid-htg10907",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PDF Guideline on the pharmaceutical quality of inhalation and nasal ...",
+      "snippet": "69 Detailed guidance on pharmaceutical development study designs (e.g., priming studies) and the 70 analytical procedures primarily used for inhalation and nasal medicinal products (e.g., cascade 71 impactor analysis) is not included in this guideline.",
+      "url": "https://www.ema.europa.eu/en/documents/scientific-guideline/draft-guideline-pharmaceutical-quality-inhalation-nasal-medicinal-products-revision-1_en.pdf",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Association of Anaesthetists guidelines: safe vascular access 2025",
+      "snippet": "Methods This updated consensus statement builds upon previous iterations of safe vascular access guidelines. An expert, multidisciplinary, multi-society working party agreed on major themes and conducted a review of literature and best practice to build a comprehensive body of work. This was followed by a two-round Delphi process to agree on specific recommendations and to inform these concise ...",
+      "url": "https://associationofanaesthetists-publications.onlinelibrary.wiley.com/doi/pdf/10.1111/anae.16727",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "FSRH Clinical Guideline: Progestogen-only Implant (February 2021 ...",
+      "snippet": "This guidance provides evidence-based recommendations and good practice points for health professionals on the use of progestogen-only implants currently available in the UK.",
+      "url": "https://www.cosrh.org/Public/Public/Documents/clinical-guidance-progestogen-only-implants.aspx",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PDF Guideline on the pharmaceutical quality of inhalation and nasal ...",
+      "snippet": "Detailed guidance on pharmaceutical development study designs (e.g., priming studies) and the analytical procedures primarily used for inhalation and nasal medicinal products (e.g., cascade impactor analysis) is not included in this guideline. This information may be found in other publications (e.g., European Pharmacopoeia).",
+      "url": "https://www.ema.europa.eu/en/documents/scientific-guideline/guideline-pharmaceutical-quality-inhalation-nasal-medicinal-products-revision-1_en.pdf",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PDF Absorbable Nasal Implant for Treatment of Nasal Valve Collapse",
+      "snippet": "For individuals with symptomatic nasal obstruction due to internal NVC who receive an absorbable lateral nasal valve implant, the evidence includes one randomized controlled trial (RCT) with a 24-month uncontrolled follow-up phase and three nonrandomized prospective, single-cohort studies.",
+      "url": "https://www.lifewisewa.com/medicalpolicies/7.01.163.pdf",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PDF FEP_preview - fepblue.org",
+      "snippet": "The placement of an absorbable implant to support the lateral nasal cartilages has been proposed as an alternative to more invasive grafting procedures in patients with severe nasal obstruction. The concept is that the implant may provide support to the lateral nasal wall prior to resorption and then stiffen the wall with scarring as it is ...",
+      "url": "https://www1.fepblue.org/-/media/PDFs/Medical-Policies/2026/January/Medical-Policies/Remove-and-Replace/701163-Absorbable-Nasal-Implant.pdf",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sinus Excision/Destruction, Implants, and Repair",
+      "snippet": "A. The use of an absorbable nasal implant (e.g., Latera) is investigational for the treatment of NVC in patients with nasal obstruction. B. Radiofrequency ablation/neurolysis of the nasal valve (e.g., VivAer stylus) is considered investigational for ALL indications, including treatment of nasal airway obstruction.",
+      "url": "https://www.excellusbcbs.com/documents/d/global/exc-prv-ablation-implants-and-sinus-stents-for-nasal-conditions",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PDF Medical Policy - Absorbable Nasal Implant for Treatment of Nasal Valve ...",
+      "snippet": "The purpose of insertion of an absorbable nasal valve implant in patients who have symptomatic nasal valve obstruction due to nasal valve collapse (NVC) is to provide a treatment option that is an alternative to or an improvement on existing therapies.",
+      "url": "https://www.bcbsm.com/amslibs/content/dam/public/mpr/mprsearch/pdf/2147468.pdf",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Nasal implants for drug delivery: Advancements and applications",
+      "snippet": "Drug-eluting nasal implants are beneficial for improving patient compliance, reducing the need for repeated drug administration, and achieving controlled release of therapeutic agents. This article offers a comprehensive insight into nasal implants and their applications, and addresses a patent perspective in the same context.",
+      "url": "https://www.sciencedirect.com/science/article/pii/S2096691123000626",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PDF Medical Policy - Blue Shield of California",
+      "snippet": "The purpose of insertion of an absorbable nasal valve implant in individuals who have symptomatic nasal valve obstruction due to nasal valve collapse (NVC) is to provide a treatment option that is an alternative to or an improvement on existing therapies.",
+      "url": "https://www.blueshieldca.com/content/dam/bsca/en/provider/docs/medical-policies/Absorb-Nasal-Imp-TX-Nasal-Valve-Collapse.pdf",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PDF Treatment of Nasal Valve Collapse - Wellmark",
+      "snippet": "The insertion of absorbable nasal implant(s) (e.g., Latera®) for the treatment of symptomatic nasal valve collapse is considered investigational because the evidence is insufficient to determine the effects of the technology on health outcomes.",
+      "url": "https://digital-assets.wellmark.com/adobe/assets/urn:aaid:aem:4227c9ac-d221-4019-9918-9a678a61a555/original/as/Nasal-Implants-Vestibular-Lateral-Wall-Stenosis.pdf",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ]
+}

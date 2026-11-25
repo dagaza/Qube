@@ -75,6 +75,11 @@ class SidecarTelemetryBrain:
         with self._lock:
             self._queue_depth = max(0, int(depth))
 
+    def queue_depth(self) -> int:
+        """Last sidecar command-queue depth reported by the worker."""
+        with self._lock:
+            return int(self._queue_depth)
+
     def set_queue_snapshot(self, snapshot: dict[str, Any] | None) -> None:
         with self._lock:
             self._queue_snapshot = dict(snapshot or {})

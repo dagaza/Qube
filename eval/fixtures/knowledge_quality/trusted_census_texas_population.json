@@ -1,0 +1,327 @@
+{
+  "schema_version": 2,
+  "id": "trusted_census_texas_population",
+  "path": "trusted_knowledge",
+  "category": "official_statistics",
+  "description": "",
+  "query_raw": "@[tool:trusted] What is the population of Texas according to the US Census?",
+  "query_clean": "What is the population of Texas according to the US Census?",
+  "retrieval_query": "What is the population of Texas according to the US Census?",
+  "standalone_question": "What is the population of Texas according to the US Census Bureau?",
+  "gold_subject": "Texas population",
+  "gold_facet": "US Census figure",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T20:14:16+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "wikipedia_api": 2,
+    "duckduckgo": 6
+  },
+  "adapter_queries": {
+    "production": {
+      "wikipedia_api": "What is the population of Texas according to the US Census?",
+      "duckduckgo": "What is the population of Texas according to the US Census?"
+    },
+    "standalone": {
+      "wikipedia_api": "What is the population of Texas according to the US Census Bureau?",
+      "duckduckgo": "What is the population of Texas according to the US Census Bureau?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "Collin County, Texas",
+      "snippet": "Collin County is a county in the northern part of the U.S. state of Texas. It is part of the Dallas–Fort Worth–Arlington metropolitan statistical area, and a small portion of the city of Dallas is in the county. At the 2020 United States census, the county's population was 1,064,465, making it Texas's sixth-most populous county and the 43rd-largest county by population in the United States. Its county seat is McKinney.",
+      "full_text": "Collin County is a county in the northern part of the U.S. state of Texas. It is part of the Dallas–Fort Worth–Arlington metropolitan statistical area, and a small portion of the city of Dallas is in the county. At the 2020 United States census, the county's population was 1,064,465, making it Texas's sixth-most populous county and the 43rd-largest county by population in the United States. Its county seat is McKinney.",
+      "url": "https://en.wikipedia.org/wiki/Collin_County,_Texas",
+      "pageid": 91627,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Demographics of the United States",
+      "snippet": "With about 4% of the world's population, the United States is the third most populous country (after India and China), and the most populous in the Americas and the Western Hemisphere. Its estimated population was 341,784,857 on July 1, 2025, according to the U.S. Census Bureau. Between 2024 and 2025, the country's population grew by 1.8 million, or 0.5%—a lower rate than the previous year due to a decline in net international migration. The Census Bureau had reported a population increase of 0.98% between 2023 and 2024, near the global population growth rate of 1.03%. These figures include th",
+      "full_text": "With about 4% of the world's population, the United States is the third most populous country (after India and China), and the most populous in the Americas and the Western Hemisphere. Its estimated population was 341,784,857 on July 1, 2025, according to the U.S. Census Bureau. Between 2024 and 2025, the country's population grew by 1.8 million, or 0.5%—a lower rate than the previous year due to a decline in net international migration. The Census Bureau had reported a population increase of 0.98% between 2023 and 2024, near the global population growth rate of 1.03%. These figures include the 50 states and the federal capital, Washington, D.C., but exclude the 3.6 million residents of five unincorporated U.S. territories (Puerto Rico, Guam, the U.S. Virgin Islands, American Samoa, and the Northern Mariana Islands) as well as several minor uninhabited island possessions. By several metrics, including racial and ethnic background, religious affiliation, and percentage of rural and urban divide, the state of Illinois is the most representative of the larger demography of the United States.\nThe United States population almost quadrupled during the 20th century, with an average growth rate of about 1.3% a year, from about 76 million in 1900 to 281 million in 2000. It is estimated to have reached the 200 million mark in 1967, and the 300 million mark on October 17, 2006. Foreign-born immigration caused the U.S. population to continue its rapid increase, with this population doubling from almost 20 million in 1990 to over 45 million in 2015, representing one-third of the population increase. The U.S. Census Bureau reported in late 2024 that recent immigration to the United States had more than offset the country's lower birth rates: \"Net international migration's influence on population trends has increased over the last few years. Since 2021, it accounted for the majority of the nation's growth—a departure from the last two decades, when natural increase was the main factor.\" This in turn led to an increase in the U.S. population in each of the years 2022, 2023, and 2024 (+0.58%, +0.83%, and +0.98% respectively). Net international migration slowed to a record low in 2025, however, and so did U.S. population growth during that year (+0.5%).\nPopulation growth is fastest among minorities as a whole, and according to a 2020 U.S. Census Bureau analysis, 50% of U.S. children under the age of 18 are members of ethnic minority groups.\nAs of 2020, white Americans numbered 235,411,507 or 71% of the population, including people who identified as white in combination with another race. People who identified as white alone (including Hispanic whites) numbered 204,277,273 or 61.6% of the population, while non-Latino whites made up 57.8% of the country's population.\nLatino Americans accounted for 51.1% of the country's total population growth between 2010 and 2020. The Hispanic or Latino population increased from 50.5 million in 2010 to 62.1 million in 2020, a 23% increase and a numerical increase of more than 11.6 million. Immigrants and their U.S.-born descendants are expected to provide most of the U.S. population gains in the decades ahead.\nAsian Americans are the fastest-growing racial group in the United States, with a growth rate of 35%. However, multiracial Asian Americans make up the fastest-growing subgroup, with a growth rate of 55%, reflecting the increase of mixed-race marriages in the United States.\nAccording to provisional data, births to White American mothers in 2026 remained around 50% of the U.S. total. Since 2020, fertility rates among Black American and Asian American mothers have continued to decline, and the rates for both have dropped well below the national average. This has led to a slow decline in the total U.S. fertility rate. Nonetheless, the United States continues to report one of the highest fertility rates among high-income countries.",
+      "url": "https://en.wikipedia.org/wiki/Demographics_of_the_United_States",
+      "pageid": 70197,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "List of United States cities by population",
+      "snippet": "This is a list of the most populous municipal corporations of the United States. As defined by the United States Census Bureau, an incorporated place includes cities, towns, villages, boroughs, and municipalities. A few exceptional census-designated places (CDPs) are also included in the Census Bureau's listing of incorporated places. Consolidated city-counties represent a distinct type of government that includes the entire population of a county, or county equivalent. Some consolidated city-counties, however, include multiple incorporated places. This list presents only the portion of such c",
+      "full_text": "This is a list of the most populous municipal corporations of the United States. As defined by the United States Census Bureau, an incorporated place includes cities, towns, villages, boroughs, and municipalities. A few exceptional census-designated places (CDPs) are also included in the Census Bureau's listing of incorporated places. Consolidated city-counties represent a distinct type of government that includes the entire population of a county, or county equivalent. Some consolidated city-counties, however, include multiple incorporated places. This list presents only the portion of such consolidated city-counties that are not a part of another incorporated place.\nThis list refers only to the population of individual municipalities within their defined limits; the populations of other municipalities considered suburbs of a central city are listed separately, and unincorporated areas within urban agglomerations are not included. Therefore, a different ranking is evident when considering U.S. urban areas or metropolitan areas.",
+      "url": "https://en.wikipedia.org/wiki/List_of_United_States_cities_by_population",
+      "pageid": 1649321,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "United States",
+      "snippet": "The United States of America (USA), also known as the United States (U.S.) or America, is a country primarily located in North America. It is a federal republic consisting of 50 states and a federal capital district, Washington, D.C. The 48 contiguous states border Canada to the north and Mexico to the south, with the semi-exclave of Alaska in the northwest and the archipelago of Hawaii in the Pacific Ocean. The United States also asserts sovereignty over five major island territories and various uninhabited islands in Oceania and the Caribbean. It has the world's fourth-largest total area and",
+      "full_text": "The United States of America (USA), also known as the United States (U.S.) or America, is a country primarily located in North America. It is a federal republic consisting of 50 states and a federal capital district, Washington, D.C. The 48 contiguous states border Canada to the north and Mexico to the south, with the semi-exclave of Alaska in the northwest and the archipelago of Hawaii in the Pacific Ocean. The United States also asserts sovereignty over five major island territories and various uninhabited islands in Oceania and the Caribbean. It has the world's fourth-largest total area and third-largest population, exceeding 341 million.\nPaleo-Indians migrated from North Asia to North America at least 15,000 years ago and formed various civilizations. Beginning in 1607, British colonization established the Thirteen Colonies. The 18th-century American Enlightenment spread values of republicanism and liberalism there, and clashes with the British Crown over taxation without parliamentary representation, among other denied rights, sparked the American Revolution. Independence from Great Britain was formally declared in the Lee Resolution of July 2, 1776, two days before the Declaration of Independence. Victory in the 1775–1783 Revolutionary War confirmed international recognition of U.S. sovereignty.\nThe U.S. expanded westward through the purchase, settlement, and conquest of European- and Indigenous-controlled territory. As more states joined the Union, a sectional division over slavery led 11 Southern states to declare secession and form the Confederate States of America, fighting the Union in the Civil War of 1861–1865. With the United States' victory and reunification, slavery was abolished. By 1900, the U.S. emerged as a great power, a status solidified after its involvement in World War I. Following Japan's attack on Pearl Harbor in 1941, it entered World War II on the Allied side. The war's aftermath left the U.S. and the Soviet Union as rival superpowers, vying for geopolitical dominance during the Cold War. The Soviet Union's collapse in 1991 left the U.S. as the world's sole superpower, although it has faced competition from China in the 2020s.\nThe U.S. federal government is a republic under the Constitution, which created a separation of powers among legislative, executive, and judicial branches. Executive authority is vested in a president, while Congress is a bicameral national legislature composed of the House of Representatives (a lower house based on population) and the Senate (an upper house based on equal representation for each state). The Supreme Court exercises judicial review, under which it may hold laws or governmental actions unconstitutional. Federalism grants substantial autonomy to the 50 states.\nA developed country, the United States ranks high in economic competitiveness, innovation, and higher education. Its economy accounts for over a quarter of nominal global GDP and has been the world's largest since about 1890. The U.S. is the wealthiest country, with the highest disposable household income per capita among OECD members, though its wealth inequality is highly pronounced. American culture, shaped by centuries of immigration, is diverse and globally influential. The U.S. makes up nearly a third of global military spending and is widely considered to have the most powerful armed forces in the world. A member of numerous international organizations, it plays a dominant role in global political, cultural, economic, and military affairs.",
+      "url": "https://en.wikipedia.org/wiki/United_States",
+      "pageid": 3434750,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "U.S. Census Bureau QuickFacts: Texas",
+      "snippet": "Explore U.S. Census Bureau QuickFacts for Texas. View current, authoritative statistics on population, demographics, income, housing, and business.",
+      "url": "https://www.census.gov/quickfacts/Tx",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Census: Texas led U.S. states in population growth in 2025",
+      "snippet": "Texas' population grew at a slower pace in 2025 than in previous years, according to new federal data. Nearly 32 million people now live in the state.",
+      "url": "https://www.texastribune.org/2026/01/27/texas-population-2025-census/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Texas Population 2025: 31.7 Million (Census)",
+      "snippet": "Texas had 31,709,821 residents on July 1, 2025 (Census Bureau), up 8.8% since April 2020. Median age 36.0; 14.9% are 65 or older.",
+      "url": "https://www.populationpyramids.org/states/texas",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PDF Texas Population: Trends and Characteristics",
+      "snippet": "Estimated Population, Texas Counties, 2025 Texas population is highly concentrated within the metropolitan triangle formed by Dallas-Fort Worth, Austin, San Antonio, and Houston. The 120 counties on and east of the I-35 corridor are home to 27.3 million residents—approximately 87.3% of the state's total population.",
+      "url": "https://www.txdot.gov/content/dam/docs/commission/2026/0430/5b.pdf",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "U.S. Census Bureau QuickFacts: Texas",
+      "snippet": "Texas data updates, release dates, and FAQs from the U.S. Census Bureau QuickFacts. Find answers regarding Texas population changes, data sources, ZIP code searches, and regional comparisons.",
+      "url": "https://www.census.gov/quickfacts/fact/faq/TX/PST045224",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Texas Demographic Center (TDC)",
+      "snippet": "Final population estimates for Texas counties and places are now available through January 1, 2026, along with county estimates by age, sex, and race/ethnicity for July 1, 2025. The Vintage 2025 release also includes revised estimates for 2021-2024 to reflect updates from the U.S. Census Bureau. See the methodology statement for details.",
+      "url": "https://demographics.texas.gov/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Texas Population & Demographics 2026: Census Data",
+      "snippet": "What is the population of Texas? Texas had an estimated 31,709,821 residents on July 1, 2025, up 391,243 (1.2%) from a year earlier, according to the U.S. Census Bureau's latest population estimates.",
+      "url": "https://statedemographics.com/texas/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Texas - Profile data - Census Reporter",
+      "snippet": "Census data for Texas (pop. 31,290,832), including age, race, sex, income, poverty, marital status, education and more.",
+      "url": "https://censusreporter.org/profiles/04000US48-texas/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Race and ethnicity in the United States census",
+      "snippet": "In the United States census, the U.S. Census Bureau and the Office of Management and Budget (OMB) define a set of self-identified categories of race and ethnicity chosen by residents, with which they most closely identify. Residents can indicate their origins alongside their race, and are asked specifically whether they are of Hispanic or Latino origin in a separate question.\nRace and ethnicity are considered separate and distinct identities, with a person's origins considered in the census. Racial categories in the United States represent a social-political construct for the race or races tha",
+      "full_text": "In the United States census, the U.S. Census Bureau and the Office of Management and Budget (OMB) define a set of self-identified categories of race and ethnicity chosen by residents, with which they most closely identify. Residents can indicate their origins alongside their race, and are asked specifically whether they are of Hispanic or Latino origin in a separate question.\nRace and ethnicity are considered separate and distinct identities, with a person's origins considered in the census. Racial categories in the United States represent a social-political construct for the race or races that respondents consider themselves to be and, \"generally reflect a social definition of race recognized in this country\". The OMB defines the concept of race as outlined for the census to be not \"scientific or anthropological\", and takes into account \"social and cultural characteristics as well as ancestry\", using \"appropriate scientific methodologies\" that are not \"primarily biological or genetic in reference.\" The race categories include both racial and national-origin groups.\nFrom the first United States census in 1790 to the 1960 census, the government's census enumerators chose a person's race. Racial categories changed over time, with different groups being added and removed with each census. Since the 1970 census, Americans provide their own racial self-identification. This change was due to the reforms brought about by the Civil Rights Act of 1964 and the Voting Rights Act of 1965, which required more accurate census data. Since the 1980 census, in addition to their race or races, all respondents are categorized by membership in one of two ethnic categories, which are \"Hispanic or Latino\" and \"Not Hispanic or Latino.\" This practice of separating \"race\" and \"ethnicity\" as different categories has been criticized both by the American Anthropological Association and members of US Commission on Civil Rights.\nSince the 2000 census, Americans have been able to identify as more than one race. In 1997, the OMB issued a Federal Register notice regarding revisions to the standards for the classification of federal data on race and ethnicity. The OMB developed race and ethnic standards in order to provide \"consistent data on race and ethnicity throughout the federal government\". The development of the data standards stem in large measure from new responsibilities to enforce civil rights laws. Among the changes, The OMB issued the instruction to \"mark one or more races\" after noting evidence of increasing numbers of mixed-race children and wanting to record diversity in a measurable way after having received requests by people who wanted to be able to acknowledge theirs and their children's full ancestry, rather than identifying with only one group. Prior to this decision, the census and other government data collections asked people to report singular races.\nAs of 2023, the OMB built on the 1997 guidelines and suggested the addition of a Middle Eastern or North African (MENA) racial category and considered combining racial and ethnic categories into one question. In March 2024, the Office of Management and Budget published revisions to Statistical Policy Directive No. 15: Standards for Maintaining, Collecting, and Presenting Federal Data on Race and Ethnicity that included a combined question and a MENA category, while also collecting additional detail to enable data disaggregation.",
+      "url": "https://en.wikipedia.org/wiki/Race_and_ethnicity_in_the_United_States_census",
+      "pageid": 273285,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Texas - Census Bureau Profile",
+      "snippet": "The Total Population for Texas is 29,145,505 2020 Decennial Census Median Household Income The Median Household Income for Texas is $82,625 2025 American Community Survey 1-Year Estimates Bachelor's Degree or Higher The Bachelor's Degree or Higher for Texas is 35.5%",
+      "url": "https://data.census.gov/profile/Texas?g=040XX00US48",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "TDC - Estimates - Texas",
+      "snippet": "The Texas Demographic Center and the U.S. Census Bureau provide population estimates for Texas, focusing on county and place totals as of July of each year. Additionally, both programs offer state and county estimates by age, sex, race, and ethnicity, as well as total population estimates for places.",
+      "url": "https://demographics.texas.gov/Estimates/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Texas sees largest population increase of any state for third ...",
+      "snippet": "For the third year in a row, Texas' population increased more than any other state, according to new estimates from the U.S. Census Bureau.",
+      "url": "https://www.kxan.com/news/texas/2025-state-population-estimates/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

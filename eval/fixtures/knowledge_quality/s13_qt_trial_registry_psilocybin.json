@@ -1,0 +1,677 @@
+{
+  "schema_version": 2,
+  "id": "s13_qt_trial_registry_psilocybin",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: query-type routing (clinical_trial) reorders a biomedical route only.",
+  "query_raw": "@[tool:evidence] Are there phase 3 clinical trials of psilocybin for depression recruiting patients?",
+  "query_clean": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients?",
+  "retrieval_query": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients?",
+  "standalone_question": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients?",
+  "gold_subject": "psilocybin for depression",
+  "gold_facet": "phase 3 trials recruiting",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:10:41+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "clinicaltrials_gov": 3,
+    "openfda": 3,
+    "pubmed": 3,
+    "nice": 3,
+    "cdc": 3,
+    "who": 3,
+    "europe_pmc": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "clinicaltrials_gov": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients",
+      "openfda": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients",
+      "pubmed": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients",
+      "nice": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients",
+      "cdc": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients",
+      "who": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients",
+      "crossref": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients",
+      "arxiv": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients",
+      "europe_pmc": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients",
+      "openalex": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "Determinants of patient recruitment in a multicenter clinical trials group: trends, seasonality and the effect of large studies",
+      "snippet": "Background\n          We examined whether quarterly patient enrollment in a large multicenter clinical trials group could be modeled in terms of predictors including time parameters (such as long-term trends and seasonality), the effect of large trials and the number of new studies launched each quarter. We used the database of all clinical studies launched by the AIDS Clinical Trials Group (ACTG) between October 1986 and November 1999. Analyses were performed in two datasets: one included all studies and substudies (n = 475, total enrollment 69,992 patients) and the other included only main st",
+      "full_text": "Background\n          We examined whether quarterly patient enrollment in a large multicenter clinical trials group could be modeled in terms of predictors including time parameters (such as long-term trends and seasonality), the effect of large trials and the number of new studies launched each quarter. We used the database of all clinical studies launched by the AIDS Clinical Trials Group (ACTG) between October 1986 and November 1999. Analyses were performed in two datasets: one included all studies and substudies (n = 475, total enrollment 69,992 patients) and the other included only main studies (n = 352, total enrollment 57,563 patients).\n        \n        \n          Results\n          Enrollment differed across different months of the year with peaks in spring and late fall. Enrollment accelerated over time (+27 patients per quarter for all studies and +16 patients per quarter for the main studies, p < 0.001) and was affected by the performance of large studies with target sample size > 1,000 (p < 0.001). These relationships remained significant in multivariate autoregressive modeling. A time series based on enrollment during the first 32 quarters could forecast adequately the remaining 21 quarters.\n        \n        \n          Conclusions\n          The fate and popularity of large trials may determine the overall recruitment of multicenter groups. Modeling of enrollment rates may be used to comprehend long-term patterns and to perform future strategic planning.",
+      "url": "https://data.cdc.gov/d/aj84-t78u",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "aj84-t78u",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Problems in dealing with missing data and informative censoring in clinical trials",
+      "snippet": "A common problem in clinical trials is the missing data that occurs when patients do not complete the study and drop out without further measurements. Missing data cause the usual statistical analysis of complete or all available data to be subject to bias. There are no universally applicable methods for handling missing data. We recommend the following: (1) Report reasons for dropouts and proportions for each treatment group; (2) Conduct sensitivity analyses to encompass different scenarios of assumptions and discuss consistency or discrepancy among them; (3) Pay attention to minimize the cha",
+      "full_text": "A common problem in clinical trials is the missing data that occurs when patients do not complete the study and drop out without further measurements. Missing data cause the usual statistical analysis of complete or all available data to be subject to bias. There are no universally applicable methods for handling missing data. We recommend the following: (1) Report reasons for dropouts and proportions for each treatment group; (2) Conduct sensitivity analyses to encompass different scenarios of assumptions and discuss consistency or discrepancy among them; (3) Pay attention to minimize the chance of dropouts at the design stage and during trial monitoring; (4) Collect post-dropout data on the primary endpoints, if at all possible; and (5) Consider the dropout event itself an important endpoint in studies with many.",
+      "url": "https://data.cdc.gov/d/ua9y-3748",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "ua9y-3748",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Tuberculosis Trials Consortium Study 31/ A5349",
+      "snippet": "Rifapentine-containing treatment shortening regimens for pulmonary tuberculosis: A randomized, open-label, controlled phase 3 clinical trial",
+      "full_text": "Rifapentine-containing treatment shortening regimens for pulmonary tuberculosis: A randomized, open-label, controlled phase 3 clinical trial",
+      "url": "https://data.cdc.gov/d/nihk-gy83",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-10-26",
+      "document_type": "government_publication",
+      "dataset_id": "nihk-gy83",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ANC_ATLEAST1VISIT_PERCENT — Antenatal care coverage - at least one visit (percent)",
+      "snippet": "Antenatal care coverage - at least one visit (percent)",
+      "full_text": "Antenatal care coverage - at least one visit (percent)",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/ANC_ATLEAST1VISIT_PERCENT",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "ANC_ATLEAST1VISIT_PERCENT",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "anc15 — Antenatal care coverage - at least one visit (in the five years preceding the survey) (%)",
+      "snippet": "Antenatal care coverage - at least one visit (in the five years preceding the survey) (%)",
+      "full_text": "Antenatal care coverage - at least one visit (in the five years preceding the survey) (%)",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/anc15",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "anc15",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "anc4 — Antenatal care coverage - at least four visits (in the two or three years preceding the survey) (%)",
+      "snippet": "Antenatal care coverage - at least four visits (in the two or three years preceding the survey) (%)",
+      "full_text": "Antenatal care coverage - at least four visits (in the two or three years preceding the survey) (%)",
+      "url": "https://www.who.int/data/gho/data/indicators/indicator-details/GHO/anc4",
+      "_adapter": "who",
+      "authors": [
+        "World Health Organization"
+      ],
+      "venue": "WHO Global Health Observatory",
+      "publication_date": null,
+      "document_type": "health_indicator",
+      "indicator_code": "anc4",
+      "retrieval_method": "who_gho_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "who",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Recruiting and Retaining Physicians and Patients",
+      "snippet": "Recruiting and Retaining Physicians and Patients",
+      "full_text": null,
+      "url": "https://doi.org/10.1002/0471251194.ch9",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "A Manager's Guide to the Design and Conduct of Clinical Trials",
+      "publication_date": "2003",
+      "doi": "10.1002/0471251194.ch9",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Publication bias in randomized trials of psilocybin for depression: a Robust Bayesian Meta-Analysis",
+      "snippet": "<p>A recent living systematic review in Nature Mental Health found psilocybin reduced depression symptoms across 12 randomized controlled trials, with pooled effect g = 0.90. The original analysis assessed publication bias using Egger’s test, non-significant — but this test has limited power with few studies and cannot produce a bias-corrected estimate. We re-analysed the same open dataset using Robust Bayesian Meta-Analysis (RoBMA), which simultaneously estimates evidence for a treatment effect, heterogeneity, and publication bias. We find moderate evidence for publication bias (Bayes Factor ",
+      "full_text": "<p>A recent living systematic review in Nature Mental Health found psilocybin reduced depression symptoms across 12 randomized controlled trials, with pooled effect g = 0.90. The original analysis assessed publication bias using Egger’s test, non-significant — but this test has limited power with few studies and cannot produce a bias-corrected estimate. We re-analysed the same open dataset using Robust Bayesian Meta-Analysis (RoBMA), which simultaneously estimates evidence for a treatment effect, heterogeneity, and publication bias. We find moderate evidence for publication bias (Bayes Factor = 3.89). After accounting for selective reporting, the bias-corrected effect (g ≈ 0.53) is ~41% smaller than published, with a credible interval spanning to zero. This evidence dissipates when open-label studies are excluded, suggesting expectancy-driven artefacts rather than file-drawer suppression. These findings do not overturn the original conclusions but indicate greater uncertainty than the frequentist analysis implies.</p>",
+      "url": "https://doi.org/10.31234/osf.io/6gy8v_v1",
+      "_adapter": "crossref",
+      "authors": [
+        "Çağrı Özkurt"
+      ],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.31234/osf.io/6gy8v_v1",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "National Eye Institute Intramural Clinical Trials Currently Recruiting Patients",
+      "snippet": "National Eye Institute Intramural Clinical Trials Currently Recruiting Patients",
+      "full_text": null,
+      "url": "https://doi.org/10.1016/s0161-6420(13)30970-1",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Ophthalmology",
+      "publication_date": "1995",
+      "doi": "10.1016/s0161-6420(13)30970-1",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Enhancing Longitudinal Clinical Trial Efficiency with Digital Twins and Prognostic Covariate-Adjusted Mixed Models for Repeated Measures (PROCOVA-MMRM)",
+      "snippet": "Clinical trials are critical in advancing medical treatments but often suffer from immense time and financial burden. Advances in statistical methodologies and artificial intelligence (AI) present opportunities to address these inefficiencies. Here we introduce Prognostic Covariate-Adjusted Mixed Models for Repeated Measures (PROCOVA-MMRM) as an advantageous combination of prognostic covariate adjustment (PROCOVA) and Mixed Models for Repeated Measures (MMRM). PROCOVA-MMRM utilizes time-matched prognostic scores generated from AI models to enhance the precision of treatment effect estimators f",
+      "full_text": "Clinical trials are critical in advancing medical treatments but often suffer from immense time and financial burden. Advances in statistical methodologies and artificial intelligence (AI) present opportunities to address these inefficiencies. Here we introduce Prognostic Covariate-Adjusted Mixed Models for Repeated Measures (PROCOVA-MMRM) as an advantageous combination of prognostic covariate adjustment (PROCOVA) and Mixed Models for Repeated Measures (MMRM). PROCOVA-MMRM utilizes time-matched prognostic scores generated from AI models to enhance the precision of treatment effect estimators for longitudinal continuous outcomes, enabling reductions in sample size and enrollment times. We first provide a description of the background and implementation of PROCOVA-MMRM, followed by two case study reanalyses where we compare the performance of PROCOVA-MMRM versus the unadjusted MMRM. These reanalyses demonstrate significant improvements in statistical power and precision in clinical indications with unmet medical need, specifically Alzheimer's Disease (AD) and Amyotrophic Lateral Sclerosis (ALS). We also explore the potential for sample size reduction with the prospective implementation of PROCOVA-MMRM, finding that the same or better results could have been achieved with fewer participants in these historical trials if the enhanced precision provided by PROCOVA-MMRM had been prospectively leveraged. We also confirm the robustness of the statistical properties of PROCOVA-MMRM in a variety of realistic simulation scenarios. Altogether, PROCOVA-MMRM represents a rigorous method of incorporating advances in the prediction of time-matched prognostic scores generated by AI into longitudinal analysis, potentially reducing both the cost and time required to bring new treatments to patients while adhering to regulatory standards.",
+      "url": "https://arxiv.org/abs/2404.17576v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Jessica L. Ross",
+        "Arman Sabbaghi",
+        "Run Zhuang",
+        "Daniele Bertolini",
+        "the Alzheimer's Disease Cooperative Study",
+        "Alzheimer's Disease Neuroimaging Initiative",
+        "the Critical Path for Alzheimer's Disease Database",
+        "the European Prevention of Alzheimer's Disease",
+        "Consortium",
+        "the Pooled Resource Open-Access ALS Clinical Trials Consortium"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-04-26",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2404.17576v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Small-Sample Behavior of Novel Phase I Cancer Trial Designs",
+      "snippet": "Novel dose-finding designs, using estimation to assign the best estimated maximum- tolerated-dose (MTD) at each point in the experiment, most commonly via Bayesian techniques, have recently entered large-scale implementation in Phase I cancer clinical trials. We examine the small-sample behavior of these \"Bayesian Phase I\" (BP1) designs, and also of non-Bayesian designs sharing the same main \"long-memory\" traits (hereafter: LMP1s). For all LMP1s examined, the number of cohorts treated at the true MTD (denoted here as n*) was highly variable between numerical runs drawn from the same toxicity-t",
+      "full_text": "Novel dose-finding designs, using estimation to assign the best estimated maximum- tolerated-dose (MTD) at each point in the experiment, most commonly via Bayesian techniques, have recently entered large-scale implementation in Phase I cancer clinical trials. We examine the small-sample behavior of these \"Bayesian Phase I\" (BP1) designs, and also of non-Bayesian designs sharing the same main \"long-memory\" traits (hereafter: LMP1s). For all LMP1s examined, the number of cohorts treated at the true MTD (denoted here as n*) was highly variable between numerical runs drawn from the same toxicity-threshold distribution, especially when compared with \"up-and-down\" (U&D) short-memory designs. Further investigation using the same set of thresholds in permuted order, produced a nearly-identical magnitude of variability in n*. Therefore, this LMP1 behavior is driven by a strong sensitivity to the order in which toxicity thresholds appear in the experiment. We suggest that the sensitivity is related to LMP1's tendency to \"settle\" early on a specific dose level - a tendency caused by the repeated likelihood-based \"winner-takes-all\" dose assignment rule, which grants the early cohorts a disproportionately large influence upon experimental trajectories. Presently, U&D designs offer a simpler and more stable alternative, with roughly equivalent MTD estimation performance. A promising direction for combining the two approaches is briefly discussed (note: the '3+3' protocol is not a U&D design).",
+      "url": "https://arxiv.org/abs/1202.4962v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Assaf P. Oron",
+        "Peter D. Hoff"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2012-02-22",
+      "doi": "10.1177/1740774512469311",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1202.4962v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Am I eligible? Natural Language Inference for Clinical Trial Patient Recruitment: the Patient's Point of View",
+      "snippet": "Recruiting patients to participate in clinical trials can be challenging and time-consuming. Usually, participation in a clinical trial is initiated by a healthcare professional and proposed to the patient. Promoting clinical trials directly to patients via online recruitment might help to reach them more efficiently. In this study, we address the case where a patient is initiating their own recruitment process and wants to determine whether they are eligible for a given clinical trial, using their own language to describe their medical profile. To study whether this creates difficulties in th",
+      "full_text": "Recruiting patients to participate in clinical trials can be challenging and time-consuming. Usually, participation in a clinical trial is initiated by a healthcare professional and proposed to the patient. Promoting clinical trials directly to patients via online recruitment might help to reach them more efficiently. In this study, we address the case where a patient is initiating their own recruitment process and wants to determine whether they are eligible for a given clinical trial, using their own language to describe their medical profile. To study whether this creates difficulties in the patient trial matching process, we design a new dataset and task, Natural Language Inference for Patient Recruitment (NLI4PR), in which patient language profiles must be matched to clinical trials. We create it by adapting the TREC 2022 Clinical Trial Track dataset, which provides patients' medical profiles, and rephrasing them manually using patient language. We also use the associated clinical trial reports where the patients are either eligible or excluded. We prompt several open-source Large Language Models on our task and achieve from 56.5 to 71.8 of F1 score using patient language, against 64.7 to 73.1 for the same task using medical language. When using patient language, we observe only a small loss in performance for the best model, suggesting that having the patient as a starting point could be adopted to help recruit patients for clinical trials. The corpus and code bases are all freely available on our Github and HuggingFace repositories.",
+      "url": "https://arxiv.org/abs/2503.15718v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Mathilde Aguiar",
+        "Pierre Zweigenbaum",
+        "Nona Naderi"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-03-19",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2503.15718v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Apomorphine and psilocybin to improve recovery from coma in the intensive care unit: protocol for a prospective, open-label, dose-escalation study.",
+      "snippet": "<h4>Introduction</h4>Recovery of consciousness after brain injury remains a major challenge in the intensive care unit (ICU), and pharmacological treatments that directly promote awakening from coma and other disorders of consciousness (DoC) are lacking. We hypothesise that simultaneously targeting the two core components of consciousness by pharmacological means-arousal with apomorphine and awareness with psilocybin-is safe in the ICU and may facilitate evidence of cerebral reserves after brain injury.<h4>Methods and analysis</h4>This trial aims to evaluate the safety and potential efficacy o",
+      "full_text": "<h4>Introduction</h4>Recovery of consciousness after brain injury remains a major challenge in the intensive care unit (ICU), and pharmacological treatments that directly promote awakening from coma and other disorders of consciousness (DoC) are lacking. We hypothesise that simultaneously targeting the two core components of consciousness by pharmacological means-arousal with apomorphine and awareness with psilocybin-is safe in the ICU and may facilitate evidence of cerebral reserves after brain injury.<h4>Methods and analysis</h4>This trial aims to evaluate the safety and potential efficacy of apomorphine and psilocybin in unresponsive ICU patients with brain injury. We will conduct a prospective, open-label, bicentric, phase 1b, dose-escalation study enrolling 80 ICU patients with DoC. Participants will be allocated to three dose-escalation cohorts. Cohort 1 (n=26) will receive 1 mg psilocybin, Cohort 2 (n=27) 10 mg psilocybin and Cohort 3 (n=27) 25 mg psilocybin. One hour after psilocybin, all patients will receive 2 mg subcutaneous apomorphine. Primary outcome is time to awakening within 30 days. Secondary outcomes are serious somatic and neuropsychiatric adverse events. Exploratory outcomes comprise changes in consciousness assessed by clinical scales, automated pupillometry, electroencephalography activity and functional outcome at 90 days. An independent Data Safety Monitoring Board will conduct interim analyses prior to dose escalations.<h4>Ethics and dissemination</h4>The trial was authorised by the Danish Medical Research Ethics Committees and the Danish Medicines Agency through the Clinical Trials Information System (EU CT number 2023-503617-30-02). The study is considered to involve relatively low risk with the potential to improve future treatment options for DoC patients. If psilocybin and apomorphine are shown to be safe, this would justify a larger multicentre randomised trial to evaluate clinical efficacy. Findings will be disseminated through peer-reviewed journals and scientific conferences.<h4>Trial registration number</h4>2023-503617-30-02.",
+      "url": "https://doi.org/10.1136/bmjopen-2026-124508",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Eigenbrodt AK",
+        "Laigaard PP",
+        "Hassani M",
+        "Othman MH",
+        "Amiri M",
+        "Møller K",
+        "Kjaergaard J",
+        "Kondziella D"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-09-22",
+      "doi": "10.1136/bmjopen-2026-124508",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42772877",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Psilocybin-assisted therapy for treatment-resistant major depressive disorder in a public healthcare setting: a randomized controlled trial.",
+      "snippet": "Psilocybin-assisted therapy may be a promising new treatment for treatment-resistant depression. We examined the feasibility of administering a single 25-mg dose of psilocybin or placebo with psychological support in a randomized controlled trial design with 6 weeks of follow-up. A two-arm, double-blind, randomized, placebo-controlled feasibility trial was conducted at one National Health Service (NHS) site in England. Eligible participants met Diagnostic and Statistical Manual of Mental Disorders, Fifth Edition (DSM-5) criteria for major depressive disorder and had an inadequate response to ≥",
+      "full_text": "Psilocybin-assisted therapy may be a promising new treatment for treatment-resistant depression. We examined the feasibility of administering a single 25-mg dose of psilocybin or placebo with psychological support in a randomized controlled trial design with 6 weeks of follow-up. A two-arm, double-blind, randomized, placebo-controlled feasibility trial was conducted at one National Health Service (NHS) site in England. Eligible participants met Diagnostic and Statistical Manual of Mental Disorders, Fifth Edition (DSM-5) criteria for major depressive disorder and had an inadequate response to ≥2 antidepressant treatments or ≥1 antidepressant plus ≥1 psychotherapy. Participants received 25-mg psilocybin or placebo with preparation, dosing support and integration. Primary outcomes were recruitment, retention and estimation of the Montgomery-Åsberg Depression Rating Scale (MADRS) variance. A multilevel regression analysis with an intention-to-treat population was used. Sixty participants were randomized (1:1), balanced by age, sex and prior psilocybin exposure, and 59 of 60 participants completed the MADRS at all follow-up visits. The adjusted between-group difference at week 3 on the MADRS was -10.41 (95% confidence interval: -14.86 to -5.95; Cohen's d = -1.70), favoring psilocybin, which was sustained at week 6. In total, 123 and 164 nonserious adverse events occurred in the placebo and psilocybin arms, respectively. Findings support a future confirmatory trial. EudraCT no.: 2018-003573-97 .",
+      "url": "https://doi.org/10.1038/s41591-026-04541-0",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Rucker JJ",
+        "Mantingh T",
+        "Kerr-Gaffney J",
+        "Bird C",
+        "Chu P",
+        "Modlin NL",
+        "Campbell-Coker K",
+        "Hambleton S",
+        "Seath P",
+        "Hignett R",
+        "Fennema D",
+        "Hampsey E",
+        "Tsapekos D",
+        "Thomas RJ",
+        "Cattell J",
+        "Jafari H",
+        "Day C",
+        "Borissova A",
+        "Lloyd M",
+        "Boardman-Pretty T",
+        "Seynaeve M",
+        "Askari F",
+        "Creed M",
+        "Baxter L",
+        "Rifkin-Zybutz R",
+        "Butler M",
+        "Jelen LA",
+        "Carter B",
+        "Young AH"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-08-06",
+      "doi": "10.1038/s41591-026-04541-0",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42562964",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Childhood trauma and psychological outcomes following psychedelic use: a scoping review.",
+      "snippet": "Research examining psychological outcomes following psychedelic use has grown substantially, yet the role of childhood trauma in shaping these responses remains insufficiently understood. This scoping review mapped the literature examining childhood trauma in relation to post-psychedelic psychological outcomes. Thirty-four sources met inclusion criteria and investigated substances including psilocybin, ayahuasca, and MDMA across clinical, ceremonial, naturalistic, and guided non-clinical contexts. The evidence primarily relied on retrospective self-report, exhibited considerable heterogeneity ",
+      "full_text": "Research examining psychological outcomes following psychedelic use has grown substantially, yet the role of childhood trauma in shaping these responses remains insufficiently understood. This scoping review mapped the literature examining childhood trauma in relation to post-psychedelic psychological outcomes. Thirty-four sources met inclusion criteria and investigated substances including psilocybin, ayahuasca, and MDMA across clinical, ceremonial, naturalistic, and guided non-clinical contexts. The evidence primarily relied on retrospective self-report, exhibited considerable heterogeneity in study design and trauma operationalisation, and included minimal representation from non-Western or Indigenous contexts. Findings were heterogeneous: some sources reported reductions in trauma-related symptoms in maltreated populations, others found no association between childhood trauma exposure and psychological outcomes, and some identified increased vulnerability to post-acute psychedelic difficulties. Qualitative accounts frequently described resurfacing trauma-related memories accompanied by both psychological growth and distress. Prospective, trauma-informed, and culturally-inclusive research is needed to clarify risks and therapeutic potential for childhood trauma-exposed populations.",
+      "url": "https://doi.org/10.1038/s44184-026-00233-2",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Li L",
+        "Seath P",
+        "Modlin NL",
+        "Rucker J"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-07-30",
+      "doi": "10.1038/s44184-026-00233-2",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "43052407",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Psilocybin for treatment resistant depression in patients taking a concomitant SSRI medication",
+      "snippet": "Psilocybin is being investigated as a treatment in adults with treatment-resistant depression (TRD). Withdrawal from serotonergic antidepressant drugs is a common prerequisite for taking part in trials of psilocybin due to the possibility of ongoing antidepressant drugs altering the psychedelic effect. This phase II, exploratory, international, fixed-dose, open-label study explored the safety, tolerability, and efficacy of a synthetic form of psilocybin (investigational drug COMP360) adjunct to a selective serotonin reuptake inhibitor in participants with TRD. Participants received a single 25",
+      "full_text": "Psilocybin is being investigated as a treatment in adults with treatment-resistant depression (TRD). Withdrawal from serotonergic antidepressant drugs is a common prerequisite for taking part in trials of psilocybin due to the possibility of ongoing antidepressant drugs altering the psychedelic effect. This phase II, exploratory, international, fixed-dose, open-label study explored the safety, tolerability, and efficacy of a synthetic form of psilocybin (investigational drug COMP360) adjunct to a selective serotonin reuptake inhibitor in participants with TRD. Participants received a single 25 mg dose of psilocybin alongside psychological support and were followed-up for 3 weeks. The primary efficacy end point was change in the Montgomery-Åsberg Depression Rating Scale (MADRS) total score from Baseline at Week 3. Secondary end points were safety, including treatment-emergent adverse events (TEAEs), the proportion of responders and remitters at Week 3, and the change from Baseline to Week 3 in Clinical Global Impression-Severity (CGI-S) score. Nineteen participants were dosed and the mean Baseline MADRS total score was 31.7 (SD = 5.77). Twelve (63.2%) participants had a TEAE, most of which were mild and resolved on the day of onset. There were no serious TEAEs or indication of increased suicidal ideation or behavior. At Week 3, mean change from Baseline in MADRS total score was -14.9 (95% CI, -20.7 to -9.2), and -1.3 (SD = 1.29) in the CGI-S. Both response and remission were evident in 8 (42.1%) participants. Larger, comparator-controlled trials are necessary to understand if this paradigm can optimize treatment-outcome where antidepressant drug withdrawal would be problematic.",
+      "url": "https://openalex.org/W4384130479",
+      "_adapter": "openalex",
+      "authors": [
+        "Guy M. Goodwin",
+        "Megan Croal",
+        "David Feifel",
+        "John Richard Kelly",
+        "Lindsey Marwood",
+        "Sunil J. Mistry",
+        "Veronica O’Keane",
+        "Stephanie Knatz Peck",
+        "Hollie Simmons",
+        "Claudia Sisa",
+        "S. C. Stansfield",
+        "Joyce Tsai",
+        "Sam Williams",
+        "Ekaterina Malievskaia"
+      ],
+      "venue": "Neuropsychopharmacology",
+      "publication_date": "2023",
+      "doi": "10.1038/s41386-023-01648-7",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Single-Dose Psilocybin for a Treatment-Resistant Episode of Major Depression",
+      "snippet": "BACKGROUND: Psilocybin is being studied for use in treatment-resistant depression. METHODS: In this phase 2 double-blind trial, we randomly assigned adults with treatment-resistant depression to receive a single dose of a proprietary, synthetic formulation of psilocybin at a dose of 25 mg, 10 mg, or 1 mg (control), along with psychological support. The primary end point was the change from baseline to week 3 in the total score on the Montgomery-Åsberg Depression Rating Scale (MADRS; range, 0 to 60, with higher scores indicating more severe depression). Secondary end points included response at",
+      "full_text": "BACKGROUND: Psilocybin is being studied for use in treatment-resistant depression. METHODS: In this phase 2 double-blind trial, we randomly assigned adults with treatment-resistant depression to receive a single dose of a proprietary, synthetic formulation of psilocybin at a dose of 25 mg, 10 mg, or 1 mg (control), along with psychological support. The primary end point was the change from baseline to week 3 in the total score on the Montgomery-Åsberg Depression Rating Scale (MADRS; range, 0 to 60, with higher scores indicating more severe depression). Secondary end points included response at week 3 (≥50% decrease from baseline in the MADRS total score), remission at week 3 (MADRS total score ≤10), and sustained response at 12 weeks (meeting response criteria at week 3 and all subsequent visits). RESULTS: A total of 79 participants were in the 25-mg group, 75 in the 10-mg group, and 79 in the 1-mg group. The mean MADRS total score at baseline was 32 or 33 in each group. Least-squares mean changes from baseline to week 3 in the score were -12.0 for 25 mg, -7.9 for 10 mg, and -5.4 for 1 mg; the difference between the 25-mg group and 1-mg group was -6.6 (95% confidence interval [CI], -10.2 to -2.9; P<0.001) and between the 10-mg group and 1-mg group was -2.5 (95% CI, -6.2 to 1.2; P = 0.18). In the 25-mg group, the incidences of response and remission at 3 weeks, but not sustained response at 12 weeks, were generally supportive of the primary results. Adverse events occurred in 179 of 233 participants (77%) and included headache, nausea, and dizziness. Suicidal ideation or behavior or self-injury occurred in all dose groups. CONCLUSIONS: In this phase 2 trial involving participants with treatment-resistant depression, psilocybin at a single dose of 25 mg, but not 10 mg, reduced depression scores significantly more than a 1-mg dose over a period of 3 weeks but was associated with adverse effects. Larger and longer trials, including comparison with existing treatments, are required to determine the efficacy and safety of psilocybin for this disorder. (Funded by COMPASS Pathfinder; EudraCT number, 2017-003288-36; ClinicalTrials.gov number, NCT03775200.).",
+      "url": "https://openalex.org/W4308146982",
+      "_adapter": "openalex",
+      "authors": [
+        "Guy M. Goodwin",
+        "Scott T. Aaronson",
+        "Oscar Alvarez",
+        "Peter C. Arden",
+        "Annie Baker",
+        "James C. Bennett",
+        "Catherine Bird",
+        "Renske E. Blom",
+        "Christine Brennan",
+        "Donna Brusch",
+        "Lisa Burke",
+        "Kete Campbell‐Coker",
+        "Robin Lester Carhart-Harris",
+        "Joseph Cattell",
+        "Aster Daniel",
+        "Charles DeBattista",
+        "Boadie Waid Dunlop",
+        "Katherine Eisen",
+        "David Feifel",
+        "MacKenzie Forbes",
+        "Hannah M. Haumann",
+        "David J. Hellerstein",
+        "Astrid I. Hoppe",
+        "Muhammad Ishrat Husain",
+        "Luke A. Jelen",
+        "Jeanine Kamphuis",
+        "Julie Kawasaki",
+        "John Richard Kelly",
+        "Richard E. Key",
+        "Ronit Kishon",
+        "Stephanie Knatz Peck",
+        "Gemma Knight",
+        "Martijn H B Koolen",
+        "Melanie Lean",
+        "Rasmus Wentzer Licht",
+        "Jessica L. Maples‐Keller",
+        "Jan Mars",
+        "Lindsey Marwood",
+        "Martin C. McElhiney",
+        "Tammy L. Miller",
+        "Arvin L. Mirow",
+        "Sunil J. Mistry",
+        "Tanja Mletzko",
+        "Nadav Liam Modlin",
+        "René Ernst Nielsen",
+        "Elizabeth M. Nielson",
+        "S.R. Offerhaus",
+        "Veronica O’Keane",
+        "Tomáš Páleníček",
+        "David Printz",
+        "Marleen C. Rademaker",
+        "Aumer van Reemst",
+        "Frederick Reinholdt",
+        "Dimitris Repantis",
+        "James Rucker",
+        "Samuel Rudow",
+        "Simon Ruffell",
+        "Augustus John Rush",
+        "Robert A. Schoevers",
+        "Mathieu Seynaeve",
+        "Samantha Shao",
+        "Jair C. Soares",
+        "Metten Somers",
+        "S. C. Stansfield",
+        "Diane Sterling",
+        "Aaron Strockis",
+        "Joyce Tsai",
+        "Lucy Visser",
+        "Mourad Wahba",
+        "Samuel P. Williams",
+        "Allan Hunter Young",
+        "Paula Ywema",
+        "Sidney Zisook",
+        "Ekaterina Malievskaia"
+      ],
+      "venue": "New England Journal of Medicine",
+      "publication_date": "2022",
+      "doi": "10.1056/nejmoa2206443",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Psilocybin for treatment-resistant depression: fMRI-measured brain mechanisms",
+      "snippet": "Psilocybin with psychological support is showing promise as a treatment model in psychiatry but its therapeutic mechanisms are poorly understood. Here, cerebral blood flow (CBF) and blood oxygen-level dependent (BOLD) resting-state functional connectivity (RSFC) were measured with functional magnetic resonance imaging (fMRI) before and after treatment with psilocybin (serotonin agonist) for treatment-resistant depression (TRD). Quality pre and post treatment fMRI data were collected from 16 of 19 patients. Decreased depressive symptoms were observed in all 19 patients at 1-week post-treatment ",
+      "full_text": "Psilocybin with psychological support is showing promise as a treatment model in psychiatry but its therapeutic mechanisms are poorly understood. Here, cerebral blood flow (CBF) and blood oxygen-level dependent (BOLD) resting-state functional connectivity (RSFC) were measured with functional magnetic resonance imaging (fMRI) before and after treatment with psilocybin (serotonin agonist) for treatment-resistant depression (TRD). Quality pre and post treatment fMRI data were collected from 16 of 19 patients. Decreased depressive symptoms were observed in all 19 patients at 1-week post-treatment and 47% met criteria for response at 5 weeks. Whole-brain analyses revealed post-treatment decreases in CBF in the temporal cortex, including the amygdala. Decreased amygdala CBF correlated with reduced depressive symptoms. Focusing on a priori selected circuitry for RSFC analyses, increased RSFC was observed within the default-mode network (DMN) post-treatment. Increased ventromedial prefrontal cortex-bilateral inferior lateral parietal cortex RSFC was predictive of treatment response at 5-weeks, as was decreased parahippocampal-prefrontal cortex RSFC. These data fill an important knowledge gap regarding the post-treatment brain effects of psilocybin, and are the first in depressed patients. The post-treatment brain changes are different to previously observed acute effects of psilocybin and other 'psychedelics' yet were related to clinical outcomes. A 'reset' therapeutic mechanism is proposed.",
+      "url": "https://openalex.org/W2762746674",
+      "_adapter": "openalex",
+      "authors": [
+        "Robin Lester Carhart-Harris",
+        "Leor Roseman",
+        "Mark Bolstridge",
+        "Lysia Demetriou",
+        "Justine Nienke Pannekoek",
+        "Matthew B. Wall",
+        "Mark Tanner",
+        "Mendel Kaelen",
+        "John McGonigle",
+        "Kevin Murphy",
+        "Robert Leech",
+        "H. Valerie Curran",
+        "David John Nutt"
+      ],
+      "venue": "Scientific Reports",
+      "publication_date": "2017",
+      "doi": "10.1038/s41598-017-13282-7",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:43+0100"
+}

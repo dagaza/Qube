@@ -1,0 +1,224 @@
+{
+  "schema_version": 2,
+  "id": "web_howto_python_venv",
+  "path": "general_web",
+  "category": "how_to",
+  "description": "",
+  "query_raw": "@[tool:internet] how to create a python virtual environment on windows",
+  "query_clean": "how to create a python virtual environment on windows",
+  "retrieval_query": "how to create a python virtual environment on windows",
+  "standalone_question": "How do I create a Python virtual environment on Windows?",
+  "gold_subject": "Python virtual environment",
+  "gold_facet": "Windows setup",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:58:43+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "duckduckgo": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "duckduckgo": "how to create a python virtual environment on windows"
+    },
+    "standalone": {
+      "duckduckgo": "How do I create a Python virtual environment on Windows?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "How to Create a Python Virtual Environment (Step-by-Step Guide)",
+      "snippet": "Create a Virtual Environment Using venv To create a virtual environment, you can use the venv module, which is included in the Python standard library. Steps to Create a Virtual Environment 1. Open a Terminal or Command Prompt: Depending on your operating system, you can use the terminal (macOS/Linux) or Command Prompt (Windows). 2.",
+      "url": "https://www.geeksforgeeks.org/python/create-virtual-environment-using-venv-python/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Python venv: How To Create, Activate, Deactivate, And Delete",
+      "snippet": "Python virtual environments allow you to install Python packages in a location isolated from the rest of your system instead of installing them system-wide. Let's look at how to use Python venv's, short for Python virtual environments, also abbreviated as virtualenv. In this article, you will learn: The advantages of using virtual environments How to create a venv How to activate and ...",
+      "url": "https://python.land/virtual-environments/virtualenv",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "venv — Creation of virtual environments — Python 3.15.2 documentation",
+      "snippet": "The venv module supports creating lightweight \"virtual environments\", each with their own independent set of Python packages installed in their site directories. A virtual environment is created on top of an existing Python installation, known as the virtual environment's \"base\" Python, and by default is isolated from the packages in the base environment, so that only those ...",
+      "url": "https://docs.python.org/3/library/venv.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Python Virtual Environment - venv - W3Schools",
+      "snippet": "A virtual environment in Python is an isolated environment on your computer, where you can run and test your Python projects.",
+      "url": "https://www.w3schools.com/python/python_virtualenv.asp",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Creating Python Virtual Environment in Windows and Linux",
+      "snippet": "A Virtual Environment is a Python environment, that is an isolated working copy of Python that allows you to work on a specific project without affecting other projects So basically it is a tool that enables multiple side-by-side installations of Python, one for each project. Creating a Python virtual environment in Linux Step 1: Ensure Python and pip are installed On most Linux distributions ...",
+      "url": "https://www.geeksforgeeks.org/python/creating-python-virtual-environment-windows-linux/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How To Set Up a Python Virtual Environment on Windows 10",
+      "snippet": "Learn how to set up a Python virtual environment on Windows 10 easily. This tutorial walks you through the process step by step.",
+      "url": "https://www.liquidweb.com/blog/how-to-setup-a-python-virtual-environment-on-windows-10/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How can I create a virtual environment with Python 3?",
+      "snippet": "To create a virtual environment, go to your project's directory and run the following command. This will create a new virtual environment in a local folder named .venv: python3 -m venv .venv Activate a virtual environment source .venv/bin/activate To confirm the virtual environment is activated, check the location of your Python interpreter: which python To deactivate a virtual environment ...",
+      "url": "https://stackoverflow.com/questions/43069780/how-can-i-create-a-virtual-environment-with-python-3",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Python on Windows for beginners | Microsoft Learn",
+      "snippet": "Get your Python environment ready on Windows in minutes — install from the command line with winget or set it up manually. You'll need the following: Python - The current stable Python runtime (3.14 or later) Visual Studio Code - A lightweight, powerful code editor Python extension for Visual Studio Code - Adds Python language support, debugging, linting, and more",
+      "url": "https://learn.microsoft.com/en-us/windows/dev-environment/python",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Install packages in a virtual environment using pip and venv - Python ...",
+      "snippet": "Install package s in a virtual environment using pip and venv ¶ This guide discusses how to create and activate a virtual environment using the standard library's virtual environment tool venv and install package s.",
+      "url": "https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/?highlight=python%20package%20installation",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Install packages in a virtual environment using pip and venv - Python",
+      "snippet": "Create and Use Virtual Environments ¶ Create a new virtual environment ¶ venv (for Python 3) allows you to manage separate package installations for different projects. It creates a \"virtual\" isolated Python installation. When you switch projects, you can create a new virtual environment which is isolated from other virtual environments.",
+      "url": "https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Getting started - virtualenv",
+      "snippet": "What you learned ¶ In this tutorial, you learned how to: Create a virtual environment with virtualenv. Activate and deactivate virtual environments on different platforms. Install packages in isolation from your system Python. Save project dependencies with pip freeze. Reproduce environments using requirements.txt. Let editors find your environment through the .venv redirect file. Next steps ...",
+      "url": "https://virtualenv.pypa.io/en/latest/tutorial/getting-started.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ]
+}

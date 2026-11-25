@@ -1,0 +1,174 @@
+{
+  "schema": "qube.followup_subjects.v1",
+  "version": 1,
+  "description": "Plan S9 held-out follow-up set: does the retrieval text carry the conversation subject? Written 2026-11-24 before any resolver or LLM run on it. 'gold_subject' must appear in the web text (plural/hyphen-insensitive; any one of 'gold_any' also counts). 'must_not_anchor' cases are topic switches whose web text must NOT contain the prior subject.",
+  "cases": [
+    {
+      "id": "fs_statement_asthma",
+      "category": "statement_opener",
+      "prompt": "What usually triggers attacks in kids?",
+      "history": [
+        {"role": "user", "content": "My daughter was just diagnosed with asthma."},
+        {"role": "assistant", "content": "I'm sorry to hear that. Asthma is common in children and usually well controlled with treatment."}
+      ],
+      "gold_subject": "asthma"
+    },
+    {
+      "id": "fs_statement_go_backend",
+      "category": "statement_opener",
+      "prompt": "Is the garbage collector a problem for latency?",
+      "history": [
+        {"role": "user", "content": "We're rewriting our backend in Go."},
+        {"role": "assistant", "content": "Go is a good fit for network services thanks to goroutines and a simple deployment story."}
+      ],
+      "gold_subject": "Go"
+    },
+    {
+      "id": "fs_statement_fasting",
+      "category": "statement_opener",
+      "prompt": "Does it cause muscle loss?",
+      "history": [
+        {"role": "user", "content": "I've been reading about intermittent fasting."},
+        {"role": "assistant", "content": "Intermittent fasting alternates eating windows with fasting periods, such as 16:8."}
+      ],
+      "gold_subject": "intermittent fasting"
+    },
+    {
+      "id": "fs_statement_kubernetes",
+      "category": "statement_opener",
+      "prompt": "How do we cut the bill?",
+      "history": [
+        {"role": "user", "content": "Our team runs Kubernetes on AWS and the costs keep growing."},
+        {"role": "assistant", "content": "EKS costs usually come from node sizing, idle capacity and data transfer."}
+      ],
+      "gold_subject": "Kubernetes",
+      "gold_any": ["EKS", "AWS"]
+    },
+    {
+      "id": "fs_pronoun_ai_act",
+      "category": "pronoun",
+      "prompt": "When does it take effect?",
+      "history": [
+        {"role": "user", "content": "What is the EU AI Act?"},
+        {"role": "assistant", "content": "The EU AI Act is a European Union regulation that sets risk-based rules for artificial intelligence systems."}
+      ],
+      "gold_subject": "AI Act"
+    },
+    {
+      "id": "fs_pronoun_framework_ram",
+      "category": "pronoun",
+      "prompt": "Can I upgrade the RAM in it myself?",
+      "history": [
+        {"role": "user", "content": "I just bought a Framework Laptop 13."},
+        {"role": "assistant", "content": "Nice choice. The Framework Laptop 13 is designed to be repairable and modular."}
+      ],
+      "gold_subject": "Framework Laptop"
+    },
+    {
+      "id": "fs_facet_sourdough_temp",
+      "category": "facet_question",
+      "prompt": "What temperature should the kitchen be?",
+      "history": [
+        {"role": "user", "content": "How do I keep a sourdough starter alive?"},
+        {"role": "assistant", "content": "Feed it flour and water regularly and keep it somewhere warm."}
+      ],
+      "gold_subject": "sourdough starter",
+      "gold_any": ["sourdough"]
+    },
+    {
+      "id": "fs_ellipsis_comparison",
+      "category": "ellipsis",
+      "prompt": "And compared with Ireland?",
+      "history": [
+        {"role": "user", "content": "What is the corporate tax rate in Estonia?"},
+        {"role": "assistant", "content": "Estonia taxes distributed profits at 22%; retained profits are not taxed."}
+      ],
+      "gold_subject": "corporate tax rate",
+      "gold_any": ["corporate tax"]
+    },
+    {
+      "id": "fs_deictic_that_drug",
+      "category": "deictic",
+      "prompt": "Is that drug safe during pregnancy?",
+      "history": [
+        {"role": "user", "content": "My doctor prescribed sertraline for anxiety."},
+        {"role": "assistant", "content": "Sertraline is an SSRI commonly used for anxiety and depression."}
+      ],
+      "gold_subject": "sertraline"
+    },
+    {
+      "id": "fs_implicit_side_effects",
+      "category": "implicit",
+      "prompt": "What are the side effects?",
+      "history": [
+        {"role": "user", "content": "Tell me about metformin."},
+        {"role": "assistant", "content": "Metformin is a first-line medication for type 2 diabetes."}
+      ],
+      "gold_subject": "metformin"
+    },
+    {
+      "id": "fs_implicit_how_long",
+      "category": "implicit",
+      "prompt": "How long does the whole process take?",
+      "history": [
+        {"role": "user", "content": "I want to apply for a UK Skilled Worker visa."},
+        {"role": "assistant", "content": "You need a job offer from a licensed sponsor and a certificate of sponsorship."}
+      ],
+      "gold_subject": "Skilled Worker visa"
+    },
+    {
+      "id": "fs_affirmation_rust",
+      "category": "affirmation",
+      "prompt": "Sure, show me.",
+      "history": [
+        {"role": "user", "content": "What is the borrow checker in Rust?"},
+        {"role": "assistant", "content": "The borrow checker enforces Rust's ownership rules at compile time. Would you like an example of a borrow error?"}
+      ],
+      "gold_subject": "borrow checker",
+      "gold_any": ["Rust"]
+    },
+    {
+      "id": "fs_multi_hop_capital",
+      "category": "multi_hop",
+      "prompt": "What's the weather like there in April?",
+      "history": [
+        {"role": "user", "content": "Which city is the capital of Australia?"},
+        {"role": "assistant", "content": "Canberra is the capital of Australia."}
+      ],
+      "gold_subject": "Canberra"
+    },
+    {
+      "id": "fs_switch_volcano",
+      "category": "topic_switch",
+      "prompt": "How do volcanoes form?",
+      "history": [
+        {"role": "user", "content": "I'm learning Python decorators."},
+        {"role": "assistant", "content": "Decorators wrap functions to add behavior."}
+      ],
+      "gold_subject": "volcanoes",
+      "must_not_anchor": ["decorator"]
+    },
+    {
+      "id": "fs_switch_new_question",
+      "category": "topic_switch",
+      "prompt": "Who wrote Pride and Prejudice?",
+      "history": [
+        {"role": "user", "content": "We've been planning a trip to Kyoto."},
+        {"role": "assistant", "content": "Kyoto is famous for its temples and autumn colours."}
+      ],
+      "gold_subject": "Pride and Prejudice",
+      "must_not_anchor": ["Kyoto"]
+    },
+    {
+      "id": "fs_switch_explicit",
+      "category": "topic_switch",
+      "prompt": "Different question: what is the half-life of carbon-14?",
+      "history": [
+        {"role": "user", "content": "What is the EU AI Act?"},
+        {"role": "assistant", "content": "The EU AI Act is a European Union regulation for AI systems."}
+      ],
+      "gold_subject": "carbon-14",
+      "must_not_anchor": ["AI Act"]
+    }
+  ]
+}

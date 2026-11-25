@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 
 from core.app_settings import (
     get_advanced_embedding_unlocked,
+    get_knowledge_reranker_enabled,
     get_library_precision_ingest_enabled,
     get_library_precision_rerank_enabled,
 )
@@ -116,6 +117,44 @@ def build_section(host, *, is_dark: bool) -> QWidget:
             button_text="Download all search presets",
         ),
     )
+
+    _reranker_tip = (
+        "Scores web and knowledge sources against your question with a small local "
+        "cross-encoder (~87 MB, Xenova/ms-marco-MiniLM-L-6-v2) so off-topic sources "
+        "can be dropped. Runs on your device; nothing leaves it. Turning this off "
+        "uses the keyword/embedding ranking only."
+    )
+    host.knowledge_reranker_toggle = PrestigeToggle()
+    host.knowledge_reranker_label = QLabel("Relevance reranker for knowledge sources")
+    host.knowledge_reranker_label.setWordWrap(True)
+    host.knowledge_reranker_toggle.setToolTip(_reranker_tip)
+    host.knowledge_reranker_label.setToolTip(_reranker_tip)
+    reranker_row = QWidget()
+    reranker_row_layout = QHBoxLayout(reranker_row)
+    reranker_row_layout.setContentsMargins(0, 0, 0, 0)
+    reranker_row_layout.addWidget(
+        host.knowledge_reranker_toggle, alignment=Qt.AlignmentFlag.AlignLeft
+    )
+    reranker_row_layout.addWidget(host.knowledge_reranker_label, stretch=1)
+    host.knowledge_reranker_toggle.blockSignals(True)
+    host.knowledge_reranker_toggle.setChecked(get_knowledge_reranker_enabled())
+    host.knowledge_reranker_toggle.blockSignals(False)
+    host.knowledge_reranker_toggle.toggled.connect(host._on_knowledge_reranker_toggled)
+    add_settings_full_width_row(search_form, reranker_row)
+    add_settings_full_width_row(search_form, make_bootstrap_download_row(
+            host,
+            row_attr="reranker_bootstrap_download_row",
+            label_attr="reranker_bootstrap_missing_lbl",
+            button_attr="download_reranker_btn",
+            handler_name="_download_relevance_reranker",
+            label_text=(
+                "The relevance reranker is not downloaded yet (~87 MB, ONNX under "
+                "~/.qube/models/search/reranker/). Knowledge answers still work and "
+                "use the standard ranking until it is ready."
+            ),
+            button_text="Download relevance reranker",
+        ),
+    )
     search_card_layout.addWidget(search_form_host)
     layout.addWidget(search_card)
 
@@ -182,7 +221,7 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     host.retrieval_profile_selector.setMenu(QMenu(host.retrieval_profile_selector))
     host.retrieval_profile_selector.setToolTip(
         "How hard Qube searches on Library, Live Sources, presets, and web turns. "
-        "On web: Fast uses search snippets only; Balanced may open one page; "
+        "On web: Fast uses search snippets only; Balanced may open up to two pages; "
         "Thorough up to three. Not the same as Search quality (embedding presets) "
         "or My knowledge presets."
     )

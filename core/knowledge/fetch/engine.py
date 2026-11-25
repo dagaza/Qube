@@ -45,6 +45,7 @@ def fetch_url(
             url,
             egress_policy=egress_policy,
             max_response_bytes=max_fetch_bytes,
+            truncate_oversize=True,
             timeout=timeout,
             headers=request_headers,
         )
@@ -165,7 +166,10 @@ def fetch_html_string(
 
 
 def _response_metadata(resp: requests.Response) -> dict[str, Any]:
-    return {
+    meta: dict[str, Any] = {
         "reason": resp.reason,
         "encoding": resp.encoding,
     }
+    if getattr(resp, "qube_truncated", False) is True:
+        meta["truncated"] = True
+    return meta

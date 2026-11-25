@@ -33,6 +33,8 @@ KEY_SIDECAR_SOURCE_DIGEST_MIN_CHARS = "qube.sidecar.source_digest_min_chars"
 KEY_SIDECAR_MIN_REWRITE_CONFIDENCE = "qube.sidecar.min_rewrite_confidence"
 KEY_SIDECAR_FOREGROUND_TIMEOUT_MS = "qube.sidecar.foreground_timeout_ms"
 KEY_SIDECAR_INGEST_BLURB = "qube.sidecar.ingest_blurb_enabled"
+KEY_SIDECAR_QUERY_SLOTS_SHADOW = "qube.sidecar.query_slots_shadow_enabled"
+KEY_SIDECAR_QUERY_SLOTS_TIMEOUT_MS = "qube.sidecar.query_slots_timeout_ms"
 KEY_SIDECAR_MODEL_PATH = "qube.sidecar.model_path"
 KEY_SIDECAR_CHAT_FORMAT = "qube.sidecar.chat_format"
 KEY_SIDECAR_TITLE_INFERENCE_PROFILE = "qube.sidecar.title_inference_profile"
@@ -70,6 +72,9 @@ KEY_RXNORM_ENTITY_LOOKUP_ENABLED = "qube.knowledge.rxnorm_entity_lookup_enabled"
 KEY_DEEP_RESEARCH_ENABLED = "qube.knowledge.deep_research_enabled"  # legacy; ignored
 KEY_DEEP_RESEARCH_PROFILE = "qube.knowledge.deep_research_profile"
 KEY_KNOWLEDGE_SOURCE_PREFERENCES = "qube.knowledge.source_preferences"
+KEY_KNOWLEDGE_RERANKER_ENABLED = "qube.knowledge.reranker.enabled"
+# Plan S11: post-stream citation grounding telemetry (log-only; never edits answers).
+KEY_KNOWLEDGE_CITATION_GROUNDING_ENABLED = "qube.knowledge.citation_grounding_telemetry_enabled"
 KEY_KNOWLEDGE_PROVIDER_CREDENTIALS = "qube.knowledge.provider_credentials"
 KEY_DEFAULT_KNOWLEDGE_SERVICE = "qube.knowledge.default_service"
 KEY_SKILLS_ENABLED = "qube.skills.enabled"
@@ -586,6 +591,33 @@ def set_knowledge_provider_credentials(credentials: dict[str, dict[str, str]]) -
     )
 
 
+def get_knowledge_reranker_enabled() -> bool:
+    """Cross-encoder relevance reranking for knowledge retrieval (default on).
+
+    Effective only when the reranker model is on disk; see
+    ``core.knowledge.ranking.rerank.reranker_available``.
+    """
+    return bool(_store().get(KEY_KNOWLEDGE_RERANKER_ENABLED, True))
+
+
+def set_knowledge_reranker_enabled(enabled: bool) -> None:
+    _store().set(KEY_KNOWLEDGE_RERANKER_ENABLED, bool(enabled))
+
+
+def get_citation_grounding_telemetry_enabled() -> bool:
+    """Score cited sentences against their sources after each WEB turn and log it (S11).
+
+    Telemetry only: the answer is never changed. Needs the reranker (default on).
+    """
+    return get_knowledge_reranker_enabled() and bool(
+        _store().get(KEY_KNOWLEDGE_CITATION_GROUNDING_ENABLED, True)
+    )
+
+
+def set_citation_grounding_telemetry_enabled(enabled: bool) -> None:
+    _store().set(KEY_KNOWLEDGE_CITATION_GROUNDING_ENABLED, bool(enabled))
+
+
 def get_default_knowledge_service() -> str:
     """Default v2 knowledge service when no composer tool is attached."""
     from core.knowledge.types import SERVICE_GENERAL_WEB, SERVICE_SCIENTIFIC_EVIDENCE, SERVICE_TRUSTED_KNOWLEDGE
@@ -686,9 +718,42 @@ def set_sidecar_enabled(enabled: bool) -> None:
 
 
 def get_sidecar_query_rewrite_enabled() -> bool:
+    """Assistive sidecar rewrite of follow-up memory / Library queries.
+
+    Off by default (S9 audit, D10): on the bundled Qwen3 sidecar it never finished
+    inside the foreground timeout (0/21 measured), so every follow-up turn waited
+    the full timeout for nothing. Set ``qube.sidecar.query_rewrite_enabled`` to
+    true to opt back in.
+    """
     return get_sidecar_enabled() and bool(
-        _store().get(KEY_SIDECAR_QUERY_REWRITE, True)
+        _store().get(KEY_SIDECAR_QUERY_REWRITE, False)
     )
+
+
+# Plan S9: shadow SUBJECT/FACET slot extraction runs off the turn thread, so the
+# timeout bounds only how long the shadow waits, never the turn. Default from the
+# S9 measurement on the bundled Qwen3-1.7B at the app's thread settings.
+DEFAULT_SIDECAR_QUERY_SLOTS_TIMEOUT_MS = 8000
+
+
+def get_sidecar_query_slots_shadow_enabled() -> bool:
+    """Shadow LLM slot extraction for follow-ups S6 leaves unresolved (log-only)."""
+    return get_sidecar_enabled() and bool(
+        _store().get(KEY_SIDECAR_QUERY_SLOTS_SHADOW, True)
+    )
+
+
+def get_sidecar_query_slots_timeout_ms() -> int:
+    try:
+        v = int(
+            _store().get(
+                KEY_SIDECAR_QUERY_SLOTS_TIMEOUT_MS,
+                DEFAULT_SIDECAR_QUERY_SLOTS_TIMEOUT_MS,
+            )
+        )
+    except (TypeError, ValueError):
+        v = DEFAULT_SIDECAR_QUERY_SLOTS_TIMEOUT_MS
+    return max(1000, min(30000, v))
 
 
 def get_sidecar_source_digest_enabled() -> bool:

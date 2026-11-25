@@ -1,7 +1,9 @@
 """Deterministic query planning for scientific_evidence (Stage 1).
 
-Maps conversational @evidence / @science prompts to adapter-oriented keyword queries
-while leaving semantic_query unchanged for OpenAlex ranking/embeddings.
+Maps conversational @evidence / @science prompts to adapter-oriented keyword queries.
+semantic_query (OpenAlex search, reranker question) keeps the user's phrasing minus
+request frames ("Yes, please tell me …", "… for example"; plan S5) — the
+scientific-specific prefixes below apply to the keyword query only.
 
 The scientific service spans all scholarly disciplines (medicine, CS, physics,
 economics, etc.). Medical entity keyword extraction here is a **medical discipline
@@ -20,6 +22,7 @@ from core.knowledge.entities.activators.biomedical import BIOMEDICAL_ACTIVATOR
 from core.knowledge.entities.conditions import extract_condition_entities
 from core.knowledge.entities.drug_classes import extract_drug_entities
 from core.knowledge.entities.trials import extract_trial_entities
+from core.retrieval_query_cleanup import strip_request_frames
 
 _CONVERSATIONAL_PREFIXES: tuple[re.Pattern[str], ...] = (
     re.compile(
@@ -49,7 +52,7 @@ class ScientificQueryPlan:
 
 
 def _strip_conversational_phrasing(text: str) -> str:
-    q = _TRAILING_FILLER.sub("", (text or "").strip())
+    q = _TRAILING_FILLER.sub("", strip_request_frames(text))
     for pattern in _CONVERSATIONAL_PREFIXES:
         q = pattern.sub("", q).strip()
     q = re.sub(r"^\s*(?:the\s+)", "", q, flags=re.IGNORECASE).strip()
@@ -91,7 +94,7 @@ def plan_scientific_query(
 ) -> ScientificQueryPlan:
     """Produce adapter-oriented queries for scientific_evidence retrieval."""
     raw = sanitize_api_query(query)
-    semantic = sanitize_api_query(semantic_query or query)
+    semantic = sanitize_api_query(strip_request_frames(semantic_query or query))
     entity_keywords = _extract_entity_keyword_labels(raw)
     stripped = _strip_conversational_phrasing(raw)
     keyword = _build_keyword_query(

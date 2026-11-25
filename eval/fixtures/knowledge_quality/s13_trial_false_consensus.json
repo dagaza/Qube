@@ -1,0 +1,592 @@
+{
+  "schema_version": 2,
+  "id": "s13_trial_false_consensus",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: trial_grounding false trigger: the word 'consensus' matches the CONSENSUS trial.",
+  "query_raw": "@[tool:evidence] What is the scientific consensus on the safety of glyphosate?",
+  "query_clean": "What is the scientific consensus on the safety of glyphosate?",
+  "retrieval_query": "What is the scientific consensus on the safety of glyphosate?",
+  "standalone_question": "What is the scientific consensus on the safety of glyphosate?",
+  "gold_subject": "glyphosate safety",
+  "gold_facet": "scientific consensus",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:09:18+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "pubmed": 3,
+    "nice": 3,
+    "cdc": 3,
+    "who": 3,
+    "clinicaltrials_gov": 3,
+    "openfda": 3,
+    "europe_pmc": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "pubmed": "CONSENSUS",
+      "nice": "What is the scientific consensus on the safety of glyphosate",
+      "cdc": "What is the scientific consensus on the safety of glyphosate",
+      "who": "What is the scientific consensus on the safety of glyphosate",
+      "clinicaltrials_gov": "What is the scientific consensus on the safety of glyphosate",
+      "openfda": "What is the scientific consensus on the safety of glyphosate",
+      "crossref": "What is the scientific consensus on the safety of glyphosate",
+      "arxiv": "CONSENSUS",
+      "openalex": "What is the scientific consensus on the safety of glyphosate",
+      "europe_pmc": "What is the scientific consensus on the safety of glyphosate"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "Early detection of lung cancer: The past, present, and future.",
+      "snippet": "Lung cancer remains the leading cause of cancer-related deaths in Canada, primarily due to late-stage diagnoses. While the 5-year survival rate is 69%-82% for stage I disease, it drops sharply to 21%-44% for stage III, and 7%-18% for stage IV. To address this public health crisis, this review examines the evolution and implementation of Canadian lung cancer screening programs. Landmark clinical trials, including the National Lung Screening Trial (NLST) and the Dutch-Belgian lung cancer screening trial (Nederlands-Leuvens Longkanker Screenings Onderzoek [NELSON]) have unequivocally demonstrated",
+      "full_text": "Lung cancer remains the leading cause of cancer-related deaths in Canada, primarily due to late-stage diagnoses. While the 5-year survival rate is 69%-82% for stage I disease, it drops sharply to 21%-44% for stage III, and 7%-18% for stage IV. To address this public health crisis, this review examines the evolution and implementation of Canadian lung cancer screening programs. Landmark clinical trials, including the National Lung Screening Trial (NLST) and the Dutch-Belgian lung cancer screening trial (Nederlands-Leuvens Longkanker Screenings Onderzoek [NELSON]) have unequivocally demonstrated that screening with low-dose computed tomography (LDCT) significantly reduces mortality. Presently, all 10 Canadian provinces are advancing organized screening programs utilizing the PLCO m2012 risk prediction model. However, significant systemic gaps persist. Current eligibility criteria rely heavily on smoking history, inadvertently excluding individuals who have never smoked-a demographic accounting for nearly one-quarter of all lung cancer cases. This exclusion disproportionately affects women of South and East Asian descent. Furthermore, geographic barriers limit access for isolated rural populations, and current screening guidelines lack consensus regarding survivors of non-pulmonary primary cancers. To mitigate these limitations, this review explores emerging early detection modalities, including the systematic management of incidental pulmonary nodules, breathomics, and artificial intelligence. Finally, it emphasizes the pivotal role of oncology nurses in patient advocacy, radon education, and tobacco cessation to maximize screening efficacy and ensure equitable access for all Canadians. © 2026 Canadian Association of Nurses in Oncology (CANO).",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43075576/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Leung, Bonnie",
+        "Johnston, Sylvia",
+        "Myers, Renelle",
+        "Lam, Stephen"
+      ],
+      "venue": "Canadian oncology nursing journal = Revue canadienne de nursing oncologique",
+      "publication_date": "2026",
+      "doi": "10.5737/23688076365808",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43075576",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Chronic traumatic encephalopathy: neurodegenerative disease or scientific misadventure of the 21",
+      "snippet": "Chronic traumatic encephalopathy theory of the 21 st century suggests that repetitive impacts to the head cause precipitates of cortical tau, which then become the substrate for mental health problems and the nidus for a spreading tauopathy. Each of these lacks empirical scientific support, but for complex reasons the lay public and much of the neuroscience community now favor the pathogenic sequence: sport initiates an insidious neurobehavioral syndrome some years after retirement, which proceeds inexorably to degenerative dementia. A close look at the literature, however, discloses pervasive",
+      "full_text": "Chronic traumatic encephalopathy theory of the 21 st century suggests that repetitive impacts to the head cause precipitates of cortical tau, which then become the substrate for mental health problems and the nidus for a spreading tauopathy. Each of these lacks empirical scientific support, but for complex reasons the lay public and much of the neuroscience community now favor the pathogenic sequence: sport initiates an insidious neurobehavioral syndrome some years after retirement, which proceeds inexorably to degenerative dementia. A close look at the literature, however, discloses pervasive misinterpretation and over-interpretation of case material, unwieldy consensus articles, clinical disease claims based on circular logic, and misrepresentation of classical literature, such that the narrative as a whole is tantamount to science fiction insofar as a clinical meaning is concerned. Continued challenge from the neuropathology community and attention to scientific philosophy are needed, both to preserve the integrity of the neuropathology discipline and to avoid iatrogenic effects on the health of society. © 2026 The author(s).",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43075428/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Castellani, Rudy J"
+      ],
+      "venue": "Free neuropathology",
+      "publication_date": "2026",
+      "doi": "10.17879/freeneuropathology-2026-10250",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43075428",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Toward a vascular mitochondrial clock of biological aging.",
+      "snippet": "Biological aging is asynchronous across organs, yet the mechanisms that determine why some tissues deteriorate earlier or faster remain unresolved. The vasculature is positioned to influence these trajectories because it integrates tissue perfusion with barrier, angiocrine, immune and regenerative functions. In this article, we propose vascular mitochondrial age (VMA) as a multidimensional state reflecting the capacity of mitochondrial populations within vascular cells to maintain bioenergetic competence, redox homeostasis, genomic stability, network organization, quality control and adaptive ",
+      "full_text": "Biological aging is asynchronous across organs, yet the mechanisms that determine why some tissues deteriorate earlier or faster remain unresolved. The vasculature is positioned to influence these trajectories because it integrates tissue perfusion with barrier, angiocrine, immune and regenerative functions. In this article, we propose vascular mitochondrial age (VMA) as a multidimensional state reflecting the capacity of mitochondrial populations within vascular cells to maintain bioenergetic competence, redox homeostasis, genomic stability, network organization, quality control and adaptive resilience over time. We evaluate the vascular mitochondrial pace-setter hypothesis, whereby deterioration of VMA could accelerate tissue aging by limiting vascular support and adaptive responses. This conceptual framework reflects the authors' interpretation of published evidence rather than an established scientific consensus. Current evidence establishes vascular influence on multi-organ aging more convincingly than mitochondrial initiation: vascular manipulation can modify age-related organ phenotypes and lifespan, whereas endothelial mitochondrial perturbations alter vascular and tissue function without demonstrating modification of a validated VMA state. We therefore distinguish accumulated mitochondrial damage from loss of adaptive competence and emphasize that VMA is likely to vary across vascular beds and cell types. No validated vascular mitochondrial clock currently exists. We define criteria for developing one, requiring integration of mitochondrial genomic, physiological, redox-metabolic, architectural and quality-control features while preserving vascular identity and remaining independently anchored to vascular function and prospective outcomes. We further distinguish functional rescue, mitochondrial rescue and vascular mitochondrial rejuvenation. The decisive tests are whether VMA can be measured reproducibly, whether it precedes and predicts downstream decline, and whether selective modification of VMA causally changes vascular, organ or organismal aging trajectories. © 2026 Bautista and López-Cortés.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43075336/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Bautista, Jhommara",
+        "López-Cortés, Andrés"
+      ],
+      "venue": "Frontiers in cardiovascular medicine",
+      "publication_date": "2026",
+      "doi": "10.3389/fcvm.2026.1974943",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "43075336",
+      "publication_types": [
+        "Journal Article",
+        "Review"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "EnergizeCO Small Business Resiliency Index (SBRI) 2nd Ed.",
+      "snippet": "A resilience survey instrument was created by Energize Colorado that assessed the social and operational performance of small businesses, based on key measures of business health and success found in the scientific literature. The survey was sent electronically to approximately 14,000 small business owners from Energize Colorado’s database. Data analysis included descriptive statistics and statistical tests measuring the correlation between the SBRI, demographics, and overall business performance, in order to understand predictors of small business resilience.",
+      "full_text": "A resilience survey instrument was created by Energize Colorado that assessed the social and operational performance of small businesses, based on key measures of business health and success found in the scientific literature. The survey was sent electronically to approximately 14,000 small business owners from Energize Colorado’s database. Data analysis included descriptive statistics and statistical tests measuring the correlation between the SBRI, demographics, and overall business performance, in order to understand predictors of small business resilience.",
+      "url": "https://data.cdc.gov/d/5b9u-fuzs",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-11-24",
+      "document_type": "government_publication",
+      "dataset_id": "5b9u-fuzs",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Bulk Storage Facilities Map",
+      "snippet": "The dataset shows status information for:\r\n•\tChemical Bulk Storage (CBS) Facilities pursuant to the Hazardous Substance Bulk Storage Law, Article 40 of ECL; and 6 NYCRR 596-599.\r\n•\tMajor Oil Storage Facilities (MOSF) pursuant to Article 12 of the Navigation Law and 6 NYCRR Part 610\r\n•\tPetroleum Bulk Storage (PBS) Facilities registered pursuant to title 10 of Article 17 and 6 NYCRR Part 613.\r\n\r\nInformation may include: Program Number; Program Type; Site Type Name; Program Facility Name; Address; Locality; County; NYSDEC Region; Tank Number; Tank Location; Tank Status; Install Date; Capacity in ",
+      "full_text": "The dataset shows status information for:\r\n•\tChemical Bulk Storage (CBS) Facilities pursuant to the Hazardous Substance Bulk Storage Law, Article 40 of ECL; and 6 NYCRR 596-599.\r\n•\tMajor Oil Storage Facilities (MOSF) pursuant to Article 12 of the Navigation Law and 6 NYCRR Part 610\r\n•\tPetroleum Bulk Storage (PBS) Facilities registered pursuant to title 10 of Article 17 and 6 NYCRR Part 613.\r\n\r\nInformation may include: Program Number; Program Type; Site Type Name; Program Facility Name; Address; Locality; County; NYSDEC Region; Tank Number; Tank Location; Tank Status; Install Date; Capacity in Gallons; Tank Type; Close Date; Material Name (of substance in tank); Percent (of material in tank - if hazardous substance - CBS tanks only); Expiration Date; (of license or registration); Site Status Name; UTMX and UTMY location coordinates.",
+      "url": "https://data.cdc.gov/d/8vxz-p7nm",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-11-24",
+      "document_type": "government_publication",
+      "dataset_id": "8vxz-p7nm",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Bulk Storage Facilities in New York State",
+      "snippet": "The dataset shows status information for:\r\n•\tChemical Bulk Storage (CBS) Facilities pursuant to the Hazardous Substance Bulk Storage Law, Article 40 of ECL; and 6 NYCRR 596-599.\r\n•\tMajor Oil Storage Facilities (MOSF) pursuant to Article 12 of the Navigation Law and 6 NYCRR Part 610\r\n•\tPetroleum Bulk Storage (PBS) Facilities registered pursuant to title 10 of Article 17 and 6 NYCRR Part 613.\r\n\r\nInformation may include: Program Number; Program Type; Site Type Name; Program Facility Name; Address; Locality; County; NYSDEC Region; Tank Number; Tank Location; Tank Status; Install Date; Capacity in ",
+      "full_text": "The dataset shows status information for:\r\n•\tChemical Bulk Storage (CBS) Facilities pursuant to the Hazardous Substance Bulk Storage Law, Article 40 of ECL; and 6 NYCRR 596-599.\r\n•\tMajor Oil Storage Facilities (MOSF) pursuant to Article 12 of the Navigation Law and 6 NYCRR Part 610\r\n•\tPetroleum Bulk Storage (PBS) Facilities registered pursuant to title 10 of Article 17 and 6 NYCRR Part 613.\r\n\r\nInformation may include: Program Number; Program Type; Site Type Name; Program Facility Name; Address; Locality; County; NYSDEC Region; Tank Number; Tank Location; Tank Status; Install Date; Capacity in Gallons; Tank Type; Close Date; Material Name (of substance in tank); Percent (of material in tank - if hazardous substance - CBS tanks only); Expiration Date; (of license or registration); Site Status Name; UTMX and UTMY location coordinates.",
+      "url": "https://data.cdc.gov/d/pteg-c78n",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-11-24",
+      "document_type": "government_publication",
+      "dataset_id": "pteg-c78n",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Scientific Consensus &amp; the Counterfactual",
+      "snippet": "The Scientific Consensus &amp; the Counterfactual",
+      "full_text": null,
+      "url": "https://doi.org/10.1215/9781478024033-005",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Glyphosate and the Swirl",
+      "publication_date": "2022",
+      "doi": "10.1215/9781478024033-005",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "5 The Scientific Consensus &amp; the Counterfactual",
+      "snippet": "5 The Scientific Consensus &amp; the Counterfactual",
+      "full_text": null,
+      "url": "https://doi.org/10.1515/9781478024033-006",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Glyphosate and the Swirl",
+      "publication_date": "2022",
+      "doi": "10.1515/9781478024033-006",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What are the serious safety concerns of stimulant use?",
+      "snippet": "What are the serious safety concerns of stimulant use?",
+      "full_text": null,
+      "url": "https://doi.org/10.1142/9789811253232_0013",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "ADHD is Not an Illness and Ritalin is Not a Cure",
+      "publication_date": "2022",
+      "doi": "10.1142/9789811253232_0013",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "EDCHO: High Order Exact Dynamic Consensus",
+      "snippet": "This article addresses the problem of average consensus in a multi-agent system when the desired consensus quantity is a time varying signal. Although this problem has been addressed in existing literature by linear schemes, only bounded steady-state errors have been achieved. Other approaches have used first order sliding modes to achieve zero steady-state error, but suffer from the chattering effect. In this work, we propose a new exact dynamic consensus algorithm which leverages high order sliding modes, in the form of a distributed differentiator to achieve zero steady-state error of the a",
+      "full_text": "This article addresses the problem of average consensus in a multi-agent system when the desired consensus quantity is a time varying signal. Although this problem has been addressed in existing literature by linear schemes, only bounded steady-state errors have been achieved. Other approaches have used first order sliding modes to achieve zero steady-state error, but suffer from the chattering effect. In this work, we propose a new exact dynamic consensus algorithm which leverages high order sliding modes, in the form of a distributed differentiator to achieve zero steady-state error of the average of time varying reference signals in a group of agents. Moreover, our proposal is also able to achieve consensus to high order derivatives of the average signal, if desired. An in depth formal study on the stability and convergence for EDCHO is provided for undirected connected graphs. Finally, the effectiveness and advantages of our proposal are shown with concrete simulation scenarios.",
+      "url": "https://arxiv.org/abs/2202.03012v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Rodrigo Aldana-López",
+        "Rosario Aragüés",
+        "Carlos Sagüés"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-02-07",
+      "doi": "10.1016/j.automatica.2021.109750",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2202.03012v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "REDCHO: Robust Exact Dynamic Consensus of High Order",
+      "snippet": "This article addresses the problem of average consensus in a multi-agent system when the desired consensus quantity is a time varying signal. Recently, the EDCHO protocol leveraged high order sliding modes to achieve exact consensus under a constrained set of initial conditions, limiting its applicability to static networks. In this work, we propose REDCHO, an extension of the previous protocol which is robust to mismatch in the initial conditions, making it suitable to use cases in which connection and disconnection of agents is possible. The convergence properties of the protocol are formall",
+      "full_text": "This article addresses the problem of average consensus in a multi-agent system when the desired consensus quantity is a time varying signal. Recently, the EDCHO protocol leveraged high order sliding modes to achieve exact consensus under a constrained set of initial conditions, limiting its applicability to static networks. In this work, we propose REDCHO, an extension of the previous protocol which is robust to mismatch in the initial conditions, making it suitable to use cases in which connection and disconnection of agents is possible. The convergence properties of the protocol are formally explored. Finally, the effectiveness and advantages of our proposal are shown with concrete simulation examples showing the benefits of REDCHO against other methods in the literature.",
+      "url": "https://arxiv.org/abs/2204.12344v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Rodrigo Aldana-López",
+        "Rosario Aragüés",
+        "Carlos Sagüés"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-04-26",
+      "doi": "10.1016/j.automatica.2022.110320",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2204.12344v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Pulsar Consensus",
+      "snippet": "In this paper, we informally introduce the Pulsar proof of stake consensus paper and discuss the relevant design decisions and considerations. The Pulsar protocol we propose is designed to facilitate the creation of a proof of stake sidechain for a proof of work blockchain. We present an overview of a novel composable density-based chain selection rule for proof of stake systems which can be seen as a superset of some standard existing longest chain rules for proof of stake protocols. We discuss the Pulsar protocol in comparison to existing proof of stake protocols and define its benefits over",
+      "full_text": "In this paper, we informally introduce the Pulsar proof of stake consensus paper and discuss the relevant design decisions and considerations. The Pulsar protocol we propose is designed to facilitate the creation of a proof of stake sidechain for a proof of work blockchain. We present an overview of a novel composable density-based chain selection rule for proof of stake systems which can be seen as a superset of some standard existing longest chain rules for proof of stake protocols. We discuss the Pulsar protocol in comparison to existing proof of stake protocols and define its benefits over existing designs while defining the limitations of the work. Pulsar is currently implemented in the Mintlayer proof of stake Bitcoin sidechain.",
+      "url": "https://arxiv.org/abs/2411.14245v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Samer Afach",
+        "Benjamin Marsh",
+        "Enrico Rubboli"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-11-21",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2411.14245v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "No scientific consensus on GMO safety",
+      "snippet": "A broad community of independent scientific researchers and scholars challenges recent claims of a consensus over the safety of genetically modified organisms (GMOs). In the following joint statement, the claimed consensus is shown to be an artificial construct that has been falsely perpetuated through diverse fora. Irrespective of contradictory evidence in the refereed literature, as documented below, the claim that there is now a consensus on the safety of GMOs continues to be widely and often uncritically aired. For decades, the safety of GMOs has been a hotly controversial topic that has b",
+      "full_text": "A broad community of independent scientific researchers and scholars challenges recent claims of a consensus over the safety of genetically modified organisms (GMOs). In the following joint statement, the claimed consensus is shown to be an artificial construct that has been falsely perpetuated through diverse fora. Irrespective of contradictory evidence in the refereed literature, as documented below, the claim that there is now a consensus on the safety of GMOs continues to be widely and often uncritically aired. For decades, the safety of GMOs has been a hotly controversial topic that has been much debated around the world. Published results are contradictory, in part due to the range of different research methods employed, an inadequacy of available procedures, and differences in the analysis and interpretation of data. Such a lack of consensus on safety is also evidenced by the agreement of policymakers from over 160 countries - in the UN’s Cartagena Biosafety Protocol and the Guidelines of the Codex Alimentarius - to authorize careful case-by-case assessment of each GMO by national authorities to determine whether the particular construct satisfies the national criteria for ‘safe’. Rigorous assessment of GMO safety has been hampered by the lack of funding independent of proprietary interests. Research for the public good has been further constrained by property rights issues, and by denial of access to research material for researchers unwilling to sign contractual agreements with the developers, which confer unacceptable control over publication to the proprietary interests. The joint statement developed and signed by over 300 independent researchers, and reproduced and published below, does not assert that GMOs are unsafe or safe. Rather, the statement concludes that the scarcity and contradictory nature of the scientific evidence published to date prevents conclusive claims of safety, or of lack of safety, of GMOs. Claims of consensus on the safety of GMOs are not supported by an objective analysis of the refereed literature.",
+      "url": "https://openalex.org/W2123182718",
+      "_adapter": "openalex",
+      "authors": [
+        "Angelika Hilbeck",
+        "Rosa María Binimelis",
+        "Nicolas Defarge",
+        "Ricarda A. Steinbrecher",
+        "András Székács",
+        "Fern Wickson",
+        "Michael Nicolas Antoniou",
+        "Philip L. Bereano",
+        "Ethel Ann Clark",
+        "Michael Hansen",
+        "Eva Novotny",
+        "Jack A. Heinemann",
+        "Hartmut Meyer",
+        "Vandana Shiva",
+        "Brian Wynne"
+      ],
+      "venue": "Environmental Sciences Europe",
+      "publication_date": "2015",
+      "doi": "10.1186/s12302-014-0034-1",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Concerns over use of glyphosate-based herbicides and risks associated with exposures: a consensus statement",
+      "snippet": "The broad-spectrum herbicide glyphosate (common trade name \"Roundup\") was first sold to farmers in 1974. Since the late 1970s, the volume of glyphosate-based herbicides (GBHs) applied has increased approximately 100-fold. Further increases in the volume applied are likely due to more and higher rates of application in response to the widespread emergence of glyphosate-resistant weeds and new, pre-harvest, dessicant use patterns. GBHs were developed to replace or reduce reliance on herbicides causing well-documented problems associated with drift and crop damage, slipping efficacy, and human he",
+      "full_text": "The broad-spectrum herbicide glyphosate (common trade name \"Roundup\") was first sold to farmers in 1974. Since the late 1970s, the volume of glyphosate-based herbicides (GBHs) applied has increased approximately 100-fold. Further increases in the volume applied are likely due to more and higher rates of application in response to the widespread emergence of glyphosate-resistant weeds and new, pre-harvest, dessicant use patterns. GBHs were developed to replace or reduce reliance on herbicides causing well-documented problems associated with drift and crop damage, slipping efficacy, and human health risks. Initial industry toxicity testing suggested that GBHs posed relatively low risks to non-target species, including mammals, leading regulatory authorities worldwide to set high acceptable exposure limits. To accommodate changes in GBH use patterns associated with genetically engineered, herbicide-tolerant crops, regulators have dramatically increased tolerance levels in maize, oilseed (soybeans and canola), and alfalfa crops and related livestock feeds. Animal and epidemiology studies published in the last decade, however, point to the need for a fresh look at glyphosate toxicity. Furthermore, the World Health Organization's International Agency for Research on Cancer recently concluded that glyphosate is \"probably carcinogenic to humans.\" In response to changing GBH use patterns and advances in scientific understanding of their potential hazards, we have produced a Statement of Concern drawing on emerging science relevant to the safety of GBHs. Our Statement of Concern considers current published literature describing GBH uses, mechanisms of action, toxicity in laboratory animals, and epidemiological studies. It also examines the derivation of current human safety standards. We conclude that: (1) GBHs are the most heavily applied herbicide in the world and usage continues to rise; (2) Worldwide, GBHs often contaminate drinking water sources, precipitation, and air, especially in agricultural regions; (3) The half-life of glyphosate in water and soil is longer than previously recognized; (4) Glyphosate and its metabolites are widely present in the global soybean supply; (5) Human exposures to GBHs are rising; (6) Glyphosate is now authoritatively classified as a probable human carcinogen; (7) Regulatory estimates of tolerable daily intakes for glyphosate in the United States and European Union are based on outdated science. We offer a series of recommendations related to the need for new investments in epidemiological studies, biomonitoring, and toxicology studies that draw on the principles of endocrinology to determine whether the effects of GBHs are due to endocrine disrupting activities. We suggest that common commercial formulations of GBHs should be prioritized for inclusion in government-led toxicology testing programs such as the U.S. National Toxicology Program, as well as for biomonitoring as conducted by the U.S. Centers for Disease Control and Prevention.",
+      "url": "https://openalex.org/W2285810463",
+      "_adapter": "openalex",
+      "authors": [
+        "John Peterson Myers",
+        "Michael Nicolas Antoniou",
+        "Bruce Blumberg",
+        "Lynn Carroll",
+        "Theo Colborn",
+        "Lorne G. Everett",
+        "Michael Hansen",
+        "Philip J. Landrigan",
+        "Bruce Perrin Lanphear",
+        "Robin Mesnage",
+        "Laura N. Vandenberg",
+        "Frederick S. vom Saal",
+        "Wade V. Welshons",
+        "Charles Benbrook"
+      ],
+      "venue": "Environmental Health",
+      "publication_date": "2016",
+      "doi": "10.1186/s12940-016-0117-0",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The impact and toxicity of glyphosate and glyphosate-based herbicides on health and immunity",
+      "snippet": ", has continued to increase since 1974; glyphosate, as well as its primary metabolite aminomethylphosphonic acid, is measured in soils, water, plants, animals and food. In humans, glyphosate is detected in blood and urine, especially in exposed workers, and is excreted within a few days. It has long been regarded as harmless in animals, but growing literature has reported health risks associated with glyphosate and glyphosate-based herbicides. In 2017, the International Agency for Research on Cancer (IARC) classified glyphosate as \"probably carcinogenic\" in humans. However, other national agen",
+      "full_text": ", has continued to increase since 1974; glyphosate, as well as its primary metabolite aminomethylphosphonic acid, is measured in soils, water, plants, animals and food. In humans, glyphosate is detected in blood and urine, especially in exposed workers, and is excreted within a few days. It has long been regarded as harmless in animals, but growing literature has reported health risks associated with glyphosate and glyphosate-based herbicides. In 2017, the International Agency for Research on Cancer (IARC) classified glyphosate as \"probably carcinogenic\" in humans. However, other national agencies did not tighten their glyphosate restrictions and even prolonged authorizations of its use. There are also discrepancies between countries' authorized levels, demonstrating an absence of a clear consensus on glyphosate to date. This review details the effects of glyphosate and glyphosate-based herbicides on fish and mammal health, focusing on the immune system. Increasing evidence shows that glyphosate and glyphosate-based herbicides exhibit cytotoxic and genotoxic effects, increase oxidative stress, disrupt the estrogen pathway, impair some cerebral functions, and allegedly correlate with some cancers. Glyphosate effects on the immune system appear to alter the complement cascade, phagocytic function, and lymphocyte responses, and increase the production of pro-inflammatory cytokines in fish. In mammals, including humans, glyphosate mainly has cytotoxic and genotoxic effects, causes inflammation, and affects lymphocyte functions and the interactions between microorganisms and the immune system. Importantly, even as many outcomes are still being debated, evidence points to a need for more studies to better decipher the risks from glyphosate and better regulation of its global utilization.",
+      "url": "https://openalex.org/W3084031038",
+      "_adapter": "openalex",
+      "authors": [
+        "Cindy Peillex",
+        "Martin Pelletier"
+      ],
+      "venue": "Journal of Immunotoxicology",
+      "publication_date": "2020",
+      "doi": "10.1080/1547691x.2020.1804492",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Public Views on Pesticide Exposure and Human Biomonitoring in Latvia: Evidence from Focus Groups and Media Analysis.",
+      "snippet": "Public awareness and perception of human biomonitoring (HBM) and pesticide exposure are essential for informed decision-making and policy, yet understanding remains limited and often shaped by media and advocacy. This study combined three focus group discussions with Latvian citizens and an online content analysis of pesticide-related posts. Discussions explored understanding of HBM, attitudes toward chemical exposures, and support for related research, while content analysis identified commonly discussed pesticides and the role of non-governmental organisations (NGO) in shaping public opinion",
+      "full_text": "Public awareness and perception of human biomonitoring (HBM) and pesticide exposure are essential for informed decision-making and policy, yet understanding remains limited and often shaped by media and advocacy. This study combined three focus group discussions with Latvian citizens and an online content analysis of pesticide-related posts. Discussions explored understanding of HBM, attitudes toward chemical exposures, and support for related research, while content analysis identified commonly discussed pesticides and the role of non-governmental organisations (NGO) in shaping public opinion. Findings indicate low awareness and frequent misconceptions about HBM, often confused with wearable health technologies rather than a tool for assessing internal chemical exposure. Concerns were mainly linked to food additives and household chemicals, with less attention to pesticides. Glyphosate emerged as the most debated pesticide, largely driven by NGO activity and media coverage. Trust in government initiatives was mixed, with concerns about political influence, industry interests, and data privacy. Nevertheless, participants expressed strong support for further national research. Overall, the results highlight gaps in public understanding and the significant influence of media and advocacy. Strengthening risk communication, transparency, and public engagement is essential to build trust and support the development of Latvia's HBM framework.",
+      "url": "https://doi.org/10.3390/toxics14060466",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Matisāne L",
+        "Akūlova L",
+        "Kolossa-Gehring M",
+        "Vanadziņš I"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-05-26",
+      "doi": "10.3390/toxics14060466",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42347364",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Publisher intervention in editorial decision-making: when established editorial procedures no longer determine publication decisions.",
+      "snippet": "The credibility of scientific journals is often attributed to rigorous peer review and editorial independence. In reality, however, scientific publishing, like every human institution, is shaped by competing interests, institutional incentives, and errors of judgment. Its credibility therefore depends less on the presumed virtues of authors, reviewers, editors, and publishers than on transparent procedures, clearly defined responsibilities, and institutional arrangements that make departures from established standards visible and open to scientific scrutiny. This Editorial examines a revealing",
+      "full_text": "The credibility of scientific journals is often attributed to rigorous peer review and editorial independence. In reality, however, scientific publishing, like every human institution, is shaped by competing interests, institutional incentives, and errors of judgment. Its credibility therefore depends less on the presumed virtues of authors, reviewers, editors, and publishers than on transparent procedures, clearly defined responsibilities, and institutional arrangements that make departures from established standards visible and open to scientific scrutiny. This Editorial examines a revealing recent case in which publication of a Guest Editorial that had successfully completed the established editorial procedures of Archives of Toxicology was ultimately prevented by the Publisher. Rather than discussing the scientific merits of the underlying manuscript, the present analysis focuses on how the publication decision changed after the manuscript had already been formally accepted. The documented events show how the publication process was progressively compromised through a succession of additional procedural requirements, each introduced only after the preceding requirement had been fulfilled. As a consequence, publication no longer depended on completion of the journal's published editorial process but on successive interventions outside that process. The case illustrates that transparent editorial procedures alone are insufficient to safeguard editorial integrity. Effective institutional self-correction requires a second, equally important safeguard: the guaranteed possibility that alleged departures from editorial procedures can themselves be subjected to unobstructed public scientific scrutiny through mechanisms such as Commentaries or Opinion Articles. In the present case, both safeguards were compromised simultaneously. The established editorial procedures were progressively displaced, while the very mechanism intended to permit public examination of alleged procedural failures was itself prevented from operating. The present analysis argues that departures from editorial procedures are not corrected automatically. They become self-correcting only when independent publication pathways remain available in which transparent editorial governance is preserved. The long-term credibility of scientific publishing therefore rests not primarily on confidence in individuals but on institutional structures that make procedural departures visible, increase the expected cost of abusing institutional power, and guarantee that alleged failures of governance can themselves be subjected to public scientific scrutiny. Transparency without the guaranteed possibility of such scrutiny remains incomplete.",
+      "url": "https://doi.org/10.1007/s00204-026-04560-3",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Hengstler JG"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-10-05",
+      "doi": "10.1007/s00204-026-04560-3",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42834148",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The global scientific consensus on genetically modified crop risk assessments.",
+      "snippet": "Initial risk assessments of genetically modified (GM) crops began in the early 1990 s, focusing on herbicide tolerance and insect resistance, with approvals by the mid-1990s. These assessments compare GM crops to non-GM equivalents, a framework unchanged for over 30 years. Since the first assessment in 1994, over 4,400 evaluations have been conducted across more than 70 countries for both cultivation and food/feed use. To date, none have identified increased risk relative to conventional varieties. This article analyzes three decades of GM crop approvals, highlighting the consistency of scient",
+      "full_text": "Initial risk assessments of genetically modified (GM) crops began in the early 1990 s, focusing on herbicide tolerance and insect resistance, with approvals by the mid-1990s. These assessments compare GM crops to non-GM equivalents, a framework unchanged for over 30 years. Since the first assessment in 1994, over 4,400 evaluations have been conducted across more than 70 countries for both cultivation and food/feed use. To date, none have identified increased risk relative to conventional varieties. This article analyzes three decades of GM crop approvals, highlighting the consistency of scientific assessment processes. Fourteen crops underwent 692 cultivation and 1,891 food-release assessments for herbicide tolerance, while insect resistance accounted for 523 cultivation and 1,396 food-release assessments, largely involving <i>Bacillus thuringiensis</i> (Bt). The findings underscore that GM crops are equivalent in risk to conventional varieties, supporting reliance on established international scientific expertise, particularly in resource-constrained regions.",
+      "url": "https://doi.org/10.1080/21645698.2026.2704430",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Favaratto L",
+        "Gleim S",
+        "Smyth SJ"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-08-10",
+      "doi": "10.1080/21645698.2026.2704430",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42574537",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:32+0100"
+}

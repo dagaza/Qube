@@ -1,0 +1,328 @@
+{
+  "schema_version": 2,
+  "id": "sci_phys_dark_matter",
+  "path": "scientific_evidence",
+  "category": "physical_econ",
+  "description": "",
+  "query_raw": "@[tool:evidence] What is the observational evidence for dark matter?",
+  "query_clean": "What is the observational evidence for dark matter?",
+  "retrieval_query": "What is the observational evidence for dark matter?",
+  "standalone_question": "What is the observational evidence for dark matter?",
+  "gold_subject": "dark matter",
+  "gold_facet": "observational evidence",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T17:05:06+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "openalex": 3,
+    "arxiv": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "openalex": "What is the observational evidence for dark matter",
+      "arxiv": "What is the observational evidence for dark matter"
+    }
+  },
+  "candidates": [
+    {
+      "title": "Review of Observational Evidence for Dark Matter in the Universe and in upcoming searches for Dark Stars",
+      "snippet": "Over the past decade, a consensus picture has emerged in which roughly a quarter of the universe consists of dark matter. The observational evidence for the existence of dark matter is reviewed: rotation curves of galaxies, weak lensing measurements, hot gas in clusters, primordial nucleosynthesis and microwave background experiments. In addition, a new line of research on Dark Stars is presented, which suggests that the first stars to exist in the universe were powered by dark matter heating rather than by fusion: the observational possibilities of discovering dark matter in this way are disc",
+      "full_text": "Over the past decade, a consensus picture has emerged in which roughly a quarter of the universe consists of dark matter. The observational evidence for the existence of dark matter is reviewed: rotation curves of galaxies, weak lensing measurements, hot gas in clusters, primordial nucleosynthesis and microwave background experiments. In addition, a new line of research on Dark Stars is presented, which suggests that the first stars to exist in the universe were powered by dark matter heating rather than by fusion: the observational possibilities of discovering dark matter in this way are discussed.",
+      "url": "https://openalex.org/W2115880881",
+      "_adapter": "openalex",
+      "authors": [
+        "Katherine Freese"
+      ],
+      "venue": "EAS Publications Series",
+      "publication_date": "2009",
+      "doi": "10.1051/eas/0936016",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        },
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Observational Evidence for Self-Interacting Cold Dark Matter",
+      "snippet": "Cosmological models with cold dark matter composed of weakly interacting particles predict overly dense cores in the centers of galaxies and clusters and an overly large number of halos within the Local Group compared to actual observations. We propose that the conflict can be resolved if the cold dark matter particles are self-interacting with a large scattering cross section but negligible annihilation or dissipation. In this scenario, astronomical observations may enable us to study dark matter properties that are inaccessible in the laboratory.",
+      "full_text": "Cosmological models with cold dark matter composed of weakly interacting particles predict overly dense cores in the centers of galaxies and clusters and an overly large number of halos within the Local Group compared to actual observations. We propose that the conflict can be resolved if the cold dark matter particles are self-interacting with a large scattering cross section but negligible annihilation or dissipation. In this scenario, astronomical observations may enable us to study dark matter properties that are inaccessible in the laboratory.",
+      "url": "https://openalex.org/W2083034637",
+      "_adapter": "openalex",
+      "authors": [
+        "David N. Spergel",
+        "Paul Joseph Steinhardt"
+      ],
+      "venue": "Physical Review Letters",
+      "publication_date": "2000",
+      "doi": "10.1103/physrevlett.84.3760",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Observational Evidence for Dark Matter and Dark Energy",
+      "snippet": "NEUTEL2015)018 PoS(NEUTEL2015)018 Dark matter and dark energyMarco Roncadelli",
+      "full_text": "NEUTEL2015)018 PoS(NEUTEL2015)018 Dark matter and dark energyMarco Roncadelli",
+      "url": "https://openalex.org/W2225400856",
+      "_adapter": "openalex",
+      "authors": [
+        "M. Roncadelli"
+      ],
+      "venue": "International Workshop on Neutrino Telescopes (NEUTEL)",
+      "publication_date": "2016",
+      "doi": "10.22323/1.244.0018",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Non-baryonic dark matter: observational evidence and detection methods",
+      "snippet": "The evidence for the existence of dark matter in the universe is reviewed. A general picture emerges, where both baryonic and non-baryonic dark matter is needed to explain current observations. In particular, a wealth of observational information points to the existence of a non-baryonic component, contributing between around 20 and 40% of the critical mass density needed to make the universe geometrically flat on large scales. In addition, an even larger contribution from vacuum energy (or cosmological constant) is indicated by recent observations. To the theoretically favoured particle candi",
+      "full_text": "The evidence for the existence of dark matter in the universe is reviewed. A general picture emerges, where both baryonic and non-baryonic dark matter is needed to explain current observations. In particular, a wealth of observational information points to the existence of a non-baryonic component, contributing between around 20 and 40% of the critical mass density needed to make the universe geometrically flat on large scales. In addition, an even larger contribution from vacuum energy (or cosmological constant) is indicated by recent observations. To the theoretically favoured particle candidates for non-baryonic dark matter belong axions, supersymmetric particles, and of less importance, massive neutrinos. The theoretical foundation and experimental situation for each of these is reviewed. Direct and indirect methods for detection of supersymmetric dark matter are described in some detail. Present experiments are just reaching the required sensitivity to discover or rule out some of these candidates, and major improvements are planned over the coming years.",
+      "url": "https://openalex.org/W2082637753",
+      "_adapter": "openalex",
+      "authors": [
+        "Lars Bergström"
+      ],
+      "venue": "Reports on Progress in Physics",
+      "publication_date": "2000",
+      "doi": "10.1088/0034-4885/63/5/2r3",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Dark Matter: Evidence, Theory, and Constraints",
+      "snippet": "A complete treatment of all aspects of dark matter physics This book provides an incisive, self-contained introduction to one of the most intriguing subjects in modern physics, presenting the evidence we have from astrophysics for the existence of dark matter, the theories for what it could be, and the cutting-edge experimental and observational methods for testing them. It begins with a survey of the astrophysical phenomena, from rotation curves to lensing and cosmological structure formation. It goes on to offer the most comprehensive overview available of all three major theories, discussin",
+      "full_text": "A complete treatment of all aspects of dark matter physics This book provides an incisive, self-contained introduction to one of the most intriguing subjects in modern physics, presenting the evidence we have from astrophysics for the existence of dark matter, the theories for what it could be, and the cutting-edge experimental and observational methods for testing them. It begins with a survey of the astrophysical phenomena, from rotation curves to lensing and cosmological structure formation. It goes on to offer the most comprehensive overview available of all three major theories, discussing weakly interacting massive particles (WIMPs), axions, and primordial black holes. The book explains the constraints on each theory, such as direct detection and indirect astrophysical limits, and enables students to build physical intuition using hands-on exercises and supplemental material. The only book to treat extensively WIMPs, axions, and primordial black holes Provides balanced coverage of the evidence, theory, and testing for dark matter from astrophysics, particle physics, and experimental physics Includes original problems and short quizzes throughout Accompanied by Jupyter notebooks that give sample calculations and methods to reproduce key results and graphs An ideal textbook for advanced undergraduate and graduate students and an essential reference for researchers",
+      "url": "https://openalex.org/W4403366721",
+      "_adapter": "openalex",
+      "authors": [
+        "David J. E. Marsh",
+        "David Ellis",
+        "Viraf M. Mehta"
+      ],
+      "venue": "Princeton University Press eBooks",
+      "publication_date": "2024",
+      "doi": "10.2307/jj.13110769",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What is the Evidence for Dark Matter?",
+      "snippet": "Newtonian mechanics indicates that galaxies and galaxy clusters are much more massive than we would have guessed from their luminosities, with the discrepancy being generally attributed to dark matter halos. An alternative hypothesis is that accelerations in very weak gravitational fields are larger than predicted by Newton's laws, and there is no need for dark matter. Even though we do not currently have a satisfactory theory associated with this rival hypothesis, we can ask whether any observational tests could rule it out or prefer it over the dark matter hypothesis. Current evidence sugges",
+      "full_text": "Newtonian mechanics indicates that galaxies and galaxy clusters are much more massive than we would have guessed from their luminosities, with the discrepancy being generally attributed to dark matter halos. An alternative hypothesis is that accelerations in very weak gravitational fields are larger than predicted by Newton's laws, and there is no need for dark matter. Even though we do not currently have a satisfactory theory associated with this rival hypothesis, we can ask whether any observational tests could rule it out or prefer it over the dark matter hypothesis. Current evidence suggests that neither hypothesis enjoys a decisive advantage over the other. If dark matter turns out to be the correct interpretation however, then theories of galaxy formation face some quite severe fine-tuning problems.",
+      "url": "https://openalex.org/W2963822340",
+      "_adapter": "openalex",
+      "authors": [
+        "J. A. Sellwood"
+      ],
+      "venue": "Symposium - International Astronomical Union",
+      "publication_date": "2004",
+      "doi": "10.1017/s0074180900182853",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Evidence for a dark matter particle",
+      "snippet": "A prediction and observational evidence for the mass of a dark matter particle are presented..",
+      "full_text": "A prediction and observational evidence for the mass of a dark matter particle are presented..",
+      "url": "https://arxiv.org/abs/1002.1938v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Yukio Tomozawa"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2010-02-09",
+      "doi": "10.7529/ICRC2011/V05/0009",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1002.1938v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "The Dark Energy Survey",
+      "snippet": "We describe the Dark Energy Survey (DES), a proposed optical-near infrared survey of 5000 sq. deg of the South Galactic Cap to ~24th magnitude in SDSS griz, that would use a new 3 sq. deg CCD camera to be mounted on the Blanco 4-m telescope at Cerro Telolo Inter-American Observatory (CTIO). The survey data will allow us to measure the dark energy and dark matter densities and the dark energy equation of state through four independent methods: galaxy clusters, weak gravitational lensing tomography, galaxy angular clustering, and supernova distances. These methods are doubly complementary: they ",
+      "full_text": "We describe the Dark Energy Survey (DES), a proposed optical-near infrared survey of 5000 sq. deg of the South Galactic Cap to ~24th magnitude in SDSS griz, that would use a new 3 sq. deg CCD camera to be mounted on the Blanco 4-m telescope at Cerro Telolo Inter-American Observatory (CTIO). The survey data will allow us to measure the dark energy and dark matter densities and the dark energy equation of state through four independent methods: galaxy clusters, weak gravitational lensing tomography, galaxy angular clustering, and supernova distances. These methods are doubly complementary: they constrain different combinations of cosmological model parameters and are subject to different systematic errors. By deriving the four sets of measurements from the same data set with a common analysis framework, we will obtain important cross checks of the systematic errors and thereby make a substantial and robust advance in the precision of dark energy measurements.",
+      "url": "https://arxiv.org/abs/astro-ph/0510346v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "The Dark Energy Survey Collaboration"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2005-10-12",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "astro-ph/0510346v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Possible Couplings of Dark Matter",
+      "snippet": "Dark matter interacts gravitationally, but it presumably interacts weakly through other channels, especially with respect to regular luminous matter. We look at different ways in which dark matter may couple to other fields. We briefly review some example approaches in the literature for modeling the coupling between dark energy and dark matter and examine the possibility of an arguably better-motivated approach via non-minimal coupling between a scalar field and the Ricci scalar, which is necessary for renormalization of the scalar field in curved space-time. We also show an example of a theo",
+      "full_text": "Dark matter interacts gravitationally, but it presumably interacts weakly through other channels, especially with respect to regular luminous matter. We look at different ways in which dark matter may couple to other fields. We briefly review some example approaches in the literature for modeling the coupling between dark energy and dark matter and examine the possibility of an arguably better-motivated approach via non-minimal coupling between a scalar field and the Ricci scalar, which is necessary for renormalization of the scalar field in curved space-time. We also show an example of a theory beyond the Standard Model in which dark matter is uniquely connected to the inflaton, and we use observational astrophysical constraints to specify an upper bound on the dark matter mass. In turn, this mass constraint implies a limit on the unification scale of the theory, a decoupling scale of the theory, and the number of $e$-folds of inflation allowed.",
+      "url": "https://arxiv.org/abs/1809.09971v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Kevin J. Ludwick"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2018-09-24",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1809.09971v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Direct dark matter detection: the next decade",
+      "snippet": "Direct dark matter searches are promising techniques to identify the nature of dark matter particles. I describe the future of this field of research, focussing on the question of what can be achieved in the next decade. I will present the main techniques and R&D projects that will allow to build so-called ultimate WIMP detectors, capable of probing spin-independent interactions down to the unimaginably low cross section of 1e-48 cm2, before the irreducible neutrino background takes over. If a discovery is within the reach of a near-future dark matter experiment, these detectors will be able t",
+      "full_text": "Direct dark matter searches are promising techniques to identify the nature of dark matter particles. I describe the future of this field of research, focussing on the question of what can be achieved in the next decade. I will present the main techniques and R&D projects that will allow to build so-called ultimate WIMP detectors, capable of probing spin-independent interactions down to the unimaginably low cross section of 1e-48 cm2, before the irreducible neutrino background takes over. If a discovery is within the reach of a near-future dark matter experiment, these detectors will be able to constrain WIMP properties such as its mass, scattering cross section and possibly spin. With input from the LHC and from indirect searches, direct detection experiments will hopefully allow to determine the local density and to constrain the local phase-space structure of our dark matter halo.",
+      "url": "https://arxiv.org/abs/1211.7222v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Laura Baudis"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2012-11-30",
+      "doi": "10.1016/j.dark.2012.10.006",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1211.7222v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 4
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "What is the Evidence for Dark Matter?",
+      "snippet": "Newtonian mechanics indicates that galaxies and galaxy clusters are much more massive than we would have guessed from their luminosities, with the discrepancy being generally attributed to dark matter halos. An alternative hypothesis is that accelerations in very weak gravitational fields are larger than predicted by Newton's laws, and there is no need for dark matter. Even though we do not currently have a satisfactory theory associated with this rival hypothesis, we can ask whether any observational tests could rule it out or prefer it over the dark matter hypothesis. Current evidence sugges",
+      "full_text": "Newtonian mechanics indicates that galaxies and galaxy clusters are much more massive than we would have guessed from their luminosities, with the discrepancy being generally attributed to dark matter halos. An alternative hypothesis is that accelerations in very weak gravitational fields are larger than predicted by Newton's laws, and there is no need for dark matter. Even though we do not currently have a satisfactory theory associated with this rival hypothesis, we can ask whether any observational tests could rule it out or prefer it over the dark matter hypothesis. Current evidence suggests that neither hypothesis enjoys a decisive advantage over the other. If dark matter turns out to be the correct interpretation however, then theories of galaxy formation face some quite severe fine-tuning problems.",
+      "url": "https://arxiv.org/abs/astro-ph/0401398v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "J A Sellwood"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2004-01-20",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "astro-ph/0401398v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

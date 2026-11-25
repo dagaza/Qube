@@ -1,0 +1,290 @@
+{
+  "schema_version": 2,
+  "id": "s13_qt_standard_nist_csf",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: query-type routing (standard) adds IETF RFC/NIST/IEEE Xplore to a general route.",
+  "query_raw": "@[tool:evidence] What does the NIST cybersecurity framework specify?",
+  "query_clean": "What does the NIST cybersecurity framework specify?",
+  "retrieval_query": "What does the NIST cybersecurity framework specify?",
+  "standalone_question": "What does the NIST cybersecurity framework specify?",
+  "gold_subject": "NIST Cybersecurity Framework",
+  "gold_facet": "contents",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:10:19+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "ietf_rfc": 3,
+    "nist": 3,
+    "ieee_xplore": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "ietf_rfc": "What does the NIST cybersecurity framework specify",
+      "nist": "What does the NIST cybersecurity framework specify",
+      "ieee_xplore": "What does the NIST cybersecurity framework specify",
+      "crossref": "What does the NIST cybersecurity framework specify",
+      "arxiv": "What does the NIST cybersecurity framework specify",
+      "openalex": "What does the NIST cybersecurity framework specify"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "NIST Cybersecurity Framework 2.0:",
+      "snippet": "NIST Cybersecurity Framework 2.0:",
+      "full_text": null,
+      "url": "https://doi.org/10.6028/nist.sp.1308.ipd",
+      "_adapter": "crossref",
+      "authors": [
+        "Gaithersburg MD NIST"
+      ],
+      "venue": null,
+      "publication_date": "2025",
+      "doi": "10.6028/nist.sp.1308.ipd",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "NIST Cybersecurity Framework 2.0:",
+      "snippet": "NIST Cybersecurity Framework 2.0:",
+      "full_text": null,
+      "url": "https://doi.org/10.6028/nist.sp.1308.2pd",
+      "_adapter": "crossref",
+      "authors": [
+        "Gaithersburg MD NIST"
+      ],
+      "venue": null,
+      "publication_date": "2025",
+      "doi": "10.6028/nist.sp.1308.2pd",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The NIST Cybersecurity Framework (CSF) 2.0 (Thai translation)",
+      "snippet": "The NIST Cybersecurity Framework (CSF) 2.0 (Thai translation)",
+      "full_text": null,
+      "url": "https://doi.org/10.6028/nist.cswp.29.tha",
+      "_adapter": "crossref",
+      "authors": [
+        "Gaithersburg MD NIST"
+      ],
+      "venue": null,
+      "publication_date": "2025",
+      "doi": "10.6028/nist.cswp.29.tha",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "A cybersecurity AI agent selection and decision support framework",
+      "snippet": "This paper presents a novel, structured decision support framework that systematically aligns diverse artificial intelligence (AI) agent architectures, reactive, cognitive, hybrid, and learning, with the comprehensive National Institute of Standards and Technology (NIST) Cybersecurity Framework (CSF) 2.0. By integrating agent theory with industry guidelines, this framework provides a transparent and stepwise methodology for selecting and deploying AI solutions to address contemporary cyber threats. Employing a granular decomposition of NIST CSF 2.0 functions into specific tasks, the study link",
+      "full_text": "This paper presents a novel, structured decision support framework that systematically aligns diverse artificial intelligence (AI) agent architectures, reactive, cognitive, hybrid, and learning, with the comprehensive National Institute of Standards and Technology (NIST) Cybersecurity Framework (CSF) 2.0. By integrating agent theory with industry guidelines, this framework provides a transparent and stepwise methodology for selecting and deploying AI solutions to address contemporary cyber threats. Employing a granular decomposition of NIST CSF 2.0 functions into specific tasks, the study links essential AI agent properties such as autonomy, adaptive learning, and real-time responsiveness to each subcategory's security requirements. In addition, it outlines graduated levels of autonomy (assisted, augmented, and fully autonomous) to accommodate organisations at varying stages of cybersecurity maturity. This holistic approach transcends isolated AI applications, providing a unified detection, incident response, and governance strategy. Through conceptual validation, the framework demonstrates how tailored AI agent deployments can align with real-world constraints and risk profiles, enhancing situational awareness, accelerating response times, and fortifying long-term resilience via adaptive risk management. Ultimately, this research bridges the gap between theoretical AI constructs and operational cybersecurity demands, establishing a foundation for robust, empirically validated multi-agent systems that adhere to industry standards.",
+      "url": "https://arxiv.org/abs/2510.01751v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Masike Malatji"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-10-02",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2510.01751v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Using NIST Special Publications (SP) 800-171r2 and 800-172/800-172A to assess and evaluate the Cybersecurity posture of Information Systems in the Healthcare sector",
+      "snippet": "This paper describes how NIST Special Publications (SP) 800-171r2 (Protecting Controlled but Unclassified Information in Nonfederal Systems and Organizations), SP.800-172 (Enhanced Security Requirements for Protecting Controlled Unclassified Information) and SP.800-172A (Assessing Enhanced Security Requirements for Controlled Unclassified Information) can be used to evaluate the cybersecurity posture of information systems and supporting frameworks relative to HIPAA and HITECH . It will demonstrate that provisions and baseline security requirements outlined in SP.800-171r2 and SP.800-172/172A ",
+      "full_text": "This paper describes how NIST Special Publications (SP) 800-171r2 (Protecting Controlled but Unclassified Information in Nonfederal Systems and Organizations), SP.800-172 (Enhanced Security Requirements for Protecting Controlled Unclassified Information) and SP.800-172A (Assessing Enhanced Security Requirements for Controlled Unclassified Information) can be used to evaluate the cybersecurity posture of information systems and supporting frameworks relative to HIPAA and HITECH . It will demonstrate that provisions and baseline security requirements outlined in SP.800-171r2 and SP.800-172/172A for the protection of Controlled Unclassified Information (CUI) can be applied to Electronic Protected Health Information (ePHI). An explanation of how these publications align with HIPAA and how this alignment suffices for evaluating IT environment security will be given along with the process and procedure for performing such evaluation. Finally, the benefits of using this approach to support formal risk assessment will be presented.",
+      "url": "https://arxiv.org/abs/1910.04293v4",
+      "_adapter": "arxiv",
+      "authors": [
+        "Thomas P. Dover"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-10-09",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1910.04293v4",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "SUT System Description for NIST SRE 2016",
+      "snippet": "This paper describes the submission to fixed condition of NIST SRE 2016 by Sharif University of Technology (SUT) team. We provide a full description of the systems that were included in our submission. We start with an overview of the datasets that were used for training and development. It is followed by describing front-ends which contain different VAD and feature types. UBM and i-vector extractor training are the next details in this paper. As one of the important steps in system preparation, preconditioning the i-vectors are explained in more details. Then, we describe the classifier and s",
+      "full_text": "This paper describes the submission to fixed condition of NIST SRE 2016 by Sharif University of Technology (SUT) team. We provide a full description of the systems that were included in our submission. We start with an overview of the datasets that were used for training and development. It is followed by describing front-ends which contain different VAD and feature types. UBM and i-vector extractor training are the next details in this paper. As one of the important steps in system preparation, preconditioning the i-vectors are explained in more details. Then, we describe the classifier and score normalization methods. And finally, some results on SRE16 evaluation dataset are reported and analyzed.",
+      "url": "https://arxiv.org/abs/1706.05077v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Hossein Zeinali",
+        "Hossein Sameti",
+        "Nooshin Maghsoodi"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-06-08",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1706.05077v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The NIST Cybersecurity Framework (CSF) 2.0",
+      "snippet": "The NIST Cybersecurity Framework (CSF) 2.0 provides guidance to industry, government agencies, and other organizations to manage cybersecurity risks. It offers a taxonomy of high-level cybersecurity outcomes that can be used by any organization — regardless of its size, sector, or maturity — to better understand, assess, prioritize, and communicate its cybersecurity efforts. The CSF does not prescribe how outcomes should be achieved. Rather, it links to resources that provide additional guidance on practices and controls that could be used to achieve those outcomes. This document explains CSF ",
+      "full_text": "The NIST Cybersecurity Framework (CSF) 2.0 provides guidance to industry, government agencies, and other organizations to manage cybersecurity risks. It offers a taxonomy of high-level cybersecurity outcomes that can be used by any organization — regardless of its size, sector, or maturity — to better understand, assess, prioritize, and communicate its cybersecurity efforts. The CSF does not prescribe how outcomes should be achieved. Rather, it links to resources that provide additional guidance on practices and controls that could be used to achieve those outcomes. This document explains CSF 2.0 and its components and describes some of the many ways that it can be used.",
+      "url": "https://openalex.org/W4385562826",
+      "_adapter": "openalex",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2024",
+      "doi": "10.6028/nist.cswp.29",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The NIST Cybersecurity Framework 2.0",
+      "snippet": "The NIST Cybersecurity Framework 2.0 provides guidance to industry, government agencies, and other organizations to reduce cybersecurity risks. It offers a taxonomy of high-level cybersecurity outcomes that can be used by any organization — regardless of its size, sector, or maturity — to better understand, assess, prioritize, and communicate its cybersecurity efforts. The Framework does not prescribe how outcomes should be achieved. Rather, it maps to resources that provide additional guidance on practices and controls that could be used to achieve those outcomes. This document explains Cyber",
+      "full_text": "The NIST Cybersecurity Framework 2.0 provides guidance to industry, government agencies, and other organizations to reduce cybersecurity risks. It offers a taxonomy of high-level cybersecurity outcomes that can be used by any organization — regardless of its size, sector, or maturity — to better understand, assess, prioritize, and communicate its cybersecurity efforts. The Framework does not prescribe how outcomes should be achieved. Rather, it maps to resources that provide additional guidance on practices and controls that could be used to achieve those outcomes. This document explains Cybersecurity Framework 2.0 and its components and describes some of the many ways that it can be used.",
+      "url": "https://openalex.org/W4385563080",
+      "_adapter": "openalex",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2023",
+      "doi": "10.6028/nist.cswp.29.ipd",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Toward a Global Cybersecurity Standard of Care? Exploring the Implications of the 2014 NIST Cybersecurity Framework on Shaping Reasonable National and International Cybersecurity Practices",
+      "snippet": "\"Even though U.S. congressional and multilateral efforts aimed at enhancing cybersecurity have thus far largely failed in their aims, courts are using existing doctrines including negligence to hold companies accountable for cyber attacks. However, decisions have been largely haphazard due in part to confusion over what constitutes cybersecurity best practices. This Article analyzes the emerging cybersecurity duty of care, and examines the potential impact of the 2014 National Institute of Standards and Technology (NIST) cybersecurity framework on particularly on negligence law. Given that bes",
+      "full_text": "\"Even though U.S. congressional and multilateral efforts aimed at enhancing cybersecurity have thus far largely failed in their aims, courts are using existing doctrines including negligence to hold companies accountable for cyber attacks. However, decisions have been largely haphazard due in part to confusion over what constitutes cybersecurity best practices. This Article analyzes the emerging cybersecurity duty of care, and examines the potential impact of the 2014 National Institute of Standards and Technology (NIST) cybersecurity framework on particularly on negligence law. Given that best practices are not yet well-defined in this space, the NIST framework has the potential to help define the standard for not only critical infrastructure firms, but the private sector writ large. There is some evidence this is already happening, such as in reference to an FCC/telecom release in November 2013: 'The telecommunications industry and the Federal Communications Commission plan to use an emerging framework of cybersecurity standards to assess and prioritize best practices for the sector as it works to address evolving cyber threats...' The NIST framework has the potential to shift the cybersecurity landscape not only in the United States, but also potentially in other jurisdictions favoring a largely voluntary approach to enhancing cybersecurity such as the United Kingdom, the European Union, and India. For businesses active across jurisdictions, and depending on the uptake of the NIST framework by stakeholders, a global duty of cybersecurity care could emerge that would promote consistency and contribute to cyber peace even absent regulatory action.\"",
+      "url": "https://openalex.org/W198764525",
+      "_adapter": "openalex",
+      "authors": [
+        "Scott Shackelford",
+        "Andrew A. Proia",
+        "Brenton Martell",
+        "Amanda N. Craig"
+      ],
+      "venue": "Digital Library Of The Commons Repository (Indiana University)",
+      "publication_date": "2015",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:40+0100"
+}

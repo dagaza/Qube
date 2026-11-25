@@ -1,0 +1,317 @@
+{
+  "schema_version": 2,
+  "id": "trusted_cdc_mmr_doses",
+  "path": "trusted_knowledge",
+  "category": "health_official",
+  "description": "",
+  "query_raw": "@[tool:trusted] How many doses of the MMR vaccine do children need?",
+  "query_clean": "How many doses of the MMR vaccine do children need?",
+  "retrieval_query": "How many doses of the MMR vaccine do children need?",
+  "standalone_question": "How many doses of the MMR vaccine are recommended for children?",
+  "gold_subject": "MMR vaccine",
+  "gold_facet": "childhood dose schedule",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-23T20:10:26+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "wikipedia_api": 2,
+    "duckduckgo": 6
+  },
+  "adapter_queries": {
+    "production": {
+      "wikipedia_api": "How many doses of the MMR vaccine do children need?",
+      "duckduckgo": "How many doses of the MMR vaccine do children need?"
+    },
+    "standalone": {
+      "wikipedia_api": "How many doses of the MMR vaccine are recommended for children?",
+      "duckduckgo": "How many doses of the MMR vaccine are recommended for children?"
+    }
+  },
+  "discovery_provider": {
+    "production": "duckduckgo",
+    "standalone": "duckduckgo"
+  },
+  "candidates": [
+    {
+      "title": "MMR vaccine",
+      "snippet": "The MMR vaccine (abbreviated as MMR) is a combination vaccine against measles, mumps, and rubella (German measles). It contains the combined measles vaccine, mumps vaccine, and rubella vaccine into a single injection. After two doses, 97% of people are protected against measles, 88% against mumps, and at least 97% against rubella. The vaccine is also recommended for those who do not have evidence of immunity, those with well-controlled HIV/AIDS, and within 72 hours of exposure to measles among those who are incompletely immunized. It is given by injection.\nMeasles is a highly contagious viral ",
+      "full_text": "The MMR vaccine (abbreviated as MMR) is a combination vaccine against measles, mumps, and rubella (German measles). It contains the combined measles vaccine, mumps vaccine, and rubella vaccine into a single injection. After two doses, 97% of people are protected against measles, 88% against mumps, and at least 97% against rubella. The vaccine is also recommended for those who do not have evidence of immunity, those with well-controlled HIV/AIDS, and within 72 hours of exposure to measles among those who are incompletely immunized. It is given by injection.\nMeasles is a highly contagious viral illness that can lead to serious complications, including pneumonia, acute encephalitis, and, in rare cases, long‑term neurological disease. Pregnant women are at increased risk of severe respiratory complications and adverse pregnancy outcomes such as pregnancy loss and premature birth.\nThe MMR vaccine is widely used around the world. As of 2012, 575 million doses had been administered since the vaccine's introduction worldwide. Measles resulted in 2.6 million deaths per year before immunization became common. This has decreased to 122,000 deaths per year as of 2012, mostly in low-income countries. Through vaccination, as of 2018, rates of measles in North and South America are very low. Rates of disease have been seen to increase in populations that go unvaccinated. Between 2000 and 2018, vaccination decreased measles deaths by 73%.\nSide effects of immunization are generally mild and resolve without any specific treatment. These may include fever, as well as pain or redness at the injection site. Severe allergic reactions occur in about one in a million people. Because it contains live viruses, the MMR vaccine is not recommended during pregnancy but may be given during breastfeeding. The vaccine is safe to give at the same time as other vaccines. Being recently immunized does not increase the risk of passing measles, mumps, or rubella on to others: That is, even though the vaccine contains live viruses, they are not transmitted. There is no evidence of an association between MMR immunization and autistic spectrum disorders. The MMR vaccine is a mixture of live weakened viruses of the three diseases.\nThe MMR vaccine was developed by Maurice Hilleman. It was licensed for use in the US by Merck in 1971. Stand-alone measles, mumps, and rubella vaccines had been previously licensed in 1963, 1967, and 1969, respectively. Recommendations for a second dose were introduced in 1989. The MMRV vaccine, which also covers chickenpox, may be used instead. An MR vaccine, without coverage for mumps, is also occasionally used.",
+      "url": "https://en.wikipedia.org/wiki/MMR_vaccine",
+      "pageid": 69149,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Mumps vaccine",
+      "snippet": "Mumps vaccines  are vaccines which prevent mumps. When given to a majority of the population they decrease complications at the population level. Effectiveness when 90% of a population is vaccinated is estimated at 85%. Two doses are required for long term prevention. The initial dose is recommended between 12 and 18 months of age. The second dose is then typically given between two years and six years of age. Usage after exposure in those not already immune may be useful.\nSide effects are usually mild. It may cause \"slight soreness and swelling\" at the site of injection, parotisis and mild fe",
+      "full_text": "Mumps vaccines  are vaccines which prevent mumps. When given to a majority of the population they decrease complications at the population level. Effectiveness when 90% of a population is vaccinated is estimated at 85%. Two doses are required for long term prevention. The initial dose is recommended between 12 and 18 months of age. The second dose is then typically given between two years and six years of age. Usage after exposure in those not already immune may be useful.\nSide effects are usually mild. It may cause \"slight soreness and swelling\" at the site of injection, parotisis and mild fever. More significant side effects are rare. Evidence is insufficient to link the vaccine to complications such as neurological effects (beyond \"occasional orchitis and sensorineural deafness\"). The vaccine should not be given to people who are pregnant or have very poor immune system function. Poor outcomes among children of mothers who received the vaccine during pregnancy, however, have not been documented. Even though the vaccine is developed in chicken cells, it is generally safe to give to those with egg allergies.\nMost of the developed world and many countries in the developing world include it in their immunization programs often in combination with measles and rubella vaccine known as MMR. A formulation with the previous three and the varicella (chickenpox) vaccine known as MMRV is also available. As of 2005, 110 countries provided the vaccine as part of their immunization programs. In areas where widespread vaccination is carried out it has resulted in a more than 90% decline in rates of disease. Almost half a billion doses of one variety of the vaccine has been given.",
+      "url": "https://en.wikipedia.org/wiki/Mumps_vaccine",
+      "pageid": 5264978,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 1
+        },
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Polio vaccine",
+      "snippet": "Polio vaccine is a vaccine used to prevent poliomyelitis (polio). Two types are used: an inactivated poliovirus given by injection (IPV) and a weakened poliovirus given by mouth (OPV). The World Health Organization (WHO) recommends all children be fully vaccinated against polio. The two vaccines have eliminated polio from most of the world, and reduced the number of cases reported each year from an estimated 350,000 in 1988 to 33 in 2018.\nThe inactivated polio vaccines are very safe. Mild redness or pain may occur at the site of injection. Oral polio vaccines cause about three cases of vaccine",
+      "full_text": "Polio vaccine is a vaccine used to prevent poliomyelitis (polio). Two types are used: an inactivated poliovirus given by injection (IPV) and a weakened poliovirus given by mouth (OPV). The World Health Organization (WHO) recommends all children be fully vaccinated against polio. The two vaccines have eliminated polio from most of the world, and reduced the number of cases reported each year from an estimated 350,000 in 1988 to 33 in 2018.\nThe inactivated polio vaccines are very safe. Mild redness or pain may occur at the site of injection. Oral polio vaccines cause about three cases of vaccine-associated paralytic poliomyelitis per million doses given. This compares with 5,000 cases per million who are paralysed following a polio infection. Both types of vaccine are generally safe to give during pregnancy and in those who have HIV/AIDS, but are otherwise well. However, the emergence of circulating vaccine-derived poliovirus (cVDPV), a form of the vaccine virus that has reverted to causing poliomyelitis, has led to the development of novel oral polio vaccine type 2 (nOPV2), which aims to make the vaccine safer and thus stop further outbreaks of cVDPV.\nThe first successful demonstration of a polio vaccine was by Hilary Koprowski in 1950, with a live attenuated virus that people drank. The vaccine was not approved for use in the United States, but was used successfully elsewhere. The success of an inactivated (killed) polio vaccine, developed by Jonas Salk, was announced in 1955. Another attenuated live oral polio vaccine, developed by Albert Sabin, came into commercial use in 1961.\nThe polio vaccine is on the World Health Organization's List of Essential Medicines.",
+      "url": "https://en.wikipedia.org/wiki/Polio_vaccine",
+      "pageid": 192198,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Vaccines and autism",
+      "snippet": "Extensive investigation into vaccines and vaccine ingredients have shown that they do not cause autism spectrum disorder. Some evidence even points to certain vaccines being preventative in some cases.\nMajor health authorities, including the World Health Organization, the National Health Service, the Centers for Disease Control and Prevention and the United States Food and Drug Administration, along with large-scale epidemiological research, reinforce the scientific consensus that vaccines are safe, that multiple concurrent vaccinations do not overwhelm the immune system, and that autism canno",
+      "full_text": "Extensive investigation into vaccines and vaccine ingredients have shown that they do not cause autism spectrum disorder. Some evidence even points to certain vaccines being preventative in some cases.\nMajor health authorities, including the World Health Organization, the National Health Service, the Centers for Disease Control and Prevention and the United States Food and Drug Administration, along with large-scale epidemiological research, reinforce the scientific consensus that vaccines are safe, that multiple concurrent vaccinations do not overwhelm the immune system, and that autism cannot be attributed to vaccination. \nScientist Peter Hotez researched the growth of the false claim and concluded that its spread originated with Andrew Wakefield's fraudulent 1998 paper, and that no prior paper supports a link. Despite the scientific consensus for the absence of a relationship, and the Wakefield paper's retraction, the anti-vaccination movement at large continues to promote theories linking the two. \nCelebrity endorsements, social media campaigns and selective reporting have fuelled the anti-vaccination movement and public misunderstanding of vaccines. Fringe political actions continue to promote debunked claims. A developing tactic appears to be citing irrelevant or dubious studies to support a questionable claim.",
+      "url": "https://en.wikipedia.org/wiki/Vaccines_and_autism",
+      "pageid": 59882582,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "wikipedia_api",
+          "rank": 3
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Measles Vaccine Recommendations | Measles (Rubeola) | CDC",
+      "snippet": "Measles vaccine is included in MMR vaccine and MMRV vaccine; MMRV is only licensed for children 1-12 years old. CDC recommends children receive 2 doses of MMR vaccine.",
+      "url": "https://www.cdc.gov/measles/hcp/vaccine-considerations/index.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 0
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Measles Vaccination | Measles (Rubeola) | CDC",
+      "snippet": "Two doses of the MMR vaccine are recommended by doctors as the best way to protect against measles, mumps, and rubella. Children may get 2 doses of MMRV vaccine instead. MMR and MMRV vaccines usually protect people for life against measles and rubella; but immunity against mumps may decrease over time.",
+      "url": "https://www.cdc.gov/measles/vaccines/index.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "MMR Vaccine (Measles-Mumps-Rubella Vaccination): What To Know",
+      "snippet": "The MMR vaccine is a shot that can protect you and your child from getting measles, mumps and rubella. Healthcare providers recommend two doses.",
+      "url": "https://my.clevelandclinic.org/health/procedures/mmr-vaccine",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 2
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 6
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How many doses of the Measles, Mumps, and Rubella (MMR) vaccine are ...",
+      "snippet": "Two doses of MMR vaccine are recommended for routine vaccination, with the first dose at 12-15 months and the second dose at 4-6 years of age, separated by at least 28 days. 1, 2",
+      "url": "https://www.droracle.ai/articles/808630/how-many-doses-of-the-measles-mumps-and-rubella",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 3
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 4
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PDF Routine MMR Vaccination Recommendations: For Providers | CDC",
+      "snippet": "Routine Vaccination Recommendations to Protect against Measles Children CDC recommends two doses of measles-containing vaccine routinely for children, starting with the first dose at age 12 through 15 months and the second dose at age 4 through 6 years before school entry. This can be administered as MMR or MMRV vaccine.",
+      "url": "https://riverstonehealth.org/wp-content/uploads/Routine-MMR-Vaccination-Recommendations_-For-Providers-_-CDC.pdf",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 4
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Measles vaccination recommendations | Colorado Department of Public ...",
+      "snippet": "Children Children are recommended to receive two doses of MMR vaccine. The first dose is given at 12-15 months of age. The second dose is given at 4-6 years of age, before kindergarten entry. Older children and adolescents Older children and adolescents need two documented doses of MMR vaccine to be considered fully protected.",
+      "url": "https://cdphe.colorado.gov/diseases-a-to-z/measles/measles-vaccination-recommendations",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 5
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 3
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Measles Vaccine - American Academy of Pediatrics",
+      "snippet": "Measles-containing vaccines can be administered simultaneously with other immunizations in a separate syringe at a separate site and should be administered subcutaneously. Routine Vaccination The AAP recommends individuals receive 2 doses of measles, mumps, rubella (MMR) or measles, mumps, rubella and varicella (MMRV) vaccine.",
+      "url": "https://www.aap.org/en/patient-care/measles/measles-vaccine",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 6
+        },
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "MMR Vaccine for Children - What You Need to Know - Drugs.com",
+      "snippet": "Care guide for MMR Vaccine for Children. Includes: possible causes, signs and symptoms, standard treatment options and means of care and support.",
+      "url": "https://www.drugs.com/cg/mmr-vaccine-for-children.html",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "duckduckgo",
+          "rank": 7
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "HPV vaccine",
+      "snippet": "Human papillomavirus (HPV) vaccines are vaccines that prevent infection by certain types of human papillomavirus. They first became available in 2006. Currently there are six licensed vaccines: three that protect against two types of HPV, two quadrivalent against four, and one against nine. All have excellent safety and are highly effective. All protect against HPV types 16 and 18, which are together responsible for approximately 70% of cervical cancer cases globally. The quadrivalent vaccines provide additional protection against HPV types 6 and 11. The nine valent one provides additional pro",
+      "full_text": "Human papillomavirus (HPV) vaccines are vaccines that prevent infection by certain types of human papillomavirus. They first became available in 2006. Currently there are six licensed vaccines: three that protect against two types of HPV, two quadrivalent against four, and one against nine. All have excellent safety and are highly effective. All protect against HPV types 16 and 18, which are together responsible for approximately 70% of cervical cancer cases globally. The quadrivalent vaccines provide additional protection against HPV types 6 and 11. The nine valent one provides additional protection against HPV types 31, 33, 45, 52 and 58. It is estimated that HPV vaccines may prevent 70% of cervical cancer, 80% of anal cancer, 60% of vaginal cancer, 40% of vulvar cancer, and show more than 90% effectiveness in preventing HPV-positive oropharyngeal cancers. They also protect against penile cancer. They additionally prevent genital warts (also known as anogenital warts), with the quadrivalent and nonavalent vaccines providing virtually complete protection. The World Health Organization (WHO) recommends a one or two-dose schedule for girls aged 9–14 years, the same for girls and women aged 15–20 years, and two doses with a six-month interval for women older than 21 years. The vaccines provide protection for at least five to ten years.\nThe primary target group in most of the countries recommending HPV vaccination is girls, aged 9–14. The vaccination schedule depends on the age of the vaccine recipient. As of 2025, an estimated 33% of girls aged 9–14 years worldwide received at least one dose (93 countries were implementing the single-dose schedule, 85% of girls aged 9–14 years old vaccinated in that year). At least 162 countries provide the HPV vaccine in their national immunization programs as of 2025. Vaccinating a large portion of the population may also benefit the unvaccinated by way of herd immunity.\nThe HPV vaccine is on the World Health Organization's List of Essential Medicines. The World Health Organization (WHO) recommends HPV vaccines as part of routine vaccinations in all countries, along with other prevention measures. The WHO's priority purpose of HPV immunization is the prevention of cervical cancer, which accounts for 82% of all HPV-related cancers and more than 95% of which are caused by HPV. Of cervical cancers, 88% (2020 figure) occur and 90% of deaths occur in low- and middle-income countries and 2% (2020 figure) in high-income countries. The WHO-recommended primary target population for HPV vaccination is girls aged 9–14 years before they become sexually active. It aims the introduction of the HPV vaccine in all countries and has set a target of reaching a coverage of 90% of girls fully vaccinated with HPV vaccine by age 15 years. Females aged ≥15 years, boys, older males or men who have sex with men (MSM) are secondary target populations. HPV vaccination is the most cost-effective public health measure against cervical cancer, particularly in resource-constrained settings. Cervical cancer screening is still required following vaccination.",
+      "url": "https://en.wikipedia.org/wiki/HPV_vaccine",
+      "pageid": 3304705,
+      "_adapter": "wikipedia_api",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "wikipedia_api",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "PDF Measles-Mumps-Rubella (MMR) Vaccine: Recommendations Summary",
+      "snippet": "*Before an international trip: Infants (ages 6-11 months) should receive an MMR dose (an early dose); Unvaccinated children (over 12 months), teens, and adults should receive 2 doses, at least 28 days apart TALK TO YOUR DOCTOR ABOUT THE MMR VACCINE if you live in or plan to travel to an area with an ongoing measles outbreak in the U.S.",
+      "url": "https://www.cdc.gov/measles/downloads/mmr-recommendations-measles.pdf",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Ask The Experts About Vaccines: MMR (Measles, Mumps, and Rubella ...",
+      "snippet": "For routine vaccination, children without contraindications to MMR vaccine should receive 2 doses of MMR vaccine with the first dose at age 12-15 months old and the second dose at age 4-6 years old, usually given before kindergarten entry.",
+      "url": "https://www.immunize.org/ask-experts/topic/mmr/scheduling-vaccines-mmr/",
+      "_adapter": "duckduckgo",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "duckduckgo",
+          "rank": 5
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ]
+}

@@ -444,10 +444,27 @@ ACTION_DDG_VERIFY_CHALLENGE = "ddg_verify_challenge"
 ACTION_DDG_RESUME_SEARCH = "ddg_resume_search"
 
 
-def ddg_backoff_event(*, remaining_seconds: int = 0) -> NotificationEvent:
-    """Warn when DuckDuckGo is paused after a bot challenge."""
+def ddg_backoff_event(*, remaining_seconds: int = 0, reason: str = "bot_challenge") -> NotificationEvent:
+    """Warn when DuckDuckGo is paused after a bot challenge or (S12) an HTTP 429."""
     from core.knowledge.discovery.backoff import ddg_bot_backoff_seconds
 
+    if reason == "rate_limited":
+        minutes = max(1, (int(remaining_seconds or 0) + 59) // 60)
+        return NotificationEvent(
+            title="DuckDuckGo search paused",
+            body=(
+                f"DuckDuckGo rate-limited Qube's searches (HTTP 429), so DDG searches "
+                f"are paused for about {minutes} minutes. Brave or Wikipedia fallbacks "
+                "are used meanwhile."
+            ),
+            severity=NotificationSeverity.WARNING,
+            category="tool",
+            auto_dismiss_ms=20000,
+            dedupe_key="ddg_backoff",
+            rate_limit_key="ddg_backoff",
+            rate_limit_sec=300.0,
+            tray_bump=True,
+        )
     total_seconds = ddg_bot_backoff_seconds()
     minutes = max(1, (total_seconds + 59) // 60)
     pause = f"for {minutes} minutes"
