@@ -3,11 +3,15 @@
 ### Added
 - **Release tooling:** `Qube --self-check-bundle <result.json>` checks, offline and before Qt or any model loads, that a packaged build can import the relevance reranker and correct a misspelled word; the Linux, Windows and macOS smoke scripts run it, so a build missing either part fails its smoke job.
 - **Developer docs:** Knowledge-retrieval follow-up plan (`docs/knowledge_retrieval_followups.md`, stages S14+); `docs/knowledge_retrieval_quality_assessment.md` is closed.
+- **Developer tools:** The knowledge-quality replay can compare runs whose candidate pools differ (`tools/evaluate_knowledge_quality.py --compare <run> --pool-scoring shared`, and in `tools/evaluate_heuristic_ab.py`). It merges duplicate papers as the live scholarly merge does, and after a source-pack change (`tools/capture_knowledge_fixture.py --refresh-routes --refresh-stage <stage>`) older runs still rebuild the pool they ranked.
 
 ### Changed
 - **Chat history:** The history sent with each turn now fits a token budget taken from the loaded context window, counted with the model's own tokenizer on the internal engine. The newest messages are kept first, and an older message that does not fit whole is shortened rather than dropped. A 4k window no longer overflows with ten long turns, and retrieved sources keep their share of the prompt.
 - **Sidecar:** The CPU sidecar model uses physical-core thread counts: up to 4 threads to generate and all physical cores to read the prompt. On an 8-core laptop titles arrive about 3× faster (9.3 s to 2.8 s), and a main model running on the CPU at the same time slows far less. The inference transparency row in Settings shows the counts.
 - **Sidecar / retrieval:** The sidecar source digest is off by default. It could not finish within its 1.5 s budget, so turns with large retrieved context waited the full 1.5 s and never received a digest. `qube.sidecar.source_digest_enabled` still turns it on.
+- **Knowledge sources:** Sources that need an API key, such as IEEE Xplore, NICE, EPO OPS, NASA ADS, FRED and Semantic Scholar, are skipped when no key is set, instead of running and returning nothing. Retrieval diagnostics list each skipped source (`adapter_skips`).
+- **Knowledge sources:** USPTO PatentsView, BLS and Eurostat are retired: PatentsView's search host no longer exists, BLS has no series search, and Eurostat's search returns 404. They leave the discipline source packs and the scientific and finance defaults (finance now uses SEC EDGAR, FRED, World Bank and OECD), and stored preferences no longer turn them on. WHO GHO and NIST NVD leave the medicine and engineering packs, because they searched health-indicator names and the CVE database rather than evidence.
+- **Scientific evidence:** Physics questions also search Crossref, alongside arXiv, INSPIRE-HEP and OpenAlex. It finds sources the physics pack missed, for example on loophole-free Bell tests.
 
 ### Fixed
 - **Knowledge / packaging:** Installed builds now include the spellchecker's English word list, so web and knowledge searches again add a correctly spelt variant of a misspelled query word. 1.3.60 builds left out `spellchecker/resources/en.json.gz`, which switched the variant off; the build now stops if the file is missing.
@@ -15,6 +19,9 @@
 - **Library:** New documents get their one-sentence description (tooltip) again; with the bundled Qwen3 sidecar the blurb always came back empty. The blurb reads the first chunks of the document up to 2500 characters, so a file that opens with a bare heading no longer gets an invented description. Existing documents are not backfilled.
 - **Memory:** With memory enrichment on, session episode summaries are written again (the Qwen3 sidecar returned nothing). Small-talk sessions, under 20 words from you in the window, are not summarised.
 - **Tests:** The scientific evidence test no longer calls live APIs, and the bootstrap download tests no longer write into the developer's `~/.qube`. The whole suite now runs against a throwaway home directory.
+- **Knowledge sources:** The IETF RFC source returns RFCs again. It queried Datatracker's API index, which lists the API's resources, so it found nothing for any question. It now searches RFC titles and abstracts and ranks the matches; in a live check it returned RFCs for all 13 networking questions among 18 asked.
+- **Scientific evidence:** Scholarly results no longer list a paper twice when one copy's title starts with a chapter number ("2 Evidence for dark matter…").
+- **Scientific evidence:** A clinical trial counts as named only by its whole name. "The scientific consensus on…" is no longer read as the 1987 CONSENSUS trial, which had cut that question's PubMed search to the single word "CONSENSUS". Without the reranker, "dapagliflozin" no longer counts as a mention of the DAPA-HF trial.
 
 ## [1.3.60] - 2026-11-25
 

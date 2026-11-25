@@ -27,7 +27,8 @@ Usage::
     .venv/bin/python tools/capture_knowledge_fixture.py --from-evidence-cache \\
         ~/.qube/evidence_cache/<key>.json --case kq_ant_resolved
     .venv/bin/python tools/capture_knowledge_fixture.py --add-routes --case sci_sts_scot
-    .venv/bin/python tools/capture_knowledge_fixture.py --refresh-routes --path scientific_evidence
+    .venv/bin/python tools/capture_knowledge_fixture.py --refresh-routes --refresh-stage S22 \\
+        --path scientific_evidence
 
 Scientific captures (plan S13) query the union of the adapter routes each A/B
 arm would use (``scientific_adapters.scientific_adapter_routes``) and record
@@ -316,7 +317,7 @@ def add_routes(fixture: dict[str, Any], *, depth: int) -> int:
     return added
 
 
-def refresh_routes(fixture: dict[str, Any]) -> dict[str, int]:
+def refresh_routes(fixture: dict[str, Any], *, stage: str | None = None) -> dict[str, int]:
     """Re-derive a scientific fixture's S13 routes with today's policy (in place, offline).
 
     The default replay pool is the pool first captured. After a routing change
@@ -327,6 +328,11 @@ def refresh_routes(fixture: dict[str, Any]) -> dict[str, int]:
     change does not touch replays exactly as before. Refuses when a new route
     needs an adapter the fixture never captured (run ``--add-routes``) or when a
     capture is still deferred. Returns hit counts.
+
+    ``stage`` (S22, D39) names the refresh: each moved hit records
+    ``{"refresh": stage, "moved": "out" | "in"}`` in ``pool_moves``, so a run
+    stored before it can rebuild the pool it ranked
+    (``quality_eval.route_added_as_of``).
     """
     if fixture.get("path") != "scientific_evidence" or not fixture.get("routes"):
         return {"left_pool": 0, "joined_pool": 0}
@@ -356,12 +362,19 @@ def refresh_routes(fixture: dict[str, Any]) -> dict[str, int]:
             adapter = hit.get("adapter")
             if adapter in dropped and not hit.get("route_added"):
                 hit["route_added"] = True
+                _stamp_move(hit, stage, "out")
                 counts["left_pool"] += 1
             elif adapter in added and hit.get("route_added"):
                 hit.pop("route_added")
+                _stamp_move(hit, stage, "in")
                 counts["joined_pool"] += 1
     fixture["routes"] = new_routes
     return counts
+
+
+def _stamp_move(hit: dict[str, Any], stage: str | None, moved: str) -> None:
+    if stage:
+        hit.setdefault("pool_moves", []).append({"refresh": stage, "moved": moved})
 
 
 def _discovery_rows(discovery) -> list[dict[str, Any]]:
@@ -621,6 +634,11 @@ def main() -> int:
         help="Offline: re-derive scientific fixtures' routes after an adapter-policy change",
     )
     parser.add_argument(
+        "--refresh-stage", default=None,
+        help="With --refresh-routes: the plan stage of the refresh, stamped on every hit it "
+        "moves (one of quality_eval.POOL_REFRESHES; S22, D39)",
+    )
+    parser.add_argument(
         "--redo-degraded", action="store_true",
         help="Select web/trusted cases whose fixture is missing, degraded, or predates provider tracking",
     )
@@ -662,13 +680,20 @@ def main() -> int:
         return 2
 
     if args.refresh_routes:
+        from core.knowledge.quality_eval import POOL_REFRESHES
+
+        if args.refresh_stage not in POOL_REFRESHES:
+            parser.error(
+                f"--refresh-routes needs --refresh-stage, one of {POOL_REFRESHES} "
+                "(add a new stage to quality_eval.POOL_REFRESHES first)"
+            )
         for entry in selected:
             out = ROOT / str(entry.get("fixture") or "")
             if entry.get("path") != "scientific_evidence" or not out.is_file():
                 continue
             fixture = json.loads(out.read_text(encoding="utf-8"))
             before = json.dumps(fixture, sort_keys=True)
-            counts = refresh_routes(fixture)
+            counts = refresh_routes(fixture, stage=args.refresh_stage)
             if json.dumps(fixture, sort_keys=True) == before:
                 continue
             out.write_text(json.dumps(fixture, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

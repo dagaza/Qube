@@ -6,6 +6,7 @@ import time
 from typing import Any
 
 from core.app_settings import get_knowledge_source_preferences
+from core.knowledge.adapter_key_gate import split_keyless
 from core.knowledge.budget_enforcement import TurnBudgetTracker
 from core.knowledge.bundle_builder import build_empty_bundle, build_generic_bundle
 from core.knowledge.http_metrics import begin_turn_http_metrics, snapshot_turn_http_summary
@@ -92,7 +93,7 @@ class GenericOrchestrationPipeline:
 
         effective_budget = profile.materialize_budget(ctx.budget)
         budget_tracker = TurnBudgetTracker(effective_budget)
-        adapter_ids = self._resolve_adapters(ctx)
+        adapter_ids, adapter_skips = split_keyless(self._resolve_adapters(ctx))  # S22, D35
         per_adapter = max(1, min(3, effective_budget.max_results))
         adapter_calls, raw_audit, candidates, _attempts = collect_adapter_rows(
             adapter_ids,
@@ -134,6 +135,8 @@ class GenericOrchestrationPipeline:
             "http_summary": snapshot_turn_http_summary(),
             "pipeline_stages": stage_collector.as_dicts(),
         }
+        if adapter_skips:
+            rel_diag["adapter_skips"] = adapter_skips
         if not ranked:
             bundle = build_empty_bundle(
                 query_raw=ctx.query,

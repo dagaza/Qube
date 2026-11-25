@@ -68,10 +68,13 @@ SCIENTIFIC_DISCIPLINE_PACKS: tuple[ScientificDisciplinePack, ...] = (
         label="Medicine",
         ui_group="Science",
         primary_adapters=("pubmed",),
-        fallback_adapters=("nice", "cdc", "who", "clinicaltrials_gov", "openfda", "openalex", "pubmed", "europe_pmc"),
+        fallback_adapters=("nice", "cdc", "clinicaltrials_gov", "openfda", "openalex", "pubmed", "europe_pmc"),
         entity_pack_hints=("biomedical",),
         status="active",
-        notes="Clinical and therapeutic queries; maps from legacy biomedical id.",
+        notes=(
+            "Clinical and therapeutic queries; maps from legacy biomedical id. WHO GHO "
+            "(health indicators) left the pack in S22 (D37)."
+        ),
     ),
     ScientificDisciplinePack(
         id=SCIENTIFIC_DISCIPLINE_BIOLOGY,
@@ -88,18 +91,25 @@ SCIENTIFIC_DISCIPLINE_PACKS: tuple[ScientificDisciplinePack, ...] = (
         label="Chemistry",
         ui_group="Chemistry",
         primary_adapters=("pubchem",),
-        fallback_adapters=("chembl", "chemrxiv", "uspto_patentsview", "epo_espacenet", "openalex", "pubmed"),
+        fallback_adapters=("chembl", "chemrxiv", "epo_espacenet", "openalex", "pubmed"),
         status="active",
-        notes="6c-2 + Slice 16/18: PubChem primary; ChEMBL, ChemRxiv, and patent fallbacks.",
+        notes=(
+            "6c-2 + Slice 16/18: PubChem primary; ChEMBL, ChemRxiv, and EPO OPS patent "
+            "fallbacks (PatentsView retired in S22, D36)."
+        ),
     ),
     ScientificDisciplinePack(
         id=SCIENTIFIC_DISCIPLINE_PHYSICS,
         label="Physics",
         ui_group="Science",
         primary_adapters=("arxiv", "inspire_hep"),
-        fallback_adapters=("openalex", "nasa_ads"),
+        fallback_adapters=("openalex", "nasa_ads", "crossref"),
         status="active",
-        notes="6c-5 + 7a: arXiv + INSPIRE-HEP; NASA ADS live with API token.",
+        notes=(
+            "6c-5 + 7a: arXiv + INSPIRE-HEP; NASA ADS live with API token. S23 (D40): "
+            "Crossref fallback, which the general route used to reach alone (the S13 "
+            "Bell-test loss)."
+        ),
     ),
     ScientificDisciplinePack(
         id=SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE,
@@ -115,9 +125,12 @@ SCIENTIFIC_DISCIPLINE_PACKS: tuple[ScientificDisciplinePack, ...] = (
         label="Economics",
         ui_group="Economics",
         primary_adapters=("repec",),
-        fallback_adapters=("world_bank", "eurostat", "oecd", "bls", "openalex", "ssrn"),
+        fallback_adapters=("world_bank", "oecd", "openalex", "ssrn"),
         status="active",
-        notes="6c-4: RePEc live via EconBiz API; SSRN via OpenAlex index.",
+        notes=(
+            "6c-4: RePEc live via EconBiz API; SSRN via OpenAlex index. Eurostat and BLS "
+            "retired in S22 (D36, D38)."
+        ),
     ),
     ScientificDisciplinePack(
         id=SCIENTIFIC_DISCIPLINE_PSYCHOLOGY,
@@ -159,10 +172,14 @@ SCIENTIFIC_DISCIPLINE_PACKS: tuple[ScientificDisciplinePack, ...] = (
         id=SCIENTIFIC_DISCIPLINE_ENGINEERING,
         label="Engineering",
         ui_group="Engineering",
-        primary_adapters=("ieee_xplore", "nist", "ietf_rfc"),
-        fallback_adapters=("uspto_patentsview", "epo_espacenet", "arxiv", "openalex"),
+        primary_adapters=("ieee_xplore", "ietf_rfc"),
+        fallback_adapters=("epo_espacenet", "arxiv", "openalex"),
         status="active",
-        notes="P0 + Slice 18: IEEE/NIST/IETF primary; USPTO PatentsView + EPO OPS patent fallbacks.",
+        notes=(
+            "P0 + Slice 18: IEEE Xplore (key) and IETF RFC primary; EPO OPS (key) patent "
+            "fallback. S22: NIST NVD (a CVE database) left the pack (D37) and PatentsView "
+            "was retired (D36), so keyless turns search IETF RFC, arXiv and OpenAlex."
+        ),
     ),
     ScientificDisciplinePack(
         id=SCIENTIFIC_DISCIPLINE_GENERAL,

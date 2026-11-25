@@ -145,7 +145,8 @@ _ADAPTER_STRATEGY: dict[str, AdapterReadinessMeta] = {
     ),
     "eurostat": AdapterReadinessMeta(
         "production",
-        "Eurostat discovery statistics search API (anonymous).",
+        "Retired in plan S22 (D38): the discovery search endpoint returns 404 and the "
+        "table of contents has no search.",
     ),
     "usgs": AdapterReadinessMeta(
         "production",
@@ -161,11 +162,13 @@ _ADAPTER_STRATEGY: dict[str, AdapterReadinessMeta] = {
     ),
     "ietf_rfc": AdapterReadinessMeta(
         "production",
-        "IETF Datatracker document search (anonymous).",
+        "IETF Datatracker document search for RFCs (anonymous); since plan S22 (D38) "
+        "a title term plus an abstract term, ranked locally.",
     ),
     "bls": AdapterReadinessMeta(
         "production",
-        "BLS Public Data API series search (free registration key required).",
+        "Retired in plan S22 (D36): the BLS Public Data API has no series search "
+        "(/timeseries/search returns 404).",
     ),
     "us_census": AdapterReadinessMeta(
         "production",
@@ -245,7 +248,7 @@ _ADAPTER_STRATEGY: dict[str, AdapterReadinessMeta] = {
     ),
     "uspto_patentsview": AdapterReadinessMeta(
         "beta",
-        "USPTO PatentsView PatentSearch API (PatentsView API key required).",
+        "Retired in plan S22 (D36): the PatentSearch API host no longer resolves.",
     ),
     "epo_espacenet": AdapterReadinessMeta(
         "beta",

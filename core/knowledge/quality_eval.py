@@ -39,6 +39,7 @@ Metric conventions (pinned by ``tests/test_knowledge_quality_eval.py``):
 from __future__ import annotations
 
 import contextvars
+import itertools
 import json
 import math
 import re
@@ -60,6 +61,7 @@ LABEL_GAINS: dict[str, int] = {"relevant": 2, "partial": 1, "irrelevant": 0}
 EXPECT_STATES: tuple[str, ...] = ("sufficient", "partial", "insufficient")
 LABEL_SOURCES: tuple[str, ...] = ("human", "model")
 DEFAULT_FIXTURE_BUDGET = 3  # balanced profile max_results
+KEPT_TITLE_CHARS = 120  # reports cut kept titles to this many characters
 # production — the query today's code builds from the turn and history;
 # standalone — the gold standalone question (what S5/S6 aim for);
 # captured — the query string recorded at capture time (S2–S4 baselines).
@@ -108,6 +110,40 @@ def candidate_gain(row: dict[str, Any]) -> int | None:
 
 
 POOL_MODES: tuple[str, ...] = ("production", "widened", "full")
+
+# Route refreshes (``tools/capture_knowledge_fixture.py --refresh-routes
+# --refresh-stage``) that stamped the hits they moved, oldest first (S22, D39).
+# A hit moved out of the default pool, or into it, records
+# ``{"refresh": <stage>, "moved": "out" | "in"}`` in ``pool_moves``. Reports
+# record the latest refresh as ``pool_refresh``, so a stored run's pool can be
+# rebuilt as it was: ``as_of=None`` is before every stamped refresh.
+POOL_REFRESHES: tuple[str, ...] = ("S22", "S23")
+CURRENT_POOL_REFRESH: str = POOL_REFRESHES[-1]
+
+
+def _refresh_rank(stage: str | None) -> int:
+    if stage is None:
+        return -1
+    try:
+        return POOL_REFRESHES.index(stage)
+    except ValueError:
+        raise ValueError(f"unknown pool refresh {stage!r}; known: {POOL_REFRESHES}") from None
+
+
+def route_added_as_of(hit: dict[str, Any], as_of: str | None = CURRENT_POOL_REFRESH) -> bool:
+    """``hit["route_added"]`` as it stood after refresh ``as_of``.
+
+    The last move at or before ``as_of`` decides. With none, the hit is where
+    it was before its first move; a hit never moved keeps its flag.
+    """
+    moves = [m for m in hit.get("pool_moves") or () if isinstance(m, dict)]
+    if not moves:
+        return bool(hit.get("route_added"))
+    seen = _refresh_rank(as_of)
+    done = [m for m in moves if _refresh_rank(m.get("refresh")) <= seen]
+    if done:
+        return done[-1].get("moved") == "out"
+    return moves[0].get("moved") == "in"
 
 
 def widened_depth(fixture: dict[str, Any]) -> dict[str, int]:
@@ -173,6 +209,8 @@ def fixture_pool(
     query_mode: str = "production",
     pool_mode: str = "production",
     route_arm: str | None = None,
+    merge: bool = True,
+    as_of: str | None = CURRENT_POOL_REFRESH,
 ) -> list[dict[str, Any]]:
     """Candidate rows to rank (copies), in the order the adapters returned them.
 
@@ -187,7 +225,42 @@ def fixture_pool(
     ``route_arm`` (S13) selects the adapters one A/B arm would query, from the
     fixture's ``routes``. Without it, hits captured only for an arm
     (``route_added``) are left out, so the pool is the one first captured.
+
+    ``merge`` (S21, D34): on the scientific path, rows production's
+    ``rrf_merge`` fuses into an earlier one (same DOI or normalised title, but
+    captured as separate candidates) are left out, as the pipeline would.
+    ``False`` rebuilds the pool runs stored before S21 ranked.
+
+    ``as_of`` (S22, D39): the default pool as it stood after that route
+    refresh (``POOL_REFRESHES``); ``None`` rebuilds the pool of a run stored
+    before S22.
     """
+    candidates = fixture.get("candidates") or []
+    return [
+        dict(candidates[i])
+        for i in _pool_indices(
+            fixture,
+            include_synthetic=include_synthetic,
+            query_mode=query_mode,
+            pool_mode=pool_mode,
+            route_arm=route_arm,
+            merge=merge,
+            as_of=as_of,
+        )
+    ]
+
+
+def _pool_indices(
+    fixture: dict[str, Any],
+    *,
+    include_synthetic: bool,
+    query_mode: str,
+    pool_mode: str,
+    route_arm: str | None,
+    merge: bool = True,
+    as_of: str | None = CURRENT_POOL_REFRESH,
+) -> list[int]:
+    """Indices into ``fixture["candidates"]`` of ``fixture_pool``'s rows, in pool order."""
     if pool_mode not in POOL_MODES:
         raise ValueError(f"pool_mode must be one of {POOL_MODES}")
     variant = pool_variant(fixture, query_mode)
@@ -198,7 +271,7 @@ def fixture_pool(
     )
     route = fixture_route(fixture, variant, route_arm)
     adapter_order = {name: i for i, name in enumerate(route if route is not None else depth)}
-    picked: list[tuple[tuple[int, int, int], dict[str, Any]]] = []
+    picked: list[tuple[int, int, int]] = []  # (adapter position, rank, candidate index)
     for idx, row in enumerate(fixture.get("candidates") or []):
         if not isinstance(row, dict):
             continue
@@ -207,7 +280,7 @@ def fixture_pool(
         hits = row.get("retrieved")
         if not hits:
             # Hand-built / v1 rows (no capture metadata) come first, in file order.
-            picked.append(((-1, 0, idx), dict(row)))
+            picked.append((-1, 0, idx))
             continue
         best: tuple[int, int, int] | None = None
         for hit in hits:
@@ -215,7 +288,7 @@ def fixture_pool(
                 continue
             adapter = str(hit.get("adapter") or "")
             if route is None:
-                if hit.get("route_added"):
+                if route_added_as_of(hit, as_of):
                     continue
             elif adapter not in route:
                 continue
@@ -226,9 +299,42 @@ def fixture_pool(
             if best is None or key < best:
                 best = key
         if best is not None:
-            picked.append((best, dict(row)))
-    picked.sort(key=lambda item: item[0])
-    return [row for _, row in picked]
+            picked.append(best)
+    picked.sort()
+    order = [idx for _, _, idx in picked]
+    return _merged_indices(fixture, order) if merge else order
+
+
+def _merged_indices(fixture: dict[str, Any], order: list[int]) -> list[int]:
+    """``order`` without the rows the scientific merge fuses into an earlier one.
+
+    The pool order is the pipeline's task order (adapter, then rank), so the
+    first-seen copy is the one ``rrf_merge`` keeps. Other paths do not merge.
+    """
+    if _normalize_path(fixture.get("path")) != PATH_SCIENTIFIC:
+        return order
+    from core.knowledge.adapter_collection import first_seen_unique
+
+    candidates = fixture.get("candidates") or []
+    keep = {id(row) for row in first_seen_unique([candidates[i] for i in order])}
+    return [i for i in order if id(candidates[i]) in keep]
+
+
+def pool_expect(fixture: dict[str, Any], pool: Sequence[dict[str, Any]]) -> tuple[str | None, str]:
+    """``(expect, source)`` for ranking ``pool``.
+
+    An explicit fixture ``expect`` is for single-pool fixtures; captured
+    fixtures derive it from the labels of the pool being evaluated. Empty pool
+    -> nothing to cite (should abstain); an unlabelled pool gives no verdict
+    rather than a fake "insufficient".
+    """
+    if fixture.get("expect"):
+        return fixture.get("expect"), "fixture"
+    if not pool:
+        return "insufficient", "derived"
+    if any(candidate_gain(r) is not None for r in pool):
+        return derive_expect(pool), "derived"
+    return None, "unlabelled"
 
 
 def derive_expect(pool: Sequence[dict[str, Any]]) -> str:
@@ -838,11 +944,13 @@ def evaluate_fixture(
     recency_shift_days: int = 0,
     ablate: Iterable[str] = (),
     route_arm: str | None = None,
+    as_of: str | None = CURRENT_POOL_REFRESH,
 ) -> dict[str, Any]:
     """Rank a fixture's pool and report graded ranking + abstention metrics.
 
     ``ablate`` switches ranking heuristics off (``RANKING_ABLATIONS``);
-    ``route_arm`` picks the pool of one S13 routing arm (``fixture_pool``).
+    ``route_arm`` picks the pool of one S13 routing arm (``fixture_pool``);
+    ``as_of`` the route refresh the default pool reflects (S22, D39).
 
     ``recency_shift_days`` replays the pool as if it were that many days older
     (S7: a fresh capture becomes a stale one without a new capture).
@@ -859,6 +967,7 @@ def evaluate_fixture(
         query_mode=query_mode,
         pool_mode=pool_mode,
         route_arm=route_arm,
+        as_of=as_of,
     )
     query = fixture_ranking_query(fixture, query_mode=query_mode)
     token = _EVAL_TODAY.set(fixture_today(fixture, shift_days=recency_shift_days))
@@ -871,18 +980,7 @@ def evaluate_fixture(
     kept = output.kept
     recency = _recency_report(query, kept, output, fixture, recency_shift_days)
     did_abstain = abstained(kept, output.state)
-    # An explicit fixture ``expect`` is for single-pool fixtures; captured
-    # fixtures derive it from the labels of the pool being evaluated.
-    # Empty pool -> nothing to cite (should abstain); an unlabelled pool gives
-    # no verdict rather than a fake "insufficient".
-    if fixture.get("expect"):
-        expect, expect_source = fixture.get("expect"), "fixture"
-    elif not pool:
-        expect, expect_source = "insufficient", "derived"
-    elif any(candidate_gain(r) is not None for r in pool):
-        expect, expect_source = derive_expect(pool), "derived"
-    else:
-        expect, expect_source = None, "unlabelled"
+    expect, expect_source = pool_expect(fixture, pool)
 
     return {
         "fixture_id": fixture.get("id"),
@@ -905,7 +1003,14 @@ def evaluate_fixture(
         "labelled_in_pool": sum(1 for r in pool if candidate_gain(r) is not None),
         "relevant_in_pool": sum(1 for r in pool if candidate_gain(r) == 2),
         "kept_count": len(kept),
-        "kept_titles": [str(r.get("title") or "")[:120] for r in kept],
+        "kept_titles": [str(r.get("title") or "")[:KEPT_TITLE_CHARS] for r in kept],
+        # S21: labels of the kept rows, so a stored run can be re-scored on
+        # another pool without matching titles (two rows can share one).
+        "kept_labels": [r.get("label") for r in kept],
+        # S21 (D34): the pool went through the scientific merge step.
+        "replay_merge": True,
+        # S22 (D39): the last route refresh the default pool reflects.
+        "pool_refresh": as_of,
         "state": output.state,
         "abstained": did_abstain,
         "precision_at_k": precision_at_k(kept, k),
@@ -1039,6 +1144,210 @@ def compare_to_baseline(
                     }
                 )
     return regressions
+
+
+# ---------------------------------------------------------------------------
+# Shared-pool scoring (S21)
+# ---------------------------------------------------------------------------
+#
+# ``ndcg_at_5``, ``relevant_recall`` and ``abstain_correct`` (through the
+# derived ``expect``) are scored against the pool a run ranked. Two runs with
+# different pools (depths, routing arms) are then measured on different
+# scales, and ``--compare`` flags false regressions (predecessor S8 results).
+# Shared-pool scoring re-scores every run against the union of the runs' pools:
+# every candidate one of them ranked. Precision and the irrelevant-kept rate
+# depend on the kept rows only and are unchanged.
+
+POOL_SCORINGS: tuple[str, ...] = ("own", "shared")
+POOL_RELATIVE_METRICS: tuple[str, ...] = ("ndcg_at_5", "relevant_recall", "abstain_correct")
+
+
+def _pool_args(spec: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "include_synthetic": bool(spec.get("include_synthetic", False)),
+        "query_mode": spec.get("query_mode") or "production",
+        "pool_mode": spec.get("pool_mode") or "production",
+        "route_arm": spec.get("route_arm"),
+        "merge": bool(spec.get("merge", True)),
+        "as_of": spec.get("as_of", CURRENT_POOL_REFRESH),
+    }
+
+
+def run_pool_spec(run: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+    """``fixture_pool`` arguments of one stored result (run settings + its route arm).
+
+    Results stored before S21 carry no ``replay_merge``: their pools were not
+    merged (D34). Results stored before S22 carry no ``pool_refresh``: their
+    pools predate every stamped route refresh (D39).
+    """
+    return {
+        "include_synthetic": bool(run.get("include_synthetic", False)),
+        "query_mode": result.get("query_mode") or run.get("query_mode") or "production",
+        "pool_mode": result.get("pool_mode") or run.get("pool_mode") or "production",
+        "route_arm": result.get("route_arm"),
+        "merge": bool(result.get("replay_merge", False)),
+        "as_of": result.get("pool_refresh"),
+    }
+
+
+def shared_pool(fixture: dict[str, Any], specs: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Union of the pools ``specs`` describe: every candidate one of the runs ranked.
+
+    Each spec holds ``fixture_pool`` keyword arguments (``query_mode``,
+    ``pool_mode``, ``route_arm``, ``include_synthetic``, ``merge``). Rows are
+    copies, in fixture order (the pool-relative metrics do not depend on it).
+    When a spec merges, so does the union: two arms can each see a different
+    copy of one paper.
+    """
+    picked: set[int] = set()
+    merge = False
+    for spec in specs:
+        args = _pool_args(spec)
+        merge = merge or args["merge"]
+        picked.update(_pool_indices(fixture, **args))
+    order = sorted(picked)
+    if merge:
+        order = _merged_indices(fixture, order)
+    candidates = fixture.get("candidates") or []
+    return [dict(candidates[i]) for i in order]
+
+
+def _same_metric(a: Any, b: Any) -> bool:
+    if a is None or b is None:
+        return a is None and b is None
+    return abs(float(a) - float(b)) <= 1e-9
+
+
+def _own_pool_metrics(labels: Sequence[str | None], pool: Sequence[dict[str, Any]], result: dict[str, Any]) -> dict[str, Any]:
+    kept = [{"label": label} for label in labels]
+    budget = int(result.get("budget") or DEFAULT_FIXTURE_BUDGET)
+    return {
+        "precision_at_k": precision_at_k(kept, int(result.get("k") or 3)),
+        "ndcg_at_5": ndcg_at_k(kept, pool, 5),
+        "irrelevant_kept_rate": irrelevant_kept_rate(kept),
+        "relevant_recall": relevant_recall(kept, pool, budget=budget),
+    }
+
+
+def kept_labels(result: dict[str, Any], pool: Sequence[dict[str, Any]]) -> list[str | None]:
+    """Labels of a stored result's kept rows, in kept order.
+
+    Reports carry ``kept_labels`` since S21. Older ones carry only the kept
+    titles (cut to ``KEPT_TITLE_CHARS``), which are matched to the rows of the
+    run's own ``pool``. When rows sharing a title have different labels, the
+    assignment that reproduces the result's own-pool metrics is used. Raises
+    ``ValueError`` for a title the pool does not hold (as often as it was
+    kept) or an assignment the stored metrics cannot settle.
+    """
+    if "kept_labels" in result:
+        return list(result["kept_labels"])
+    titles = [str(t) for t in result.get("kept_titles") or []]
+    by_title: dict[str, list[str | None]] = {}
+    for row in pool:
+        by_title.setdefault(str(row.get("title") or "")[:KEPT_TITLE_CHARS], []).append(row.get("label"))
+    positions: dict[str, list[int]] = {}
+    for pos, title in enumerate(titles):
+        positions.setdefault(title, []).append(pos)
+    choices: list[tuple[list[int], list[tuple[str | None, ...]]]] = []
+    for title, where in positions.items():
+        labels = by_title.get(title) or []
+        if len(labels) < len(where):
+            raise ValueError(f"kept title not in the pool: {title!r}")
+        # Every distinct label order the kept copies of this title can have.
+        orders = sorted(
+            {tuple(labels[i] for i in p) for p in itertools.permutations(range(len(labels)), len(where))},
+            key=str,
+        )
+        choices.append((where, orders))
+
+    def assign(combo: Sequence[tuple[str | None, ...]]) -> list[str | None]:
+        assigned: list[str | None] = [None] * len(titles)
+        for (where, _), labels in zip(choices, combo):
+            for pos, label in zip(where, labels):
+                assigned[pos] = label
+        return assigned
+
+    combos = [assign(c) for c in itertools.product(*(orders for _, orders in choices))]
+    if len(combos) == 1:
+        return combos[0]
+    matches = {
+        tuple(a)
+        for a in combos
+        if all(_same_metric(v, result.get(m)) for m, v in _own_pool_metrics(a, pool, result).items())
+    }
+    if len(matches) != 1:
+        raise ValueError(f"kept rows cannot be labelled from their titles ({len(matches)} matching assignments)")
+    return list(next(iter(matches)))
+
+
+def rescore_on_pool(
+    fixture: dict[str, Any],
+    result: dict[str, Any],
+    labels: Sequence[str | None],
+    pool: Sequence[dict[str, Any]],
+) -> dict[str, Any]:
+    """``result`` with its pool-relative metrics re-scored against ``pool``."""
+    kept = [{"label": label} for label in labels]
+    budget = int(result.get("budget") or fixture.get("budget") or DEFAULT_FIXTURE_BUDGET)
+    expect, expect_source = pool_expect(fixture, pool)
+    out = dict(result)
+    out.update(
+        {
+            "pool_scoring": "shared",
+            "shared_pool_size": len(pool),
+            "expect": expect,
+            "expect_source": expect_source,
+            "ndcg_at_5": ndcg_at_k(kept, pool, 5),
+            "relevant_recall": relevant_recall(kept, pool, budget=budget),
+            "abstain_correct": abstain_correct(expect, bool(result.get("abstained"))),
+        }
+    )
+    return out
+
+
+def shared_pool_reports(
+    fixtures: dict[str, dict[str, Any]],
+    runs: Sequence[dict[str, Any]],
+) -> tuple[list[list[dict[str, Any]]], list[dict[str, Any]]]:
+    """Re-score stored eval runs against shared pools.
+
+    ``runs`` are summaries as ``tools/evaluate_knowledge_quality.py --json``
+    writes them (``results`` plus the run settings); ``fixtures`` maps result
+    ids to fixtures. Every fixture that all runs evaluated is scored: its
+    shared pool is the union of the runs' pools, and each run's kept rows are
+    scored against it. Returns the re-scored results per run (in the first
+    run's order) and the fixtures left out, each with a reason: a pool that no
+    longer matches the size the run ranked (the fixture changed since), or
+    kept rows that cannot be labelled.
+    """
+    by_run = [{r.get("id"): r for r in run.get("results") or [] if not r.get("skipped")} for run in runs]
+    out: list[list[dict[str, Any]]] = [[] for _ in runs]
+    skipped: list[dict[str, Any]] = []
+    if not by_run:
+        return out, skipped
+    for fid in by_run[0]:
+        if fid not in fixtures or not all(fid in results for results in by_run[1:]):
+            continue
+        fixture = fixtures[fid]
+        specs: list[dict[str, Any]] = []
+        labels: list[list[str | None]] = []
+        try:
+            for run, results in zip(runs, by_run):
+                result = results[fid]
+                spec = run_pool_spec(run, result)
+                own = fixture_pool(fixture, **_pool_args(spec))
+                stored = result.get("pool_size")
+                if stored is not None and int(stored) != len(own):
+                    raise ValueError(f"pool has {len(own)} rows, the run ranked {stored}")
+                specs.append(spec)
+                labels.append(kept_labels(result, own))
+        except ValueError as exc:
+            skipped.append({"id": fid, "reason": str(exc)})
+            continue
+        pool = shared_pool(fixture, specs)
+        for j, results in enumerate(by_run):
+            out[j].append(rescore_on_pool(fixture, results[fid], labels[j], pool))
+    return out, skipped
 
 
 # ---------------------------------------------------------------------------

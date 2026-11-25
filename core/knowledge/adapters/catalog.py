@@ -172,9 +172,9 @@ ADAPTER_CATALOG: tuple[AdapterCatalogEntry, ...] = (
         "USPTO PatentsView",
         SERVICE_SCIENTIFIC_EVIDENCE,
         "Chemistry",
-        implemented=True,
+        implemented=False,  # retired in plan S22 (D36); adapter code kept
         requires_api_key=True,
-        default_enabled=True,
+        default_enabled=False,
     ),
     AdapterCatalogEntry(
         "epo_espacenet",
@@ -413,17 +413,17 @@ ADAPTER_CATALOG: tuple[AdapterCatalogEntry, ...] = (
         "Eurostat",
         SERVICE_FINANCE_KNOWLEDGE,
         "Finance",
-        implemented=True,
-        default_enabled=True,
+        implemented=False,  # retired in plan S22 (D38); adapter code kept
+        default_enabled=False,
     ),
     AdapterCatalogEntry(
         "bls",
         "BLS",
         SERVICE_FINANCE_KNOWLEDGE,
         "Finance",
-        implemented=True,
+        implemented=False,  # retired in plan S22 (D36); adapter code kept
         requires_api_key=True,
-        default_enabled=True,
+        default_enabled=False,
     ),
     # P0 institutional sources — health & guidelines
     AdapterCatalogEntry(
@@ -472,17 +472,17 @@ ADAPTER_CATALOG: tuple[AdapterCatalogEntry, ...] = (
         "Eurostat",
         SERVICE_SCIENTIFIC_EVIDENCE,
         "Economics",
-        implemented=True,
-        default_enabled=True,
+        implemented=False,  # retired in plan S22 (D38); adapter code kept
+        default_enabled=False,
     ),
     AdapterCatalogEntry(
         "bls",
         "BLS",
         SERVICE_SCIENTIFIC_EVIDENCE,
         "Economics",
-        implemented=True,
+        implemented=False,  # retired in plan S22 (D36); adapter code kept
         requires_api_key=True,
-        default_enabled=True,
+        default_enabled=False,
     ),
     AdapterCatalogEntry(
         "world_bank",
@@ -497,8 +497,8 @@ ADAPTER_CATALOG: tuple[AdapterCatalogEntry, ...] = (
         "Eurostat",
         SERVICE_SCIENTIFIC_EVIDENCE,
         "Social Science",
-        implemented=True,
-        default_enabled=True,
+        implemented=False,  # retired in plan S22 (D38); adapter code kept
+        default_enabled=False,
     ),
     AdapterCatalogEntry(
         "us_census",
@@ -560,9 +560,9 @@ ADAPTER_CATALOG: tuple[AdapterCatalogEntry, ...] = (
         "USPTO PatentsView",
         SERVICE_SCIENTIFIC_EVIDENCE,
         "Engineering",
-        implemented=True,
+        implemented=False,  # retired in plan S22 (D36); adapter code kept
         requires_api_key=True,
-        default_enabled=True,
+        default_enabled=False,
     ),
     AdapterCatalogEntry(
         "epo_espacenet",

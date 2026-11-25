@@ -69,13 +69,13 @@ class TestScientificDisciplinePacks(unittest.TestCase):
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_CHEMISTRY)
+        # PatentsView was retired in plan S22 (D36).
         self.assertEqual(
             order,
             (
                 "pubchem",
                 "chembl",
                 "chemrxiv",
-                "uspto_patentsview",
                 "epo_espacenet",
                 "openalex",
                 "pubmed",
@@ -137,7 +137,8 @@ class TestScientificDisciplinePacks(unittest.TestCase):
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_PHYSICS)
-        self.assertEqual(order, ("arxiv", "inspire_hep", "openalex", "nasa_ads"))
+        # Crossref joined the physics fallback in plan S23 (D40).
+        self.assertEqual(order, ("arxiv", "inspire_hep", "openalex", "nasa_ads", "crossref"))
 
 
 if __name__ == "__main__":

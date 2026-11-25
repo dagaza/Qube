@@ -20,6 +20,9 @@ Examples::
     # S13 A/B arms: one heuristic off, compared against the default run
     .venv/bin/python tools/evaluate_knowledge_quality.py --ranker ce --ablate trial_grounding
     .venv/bin/python tools/evaluate_knowledge_quality.py --ranker ce --route-arm no_discipline_routing
+    # S21: compare runs with different pools (depth, routing arm) on the same rows
+    .venv/bin/python tools/evaluate_knowledge_quality.py --ranker ce --pool-mode widened \
+        --compare eval/retrieval_corpus/baselines/kq_s7_ce_production.json --pool-scoring shared
 """
 
 from __future__ import annotations
@@ -36,6 +39,7 @@ if str(ROOT) not in sys.path:
 from core.knowledge.quality_eval import (  # noqa: E402
     CONTRACT_FLAGS,
     POOL_MODES,
+    POOL_SCORINGS,
     QUERY_MODES,
     RANKER_NAMES,
     RANKING_ABLATIONS,
@@ -46,6 +50,7 @@ from core.knowledge.quality_eval import (  # noqa: E402
     evaluate_prompt_contract,
     get_fixture_ranker,
     load_json,
+    shared_pool_reports,
     validate_fixture,
 )
 from core.knowledge.scientific_adapters import ROUTE_ARMS  # noqa: E402
@@ -87,6 +92,14 @@ def _print_table(title: str, groups: dict[str, dict]) -> None:
     print(f"  {'group':28} " + " ".join(f"{s:>7}" for s in short))
     for name, row in groups.items():
         print(f"  {name[:28]:28} " + " ".join(f"{_fmt(row.get(c)):>7}" for c in cols))
+
+
+def _aggregate_all(reports: list[dict]) -> dict[str, dict]:
+    return {
+        "all": aggregate_reports(reports),
+        "category": aggregate_reports(reports, group_by="category"),
+        "path": aggregate_reports(reports, group_by="path"),
+    }
 
 
 def _is_scientific(entry: dict, fixture: dict) -> bool:
@@ -136,6 +149,14 @@ def main() -> int:
         default=None,
         help="Baseline produced by --json; fail on per-category regression",
     )
+    parser.add_argument(
+        "--pool-scoring",
+        default="own",
+        choices=POOL_SCORINGS,
+        help="own = compare the stored aggregates (each run scored on its own pool); "
+        "shared = re-score this run and the --compare baseline on the union of both "
+        "pools, fixtures both evaluated (S21)",
+    )
     for flag, _, _ in _GATES:
         parser.add_argument(f"--{flag.replace('_', '-')}", dest=flag, type=float, default=None)
     parser.add_argument(
@@ -160,6 +181,8 @@ def main() -> int:
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON summary")
     args = parser.parse_args()
+    if args.pool_scoring == "shared" and args.compare is None:
+        parser.error("--pool-scoring shared needs --compare")
 
     try:
         rank_fn = get_fixture_ranker(args.ranker)
@@ -169,6 +192,7 @@ def main() -> int:
 
     corpus = load_json(args.corpus)
     results: list[dict] = []
+    fixtures_by_id: dict[str, dict] = {}
     for entry in corpus.get("queries") or []:
         fixture_rel = entry.get("fixture")
         if not fixture_rel:
@@ -183,6 +207,7 @@ def main() -> int:
             )
             continue
         fixture = load_json(fixture_rel)
+        fixtures_by_id[entry.get("id")] = fixture
         schema_errors = validate_fixture(fixture)
         report = evaluate_fixture(
             fixture,
@@ -242,10 +267,32 @@ def main() -> int:
             failures.append(f"gate {flag}: {metric}={value:.3f} > {threshold}")
 
     regressions: list[dict] = []
+    shared: dict | None = None
     if args.compare is not None:
         baseline = json.loads(args.compare.read_text(encoding="utf-8"))
+        current_aggs = {"all": overall, "category": by_category, "path": by_path}
         base_aggs = baseline.get("aggregates") or {}
-        for scope, current in (("all", overall), ("category", by_category), ("path", by_path)):
+        if args.pool_scoring == "shared":
+            current_run = {
+                "query_mode": args.query_mode,
+                "pool_mode": args.pool_mode,
+                "include_synthetic": args.include_synthetic,
+                "results": evaluated,
+            }
+            (cur_reports, base_reports), skipped = shared_pool_reports(
+                fixtures_by_id, [current_run, baseline]
+            )
+            current_aggs = _aggregate_all(cur_reports)
+            base_aggs = _aggregate_all(base_reports)
+            shared = {
+                "baseline": str(args.compare),
+                "fixtures": len(cur_reports),
+                "skipped": skipped,
+                "current": current_aggs,
+                "baseline_aggregates": base_aggs,
+            }
+        for scope in ("all", "category", "path"):
+            current = current_aggs[scope]
             for reg in compare_to_baseline(current, base_aggs.get(scope) or {}):
                 reg["scope"] = scope
                 regressions.append(reg)
@@ -269,6 +316,9 @@ def main() -> int:
         "failures": failures,
         "results": results,
     }
+    if shared is not None:
+        summary["pool_scoring"] = "shared"
+        summary["shared_pool"] = shared
 
     if args.json:
         print(json.dumps(summary, indent=2))
@@ -302,6 +352,12 @@ def main() -> int:
         _print_table("Overall", overall)
         _print_table("By path", by_path)
         _print_table("By category", by_category)
+        if shared is not None:
+            label = f"Shared pools with {args.compare.name} ({shared['fixtures']} fixtures)"
+            _print_table(f"{label}: this run, by path", shared["current"]["path"])
+            _print_table(f"{label}: baseline, by path", shared["baseline_aggregates"]["path"])
+            for item in shared["skipped"]:
+                print(f"  not scored: {item['id']}: {item['reason']}")
         rec = all_row
         if rec.get("recency_turns"):
             print(
