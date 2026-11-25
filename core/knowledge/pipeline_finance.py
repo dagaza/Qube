@@ -10,6 +10,7 @@ from core.app_settings import get_knowledge_source_preferences
 from core.knowledge.adapters.registry import get_search_function
 from core.knowledge.adapters.sec_edgar import ADAPTER_ID as SEC_ADAPTER
 from core.knowledge.adapter_failures import adapter_error, failure_report, with_failure_note
+from core.knowledge.adapter_key_gate import split_keyless
 from core.knowledge.http_metrics import begin_turn_http_metrics, snapshot_turn_http_summary
 from core.knowledge.bundle_builder import build_empty_bundle, build_finance_knowledge_bundle
 from core.knowledge.finance_query_planner import plan_finance_query
@@ -68,12 +69,18 @@ def _fetch_finance_rows(
     return sorted(dict.fromkeys(adapter_calls)), rows
 
 
-def _finish(bundle, rel_diag, http_summary, adapter_failures, failure_note):
-    """S12: carry HTTP outcome and adapter failures into diag and rationale."""
+def _finish(bundle, rel_diag, http_summary, adapter_failures, failure_note, adapter_skips=()):
+    """S12: carry HTTP outcome and adapter failures into diag and rationale.
+
+    S22 (D35): adapters left out for a missing API key are named in
+    ``adapter_skips``.
+    """
     diag = dict(rel_diag or {})
     diag["http_summary"] = http_summary
     if adapter_failures:
         diag["adapter_failures"] = adapter_failures
+    if adapter_skips:
+        diag["adapter_skips"] = list(adapter_skips)
     return with_failure_note(bundle, failure_note), diag
 
 
@@ -95,6 +102,7 @@ class FinanceEvidencePipeline:
             composer_adapter_filter=ctx.adapter_filter,
             stored_preferences=get_knowledge_source_preferences(),
         )
+        adapter_ids, adapter_skips = split_keyless(adapter_ids)
         adapter_errors: list[dict[str, str]] = []
         begin_turn_http_metrics()
         adapter_calls, rows = _fetch_finance_rows(
@@ -160,7 +168,9 @@ class FinanceEvidencePipeline:
                 "finance_form_types": list(plan.form_types),
                 "finance_adapters_selected": list(adapter_ids),
             }
-            bundle, rel_diag = _finish(bundle, rel_diag, http_summary, adapter_failures, failure_note)
+            bundle, rel_diag = _finish(
+                bundle, rel_diag, http_summary, adapter_failures, failure_note, adapter_skips
+            )
             return bundle, rel_diag, raw_audit
 
         stop_reason = "sufficient_evidence" if len(kept) >= budget else "budget_exhausted"
@@ -182,5 +192,7 @@ class FinanceEvidencePipeline:
             "finance_form_types": list(plan.form_types),
             "finance_adapters_selected": list(adapter_ids),
         }
-        bundle, rel_diag = _finish(bundle, rel_diag, http_summary, adapter_failures, failure_note)
+        bundle, rel_diag = _finish(
+            bundle, rel_diag, http_summary, adapter_failures, failure_note, adapter_skips
+        )
         return bundle, rel_diag, raw_audit

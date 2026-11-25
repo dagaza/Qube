@@ -16,6 +16,7 @@ from core.knowledge.adapter_collection import (
     collect_adapter_rows,
     rrf_merge,
 )
+from core.knowledge.adapter_key_gate import split_keyless
 from core.knowledge.adapters.query_sanitize import sanitize_api_query
 from core.knowledge.adapters.registry import get_search_function
 from core.app_settings import get_knowledge_source_preferences
@@ -415,9 +416,10 @@ class ScientificEvidencePipeline:
             stored_preferences=get_knowledge_source_preferences(),
         )
         profile = get_profile_spec(normalize_profile_id(ctx.retrieval_profile))
-        adapter_ids = list(
-            order_adapter_ids(tuple(adapter_ids), profile=profile)
-        )
+        # Plan S22 (D35): key-required adapters without a key are left out and
+        # named in the pool diagnostics, not run to return nothing.
+        runnable, adapter_skips = split_keyless(order_adapter_ids(tuple(adapter_ids), profile=profile))
+        adapter_ids = list(runnable)
         discipline_match = detect_scientific_discipline(ctx.query)
         adapter_calls: list[str] = []
         raw_audit: list[dict[str, Any]] = []
@@ -537,6 +539,7 @@ class ScientificEvidencePipeline:
             "collection": [coll.diag() for coll in collections],
             "adapter_timeouts": adapter_timeouts,
             "adapter_failures": adapter_failures,
+            "adapter_skips": adapter_skips,
             "adapter_deadline_s": profile.collection_deadline_s,
             "adapter_timeout_s": profile.adapter_timeout_s,
         }
