@@ -13,6 +13,10 @@ pool-relative recall (S8 caveat). A fixture without captured ``routes`` has no
 routing arms. ``gain`` is ``2·relevant + partial − irrelevant`` of the kept set;
 a positive ``delta`` means the heuristic helps that fixture.
 
+S21 adds nDCG@5 and relevant recall on the *shared* pool: both arms' kept rows
+scored against the union of the two arms' pools (``quality_eval.shared_pool``).
+For a ranking ablation both arms rank the same pool, so it equals the own pool.
+
 Usage::
 
     .venv/bin/python tools/evaluate_heuristic_ab.py                # ce + token
@@ -45,7 +49,7 @@ ARMS: dict[str, dict[str, Any]] = {
 
 
 # ``evaluate_fixture`` reports kept titles cut to this many characters.
-KEPT_TITLE_CHARS = 120
+KEPT_TITLE_CHARS = qe.KEPT_TITLE_CHARS
 
 
 def _title_labels(fixture: dict[str, Any]) -> dict[str, Any]:
@@ -85,6 +89,11 @@ def _outcome(report: dict[str, Any], fixture: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _shared_scores(fixture: dict[str, Any], report: dict[str, Any], pool: list[dict[str, Any]]) -> dict[str, Any]:
+    scored = qe.rescore_on_pool(fixture, report, report["kept_labels"], pool)
+    return {"ndcg_at_5": scored["ndcg_at_5"], "relevant_recall": scored["relevant_recall"]}
+
+
 def run(rankers: list[str], modes: list[str]) -> list[dict[str, Any]]:
     corpus = qe.load_json("eval/retrieval_corpus/v1_knowledge_quality.json")
     rows: list[dict[str, Any]] = []
@@ -99,12 +108,21 @@ def run(rankers: list[str], modes: list[str]) -> list[dict[str, Any]]:
                 routed = qe.fixture_has_routes(fixture, mode)
                 base_arm = ROUTE_PRODUCTION if routed else None
                 common = {"ranker": fn, "query_mode": mode, "pool_mode": pool_mode}
-                base = _outcome(qe.evaluate_fixture(fixture, route_arm=base_arm, **common), fixture)
+                base_report = qe.evaluate_fixture(fixture, route_arm=base_arm, **common)
+                base = _outcome(base_report, fixture)
                 for arm, kwargs in ARMS.items():
                     if "route_arm" in kwargs and not routed:
                         continue
                     kw = {"route_arm": base_arm, **kwargs}
-                    off = _outcome(qe.evaluate_fixture(fixture, **common, **kw), fixture)
+                    off_report = qe.evaluate_fixture(fixture, **common, **kw)
+                    off = _outcome(off_report, fixture)
+                    pool = qe.shared_pool(
+                        fixture,
+                        [
+                            {"query_mode": mode, "pool_mode": pool_mode, "route_arm": base_arm},
+                            {"query_mode": mode, "pool_mode": pool_mode, "route_arm": kw["route_arm"]},
+                        ],
+                    )
                     rows.append(
                         {
                             "ranker": ranker,
@@ -116,9 +134,23 @@ def run(rankers: list[str], modes: list[str]) -> list[dict[str, Any]]:
                             "off": off,
                             "changed": base["kept"] != off["kept"] or base["state"] != off["state"],
                             "delta": base["gain"] - off["gain"],
+                            "shared": {
+                                "pool_size": len(pool),
+                                "production": _shared_scores(fixture, base_report, pool),
+                                "off": _shared_scores(fixture, off_report, pool),
+                            },
                         }
                     )
     return rows
+
+
+def _mean(values) -> float | None:
+    nums = [float(v) for v in values if v is not None]
+    return sum(nums) / len(nums) if nums else None
+
+
+def _fmt(value: float | None) -> str:
+    return "  —  " if value is None else f"{value:.3f}"
 
 
 def summarise(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -136,6 +168,11 @@ def summarise(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "net_gain": sum(r["delta"] for r in items),
             "abstain_correct_on": sum(1 for r in items if r["production"]["abstain_correct"]),
             "abstain_correct_off": sum(1 for r in items if r["off"]["abstain_correct"]),
+            # S21: both arms scored on the union of their pools.
+            "shared_ndcg_on": _mean(r["shared"]["production"]["ndcg_at_5"] for r in items),
+            "shared_ndcg_off": _mean(r["shared"]["off"]["ndcg_at_5"] for r in items),
+            "shared_recall_on": _mean(r["shared"]["production"]["relevant_recall"] for r in items),
+            "shared_recall_off": _mean(r["shared"]["off"]["relevant_recall"] for r in items),
         }
     return dict(out)
 
@@ -164,12 +201,18 @@ def main() -> int:
                 f"  hurts {s['heuristic_hurts']:2d}  net {s['net_gain']:+d}"
                 f"  abstain-correct on/off {s['abstain_correct_on']}/{s['abstain_correct_off']}"
             )
+            print(
+                f"  {'':22s} shared pool: nDCG@5 on/off {_fmt(s['shared_ndcg_on'])}/{_fmt(s['shared_ndcg_off'])}"
+                f"  recall on/off {_fmt(s['shared_recall_on'])}/{_fmt(s['shared_recall_off'])}"
+            )
         for r in rows:
             if r["heuristic"] == heuristic and r["changed"]:
                 p, o = r["production"], r["off"]
+                sp, so = r["shared"]["production"], r["shared"]["off"]
                 print(
                     f"    {r['ranker']:5s} {r['query_mode'][:4]} {r['id']:38s} on {p['relevant']}/{p['partial']}/{p['irrelevant']}"
                     f" {p['state']:12s} off {o['relevant']}/{o['partial']}/{o['irrelevant']} {o['state']:12s} delta {r['delta']:+d}"
+                    f"  shared nDCG {_fmt(sp['ndcg_at_5'])}/{_fmt(so['ndcg_at_5'])}"
                 )
     return 0
 
