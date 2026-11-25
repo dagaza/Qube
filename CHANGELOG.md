@@ -4,10 +4,17 @@
 - **Release tooling:** `Qube --self-check-bundle <result.json>` checks, offline and before Qt or any model loads, that a packaged build can import the relevance reranker and correct a misspelled word; the Linux, Windows and macOS smoke scripts run it, so a build missing either part fails its smoke job.
 - **Developer docs:** Knowledge-retrieval follow-up plan (`docs/knowledge_retrieval_followups.md`, stages S14+); `docs/knowledge_retrieval_quality_assessment.md` is closed.
 
+### Changed
+- **Chat history:** The history sent with each turn now fits a token budget taken from the loaded context window, counted with the model's own tokenizer on the internal engine. The newest messages are kept first, and an older message that does not fit whole is shortened rather than dropped. A 4k window no longer overflows with ten long turns, and retrieved sources keep their share of the prompt.
+- **Sidecar:** The CPU sidecar model uses physical-core thread counts: up to 4 threads to generate and all physical cores to read the prompt. On an 8-core laptop titles arrive about 3× faster (9.3 s to 2.8 s), and a main model running on the CPU at the same time slows far less. The inference transparency row in Settings shows the counts.
+- **Sidecar / retrieval:** The sidecar source digest is off by default. It could not finish within its 1.5 s budget, so turns with large retrieved context waited the full 1.5 s and never received a digest. `qube.sidecar.source_digest_enabled` still turns it on.
+
 ### Fixed
 - **Knowledge / packaging:** Installed builds now include the spellchecker's English word list, so web and knowledge searches again add a correctly spelt variant of a misspelled query word. 1.3.60 builds left out `spellchecker/resources/en.json.gz`, which switched the variant off; the build now stops if the file is missing.
 - **Native engine:** The cap that keeps `max_tokens` within the loaded context window now runs. It was skipped on every turn, logging `[OutputTokenBudget] clamp skipped`; llama-cpp's own limit meant no request overflowed.
-- **Tests:** The scientific evidence test no longer calls live APIs, and the bootstrap download tests no longer write into the developer's `~/.qube`.
+- **Library:** New documents get their one-sentence description (tooltip) again; with the bundled Qwen3 sidecar the blurb always came back empty. The blurb reads the first chunks of the document up to 2500 characters, so a file that opens with a bare heading no longer gets an invented description. Existing documents are not backfilled.
+- **Memory:** With memory enrichment on, session episode summaries are written again (the Qwen3 sidecar returned nothing). Small-talk sessions, under 20 words from you in the window, are not summarised.
+- **Tests:** The scientific evidence test no longer calls live APIs, and the bootstrap download tests no longer write into the developer's `~/.qube`. The whole suite now runs against a throwaway home directory.
 
 ## [1.3.60] - 2026-11-25
 

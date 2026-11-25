@@ -488,7 +488,7 @@ What they lack is the cross-encoder gate, the sufficiency state and honest "not 
 
 A new session has no memory of earlier ones. Read this section, then §3–§6, then the open stage's entry and the progress log.
 
-**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 committed, not pushed: S14 `1b6fb88`, S15 `2fd25be`, S16 `3ad0a90`. Phase 1 is on `feat/kr-followups-phase1`, branched from Phase 0's head because the plan document exists only there; rebase it onto `main` once Phase 0 merges. S17 was done first, at the owner's request, and is committed (`5dc3c19`). S40 (test isolation, D25) is committed (`e8e0da3`). S18 (sidecar threads, D27) is committed (`b71ba2f`). S19 (pre-fill mechanism, judge and digest kept off, digest default off: D29, D30) is committed (`d35349b`). S20 (blurb and episode pre-filled with their fixes, others left: D31–D33) is committed (`git log`). **Phase 1 (S40, S17–S20) is complete**; next is Phase 2 (after the owner decides on pushing Phases 0–1). D26: the salvage fix goes to Phase 6.
+**State.** Phase 0 (S14–S16) is merged to `main` as PR #75 (`267f042`). Phase 1 is on `feat/kr-followups-phase1`, rebased onto `267f042`: S17 `e2136dd`, S40 `57545a8` (test isolation, D25), S18 `4f88385` (sidecar threads, D27), S19 `b05a67c` (pre-fill mechanism, judge and digest kept off, digest default off: D29, D30), S20 `6695542` (blurb and episode pre-filled with their fixes, others left: D31–D33), then the CHANGELOG commit. S17 was done first, at the owner's request. **Phase 1 (S40, S17–S20) is complete**; its PR comes next, then Phase 2. D26: the salvage fix goes to Phase 6.
 
 **Commands** (repo root, `.venv`):
 
