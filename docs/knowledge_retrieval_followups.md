@@ -229,6 +229,28 @@ flowchart LR
 - **Tests:** thread selection per CPU shape (mocked psutil); snapshot values.
 - **Acceptance:** sidecar prompt evaluation measured before and after on the dev machine, plus at least one other CPU shape if available; no regression in title latency.
 - **Decisions:** the default (inference-settings owner).
+- **As built (2026-11-25, D27):**
+  - **Selection.** `core/cpu_threads.sidecar_llama_threads()` returns `n_threads = min(4, cores)` and `n_threads_batch = cores`. Here `cores` is the physical core count (`psutil.cpu_count(logical=False)`, falling back to half the logical count), capped at the CPUs the process may run on (`os.sched_getaffinity`), because psutil reports the host's cores under `taskset` or in a container.
+  - **Wiring.** `workers/sidecar_llm_worker._load_cognition_model` passes both values to `Llama(...)` and logs them on load (`threads=4/8`). The inference-transparency snapshot reports the values the `Llama` holds (`n_threads`, plus the new `n_threads_batch`) instead of `os.cpu_count()`, and the Settings row reads "… on CPU (n_gpu_layers=0, threads 4 / 8 prompt)". The native engine's snapshot is unchanged.
+  - **Measured** (Qwen3-1.7B Q6_K, CPU-only llama-cpp-python 0.3.35, Ryzen 7 7840HS, 8 cores / 16 threads; 805-token prompt, median of 3 after a warm-up):
+
+    | Threads (decode / prompt) | Prompt eval | Decode | Title p50 (real `run_title_generation`, profile B, 5 runs) |
+    |---|---|---|---|
+    | llama-cpp default (8 / 16) | 56 tok/s | 27.0 tok/s | 9270 ms |
+    | 8 / 8 | 157 tok/s | 25.6 tok/s | — |
+    | 6 / 6 | 139 tok/s | 25.8 tok/s | — |
+    | 4 / 4 | 104 tok/s | 24.9 tok/s | — |
+    | **4 / 8 (shipped)** | **164 tok/s** | 24.9 tok/s | **2842 ms** |
+
+    Both configurations produce the same title ("Heat Pump vs Gas Boiler").
+  - **Second CPU shape.** The process was pinned to 4 distinct cores (`taskset -c 0,2,4,6`), where the selection gives 4 / 4. Against llama-cpp's defaults (8 / 16): prompt 98 → 103 tok/s, decode 18.3 → 24.6 tok/s, title p50 4658 → 4376 ms.
+  - **Contention (V42).** A stand-in main model (Phi-4-mini, CPU, 6 threads, the owner's setting) decoded throughout while the sidecar evaluated prompts:
+    - with the defaults, the main model fell from 14.1 to **2.7 tok/s** and the sidecar managed 31 tok/s;
+    - with 4 / 8, the main model ran at 9.8 tok/s and the sidecar at 76 tok/s;
+    - with 4 / 4, 10.6 and 49 tok/s.
+
+    This overlap happens in practice: the S9 shadow slot extraction runs on a background thread during the turn.
+  - **Not measured:** GPU builds (this venv's llama-cpp has no offload), Apple P / E cores (psutil counts E cores as physical, so the prompt threads include them), and the main engine (V43, D28).
 
 #### S19 — Sidecar `<think>` fix: mechanism and retrieval-related tasks (D9 follow-through)
 
@@ -403,7 +425,7 @@ What they lack is the cross-encoder gate, the sufficiency state and honest "not 
 
 A new session has no memory of earlier ones. Read this section, then §3–§6, then the open stage's entry and the progress log.
 
-**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 committed, not pushed: S14 `1b6fb88`, S15 `2fd25be`, S16 `3ad0a90`. Phase 1 is on `feat/kr-followups-phase1`, branched from Phase 0's head because the plan document exists only there; rebase it onto `main` once Phase 0 merges. S17 was done first, at the owner's request, and is committed (`5dc3c19`). S40 (test isolation, D25) is committed (`git log`). Next: S18. D26: the salvage fix goes to Phase 6.
+**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 committed, not pushed: S14 `1b6fb88`, S15 `2fd25be`, S16 `3ad0a90`. Phase 1 is on `feat/kr-followups-phase1`, branched from Phase 0's head because the plan document exists only there; rebase it onto `main` once Phase 0 merges. S17 was done first, at the owner's request, and is committed (`5dc3c19`). S40 (test isolation, D25) is committed (`e8e0da3`). S18 (sidecar threads, D27) is committed (`git log`). Next: S19. D26: the salvage fix goes to Phase 6.
 
 **Commands** (repo root, `.venv`):
 
@@ -411,7 +433,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 - Full suite: `QT_QPA_PLATFORM=offscreen HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings -m "not packaging" tests > <log> 2>&1`.
   - The process ends with the known Qt teardown abort (exit 134, no summary line), so count results from the log: `grep -o PASSED <log> | wc -l` and `grep -o FAILED <log> | wc -l`. Do **not** count ` PASSED` with a leading space: a test that prints output pushes its result to the start of the next line, and that count misses it (V34).
   - Cross-check against the collected count: `... -m "not packaging" --collect-only -q tests | tail -1` must equal passed + failed (+ skipped).
-  - Reference (S40): **4284 passed** of 4288 collected, the 4 known failures below; S17 4277 of 4282 and S16 4251 of 4256 (5 failures then; S40 fixed the winget one, V41); S15 4244 of 4249; on `main` before S15, 4228 of 4233. Known-flaky (V38): `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` can fail, error at its teardown (an extra ERROR, pass count unchanged), or leave `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` with a setup ERROR (pass count one lower). Exactly these 4 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`) and `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`). Any other failure is new. (`test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut` failed only because the suite read the real home, V41.)
+  - Reference (S18): **4298 passed** of 4302 collected, the 4 known failures below; S40 4284 of 4288; S17 4277 of 4282 and S16 4251 of 4256 (5 failures then; S40 fixed the winget one, V41); S15 4244 of 4249; on `main` before S15, 4228 of 4233. Known-flaky (V38): `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` can fail, error at its teardown (an extra ERROR, pass count unchanged), or leave `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` with a setup ERROR (pass count one lower). Exactly these 4 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`) and `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`). Any other failure is new. (`test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut` failed only because the suite read the real home, V41.)
 - Offline eval (needs the reranker model at `~/.qube/models/search/reranker/`): `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_knowledge_quality.py --corpus eval/retrieval_corpus/v1_knowledge_quality.json --ranker <token|embed|ce> --query-mode <production|standalone> [--pool-mode widened] [--json] [--compare <baseline>]`.
   - Compare against `eval/retrieval_corpus/baselines/kq_s13_*`, using `--pool-mode widened` for `ce`. Always pass the relative `--corpus` path.
 - Heuristic A/B: `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_heuristic_ab.py` (S13).
@@ -437,7 +459,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 
 ## 8. Progress log
 
-> **Last reviewed:** 2026-11-25, S40 implemented (suite runs against a throwaway home: audit 0 records; winget failure was a home artifact, V41); S17 implemented (token-fitted history, counted by the loaded model on the native path, V39; salvage finding, V40, fix in Phase 6 per D26); S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
+> **Last reviewed:** 2026-11-25, S18 implemented (sidecar 4 / 8 threads, D27: prompt eval 56 → 164 tok/s, title p50 9.3 → 2.8 s; contention, V42; main engine batch threads recorded, V43, D28); S40 implemented (suite runs against a throwaway home: audit 0 records; winget failure was a home artifact, V41); S17 implemented (token-fitted history, counted by the loaded model on the native path, V39; salvage finding, V40, fix in Phase 6 per D26); S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
 
 ### Deliverables
 
@@ -464,6 +486,11 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | 2026-11-25 | S40 | Audit tool | Done | `tools/pytest_home_audit.py` (§7 command) | — |
 | 2026-11-25 | S40 | Tests | Done | `tests/test_s40_home_isolation.py` (new, 6 tests; the trace-reset test fails with the fixture off). Full suite with the audit plugin: **4283 passed** of 4288, the 4 known failures, 1 V38 setup ERROR (4284 without it); the winget "known failure" passes (V41); both `real_reranker` tests ran. No existing test changed | — |
 | 2026-11-25 | S40 | Acceptance | Done | Zero real-home writes ✓ (two full runs, 0 audit records; real `settings.json` and `model_performance_store.json` mtimes unchanged); full suite matches the reference ✓ (+6, one fewer known failure) | Windows and macOS CI unchecked until the Phase 1 PR runs |
+| 2026-11-25 | S18 | Sidecar thread counts (V18, D27) | Done | `core/cpu_threads.py` (`detect_physical_cpu_count`, `usable_cpu_count`, `sidecar_llama_threads`); `workers/sidecar_llm_worker.py` passes 4 / 8 here; snapshot and Settings row report the real values (`core/inference_transparency.py`) | GPU builds and Apple P / E cores not measured |
+| 2026-11-25 | S18 | Measurements | Done | Prompt eval 56 → 164 tok/s, decode 27.0 → 24.9 tok/s, title p50 9270 → 2842 ms (same title); 4-core shape 98 → 103 tok/s prompt, 18.3 → 24.6 decode, title 4658 → 4376 ms; contention V42 | Scratch scripts, not committed |
+| 2026-11-25 | S18 | Main engine batch threads (V43) | Recorded | Stand-in CPU main model: 50 → 59 tok/s prompt eval at 8 batch threads | Decision deferred (D28) |
+| 2026-11-25 | S18 | Tests | Done | `tests/test_s18_sidecar_threads.py` (new, 14 tests): selection per CPU shape (mocked psutil), fallbacks, affinity cap, decode cap, snapshot and Settings row, `Llama` kwargs and snapshot on a real `_load_cognition_model` call. Full suite with the home audit: **4297 passed** of 4302 (4298 without the V38 setup ERROR; S40 4284, +14), the 4 known failures, 0 audit records. No existing test changed | — |
+| 2026-11-25 | S18 | Acceptance | Done | Prompt eval before / after on the dev machine ✓ and a second CPU shape (4 cores via affinity) ✓; title latency improved, not regressed ✓ | Contention measured with a CPU stand-in for the main model |
 
 ### Validated findings (V33+)
 
@@ -478,6 +505,8 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | **V39** | The S10 estimate (4.0 chars per token, the floor measured on English prose) is safe for sizing history | **Not for dense text.** Real tokenizers give 1.2–2.1 chars per token on number tables, 3.77 on the median chunk of the S17 matrix text and 3.76 on README prose (Qwen3.5-9B). Fitted by the estimate, 5 of 126 matrix cases (8k, 30 × 1500) use up to 1270 of the 2048-token answer reserve. No prompt reaches `n_ctx`, so since S16 the cost is a shorter answer, not a failed request. | S17 counts history with the loaded model's tokenizer on the native path (0 of 126 over); external engines keep the estimate |
 | **V40** | Memory v7 salvage receives the messages that history windowing drops | **No.** `_bound_session_history` rebuilds each message as `{role, content}`, so the `id` that `get_session_history` returns is lost, `dropped_ids` is always empty, and `_process_salvage` returns at once. Salvage is off by default (`qube.memory.v7_salvage_enabled`), and its tests cover only the enrichment-worker side. | Fixed in Phase 6, including the messages S17's token fit drops (D26) |
 | **V41** | The 5 known failures are code failures | **One is not.** `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut` asserts that the validation shortcut applies. On a machine whose real settings say `qube.bootstrap.completed`, the shortcut returns False (`already_completed`, the same reason the leaked `.winget-validation-boot-state.json` showed). Against S40's throwaway home it passes. | §7's known failures drop to 4 |
+| **V42** | The sidecar's thread defaults only cost the sidecar time (V18) | **No, they also slow the main model.** While the sidecar evaluates a prompt with llama-cpp's defaults (16 batch threads on 8 cores), a main model decoding on 6 CPU threads drops from 14.1 to 2.7 tok/s (−81%). With 4 / 8 it drops to 9.8 tok/s and the sidecar runs 2.4× faster (31 → 76 tok/s). | S18 ships 4 / 8 (D27) |
+| **V43** | The main engine's thread setting covers prompt evaluation | **No.** `NativeLlamaEngine` passes only the user's `n_threads` (6 here), so `n_threads_batch` stays at llama-cpp's default, every logical CPU (16). On a CPU-only build, a stand-in main model (Phi-4-mini) evaluated an 800-token prompt at 59 tok/s with 8 batch threads, against 50 with 16 and 49 with 6. GPU builds were not measured. | Recorded, not changed (D28) |
 
 ### Owner decisions (D23+)
 
@@ -487,6 +516,8 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | D24 | 1.3.60 ships without the spelling word list (V33). Cut a 1.3.61 patch release for the S15 fix? | **No.** The fix ships with the next regular release, bundled with more work; until then the spelling variant stays off in packaged builds. (Recorded 2026-11-25, after S15.) | S15 |
 | D25 | The suite writes into the developer's real `~/.qube` (V37). Fix it in this plan, and when? | **Yes, as a new stage S40, first in Phase 1** (before S17, on the Phase 1 branch). The fake `registry-model.gguf` entry in the owner's `model_performance_store.json` was removed after S16, with a backup; the test-written reranker marker was already gone (deleted by the other marker test). (Recorded 2026-11-25.) | S40 |
 | D26 | Memory v7 salvage never receives dropped messages (V40). Fix it, including the messages S17's token fit drops? | **Yes, in Phase 6** (Library and memory), collecting ids from both the message window and the token fit; the default (off) is unchanged. (Recorded 2026-11-25.) | Phase 6, V40 |
+| D27 | S18: the sidecar's default thread counts | **`n_threads = min(4, physical cores)`, `n_threads_batch = physical cores`**, capped at the usable CPUs. Chosen over "all physical cores" (the same prompt speed, slightly faster decode alone, the same under contention) and "half the cores" (most room for the main model, but sidecar prompts 1.6× slower under contention). (Recorded 2026-11-25.) | S18 |
+| D28 | The main engine's `n_threads_batch` also defaults to every logical CPU (V43). Change it? | **Record it and decide later**: it belongs to the inference-settings work, and GPU builds were not measured. (Recorded 2026-11-25.) | V43 |
 
 ### Track 0 checkpoints
 

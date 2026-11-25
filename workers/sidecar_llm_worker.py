@@ -36,6 +36,7 @@ from core.title_inference_profiles import get_title_profile
 from core.sidecar_prompts import normalize_title_user_prompt
 from core.sidecar_telemetry import get_sidecar_telemetry
 from core.inference_transparency import log_inference_transparency, snapshot_from_loaded_llama
+from core.cpu_threads import sidecar_llama_threads
 from core.sidecar_prompts import (
     build_prompt_for_task,
     parse_task_output,
@@ -279,17 +280,24 @@ class SidecarLlmWorker(QThread):
         self._unload_cognition_model()
         n_ctx = cognition_n_ctx_for_path(path)
         self.active_chat_format = resolve_cognition_chat_format(path)
+        # Plan S18 (V18, D27): without explicit counts llama-cpp evaluates prompts
+        # on every logical CPU, about 3x slower than on the physical cores.
+        n_threads, n_threads_batch = sidecar_llama_threads()
         try:
             logger.info(
-                "[Sidecar] Loading cognition model on CPU (%s) n_ctx=%d format=%s",
+                "[Sidecar] Loading cognition model on CPU (%s) n_ctx=%d format=%s threads=%d/%d",
                 path,
                 n_ctx,
                 self.active_chat_format,
+                n_threads,
+                n_threads_batch,
             )
             self.model = Llama(
                 model_path=path,
                 n_gpu_layers=0,
                 n_ctx=n_ctx,
+                n_threads=n_threads,
+                n_threads_batch=n_threads_batch,
                 verbose=False,
             )
             self.model_loaded = True
@@ -300,7 +308,8 @@ class SidecarLlmWorker(QThread):
                     model_path=path,
                     requested_n_gpu_layers=0,
                     n_ctx=n_ctx,
-                    n_threads=max(1, int(os.cpu_count() or 4)),
+                    n_threads=int(getattr(self.model, "n_threads", None) or n_threads),
+                    n_threads_batch=int(getattr(self.model, "n_threads_batch", None) or n_threads_batch),
                     role="sidecar",
                 )
                 snap["backend"] = "cpu"
