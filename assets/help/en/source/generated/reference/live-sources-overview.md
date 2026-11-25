@@ -17,15 +17,15 @@ Library document search and Live Sources are different: Library searches files y
 
 ## Finance (`finance_knowledge`)
 
-9 catalog entries (9 implemented). Configure defaults in **Settings → Knowledge → Live Sources**.
+9 catalog entries (7 implemented). Configure defaults in **Settings → Knowledge → Live Sources**.
 
 ### Finance
 
 - **Alpha Vantage** (`alpha_vantage`) — API key required, off by default
 - **Bloomberg (API)** (`bloomberg_api`) — API key required, off by default
-- **BLS** (`bls`) — API key required
+- **BLS** (`bls`) — planned, API key required, off by default
 - **Companies House** (`companies_house`) — API key required, off by default
-- **Eurostat** (`eurostat`)
+- **Eurostat** (`eurostat`) — planned, off by default
 - **FRED** (`fred`) — API key required
 - **OECD** (`oecd`)
 - **SEC EDGAR** (`sec_edgar`)
@@ -47,7 +47,7 @@ Library document search and Live Sources are different: Library searches files y
 
 ## Scientific literature (`scientific_evidence`)
 
-46 catalog entries (46 implemented). Configure defaults in **Settings → Knowledge → Live Sources**.
+46 catalog entries (43 implemented). Configure defaults in **Settings → Knowledge → Live Sources**.
 
 ### Agriculture & Nutrition
 
@@ -67,7 +67,7 @@ Library document search and Live Sources are different: Library searches files y
 - **ChemRxiv** (`chemrxiv`)
 - **EPO Espacenet** (`epo_espacenet`) — API key required
 - **PubChem** (`pubchem`) — optional API key
-- **USPTO PatentsView** (`uspto_patentsview`) — API key required
+- **USPTO PatentsView** (`uspto_patentsview`) — planned, API key required, off by default
 
 ### Computer Science
 
@@ -86,8 +86,8 @@ Library document search and Live Sources are different: Library searches files y
 
 ### Economics
 
-- **BLS** (`bls`) — API key required
-- **Eurostat** (`eurostat`)
+- **BLS** (`bls`) — planned, API key required, off by default
+- **Eurostat** (`eurostat`) — planned, off by default
 - **OECD** (`oecd`)
 - **RePEc** (`repec`)
 - **SSRN** (`ssrn`) — off by default
