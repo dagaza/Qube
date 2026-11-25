@@ -96,6 +96,10 @@ def _is_scientific(entry: dict, fixture: dict) -> bool:
 
 
 def main() -> int:
+    # Windows consoles / CI runners default stdout to cp1252; never let an
+    # unencodable character in the report crash the run (and mask the gates).
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
     parser = argparse.ArgumentParser(
         description="Evaluate knowledge-quality replay fixtures (offline)."
     )
@@ -303,7 +307,7 @@ def main() -> int:
             print(
                 f"\nRecency (S7, shift {args.recency_shift_days} d): "
                 f"{rec['recency_turns']} turn(s) need current information; "
-                f"{rec['stale_only_turns']} kept only stale/undated sources with ≥1 stale; "
+                f"{rec['stale_only_turns']} kept only stale/undated sources with >=1 stale; "
                 f"stale_marked={_fmt(rec.get('stale_marked')).strip()}; "
                 f"stale presented as sufficient: {rec['stale_presented_sufficient']}"
             )
