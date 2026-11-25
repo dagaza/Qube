@@ -189,8 +189,26 @@ def _timeout_entry(task: AdapterTask, reason: str, elapsed_s: float, started: bo
     }
 
 
+# A leading chapter or section number ("2 ", "2.1 ", "3. "), so a book chapter
+# indexed as "2 EVIDENCE FOR DARK MATTER …" and the same work without the
+# number share one key (S21). It is stripped only when at least
+# ``_SECTION_TITLE_MIN_WORDS`` words remain, so short generic chapter names
+# ("2 Methods", "4 Results and discussion") keep their number and do not fuse
+# with other works.
+_SECTION_NUMBER = re.compile(r"^\s*\d{1,2}(?:\.\d{1,2})*\.?\s+(?=\S)")
+_SECTION_TITLE_MIN_WORDS = 4
+
+
+def _alnum_words(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
 def _normalize_title(title: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", (title or "").lower()).strip()
+    text = title or ""
+    rest = _SECTION_NUMBER.sub("", text, count=1)
+    if rest != text and len(_alnum_words(rest).split()) >= _SECTION_TITLE_MIN_WORDS:
+        text = rest
+    return _alnum_words(text)
 
 
 def merge_keys(row: dict[str, Any]) -> list[str]:
