@@ -111,6 +111,40 @@ def candidate_gain(row: dict[str, Any]) -> int | None:
 
 POOL_MODES: tuple[str, ...] = ("production", "widened", "full")
 
+# Route refreshes (``tools/capture_knowledge_fixture.py --refresh-routes
+# --refresh-stage``) that stamped the hits they moved, oldest first (S22, D39).
+# A hit moved out of the default pool, or into it, records
+# ``{"refresh": <stage>, "moved": "out" | "in"}`` in ``pool_moves``. Reports
+# record the latest refresh as ``pool_refresh``, so a stored run's pool can be
+# rebuilt as it was: ``as_of=None`` is before every stamped refresh.
+POOL_REFRESHES: tuple[str, ...] = ("S22",)
+CURRENT_POOL_REFRESH: str = POOL_REFRESHES[-1]
+
+
+def _refresh_rank(stage: str | None) -> int:
+    if stage is None:
+        return -1
+    try:
+        return POOL_REFRESHES.index(stage)
+    except ValueError:
+        raise ValueError(f"unknown pool refresh {stage!r}; known: {POOL_REFRESHES}") from None
+
+
+def route_added_as_of(hit: dict[str, Any], as_of: str | None = CURRENT_POOL_REFRESH) -> bool:
+    """``hit["route_added"]`` as it stood after refresh ``as_of``.
+
+    The last move at or before ``as_of`` decides. With none, the hit is where
+    it was before its first move; a hit never moved keeps its flag.
+    """
+    moves = [m for m in hit.get("pool_moves") or () if isinstance(m, dict)]
+    if not moves:
+        return bool(hit.get("route_added"))
+    seen = _refresh_rank(as_of)
+    done = [m for m in moves if _refresh_rank(m.get("refresh")) <= seen]
+    if done:
+        return done[-1].get("moved") == "out"
+    return moves[0].get("moved") == "in"
+
 
 def widened_depth(fixture: dict[str, Any]) -> dict[str, int]:
     """Per-adapter depth the S8 pipeline requests when the relevance gate runs.
@@ -176,6 +210,7 @@ def fixture_pool(
     pool_mode: str = "production",
     route_arm: str | None = None,
     merge: bool = True,
+    as_of: str | None = CURRENT_POOL_REFRESH,
 ) -> list[dict[str, Any]]:
     """Candidate rows to rank (copies), in the order the adapters returned them.
 
@@ -195,6 +230,10 @@ def fixture_pool(
     ``rrf_merge`` fuses into an earlier one (same DOI or normalised title, but
     captured as separate candidates) are left out, as the pipeline would.
     ``False`` rebuilds the pool runs stored before S21 ranked.
+
+    ``as_of`` (S22, D39): the default pool as it stood after that route
+    refresh (``POOL_REFRESHES``); ``None`` rebuilds the pool of a run stored
+    before S22.
     """
     candidates = fixture.get("candidates") or []
     return [
@@ -206,6 +245,7 @@ def fixture_pool(
             pool_mode=pool_mode,
             route_arm=route_arm,
             merge=merge,
+            as_of=as_of,
         )
     ]
 
@@ -218,6 +258,7 @@ def _pool_indices(
     pool_mode: str,
     route_arm: str | None,
     merge: bool = True,
+    as_of: str | None = CURRENT_POOL_REFRESH,
 ) -> list[int]:
     """Indices into ``fixture["candidates"]`` of ``fixture_pool``'s rows, in pool order."""
     if pool_mode not in POOL_MODES:
@@ -247,7 +288,7 @@ def _pool_indices(
                 continue
             adapter = str(hit.get("adapter") or "")
             if route is None:
-                if hit.get("route_added"):
+                if route_added_as_of(hit, as_of):
                     continue
             elif adapter not in route:
                 continue
@@ -903,11 +944,13 @@ def evaluate_fixture(
     recency_shift_days: int = 0,
     ablate: Iterable[str] = (),
     route_arm: str | None = None,
+    as_of: str | None = CURRENT_POOL_REFRESH,
 ) -> dict[str, Any]:
     """Rank a fixture's pool and report graded ranking + abstention metrics.
 
     ``ablate`` switches ranking heuristics off (``RANKING_ABLATIONS``);
-    ``route_arm`` picks the pool of one S13 routing arm (``fixture_pool``).
+    ``route_arm`` picks the pool of one S13 routing arm (``fixture_pool``);
+    ``as_of`` the route refresh the default pool reflects (S22, D39).
 
     ``recency_shift_days`` replays the pool as if it were that many days older
     (S7: a fresh capture becomes a stale one without a new capture).
@@ -924,6 +967,7 @@ def evaluate_fixture(
         query_mode=query_mode,
         pool_mode=pool_mode,
         route_arm=route_arm,
+        as_of=as_of,
     )
     query = fixture_ranking_query(fixture, query_mode=query_mode)
     token = _EVAL_TODAY.set(fixture_today(fixture, shift_days=recency_shift_days))
@@ -965,6 +1009,8 @@ def evaluate_fixture(
         "kept_labels": [r.get("label") for r in kept],
         # S21 (D34): the pool went through the scientific merge step.
         "replay_merge": True,
+        # S22 (D39): the last route refresh the default pool reflects.
+        "pool_refresh": as_of,
         "state": output.state,
         "abstained": did_abstain,
         "precision_at_k": precision_at_k(kept, k),
@@ -1123,6 +1169,7 @@ def _pool_args(spec: dict[str, Any]) -> dict[str, Any]:
         "pool_mode": spec.get("pool_mode") or "production",
         "route_arm": spec.get("route_arm"),
         "merge": bool(spec.get("merge", True)),
+        "as_of": spec.get("as_of", CURRENT_POOL_REFRESH),
     }
 
 
@@ -1130,7 +1177,8 @@ def run_pool_spec(run: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]
     """``fixture_pool`` arguments of one stored result (run settings + its route arm).
 
     Results stored before S21 carry no ``replay_merge``: their pools were not
-    merged (D34).
+    merged (D34). Results stored before S22 carry no ``pool_refresh``: their
+    pools predate every stamped route refresh (D39).
     """
     return {
         "include_synthetic": bool(run.get("include_synthetic", False)),
@@ -1138,6 +1186,7 @@ def run_pool_spec(run: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]
         "pool_mode": result.get("pool_mode") or run.get("pool_mode") or "production",
         "route_arm": result.get("route_arm"),
         "merge": bool(result.get("replay_merge", False)),
+        "as_of": result.get("pool_refresh"),
     }
 
 
