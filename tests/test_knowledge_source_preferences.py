@@ -98,9 +98,10 @@ class TestKnowledgeSourcePreferences(unittest.TestCase):
             SERVICE_FINANCE_KNOWLEDGE,
             stored_preferences={},
         )
+        # Eurostat and BLS were retired in plan S22 (D36, D38).
         self.assertEqual(
             enabled,
-            ("sec_edgar", "fred", "world_bank", "eurostat", "bls", "oecd"),
+            ("sec_edgar", "fred", "world_bank", "oecd"),
         )
 
     def test_legal_defaults_courtlistener(self) -> None:
@@ -150,9 +151,10 @@ class TestKnowledgeSourcePreferences(unittest.TestCase):
             SERVICE_FINANCE_KNOWLEDGE,
             stored_preferences=prefs,
         )
+        # Eurostat and BLS were retired in plan S22 (D36, D38).
         self.assertEqual(
             enabled,
-            ("fred", "world_bank", "eurostat", "bls"),
+            ("fred", "world_bank"),
         )
         self.assertEqual(
             prefs,
@@ -160,8 +162,6 @@ class TestKnowledgeSourcePreferences(unittest.TestCase):
                 SERVICE_FINANCE_KNOWLEDGE: [
                     "fred",
                     "world_bank",
-                    "eurostat",
-                    "bls",
                     "oecd",
                 ]
             },

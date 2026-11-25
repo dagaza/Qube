@@ -69,13 +69,13 @@ class TestScientificDisciplinePacks(unittest.TestCase):
         assert pack is not None
         self.assertEqual(pack.status, "active")
         order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_CHEMISTRY)
+        # PatentsView was retired in plan S22 (D36).
         self.assertEqual(
             order,
             (
                 "pubchem",
                 "chembl",
                 "chemrxiv",
-                "uspto_patentsview",
                 "epo_espacenet",
                 "openalex",
                 "pubmed",

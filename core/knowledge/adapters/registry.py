@@ -10,13 +10,11 @@ from core.knowledge.adapters.chembl import search_chembl
 from core.knowledge.adapters.chemrxiv import search_chemrxiv
 from core.knowledge.adapters.alpha_vantage import search_alpha_vantage
 from core.knowledge.adapters.bloomberg_api import search_bloomberg_api
-from core.knowledge.adapters.bls import search_bls
 from core.knowledge.adapters.cdc import search_cdc
 from core.knowledge.adapters.copernicus_cds import search_copernicus_cds
 from core.knowledge.adapters.fao import search_fao
 from core.knowledge.adapters.ipcc import search_ipcc
 from core.knowledge.adapters.clinicaltrials_gov import search_clinicaltrials_gov
-from core.knowledge.adapters.eurostat import search_eurostat
 from core.knowledge.adapters.ieee_xplore import search_ieee_xplore
 from core.knowledge.adapters.ietf_rfc import search_ietf_rfc
 from core.knowledge.adapters.legislation_uk import search_legislation_uk
@@ -59,11 +57,16 @@ from core.knowledge.adapters.usda import search_usda
 from core.knowledge.adapters.usda_fdc import search_usda_fdc
 from core.knowledge.adapters.usgs import search_usgs
 from core.knowledge.adapters.uniprot import search_uniprot
-from core.knowledge.adapters.uspto_patentsview import search_uspto_patentsview
 from core.knowledge.adapters.who import search_who
 from core.knowledge.adapters.world_bank import search_world_bank
 
 SearchFn = Callable[..., list[dict[str, Any]]]
+
+# Retired in plan S22 and no longer registered: ``bls`` (the BLS API has no
+# series search), ``eurostat`` (its discovery search endpoint returns 404) and
+# ``uspto_patentsview`` (the PatentSearch host no longer resolves). Their
+# modules stay in ``core/knowledge/adapters`` for a later rewrite (D36, D38).
+RETIRED_ADAPTERS: frozenset[str] = frozenset({"bls", "eurostat", "uspto_patentsview"})
 
 SEARCH_FUNCTIONS: dict[str, SearchFn] = {
     "pubmed": search_pubmed,
@@ -97,12 +100,10 @@ SEARCH_FUNCTIONS: dict[str, SearchFn] = {
     "clinicaltrials_gov": search_clinicaltrials_gov,
     "openfda": search_openfda,
     "world_bank": search_world_bank,
-    "eurostat": search_eurostat,
     "usgs": search_usgs,
     "usda_fdc": search_usda_fdc,
     "nist": search_nist,
     "ietf_rfc": search_ietf_rfc,
-    "bls": search_bls,
     "us_census": search_us_census,
     "ieee_xplore": search_ieee_xplore,
     "oecd": search_oecd,
@@ -122,7 +123,6 @@ SEARCH_FUNCTIONS: dict[str, SearchFn] = {
     "congress_gov": search_congress_gov,
     "govinfo": search_govinfo,
     "legislation_uk": search_legislation_uk,
-    "uspto_patentsview": search_uspto_patentsview,
     "epo_espacenet": search_epo_espacenet,
 }
 

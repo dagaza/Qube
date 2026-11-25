@@ -28,24 +28,26 @@ from core.knowledge.scientific_discipline import (  # noqa: E402
 
 _FIXTURES = Path(_WS_ROOT) / "eval" / "fixtures" / "knowledge"
 
-_SLICE18_ADAPTER_IDS = ("uspto_patentsview", "epo_espacenet")
+_SLICE18_ADAPTER_IDS = ("epo_espacenet",)
+# PatentsView was retired in plan S22 (D36): its PatentSearch host no longer resolves.
+_SLICE18_RETIRED_IDS = ("uspto_patentsview",)
 
 
 class TestSlice18Registry(unittest.TestCase):
     def test_adapters_registered(self) -> None:
         for adapter_id in _SLICE18_ADAPTER_IDS:
             self.assertIsNotNone(get_search_function(adapter_id), adapter_id)
+        for adapter_id in _SLICE18_RETIRED_IDS:
+            self.assertIsNone(get_search_function(adapter_id), adapter_id)
 
     def test_keyed_providers_active(self) -> None:
         active = {spec.provider_id for spec in list_active_provider_credential_specs()}
-        for provider_id in ("patentsview", "epo_ops"):
-            self.assertIn(provider_id, active)
+        self.assertIn("epo_ops", active)
+        self.assertNotIn("patentsview", active)
 
-    def test_patentsview_requires_credentials(self) -> None:
-        hint = adapter_credentials_hint("uspto_patentsview")
-        self.assertIsNotNone(hint)
-        assert hint is not None
-        self.assertIn("api key", hint.lower())
+    def test_patentsview_is_retired(self) -> None:
+        # A retired adapter does not ask for a key it could not use; the spec stays.
+        self.assertIsNone(adapter_credentials_hint("uspto_patentsview"))
         spec = get_provider_credential_spec("patentsview")
         self.assertIsNotNone(spec)
         assert spec is not None
@@ -60,9 +62,9 @@ class TestSlice18Registry(unittest.TestCase):
     def test_discipline_pack_updates(self) -> None:
         engineering_order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_ENGINEERING)
         chemistry_order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_CHEMISTRY)
-        self.assertIn("uspto_patentsview", engineering_order)
+        self.assertNotIn("uspto_patentsview", engineering_order)
         self.assertIn("epo_espacenet", engineering_order)
-        self.assertIn("uspto_patentsview", chemistry_order)
+        self.assertNotIn("uspto_patentsview", chemistry_order)
         self.assertIn("epo_espacenet", chemistry_order)
 
 

@@ -660,7 +660,14 @@
         {
           "query": "production",
           "adapter": "who",
-          "rank": 0
+          "rank": 0,
+          "route_added": true,
+          "pool_moves": [
+            {
+              "refresh": "S22",
+              "moved": "out"
+            }
+          ]
         }
       ],
       "label": "irrelevant",
@@ -684,7 +691,14 @@
         {
           "query": "production",
           "adapter": "who",
-          "rank": 1
+          "rank": 1,
+          "route_added": true,
+          "pool_moves": [
+            {
+              "refresh": "S22",
+              "moved": "out"
+            }
+          ]
         }
       ],
       "label": "irrelevant",
@@ -708,7 +722,14 @@
         {
           "query": "production",
           "adapter": "who",
-          "rank": 2
+          "rank": 2,
+          "route_added": true,
+          "pool_moves": [
+            {
+              "refresh": "S22",
+              "moved": "out"
+            }
+          ]
         }
       ],
       "label": "irrelevant",
@@ -732,7 +753,14 @@
         {
           "query": "production",
           "adapter": "who",
-          "rank": 3
+          "rank": 3,
+          "route_added": true,
+          "pool_moves": [
+            {
+              "refresh": "S22",
+              "moved": "out"
+            }
+          ]
         }
       ],
       "label": "irrelevant",
@@ -756,7 +784,14 @@
         {
           "query": "production",
           "adapter": "who",
-          "rank": 4
+          "rank": 4,
+          "route_added": true,
+          "pool_moves": [
+            {
+              "refresh": "S22",
+              "moved": "out"
+            }
+          ]
         }
       ],
       "label": "irrelevant",
@@ -780,7 +815,14 @@
         {
           "query": "production",
           "adapter": "who",
-          "rank": 5
+          "rank": 5,
+          "route_added": true,
+          "pool_moves": [
+            {
+              "refresh": "S22",
+              "moved": "out"
+            }
+          ]
         }
       ],
       "label": "irrelevant",
@@ -804,7 +846,14 @@
         {
           "query": "production",
           "adapter": "who",
-          "rank": 6
+          "rank": 6,
+          "route_added": true,
+          "pool_moves": [
+            {
+              "refresh": "S22",
+              "moved": "out"
+            }
+          ]
         }
       ],
       "label": "irrelevant",
@@ -828,7 +877,14 @@
         {
           "query": "production",
           "adapter": "who",
-          "rank": 7
+          "rank": 7,
+          "route_added": true,
+          "pool_moves": [
+            {
+              "refresh": "S22",
+              "moved": "out"
+            }
+          ]
         }
       ],
       "label": "irrelevant",
@@ -2155,7 +2211,6 @@
         "pubmed",
         "nice",
         "cdc",
-        "who",
         "clinicaltrials_gov",
         "openfda",
         "openalex",
@@ -2172,7 +2227,6 @@
         "pubmed",
         "nice",
         "cdc",
-        "who",
         "clinicaltrials_gov",
         "openfda",
         "openalex",

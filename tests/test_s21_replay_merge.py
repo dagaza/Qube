@@ -141,13 +141,15 @@ class CorpusTests(unittest.TestCase):
                         keys = [k for row in pool for k in merge_keys(row)]
                         self.assertEqual(len(keys), len(set(keys)))
 
-    def test_s21_token_baselines_are_todays_replay(self) -> None:
+    def test_s21_token_baselines_are_the_replay_as_of_s21(self) -> None:
+        # S22's route refresh (D39) changed today's pools; ``as_of=None`` replays
+        # the pools as they were before it, which is what S21 ranked.
         for mode in ("production", "standalone"):
             with self.subTest(mode=mode):
                 base = json.loads((BASELINES / f"kq_s21_token_{mode}.json").read_text(encoding="utf-8"))
                 stored = {r["id"]: r for r in base["results"]}
                 for entry in self.entries:
-                    rep = qe.evaluate_fixture(self.fixtures[entry["id"]], ranker="token", query_mode=mode)
+                    rep = qe.evaluate_fixture(self.fixtures[entry["id"]], ranker="token", query_mode=mode, as_of=None)
                     want = stored[entry["id"]]
                     self.assertEqual(rep["kept_titles"], want["kept_titles"], entry["id"])
                     self.assertEqual(rep["pool_size"], want["pool_size"], entry["id"])

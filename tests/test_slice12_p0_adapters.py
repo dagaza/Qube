@@ -49,26 +49,29 @@ _P0_ADAPTER_IDS = (
     "clinicaltrials_gov",
     "openfda",
     "world_bank",
-    "eurostat",
     "usgs",
     "usda_fdc",
     "nist",
     "ietf_rfc",
-    "bls",
     "us_census",
     "ieee_xplore",
 )
+# Retired in plan S22 (D36, D38): not registered, not offered for a key.
+_P0_RETIRED_IDS = ("eurostat", "bls")
 
 
 class TestP0Registry(unittest.TestCase):
     def test_adapters_registered(self) -> None:
         for adapter_id in _P0_ADAPTER_IDS:
             self.assertIsNotNone(get_search_function(adapter_id), adapter_id)
+        for adapter_id in _P0_RETIRED_IDS:
+            self.assertIsNone(get_search_function(adapter_id), adapter_id)
 
     def test_keyed_providers_active(self) -> None:
         active = {spec.provider_id for spec in list_active_provider_credential_specs()}
-        for provider_id in ("usda_fdc", "bls", "us_census", "nist", "ieee_xplore"):
+        for provider_id in ("usda_fdc", "us_census", "nist", "ieee_xplore"):
             self.assertIn(provider_id, active)
+        self.assertNotIn("bls", active)
 
     def test_anonymous_adapters_have_no_required_hint(self) -> None:
         for adapter_id in (
@@ -82,14 +85,12 @@ class TestP0Registry(unittest.TestCase):
             self.assertIsNone(adapter_credentials_hint(adapter_id))
 
     def test_keyed_adapter_hints(self) -> None:
-        bls_hint = adapter_credentials_hint("bls")
         ieee_hint = adapter_credentials_hint("ieee_xplore")
-        self.assertIsNotNone(bls_hint)
         self.assertIsNotNone(ieee_hint)
-        assert bls_hint is not None
         assert ieee_hint is not None
-        self.assertIn("Configure", bls_hint)
         self.assertIn("Configure", ieee_hint)
+        # A retired adapter does not ask for a key it could not use.
+        self.assertIsNone(adapter_credentials_hint("bls"))
 
     def test_discipline_pack_updates(self) -> None:
         medicine = get_discipline_pack(SCIENTIFIC_DISCIPLINE_MEDICINE)

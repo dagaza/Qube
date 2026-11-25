@@ -41,9 +41,7 @@
       "production": [
         "repec",
         "world_bank",
-        "eurostat",
         "oecd",
-        "bls",
         "openalex"
       ],
       "no_discipline_routing": [

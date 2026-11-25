@@ -11,6 +11,7 @@ it stood after a given refresh (``None``: before every stamped one).
 from __future__ import annotations
 
 import importlib.util
+import json
 import subprocess
 import sys
 import unittest
@@ -23,6 +24,9 @@ if str(ROOT) not in sys.path:
 
 from core.knowledge import quality_eval as qe  # noqa: E402
 from core.knowledge.scientific_adapters import ROUTE_NO_DISCIPLINE, ROUTE_PRODUCTION  # noqa: E402
+
+CORPUS = "eval/retrieval_corpus/v1_knowledge_quality.json"
+BASELINES = ROOT / "eval" / "retrieval_corpus" / "baselines"
 
 
 def _load_capture_tool():
@@ -129,6 +133,64 @@ class RefreshStampTests(unittest.TestCase):
                 )
                 self.assertEqual(proc.returncode, 2, proc.stderr)
                 self.assertIn("needs --refresh-stage", proc.stderr)
+
+
+class CorpusTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        corpus = qe.load_json(CORPUS)
+        cls.entries = [e for e in corpus["queries"] if e.get("fixture")]
+        cls.fixtures = {e["id"]: qe.load_json(e["fixture"]) for e in cls.entries}
+
+    def test_the_s22_refresh_moved_the_17_who_hits_out(self) -> None:
+        moved: dict[str, int] = {}
+        for fid, fx in self.fixtures.items():
+            for cand in fx.get("candidates") or []:
+                for hit in cand.get("retrieved") or []:
+                    for move in hit.get("pool_moves") or ():
+                        self.assertEqual((hit["adapter"], move), ("who", {"refresh": "S22", "moved": "out"}))
+                        moved[fid] = moved.get(fid, 0) + 1
+        self.assertEqual(
+            moved, {"kq_ace_hf_single": 8, "sci_abstain_fictional_drug": 6, "s13_qt_trial_registry_psilocybin": 3}
+        )
+
+    def test_every_committed_baseline_rescores_on_its_own_pool(self) -> None:
+        files = sorted(BASELINES.glob("kq_*.json"))
+        self.assertGreaterEqual(len(files), 64)
+        for path in files:
+            with self.subTest(baseline=path.name):
+                run = json.loads(path.read_text(encoding="utf-8"))
+                (again, _), skipped = qe.shared_pool_reports(self.fixtures, [run, run])
+                self.assertEqual(skipped, [])
+                self.assertEqual(len(again), run["evaluated"])
+                stored = {r["id"]: r for r in run["results"]}
+                for rep in again:
+                    for metric in qe.POOL_RELATIVE_METRICS:
+                        self.assertTrue(qe._same_metric(rep[metric], stored[rep["id"]][metric]), (rep["id"], metric))
+
+    def test_s22_token_baselines_are_todays_replay(self) -> None:
+        for mode in ("production", "standalone"):
+            with self.subTest(mode=mode):
+                base = json.loads((BASELINES / f"kq_s22_token_{mode}.json").read_text(encoding="utf-8"))
+                stored = {r["id"]: r for r in base["results"]}
+                for entry in self.entries:
+                    rep = qe.evaluate_fixture(self.fixtures[entry["id"]], ranker="token", query_mode=mode)
+                    want = stored[entry["id"]]
+                    self.assertEqual(rep["kept_titles"], want["kept_titles"], entry["id"])
+                    self.assertEqual(rep["pool_size"], want["pool_size"], entry["id"])
+                    self.assertEqual(want["pool_refresh"], "S22")
+
+    def test_who_rows_left_three_pools(self) -> None:
+        s21 = json.loads((BASELINES / "kq_s21_token_production.json").read_text(encoding="utf-8"))
+        s22 = json.loads((BASELINES / "kq_s22_token_production.json").read_text(encoding="utf-8"))
+        before = {r["id"]: r["pool_size"] for r in s21["results"] if not r.get("skipped")}
+        after = {r["id"]: r["pool_size"] for r in s22["results"] if not r.get("skipped")}
+        shrunk = {fid: (before[fid], after[fid]) for fid in before if before[fid] != after[fid]}
+        self.assertEqual(
+            shrunk,
+            {"kq_ace_hf_single": (15, 12), "sci_abstain_fictional_drug": (8, 5),
+             "s13_qt_trial_registry_psilocybin": (12, 9)},
+        )
 
 
 if __name__ == "__main__":

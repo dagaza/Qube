@@ -46,7 +46,6 @@
         "pubmed",
         "nice",
         "cdc",
-        "who",
         "clinicaltrials_gov",
         "openfda",
         "openalex",
@@ -150,7 +149,14 @@
         {
           "query": "production",
           "adapter": "who",
-          "rank": 0
+          "rank": 0,
+          "route_added": true,
+          "pool_moves": [
+            {
+              "refresh": "S22",
+              "moved": "out"
+            }
+          ]
         }
       ],
       "label": "irrelevant",
@@ -174,7 +180,14 @@
         {
           "query": "production",
           "adapter": "who",
-          "rank": 1
+          "rank": 1,
+          "route_added": true,
+          "pool_moves": [
+            {
+              "refresh": "S22",
+              "moved": "out"
+            }
+          ]
         }
       ],
       "label": "irrelevant",
@@ -198,7 +211,14 @@
         {
           "query": "production",
           "adapter": "who",
-          "rank": 2
+          "rank": 2,
+          "route_added": true,
+          "pool_moves": [
+            {
+              "refresh": "S22",
+              "moved": "out"
+            }
+          ]
         }
       ],
       "label": "irrelevant",

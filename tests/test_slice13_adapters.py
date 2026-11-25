@@ -59,7 +59,8 @@ class TestSlice13Registry(unittest.TestCase):
         econ_order = preferred_adapters_for_discipline(SCIENTIFIC_DISCIPLINE_ECONOMICS)
         self.assertIn("nice", med_order)
         self.assertIn("cdc", med_order)
-        self.assertIn("who", med_order)
+        # WHO GHO (health indicators) left the medicine pack in plan S22 (D37).
+        self.assertNotIn("who", med_order)
         self.assertIn("oecd", econ_order)
 
 
