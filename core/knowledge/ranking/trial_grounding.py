@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 from core.knowledge.entities.ids import entity_kind
-from core.knowledge.entities.trials import extract_trial_entities
+from core.knowledge.entities.trials import extract_trial_entities, trial_name_pattern
 from core.knowledge.ranking.relevance import row_text
 
 _REVIEW_TYPE = re.compile(r"\b(review|meta[- ]analysis|systematic review|comment|editorial)\b", re.I)
@@ -32,15 +32,9 @@ def extract_trial_signal(query: str, entity_ids: list[str] | None = None) -> fro
 
 
 def _trial_in_text(signal: str, text: str) -> bool:
-    lower = (text or "").lower()
-    slug = (signal or "").lower().strip()
-    if not slug or not lower:
-        return False
-    spaced = slug.replace("-", " ")
-    if slug in lower or spaced in lower:
-        return True
-    tokens = [t for t in re.split(r"[\s-]+", spaced) if len(t) >= 3]
-    return bool(tokens) and all(t in lower for t in tokens)
+    """True when ``text`` names the trial: its whole name, as words (S23, D41)."""
+    pattern = trial_name_pattern(signal) if text else None
+    return pattern is not None and pattern.search(text) is not None
 
 
 def _publication_types(row: dict[str, Any]) -> tuple[str, ...]:

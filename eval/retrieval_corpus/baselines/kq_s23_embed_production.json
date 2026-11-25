@@ -12,7 +12,7 @@
       "all": {
         "fixtures": 63,
         "precision_at_k": 0.7473118279569892,
-        "ndcg_at_5": 0.7611599469988556,
+        "ndcg_at_5": 0.7691124830465342,
         "irrelevant_kept_rate": 0.25268817204301075,
         "relevant_recall": 0.8148148148148148,
         "abstain_correct": 0.8571428571428571,
@@ -149,7 +149,7 @@
       "heuristic_trigger": {
         "fixtures": 15,
         "precision_at_k": 0.8222222222222223,
-        "ndcg_at_5": 0.6767388842626327,
+        "ndcg_at_5": 0.7048378449644305,
         "irrelevant_kept_rate": 0.17777777777777776,
         "relevant_recall": 0.5740740740740741,
         "abstain_correct": 1.0,
@@ -301,7 +301,7 @@
       "scientific_evidence": {
         "fixtures": 36,
         "precision_at_k": 0.7222222222222222,
-        "ndcg_at_5": 0.7003930145446627,
+        "ndcg_at_5": 0.7139892858519842,
         "irrelevant_kept_rate": 0.2777777777777778,
         "relevant_recall": 0.7391304347826086,
         "abstain_correct": 0.8611111111111112,
@@ -2722,14 +2722,14 @@
       "relevant_in_pool": 0,
       "kept_count": 3,
       "kept_titles": [
-        "Empagliflozin, Health Status, and Quality of Life in Patients With Heart Failure and Preserved Ejection Fraction: The EM",
         "Neutrophil-to-Lymphocyte Ratio in Patients With Heart Failure: Findings From The EMPEROR Program.",
-        "Kidney function decline, heart failure hospitalization, and the effect of empagliflozin in heart failure: an EMPEROR-poo"
+        "Kidney function decline, heart failure hospitalization, and the effect of empagliflozin in heart failure: an EMPEROR-poo",
+        "Empagliflozin: Therapeutic area: Kidney disease, nephrology: Reimbursement Review"
       ],
       "kept_labels": [
-        "irrelevant",
         "partial",
-        "partial"
+        "partial",
+        "irrelevant"
       ],
       "replay_merge": true,
       "pool_refresh": "S23",
@@ -2737,7 +2737,7 @@
       "abstained": false,
       "precision_at_k": 0.6666666666666666,
       "k": 3,
-      "ndcg_at_5": 0.44149241373678083,
+      "ndcg_at_5": 0.6366824387328317,
       "irrelevant_kept_rate": 0.3333333333333333,
       "relevant_recall": null,
       "abstain_correct": true,
@@ -2887,13 +2887,13 @@
       "relevant_in_pool": 2,
       "kept_count": 3,
       "kept_titles": [
-        "The global scientific consensus on genetically modified crop risk assessments.",
         "Concerns over use of glyphosate-based herbicides and risks associated with exposures: a consensus statement",
-        "No scientific consensus on GMO safety"
+        "No scientific consensus on GMO safety",
+        "The global scientific consensus on genetically modified crop risk assessments."
       ],
       "kept_labels": [
-        "irrelevant",
         "relevant",
+        "irrelevant",
         "irrelevant"
       ],
       "replay_merge": true,
@@ -2902,7 +2902,7 @@
       "abstained": false,
       "precision_at_k": 0.3333333333333333,
       "k": 3,
-      "ndcg_at_5": 0.3868528072345416,
+      "ndcg_at_5": 0.6131471927654584,
       "irrelevant_kept_rate": 0.6666666666666666,
       "relevant_recall": 0.5,
       "abstain_correct": true,

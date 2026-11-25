@@ -11,9 +11,9 @@
     "all": {
       "all": {
         "fixtures": 63,
-        "precision_at_k": 0.7715053763440861,
-        "ndcg_at_5": 0.7367740133235556,
-        "irrelevant_kept_rate": 0.22849462365591397,
+        "precision_at_k": 0.7768817204301075,
+        "ndcg_at_5": 0.744168476666134,
+        "irrelevant_kept_rate": 0.22311827956989244,
         "relevant_recall": 0.7801418439716311,
         "abstain_correct": 0.9206349206349206,
         "subject_in_query": 1.0,
@@ -148,9 +148,9 @@
       },
       "heuristic_trigger": {
         "fixtures": 15,
-        "precision_at_k": 0.7555555555555556,
-        "ndcg_at_5": 0.6393241534223714,
-        "irrelevant_kept_rate": 0.24444444444444444,
+        "precision_at_k": 0.7777777777777778,
+        "ndcg_at_5": 0.6674231141241691,
+        "irrelevant_kept_rate": 0.2222222222222222,
         "relevant_recall": 0.5740740740740741,
         "abstain_correct": 1.0,
         "subject_in_query": null,
@@ -300,9 +300,9 @@
       },
       "scientific_evidence": {
         "fixtures": 36,
-        "precision_at_k": 0.6944444444444444,
-        "ndcg_at_5": 0.6521143923672523,
-        "irrelevant_kept_rate": 0.3055555555555556,
+        "precision_at_k": 0.7037037037037037,
+        "ndcg_at_5": 0.6648866472317059,
+        "irrelevant_kept_rate": 0.2962962962962963,
         "relevant_recall": 0.6666666666666666,
         "abstain_correct": 0.9166666666666666,
         "subject_in_query": 1.0,
@@ -2730,22 +2730,22 @@
       "kept_count": 3,
       "kept_titles": [
         "Neutrophil-to-Lymphocyte Ratio in Patients With Heart Failure: Findings From The EMPEROR Program.",
-        "Empagliflozin, Health Status, and Quality of Life in Patients With Heart Failure and Preserved Ejection Fraction: The EM",
-        "Empagliflozin: Therapeutic area: Kidney disease, nephrology: Reimbursement Review"
+        "Empagliflozin: Therapeutic area: Kidney disease, nephrology: Reimbursement Review",
+        "Kidney function decline, heart failure hospitalization, and the effect of empagliflozin in heart failure: an EMPEROR-poo"
       ],
       "kept_labels": [
         "partial",
         "irrelevant",
-        "irrelevant"
+        "partial"
       ],
       "replay_merge": true,
       "pool_refresh": "S23",
       "state": "unscored",
       "abstained": false,
-      "precision_at_k": 0.3333333333333333,
+      "precision_at_k": 0.6666666666666666,
       "k": 3,
-      "ndcg_at_5": 0.3903800499921017,
-      "irrelevant_kept_rate": 0.6666666666666666,
+      "ndcg_at_5": 0.5855700749881525,
+      "irrelevant_kept_rate": 0.3333333333333333,
       "relevant_recall": null,
       "abstain_correct": true,
       "subject_in_query": null,
@@ -2894,13 +2894,13 @@
       "relevant_in_pool": 2,
       "kept_count": 3,
       "kept_titles": [
-        "The global scientific consensus on genetically modified crop risk assessments.",
         "Concerns over use of glyphosate-based herbicides and risks associated with exposures: a consensus statement",
-        "No scientific consensus on GMO safety"
+        "No scientific consensus on GMO safety",
+        "Chronic traumatic encephalopathy: neurodegenerative disease or scientific misadventure of the 21"
       ],
       "kept_labels": [
-        "irrelevant",
         "relevant",
+        "irrelevant",
         "irrelevant"
       ],
       "replay_merge": true,
@@ -2909,7 +2909,7 @@
       "abstained": false,
       "precision_at_k": 0.3333333333333333,
       "k": 3,
-      "ndcg_at_5": 0.3868528072345416,
+      "ndcg_at_5": 0.6131471927654584,
       "irrelevant_kept_rate": 0.6666666666666666,
       "relevant_recall": 0.5,
       "abstain_correct": true,
