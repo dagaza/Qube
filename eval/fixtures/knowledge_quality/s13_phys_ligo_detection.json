@@ -1,0 +1,483 @@
+{
+  "schema_version": 2,
+  "id": "s13_phys_ligo_detection",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: physics discipline route + arXiv slot.",
+  "query_raw": "@[tool:evidence] How are gravitational waves detected by LIGO?",
+  "query_clean": "How are gravitational waves detected by LIGO?",
+  "retrieval_query": "How are gravitational waves detected by LIGO?",
+  "standalone_question": "How are gravitational waves detected by LIGO?",
+  "gold_subject": "gravitational wave detection at LIGO",
+  "gold_facet": "method",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:10:04+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "arxiv": 3,
+    "inspire_hep": 3,
+    "crossref": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "arxiv": "How are gravitational waves detected by LIGO",
+      "inspire_hep": "How are gravitational waves detected by LIGO",
+      "crossref": "How are gravitational waves detected by LIGO",
+      "openalex": "How are gravitational waves detected by LIGO"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "arxiv",
+        "inspire_hep",
+        "openalex"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "arxiv",
+        "inspire_hep",
+        "openalex"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "Gravitational wave astronomy with LIGO and similar detectors in the next decade",
+      "snippet": "We describe the plans for gravitational-wave observations and astrophysics that will be carried out by the LIGO Scientific Collaboration (LSC) in the next decade using data from the LIGO Observatories in the US, and sister facilities abroad in Europe, Japan and India. We provide an overview of gravitational wave signal types that we are targeting, and the role of gravitational waves in time-domain multi-messenger astronomy. We briefly summarize what we can infer from the properties of detected signals, including astrophysical event rates and populations, tests of gravitational-wave properties,",
+      "full_text": "We describe the plans for gravitational-wave observations and astrophysics that will be carried out by the LIGO Scientific Collaboration (LSC) in the next decade using data from the LIGO Observatories in the US, and sister facilities abroad in Europe, Japan and India. We provide an overview of gravitational wave signal types that we are targeting, and the role of gravitational waves in time-domain multi-messenger astronomy. We briefly summarize what we can infer from the properties of detected signals, including astrophysical event rates and populations, tests of gravitational-wave properties, highly-dynamical and strong-field tests of General Relativity, probing matter under extreme conditions in neutron stars, and making cosmological measurements with gravitational-wave sources.",
+      "url": "https://arxiv.org/abs/1904.03187v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "The LIGO Scientific collaboration"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-04-05",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1904.03187v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Search for Gravitational Waves from Low Mass Binary Coalescences in the First Year of LIGO's S5 Data",
+      "snippet": "We have searched for gravitational waves from coalescing low mass compact binary systems with a total mass between 2 and 35 Msun and a minimum component mass of 1 Msun using data from the first year of the fifth science run (S5) of the three LIGO detectors, operating at design sensitivity. Depending on mass, we are sensitive to coalescences as far as 150 Mpc from the Earth. No gravitational wave signals were observed above the expected background. Assuming a compact binary objects population with a Gaussian mass distribution representing binary neutron star systems, black hole-neutron star bin",
+      "full_text": "We have searched for gravitational waves from coalescing low mass compact binary systems with a total mass between 2 and 35 Msun and a minimum component mass of 1 Msun using data from the first year of the fifth science run (S5) of the three LIGO detectors, operating at design sensitivity. Depending on mass, we are sensitive to coalescences as far as 150 Mpc from the Earth. No gravitational wave signals were observed above the expected background. Assuming a compact binary objects population with a Gaussian mass distribution representing binary neutron star systems, black hole-neutron star binary systems, and binary black hole systems, we calculate the 90%-confidence upper limit on the rate of coalescences to be 3.9 \\times 10^{-2} yr^{-1} L_{10}^{-1}, 1.1 \\times 10^{-2} yr^{-1} L_{10}^{-1}, and 2.5 \\times 10^{-3} yr^{-1} L_{10}^{-1} respectively, where $L_{10}$ is $10^{10}$ times the blue solar luminosity. We also set improved upper limits on the rate of compact binary coalescences per unit blue-light luminosity, as a function of mass.",
+      "url": "https://arxiv.org/abs/0901.0302v4",
+      "_adapter": "arxiv",
+      "authors": [
+        "LIGO Scientific Collaboration",
+        "B. Abbott"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2009-01-05",
+      "doi": "10.1103/PhysRevD.79.122001",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "0901.0302v4",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "First upper limits from LIGO on gravitational wave bursts",
+      "snippet": "We report on a search for gravitational wave bursts using data from the first science run of the LIGO detectors. Our search focuses on bursts with durations ranging from 4 ms to 100 ms, and with significant power in the LIGO sensitivity band of 150 to 3000 Hz. We bound the rate for such detected bursts at less than 1.6 events per day at 90% confidence level. This result is interpreted in terms of the detection efficiency for ad hoc waveforms (Gaussians and sine-Gaussians) as a function of their root-sum-square strain h_{rss}; typical sensitivities lie in the range h_{rss} ~ 10^{-19} - 10^{-17}",
+      "full_text": "We report on a search for gravitational wave bursts using data from the first science run of the LIGO detectors. Our search focuses on bursts with durations ranging from 4 ms to 100 ms, and with significant power in the LIGO sensitivity band of 150 to 3000 Hz. We bound the rate for such detected bursts at less than 1.6 events per day at 90% confidence level. This result is interpreted in terms of the detection efficiency for ad hoc waveforms (Gaussians and sine-Gaussians) as a function of their root-sum-square strain h_{rss}; typical sensitivities lie in the range h_{rss} ~ 10^{-19} - 10^{-17} strain/rtHz, depending on waveform. We discuss improvements in the search method that will be applied to future science data from LIGO and other gravitational wave detectors.",
+      "url": "https://arxiv.org/abs/gr-qc/0312056v4",
+      "_adapter": "arxiv",
+      "authors": [
+        "LIGO Scientific Collaboration",
+        "B. Abbott"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2003-12-09",
+      "doi": "10.1103/PhysRevD.69.102001",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "gr-qc/0312056v4",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Searching for Gravitational Waves from Compact Binary Coalescence Using LIGO and Virgo Data",
+      "snippet": "This thesis describes current eorts to search for gravitational waves from com- pact binary coalescences (CBCs) by the LIGO Scientic Collaboration (LSC) and the Virgo Collaboration. We brie y review the physics of gravitational-wave emission and detection, describing how gravitational waves are emitted from \\inspiraling\" compact stellar mass objects and how the LSC and Virgo try to detect them using interferom- eters. Next we review the data-analysis principles used to search for potential signals in the detectors' noise. These principles are employed by \\ ihope ,\" which is the data- analysis ",
+      "full_text": "This thesis describes current eorts to search for gravitational waves from com- pact binary coalescences (CBCs) by the LIGO Scientic Collaboration (LSC) and the Virgo Collaboration. We brie y review the physics of gravitational-wave emission and detection, describing how gravitational waves are emitted from \\inspiraling\" compact stellar mass objects and how the LSC and Virgo try to detect them using interferom- eters. Next we review the data-analysis principles used to search for potential signals in the detectors' noise. These principles are employed by \\ ihope ,\" which is the data- analysis pipeline used to search for CBCs. We describe each step in this pipeline and discuss how interferometer data is stored and examined. Next we present the results from a six-month long search which occurred in early 2007, during LIGO's fth sci- ence run. This is followed by details of tuning studies carried out on LIGO's sixth-, and Virgo's second- and third-, science runs (S6, VSR2, and VSR3), which ran from July 2009 to October 2010. No gravitational waves were detected in these searches. A \\blind injection\" was performed during S6/VSR3 and detected by our pipeline, however. We detail studies into assigning a statistical signicance to this injection. Next we use these studies to show that we can expect to detect gravitational waves with high signicance using two detectors in the advanced detector era. Finally, we review some future developments for the CBC pipeline currently being undertaken.",
+      "url": "https://inspirehep.net/literature/1251616",
+      "_adapter": "inspire_hep",
+      "authors": [
+        "Capano, Collin"
+      ],
+      "venue": "INSPIRE-HEP",
+      "publication_date": null,
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "inspire_recid": "1251616",
+      "citation_count": 1,
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "inspire_hep",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Searching for gravitational waves emitted by binaries with spinning components",
+      "snippet": "In this thesis we consider the data analysis problem of detecting gravitational waves emitted by inspiraling binary systems. Detection of gravitational waves will open a new window on the Universe enabling direct detection of systems such as binary black holes for the first time. In the first Chapter we show how gravitational waves are derived from Einstein's General theory of Relativity and discuss the emission of gravitational waves from inspiraling binaries and how this radiation may be detected using laser interferometers. Around two thirds of stars inhabit binary systems. As they orbit ea",
+      "full_text": "In this thesis we consider the data analysis problem of detecting gravitational waves emitted by inspiraling binary systems. Detection of gravitational waves will open a new window on the Universe enabling direct detection of systems such as binary black holes for the first time. In the first Chapter we show how gravitational waves are derived from Einstein's General theory of Relativity and discuss the emission of gravitational waves from inspiraling binaries and how this radiation may be detected using laser interferometers. Around two thirds of stars inhabit binary systems. As they orbit each other they will emit both energy and angular momentum in the form of gravitational waves which will inevitably lead to their inspiral and eventual merger. To date, searches for gravitational waves emitted during the inspiral of binary systems have concentrated on systems with non-spinning components. In Chapter 2 we detail the first dedicated search for binaries consisting of spinning stellar mass compact objects. We analysed 788 hours of data collected during the third science run (S3) of the LIGO detectors, no detection of gravitational waves was made and we set an upper limit on the rate of coalescences of stellar mass binaries. The inspiral of stellar mass compact objects into super massive black holes will radiate gravitational waves at frequencies detectable by the planned space-based LISA mission. In Chapter 3 we describe the development and testing of a computationally cheap method to detect the loudest few extreme mass ratio inspiral events that LISA will be sensitive to.",
+      "url": "https://arxiv.org/abs/1002.1876",
+      "_adapter": "inspire_hep",
+      "authors": [
+        "Jones, Gareth"
+      ],
+      "venue": "INSPIRE-HEP",
+      "publication_date": "2008",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "inspire_recid": "845405",
+      "citation_count": 1,
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "inspire_hep",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "When spacetime vibrates: An introduction to gravitational waves",
+      "snippet": "This article presents a comprehensive analysis of the physics of gravitational waves, exploring both the theoretical foundations and the most recent experimental advances. After a general introduction to the theory of general relativity and its major implications, the article discusses the history of gravitational waves, from their prediction by Einstein to their actual detection. It then explains what gravitational waves are and how they interact with appropriate detectors. The main mechanisms of gravitational radiation emission are analyzed, with a focus on compact binary systems of compact ",
+      "full_text": "This article presents a comprehensive analysis of the physics of gravitational waves, exploring both the theoretical foundations and the most recent experimental advances. After a general introduction to the theory of general relativity and its major implications, the article discusses the history of gravitational waves, from their prediction by Einstein to their actual detection. It then explains what gravitational waves are and how they interact with appropriate detectors. The main mechanisms of gravitational radiation emission are analyzed, with a focus on compact binary systems of compact objects, whose orbits typically evolve in three phases: inspiral, merger, and the final ringdown phase, each of these phases leaving distinct signatures in the emitted waves. The article highlights the fundamental role of the giant interferometers LIGO, Virgo, and KAGRA, true cathedrals of modern science, and revisits the historic event GW150914, the first direct detection of gravitational waves, which confirmed the predictions of general relativity and opened a new era for astronomy. This achievement was recognized with the 2017 Nobel Prize in Physics. Other observed events are also discussed, along with their astrophysical sources, and the possibility of detecting gravitational waves of cosmological origin, originating from the Big Bang itself. Finally, current and future projects are analyzed, including observatories based on increasingly sophisticated interferometers, as well as proposals for alternative detection methods, illustrating how gravitational-wave astronomy is shaping the present and future of our exploration of the universe. In concluding, the detection of gravitational waves is set in a broader context by examining the discoveries across the electromagnetic spectrum, thereby illustrating the complementary perspectives these different observational channels provide.",
+      "url": "https://arxiv.org/abs/2512.22679",
+      "_adapter": "inspire_hep",
+      "authors": [
+        "Lemos, José P.S."
+      ],
+      "venue": "INSPIRE-HEP",
+      "publication_date": null,
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "inspire_recid": "3096111",
+      "citation_count": 0,
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "inspire_hep",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "On the Gravitational Waves Detected by the LIGO-Virgo Collaboration",
+      "snippet": "On the Gravitational Waves Detected by the LIGO-Virgo Collaboration",
+      "full_text": null,
+      "url": "https://doi.org/10.2139/ssrn.4266209",
+      "_adapter": "crossref",
+      "authors": [
+        "Vitaly Golovko"
+      ],
+      "venue": "SSRN Electronic Journal",
+      "publication_date": "2022",
+      "doi": "10.2139/ssrn.4266209",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "What happens when LIGO texts you to say it’s detected one of Einstein’s predicted gravitational waves",
+      "snippet": "What happens when LIGO texts you to say it’s detected one of Einstein’s predicted gravitational waves",
+      "full_text": null,
+      "url": "https://doi.org/10.64628/aai.crffwemuv",
+      "_adapter": "crossref",
+      "authors": [
+        "Chad Hanna"
+      ],
+      "venue": null,
+      "publication_date": "2025",
+      "doi": "10.64628/aai.crffwemuv",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Gravitational waves discovered: how did the experiment at LIGO actually work?",
+      "snippet": "Gravitational waves discovered: how did the experiment at LIGO actually work?",
+      "full_text": null,
+      "url": "https://doi.org/10.64628/ab.5deqwecut",
+      "_adapter": "crossref",
+      "authors": [
+        "Ed Daw"
+      ],
+      "venue": null,
+      "publication_date": "2025",
+      "doi": "10.64628/ab.5deqwecut",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Detecting Gravitational-Wave Memory with LIGO: Implications of GW150914",
+      "snippet": "It may soon be possible for Advanced LIGO to detect hundreds of binary black hole mergers per year. We show how the accumulation of many such measurements will allow for the detection of gravitational-wave memory: a permanent displacement of spacetime that comes from strong-field, general relativistic effects. We estimate that Advanced LIGO operating at design sensitivity may be able to make a signal-to-noise ratio 3 (5) detection of memory with ∼35 (90) events with masses and distance similar to GW150914. We highlight the importance of incorporating higher-order gravitational-wave modes for p",
+      "full_text": "It may soon be possible for Advanced LIGO to detect hundreds of binary black hole mergers per year. We show how the accumulation of many such measurements will allow for the detection of gravitational-wave memory: a permanent displacement of spacetime that comes from strong-field, general relativistic effects. We estimate that Advanced LIGO operating at design sensitivity may be able to make a signal-to-noise ratio 3 (5) detection of memory with ∼35 (90) events with masses and distance similar to GW150914. We highlight the importance of incorporating higher-order gravitational-wave modes for parameter estimation of binary black hole mergers, and describe how our methods can also be used to detect higher-order modes themselves before Advanced LIGO reaches design sensitivity.",
+      "url": "https://openalex.org/W2345855154",
+      "_adapter": "openalex",
+      "authors": [
+        "P. D. Lasky",
+        "Eric Thrane",
+        "Yuri Levin",
+        "Jonathan Blackman",
+        "Yanbei Chen"
+      ],
+      "venue": "Physical Review Letters",
+      "publication_date": "2016",
+      "doi": "10.1103/physrevlett.117.061102",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "LIGO: the Laser Interferometer Gravitational-Wave Observatory",
+      "snippet": "LIGO: the Laser Interferometer Gravitational-Wave Observatory, Abbott, B P, Abbott, R, Adhikari, R, Ajith, P, Allen, B, Allen, G, Amin, R S, Anderson, S B, Anderson, W G, Arain, M A, Araya, M, Armandula, H, Armor, P, Aso, Y, Aston, S, Aufmuth, P, Aulbert, C, Babak, S, Baker, P, Ballmer, S, Barker, C, Barker, D, Barr, B, Barriga, P, Barsotti, L, Barton, M A, Bartos, I, Bassiri, R, Bastarrika, M, Behnke, B, Benacquista, M, Betzwieser, J, Beyersdorf, P T, Bilenko, I A, Billingsley, G, Biswas, R, Black, E, Blackburn, J K, Blackburn, L, Blair, D, Bland, B, Bodiya, T P, Bogue, L, Bork, R, Boschi, V,",
+      "full_text": "LIGO: the Laser Interferometer Gravitational-Wave Observatory, Abbott, B P, Abbott, R, Adhikari, R, Ajith, P, Allen, B, Allen, G, Amin, R S, Anderson, S B, Anderson, W G, Arain, M A, Araya, M, Armandula, H, Armor, P, Aso, Y, Aston, S, Aufmuth, P, Aulbert, C, Babak, S, Baker, P, Ballmer, S, Barker, C, Barker, D, Barr, B, Barriga, P, Barsotti, L, Barton, M A, Bartos, I, Bassiri, R, Bastarrika, M, Behnke, B, Benacquista, M, Betzwieser, J, Beyersdorf, P T, Bilenko, I A, Billingsley, G, Biswas, R, Black, E, Blackburn, J K, Blackburn, L, Blair, D, Bland, B, Bodiya, T P, Bogue, L, Bork, R, Boschi, V, Bose, S, Brady, P R, Braginsky, V B, Brau, J E, Bridges, D O, Brinkmann, M, Brooks, A F, Brown, D A, Brummit, A, Brunet, G, Bullington, A, Buonanno, A, Burmeister, O, Byer, R L, Cadonati, L, Camp, J B, Cannizzo, J, Cannon, K C, Cao, J, Cardenas, L, Caride, S, Castaldi, G, Caudill, S, Cavaglià, M, Cepeda, C, Chalermsongsak, T, Chalkley, E, Charlton, P, Chatterji, S, Chelkowski, S, Chen, Y, Christensen, N, Chung, C T Y, Clark, D, Clark, J, Clayton, J H, Cokelaer, T, Colacino, C N, Conte, R, Cook, D, Corbitt, T R C, Cornish, N, Coward, D, Coyne, D C, Creighton, J D E, Creighton, T D, Cruise, A M, Culter, R M, Cumming, A, Cunningham, L, Danilishin, S L, Danzmann, K, Daudert, B, Davies, G, Daw, E J, DeBra, D, Degallaix, J, Dergachev, V, Desai, S, DeSalvo, R, Dhurandhar, S, Díaz, M, Dietz, A, Donovan, F, Dooley, K L, Doomes, E E, Drever, R W P, Dueck, J, Duke, I, Dumas, J-C, Dwyer, J G, Echols, C, Edgar, M, Effler, A, Ehrens, P, Espinoza, E, Etzel, T, Evans, M, Evans, T, Fairhurst, S, Faltas, Y, Fan, Y, Fazi, D, Fehrmenn, H, Finn, L S, Flasch, K, Foley, S, Forrest, C, Fotopoulos, N, Franzen, A, Frede, M, Frei, M, Frei, Z, Freise, A, Frey, R, Fricke, T, Fritschel, P, Frolov, V V, Fyffe, M, Galdi, V, Garofoli, J A, Gholami, I, Giaime, J A, Giampanis, S, Giardina, K D, Goda, K, Goetz, E, Goggin, L M, González, G, Gorodetsky, M L, Goßler, S, Gouaty, R, Grant, A, Gras, S, Gray, C, Gray, M, Greenhalgh, R J S, Gretarsson, A M, Grimaldi, F, Grosso, R, Grote, H, Grunewald, S, Guenther, M, Gustafson, E K, Gustafson, R, Hage, B, Hallam, J M, Hammer, D, Hammond, G D, Hanna, C, Hanson, J, Harms, J, Harry, G M, Harry, I W, Harstad, E D, Haughian, K, Hayama, K, Heefner, J, Heng, I S, Heptonstall, A, Hewitson, M, Hild, S, Hirose, E, Hoak, D, Hodge, K A, Holt, K, Hosken, D J, Hough, J, Hoyland, D, Hughey, B, Huttner, S H, Ingram, D R, Isogai, T, Ito, M, Ivanov, A, Johnson, B, Johnson, W W, Jones, D I, Jones, G, Jones, R, Ju, L, Kalmus, P, Kalogera, V, Kandhasamy, S, Kanner, J, Kasprzyk, D, Katsavounidis, E, Kawabe, K, Kawamura, S, Kawazoe, F, Kells, W, Keppel, D G, Khalaidovski, A, Khalili, F Y, Khan, R, Khazanov, E, King, P, Kissel, J S, Klimenko, S, Kokeyama, K, Kondrashov, V, Kopparapu, R, Koranda, S, Kozak, D, Krishnan, B, Kumar, R, Kwee, P, Lam, P K, Landry, M, Lantz, B, Lazzarini, A, Lei, H, Lei, M, Leindecker, N, Leonor, I, Li, C, Lin, H, Lindquist, P E, Littenberg, T B, Lockerbie, N A, Lodhia, D, Longo, M, Lormand, M, Lu, P, Lubinski, M, Lucianetti, A, Lück, H, Machenschalk, B, MacInnis, M, Mageswaran, M, Mailand, K, Mandel, I, Mandic, V, Márka, S, Márka, Z, Markosyan, A, Markowitz, J, Maros, E, Martin, I W, Martin, R M, Marx, J N, Mason, K, Matichard, F, Matone, L, Matzner, R A, Mavalvala, N, McCarthy, R, McClelland, D E, McGuire, S C, McHugh, M, McIntyre, G, McKechan, D J A, McKenzie, K, Mehmet, M, Melatos, A, Melissinos, A C, Menéndez, D F, Mendell, G, Mercer, R A, Meshkov, S, Messenger, C, Meyer, M S, Miller, J, Minelli, J, Mino, Y, Mitrofanov, V P, Mitselmakher, G, Mittleman, R, Miyakawa, O, Moe, B, Mohanty, S D, Mohapatra, S R P, Moreno, G, Morioka, T, Mors, K, Mossavi, K, MowLowry, C, Mueller, G, Müller-Ebhardt, H, Muhammad, D, Mukherjee, S, Mukhopadhyay, H, Mullavey, A, Munch, J, Murray, P G, Myers, E, Myers, J, Nash, T, Nelson, J, Newton, G, Nishizawa, A, Numata, K, O'Dell, J, O'Reilly, B, O'Shaughnessy, R, Ochsner, E, Ogin, G H, Ottaway, D J,",
+      "url": "https://openalex.org/W2142520301",
+      "_adapter": "openalex",
+      "authors": [
+        "B. P. Abbott",
+        "R. Abbott",
+        "R. X. Adhikari",
+        "P. Ajith",
+        "B. Allen",
+        "G. Allen",
+        "R S Amin",
+        "S. B. Anderson",
+        "Warren G. Anderson",
+        "Musfira Arain",
+        "M. Araya",
+        "Helena Armandula",
+        "P. Armor",
+        "Y. Aso",
+        "S. M. Aston",
+        "Peter Aufmuth",
+        "C. Aulbert",
+        "S. Babak",
+        "P. T. Baker",
+        "S. W. Ballmer",
+        "C. Barker",
+        "D. Barker",
+        "B. Barr",
+        "P Barriga",
+        "L. Barsotti",
+        "Mark Andrew Barton",
+        "I. Bartos",
+        "R. Bassiri",
+        "M. Bastarrika",
+        "B. Behnke",
+        "Matthew J. Benacquista",
+        "J. Betzwieser",
+        "P. T. Beyersdorf",
+        "I. A. Bilenko",
+        "G. Billingsley",
+        "R. Biswas",
+        "E. Black",
+        "J. K. Blackburn",
+        "Lindy Blackburn",
+        "D. G. Blair",
+        "B. Bland",
+        "Timothy P. Bodiya",
+        "L. Bogue",
+        "R. Bork",
+        "Valerio Boschi",
+        "Sukanta Bose",
+        "P. R. Brady",
+        "V. B. Braginsky",
+        "James E. Brau",
+        "Derek O. Bridges",
+        "M. Brinkmann",
+        "Aidan F. Brooks",
+        "Duncan A. Brown",
+        "A. Brummit",
+        "Gautier Brunet",
+        "Amber L. Bullington",
+        "Alessandra Buonanno",
+        "O. Burmeister",
+        "Robert L. Byer",
+        "L. Cadonati",
+        "J. B. Camp",
+        "J. K. Cannizzo",
+        "K. C. Cannon",
+        "Junwei Cao",
+        "L. Cardenas",
+        "S. Caride",
+        "Giuseppe Castaldi",
+        "S. Caudill",
+        "M. Cavaglià",
+        "C. B. Cepeda",
+        "T. Chalermsongsak",
+        "E. Chalkley",
+        "P. Charlton",
+        "S. Chatterji",
+        "S. Chelkowski",
+        "Y Chen",
+        "Nelson L Christensen",
+        "C. T. Y. Chung",
+        "Daniel E. Clark",
+        "James Alexander Clark",
+        "J. H. Clayton",
+        "Thomas Cokelaer",
+        "C. N. Colacino",
+        "Roberto Conte",
+        "D. Cook",
+        "T. R. Corbitt",
+        "Neil J. Cornish",
+        "David M. Coward",
+        "D. C. Coyne",
+        "Jolien D. E. Creighton",
+        "T D Creighton",
+        "A. M. Cruise",
+        "R. M. Culter",
+        "Alan Cumming",
+        "L. Cunningham",
+        "S. L. Danilishin",
+        "K. Danzmann",
+        "B. Daudert",
+        "Gareth S. Cabourn Davies",
+        "Edward J. Daw"
+      ],
+      "venue": "Reports on Progress in Physics",
+      "publication_date": "2009",
+      "doi": "10.1088/0034-4885/72/7/076901",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Gravitational-Wave Fringes at LIGO: Detecting Compact Dark Matter by Gravitational Lensing",
+      "snippet": "Utilizing gravitational-wave (GW) lensing opens a new way to understand the small-scale structure of the Universe. We show that, in spite of its coarse angular resolution and short duration of observation, LIGO can detect the GW lensing induced by small structures, in particular by compact dark matter (DM) or the primordial black hole of 10-10^{5} M_{⊙}, which remains an interesting DM candidate. The lensing is detected through GW frequency chirping, creating the natural and rapid change of lensing patterns: frequency-dependent amplification and modulation of GW waveforms. As a highest-frequen",
+      "full_text": "Utilizing gravitational-wave (GW) lensing opens a new way to understand the small-scale structure of the Universe. We show that, in spite of its coarse angular resolution and short duration of observation, LIGO can detect the GW lensing induced by small structures, in particular by compact dark matter (DM) or the primordial black hole of 10-10^{5} M_{⊙}, which remains an interesting DM candidate. The lensing is detected through GW frequency chirping, creating the natural and rapid change of lensing patterns: frequency-dependent amplification and modulation of GW waveforms. As a highest-frequency GW detector, LIGO is a unique GW lab to probe such light compact DM. With the design sensitivity of Advanced LIGO, one-year observation by three detectors can optimistically constrain the compact DM density fraction f_{DM} to the level of a few percent.",
+      "url": "https://openalex.org/W2909025670",
+      "_adapter": "openalex",
+      "authors": [
+        "Sunghoon Jung",
+        "Chang Sub Shin"
+      ],
+      "venue": "Physical Review Letters",
+      "publication_date": "2019",
+      "doi": "10.1103/physrevlett.122.041103",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:35+0100"
+}

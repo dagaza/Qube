@@ -1,0 +1,471 @@
+{
+  "schema_version": 2,
+  "id": "s13_qt_guideline_plantar",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: query-type routing (guideline) adds NICE/CDC/WHO/openFDA/ClinicalTrials.gov to a general route.",
+  "query_raw": "@[tool:evidence] What is the standard of care for plantar fasciitis?",
+  "query_clean": "What is the standard of care for plantar fasciitis?",
+  "retrieval_query": "What is the standard of care for plantar fasciitis?",
+  "standalone_question": "What is the standard of care for plantar fasciitis?",
+  "gold_subject": "plantar fasciitis",
+  "gold_facet": "standard of care",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:10:08+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "nice": 3,
+    "cdc": 3,
+    "who": 3,
+    "openfda": 3,
+    "clinicaltrials_gov": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "nice": "What is the standard of care for plantar fasciitis",
+      "cdc": "What is the standard of care for plantar fasciitis",
+      "who": "What is the standard of care for plantar fasciitis",
+      "openfda": "What is the standard of care for plantar fasciitis",
+      "clinicaltrials_gov": "What is the standard of care for plantar fasciitis",
+      "crossref": "What is the standard of care for plantar fasciitis",
+      "arxiv": "What is the standard of care for plantar fasciitis",
+      "openalex": "What is the standard of care for plantar fasciitis"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "nice",
+        "cdc",
+        "who",
+        "openfda",
+        "clinicaltrials_gov",
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_discipline_routing": [
+        "nice",
+        "cdc",
+        "who",
+        "openfda",
+        "clinicaltrials_gov",
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "COVID-19 Aggregate Hospitalizations Current Weekly County Health",
+      "snippet": "Weekly updates have finished with the June 28th update.\n“Note: Beginning 7/13/2022, the hospitals are no longer reporting data on airborne isolation beds resulting in null values being displayed for the airborne isolation bed metrics.”\nThis dataset contains aggregate hospitalization data related to COVID-19 patient which includes availability of ICU beds, patients on ventilators, ventilators in use, and total patients hospitalized data at the state and county level for Pennsylvania residents.  \nData will be updated between 11:30 am to 1:30pm each Wednesday.",
+      "full_text": "Weekly updates have finished with the June 28th update.\n“Note: Beginning 7/13/2022, the hospitals are no longer reporting data on airborne isolation beds resulting in null values being displayed for the airborne isolation bed metrics.”\nThis dataset contains aggregate hospitalization data related to COVID-19 patient which includes availability of ICU beds, patients on ventilators, ventilators in use, and total patients hospitalized data at the state and county level for Pennsylvania residents.  \nData will be updated between 11:30 am to 1:30pm each Wednesday.",
+      "url": "https://data.cdc.gov/d/kayn-sjhx",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-07-22",
+      "document_type": "government_publication",
+      "dataset_id": "kayn-sjhx",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Medicaid Enrolled Provider Listing",
+      "snippet": "<b>Revalidation disclaimer</b>:  Because of the CMS mandate to revalidate all providers within two years, the next anticipated revalidation date is no longer accurate and has been removed from the Medicaid Enrolled Provider Listing.  Providers must wait to receive a revalidation notification, via U.S.P.S. mail and email, during this two-year interim period, after which an accurate revalidation period will appear in their provider file in the Provider Services Portal. New York State is working to implement solutions that will assist credentialing staff with the revalidation process.  Please see",
+      "full_text": "<b>Revalidation disclaimer</b>:  Because of the CMS mandate to revalidate all providers within two years, the next anticipated revalidation date is no longer accurate and has been removed from the Medicaid Enrolled Provider Listing.  Providers must wait to receive a revalidation notification, via U.S.P.S. mail and email, during this two-year interim period, after which an accurate revalidation period will appear in their provider file in the Provider Services Portal. New York State is working to implement solutions that will assist credentialing staff with the revalidation process.  Please see “What’s New?” on eMedNY.org for the latest updates.\n\n\nThis is a list of active Medicaid fee-for-service (FFS), Managed Care Only and Ordering, Prescribing, Referring, Attending (OPRA) providers.  Data elements include the provider’s Medicaid Provider ID, NPI, provider or facility name, Medicaid type, profession or service, provider specialty, service address, city, state, zip code, county, telephone number, latitude, longitude, enrollment begin date, next anticipated revalidation date, date the file was extracted from the data warehouse and a Medically Fragile Children and Adults Directory Indicator.",
+      "url": "https://data.cdc.gov/d/keti-qx5t",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2026-11-23",
+      "document_type": "government_publication",
+      "dataset_id": "keti-qx5t",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Radon Test Results By County: Beginning 1987",
+      "snippet": "The New York State Department of Health Radon Program contracts with a radon testing laboratory to provide short-term charcoal radon test kits, radon test kit analysis, and results to residents. The contract laboratory provides the radon test results to the individual home owner and the Radon Program. All testing data is entered into our database. From this database, we are able to create radon prevalence maps, design special outreach activities and campaigns, and track the location in the home where the detector was placed.",
+      "full_text": "The New York State Department of Health Radon Program contracts with a radon testing laboratory to provide short-term charcoal radon test kits, radon test kit analysis, and results to residents. The contract laboratory provides the radon test results to the individual home owner and the Radon Program. All testing data is entered into our database. From this database, we are able to create radon prevalence maps, design special outreach activities and campaigns, and track the location in the home where the detector was placed.",
+      "url": "https://data.cdc.gov/d/8e6u-9695",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-11-18",
+      "document_type": "government_publication",
+      "dataset_id": "8e6u-9695",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "NCT05834491 — A Novel Approach to Plantar Fasciitis in the Aging Population",
+      "snippet": "UNKNOWN. Plantar Fasciitis, Chronic. The goal of this study is to determine whether improving foot strength through foot exercises and minimal footwear can provide improved outcomes over the short and long term. The main research question it aims to answer is: Can the minimal footwear intervention be used to improve the health of aging adults with plantar fasciitis?? Participants will be randomized into 2 groups. One group will recei",
+      "full_text": "The goal of this study is to determine whether improving foot strength through foot exercises and minimal footwear can provide improved outcomes over the short and long term. The main research question it aims to answer is: Can the minimal footwear intervention be used to improve the health of aging adults with plantar fasciitis?? Participants will be randomized into 2 groups. One group will receive minimal shoes and foot strengthening and foot flexibility exercises. The other group will receive supportive shoes, foot orthotic device and foot flexibility exercises. Participants' step count will also be monitored.\n\nResearchers will compare pain and physical function between the minimal footwear (MF) and the foot orthotic (FO) groups at each of the follow-up sessions.",
+      "url": "https://clinicaltrials.gov/study/NCT05834491",
+      "_adapter": "clinicaltrials_gov",
+      "authors": [],
+      "venue": "ClinicalTrials.gov",
+      "publication_date": null,
+      "document_type": "clinical_trial",
+      "nct_id": "NCT05834491",
+      "trial_status": "UNKNOWN",
+      "conditions": [
+        "Plantar Fasciitis, Chronic"
+      ],
+      "retrieval_method": "clinicaltrials_study_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "clinicaltrials_gov",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "NCT06967168 — HeEL Pain Pathways Feasibility Study",
+      "snippet": "COMPLETED. Plantar Fasciitis. At the moment, no-one is sure what the best way to treat heel pain is. The purpose of this research was to try out some study methods to prepare for a future clinical trial, that will assess how helpful combining different treatments are for people with heel pain (plantar fasciitis). At this stage, the aim was only to test the study processes and ask for feedback - that is why this is called a fea",
+      "full_text": "At the moment, no-one is sure what the best way to treat heel pain is. The purpose of this research was to try out some study methods to prepare for a future clinical trial, that will assess how helpful combining different treatments are for people with heel pain (plantar fasciitis). At this stage, the aim was only to test the study processes and ask for feedback - that is why this is called a feasibility study. No experimental techniques or devices were tested. All of the treatments in the study are routinely carried out in NHS clinics, but participants were allocated to different combinations of treatments.\n\nEach participant was asked to complete questionnaires and a diary for around six months in total. Some people were also invited to take part in an interview or focus group discussion.",
+      "url": "https://clinicaltrials.gov/study/NCT06967168",
+      "_adapter": "clinicaltrials_gov",
+      "authors": [],
+      "venue": "ClinicalTrials.gov",
+      "publication_date": null,
+      "document_type": "clinical_trial",
+      "nct_id": "NCT06967168",
+      "trial_status": "COMPLETED",
+      "conditions": [
+        "Plantar Fasciitis"
+      ],
+      "retrieval_method": "clinicaltrials_study_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "clinicaltrials_gov",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "I78 Plantar Fasciitis in Primary Care: What Works?",
+      "snippet": "I78 Plantar Fasciitis in Primary Care: What Works?",
+      "full_text": null,
+      "url": "https://doi.org/10.1093/rheumatology/kew082.001",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Rheumatology",
+      "publication_date": "2016",
+      "doi": "10.1093/rheumatology/kew082.001",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Plantar Fasciitis",
+      "snippet": "Plantar Fasciitis",
+      "full_text": null,
+      "url": "https://doi.org/10.5040/9781350969124",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Plantar Fasciitis",
+      "publication_date": "2017",
+      "doi": "10.5040/9781350969124",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "What Is Plantar Fasciitis?",
+      "snippet": "This JAMA Patient Page describes the condition of plantar fasciitis and its diagnosis and treatment.",
+      "full_text": "This JAMA Patient Page describes the condition of plantar fasciitis and its diagnosis and treatment.",
+      "url": "https://doi.org/10.1001/jama.2024.9505",
+      "_adapter": "crossref",
+      "authors": [
+        "Rebecca Voelker"
+      ],
+      "venue": "JAMA",
+      "publication_date": "2024",
+      "doi": "10.1001/jama.2024.9505",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Proceedings to the 27th Workshop \"What Comes Beyond the Standard Models\" Bled, July 8-17, 2024",
+      "snippet": "The series of meetings ``What comes beyond the Standard Models'' started in 1998 with the idea of organizing a workshop where participants would spend most of the time in discussions, confronting different approaches and ideas. The idea was successful and has developed into an annual workshop, which is taking place every year since 1998. Very open-minded and fruitful discussions have become the trademark of our workshops, producing several published works. We discussed a lot of concepts which could help to understand our universe from the level of the second quantized elementary fermion and bo",
+      "full_text": "The series of meetings ``What comes beyond the Standard Models'' started in 1998 with the idea of organizing a workshop where participants would spend most of the time in discussions, confronting different approaches and ideas. The idea was successful and has developed into an annual workshop, which is taking place every year since 1998. Very open-minded and fruitful discussions have become the trademark of our workshops, producing several published works. We discussed a lot of concepts which could help to understand our universe from the level of the second quantized elementary fermion and boson fields up to the level of the born of our universe.",
+      "url": "https://arxiv.org/abs/2504.17803v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "R. Bernabei",
+        "P. Belli",
+        "A. Bussolotti",
+        "V. Caracciolo",
+        "R. Cerulli",
+        "A. Leoncini",
+        "V. Merlo",
+        "F. Montecchia",
+        "F. Cappella",
+        "A. d'Angelo",
+        "A. Incicchitti",
+        "A. Mattei",
+        "C. J. Dai",
+        "X. H. Ma",
+        "X. D. Sheng",
+        "Z. P. Ye",
+        "V. A. Beylin",
+        "M. Yu. Khlopov",
+        "D. O. Sopin",
+        "T. E. Bikbaev",
+        "M. Yu. Khlopov",
+        "A. G. Mayorov",
+        "Stanley Brodsky",
+        "Daniele Fargion",
+        "A. M. Kharakashyan",
+        "A. Kleppe",
+        "M. A. Krasnov",
+        "O. Trivedi",
+        "Norma Susana Mankoc Borstnik",
+        "Holger Bech Nielsen",
+        "Euich Miztani",
+        "Keiichi Nagayo",
+        "Konstantin Stepanyantz",
+        "Elia Dmitrieff",
+        "Albino Hernández-Galeana"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-04-20",
+      "doi": "10.51746/9789612974848",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2504.17803v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Patients, Primary Care, and Policy: Simulation Modeling for Health Care Decision Support",
+      "snippet": "Demand for health care is constantly increasing due to the ongoing demographic change, while at the same time health service providers face difficulties in finding skilled personnel. This creates pressure on health care systems around the world, such that the efficient, nationwide provision of primary health care has become one of society's greatest challenges. Due to the complexity of health care systems, unforeseen future events, and a frequent lack of data, analyzing and optimizing the performance of health care systems means tackling a wicked problem. To support this task for primary care,",
+      "full_text": "Demand for health care is constantly increasing due to the ongoing demographic change, while at the same time health service providers face difficulties in finding skilled personnel. This creates pressure on health care systems around the world, such that the efficient, nationwide provision of primary health care has become one of society's greatest challenges. Due to the complexity of health care systems, unforeseen future events, and a frequent lack of data, analyzing and optimizing the performance of health care systems means tackling a wicked problem. To support this task for primary care, this paper introduces the hybrid agent-based simulation model SiM-Care. SiM-Care models the interactions of patients and primary care physicians on an individual level. By tracking agent interactions, it enables modelers to assess multiple key indicators such as patient waiting times and physician utilization. Based on these indicators, primary care systems can be assessed and compared. Moreover, changes in the infrastructure, patient behavior, and service design can be directly evaluated. To showcase the opportunities offered by SiM-Care and aid model validation, we present a case study for a primary care system in Germany. Specifically, we investigate the effects of an aging population, a decrease in the number of physicians, as well as the combined effects.",
+      "url": "https://arxiv.org/abs/1910.11027v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Martin Comis",
+        "Catherine Cleophas",
+        "Christina Büsing"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-10-24",
+      "doi": "10.1007/s10729-021-09556-2",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1910.11027v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Algorithmic Authority and the Clinical Standard of Care",
+      "snippet": "The integration of artificial intelligence into clinical medicine creates a fundamental tension between algorithmic probabilistic reasoning and the experiential intuition of expert physicians; applying Lawrence Lessig's \\enquote{Code is Law} framework, I argue that the architecture of clinical AI systems already functions as de facto medical regulation, reshaping liability and the standard of care. Reframing AI \\enquote{hallucination} as structurally analogous to well-documented human cognitive failures such as confirmation bias and premature diagnostic closure, I show that both failure modes ",
+      "full_text": "The integration of artificial intelligence into clinical medicine creates a fundamental tension between algorithmic probabilistic reasoning and the experiential intuition of expert physicians; applying Lawrence Lessig's \\enquote{Code is Law} framework, I argue that the architecture of clinical AI systems already functions as de facto medical regulation, reshaping liability and the standard of care. Reframing AI \\enquote{hallucination} as structurally analogous to well-documented human cognitive failures such as confirmation bias and premature diagnostic closure, I show that both failure modes demand a unified governance response. I therefore propose a dialectical standard of care that treats the integrated AI-physician dyad as the singular responsible diagnostic entity, mandating the synthesis of algorithmic precision with human interpretive authority within robust data governance and patient privacy frameworks.",
+      "url": "https://arxiv.org/abs/2606.00044v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Aizierjiang Aiersilan"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-04-29",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2606.00044v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What is the best treatment for plantar fasciitis",
+      "snippet": "Mechanical therapies -- such as taping, tension night splinting, and rigid arch support -- are the most effective treatment for plantar fasciitis (strength of recommendation: A, based on randomized controlled trials). If limited or no improvement is observed after 6 months of mechanical therapy, extracorporeal shock wave therapy (Orthotripsy) is the next treatment of choice (strength of recommendation [SOR]: A, based on meta-analysis of randomized controlled trials). When mechanical therapies and extracorporeal shock wave therapy have failed for more than 1 year, surgical treatment may be cons",
+      "full_text": "Mechanical therapies -- such as taping, tension night splinting, and rigid arch support -- are the most effective treatment for plantar fasciitis (strength of recommendation: A, based on randomized controlled trials). If limited or no improvement is observed after 6 months of mechanical therapy, extracorporeal shock wave therapy (Orthotripsy) is the next treatment of choice (strength of recommendation [SOR]: A, based on meta-analysis of randomized controlled trials). When mechanical therapies and extracorporeal shock wave therapy have failed for more than 1 year, surgical treatment may be considered (SOR: C, based on a case-series study).",
+      "url": "https://openalex.org/W2569913600",
+      "_adapter": "openalex",
+      "authors": [
+        "Teresa S. Stadler",
+        "E. Diane Johnson"
+      ],
+      "venue": "MOspace Institutional Repository (University of Missouri)",
+      "publication_date": "2003",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Plantar fasciitis in athletes: diagnostic and treatment strategies. A systematic review",
+      "snippet": "BACKGROUND: Plantar fasciitis (PF) is reported in different sports mainly in running and soccer athletes. Purpose of this study is to conduct a systematic review of published literature concerning the diagnosis and treatment of PF in both recreational and élite athletes. The review was conducted and reported in accordance with the PRISMA statement. METHODS: The following electronic databases were searched: PubMed, Cochrane Library and Scopus. As far as PF diagnosis, we investigated the electronic databases from January 2006 to June 2016, whereas in considering treatments all data in literature",
+      "full_text": "BACKGROUND: Plantar fasciitis (PF) is reported in different sports mainly in running and soccer athletes. Purpose of this study is to conduct a systematic review of published literature concerning the diagnosis and treatment of PF in both recreational and élite athletes. The review was conducted and reported in accordance with the PRISMA statement. METHODS: The following electronic databases were searched: PubMed, Cochrane Library and Scopus. As far as PF diagnosis, we investigated the electronic databases from January 2006 to June 2016, whereas in considering treatments all data in literature were investigated. RESULTS: For both diagnosis and treatment, 17 studies matched inclusion criteria. The results have highlighted that the most frequently used diagnostic techniques were Ultrasonography and Magnetic Resonance Imaging. Conventional, complementary, and alternative treatment approaches were assessed. CONCLUSIONS: In reviewing literature, we were unable to find any specific diagnostic algorithm for PF in athletes, due to the fact that no different diagnostic strategies were used for athletes and non-athletes. As for treatment, a few literature data are available and it makes difficult to suggest practice guidelines. Specific studies are necessary to define the best treatment algorithm for both recreational and élite athletes. LEVEL OF EVIDENCE: Ib.",
+      "url": "https://openalex.org/W2735895922",
+      "_adapter": "openalex",
+      "authors": [
+        "Federica Petraglia",
+        "I. Ramazzina",
+        "C. Costantino"
+      ],
+      "venue": "Muscles Ligaments and Tendons Journal",
+      "publication_date": "2017",
+      "doi": "10.32098/mltj.01.2017.14",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "A Systematic Review of Systematic Reviews on the Epidemiology, Evaluation, and Treatment of Plantar Fasciitis",
+      "snippet": "The number of systematic review and meta-analyses on plantar fasciitis is expanding. The purpose of this review was to provide a comprehensive summary of reviews on the topic pertaining to plantar fasciitis, identify any conflicting and inconsistent results, and propose future research direction. A qualitative review of all systematic reviews and meta-analyses related to plantar fasciitis up to February 2021 was performed using PubMed, Embase, Web of Science, and the Cochrane Database. A total of 1052 articles were initially identified and 96 met the inclusion criteria. Included articles were ",
+      "full_text": "The number of systematic review and meta-analyses on plantar fasciitis is expanding. The purpose of this review was to provide a comprehensive summary of reviews on the topic pertaining to plantar fasciitis, identify any conflicting and inconsistent results, and propose future research direction. A qualitative review of all systematic reviews and meta-analyses related to plantar fasciitis up to February 2021 was performed using PubMed, Embase, Web of Science, and the Cochrane Database. A total of 1052 articles were initially identified and 96 met the inclusion criteria. Included articles were summarized and divided into the following topics: epidemiology, diagnosis, and treatment. While the majority of reviews had high level of heterogeneity and included a small number of studies, there was general consensus on certain topics, such as BMI as a risk factor for plantar fasciitis and extracorporeal shockwave therapy as an effective mode of therapy. A qualitative summary of systematic reviews and meta-analyses published on plantar fasciitis provides a single source of updated information for clinicians. Evidence on topics such as the epidemiology, exercise therapy, or cost-effectiveness of treatment options for plantar fasciitis are lacking and warrant future research.",
+      "url": "https://openalex.org/W3216048896",
+      "_adapter": "openalex",
+      "authors": [
+        "Hye Chang Rhim",
+        "Jang-Won Kwon",
+        "Jewel Park",
+        "Joanne Borg‐Stein",
+        "Adam Sebastian Tenforde"
+      ],
+      "venue": "Life",
+      "publication_date": "2021",
+      "doi": "10.3390/life11121287",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:37+0100"
+}

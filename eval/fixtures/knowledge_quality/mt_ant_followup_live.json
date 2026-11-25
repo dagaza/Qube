@@ -25,16 +25,20 @@
   "capture_profile": "balanced",
   "production_depth": {
     "openalex": 3,
-    "arxiv": 3
+    "arxiv": 3,
+    "crossref": 3,
+    "socarxiv": 3
   },
   "adapter_queries": {
     "production": {
       "openalex": "Yes, please tell me how ANT analyzes Artificial Inteligence for example",
-      "arxiv": "Yes, please tell me how ANT analyzes Artificial Inteligence for example"
+      "arxiv": "Yes, please tell me how ANT analyzes Artificial Inteligence for example",
+      "crossref": "how ANT analyzes Artificial Inteligence"
     },
     "standalone": {
       "openalex": "How does actor-network theory (ANT) analyze artificial intelligence",
-      "arxiv": "How does actor-network theory (ANT) analyze artificial intelligence"
+      "arxiv": "How does actor-network theory (ANT) analyze artificial intelligence",
+      "crossref": "How does actor-network theory (ANT) analyze artificial intelligence"
     }
   },
   "candidates": [
@@ -467,6 +471,210 @@
       ],
       "label": "irrelevant",
       "label_source": "model"
+    },
+    {
+      "title": "Vpliv generativne umetne inteligence na demokracijo (How Generative Artificial Intelligence Impacts Democracy)",
+      "snippet": "Vpliv generativne umetne inteligence na demokracijo (How Generative Artificial Intelligence Impacts Democracy)",
+      "full_text": null,
+      "url": "https://doi.org/10.70314/is.2024.cog.13",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Proceedings of Cognitive Science 2024",
+      "publication_date": "2024",
+      "doi": "10.70314/is.2024.cog.13",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Artificial Inteligence",
+      "snippet": "<p>Artikel ini merupakan penjelasan tentang logika fuzzy. Logika fuzzy telah diketahui sejak lama dan digunakan dalam berbagai bidang oleh para ahli dan insinyur. Pada awalnya, logika fuzzy hanya digunakan dalam beberapa bidang tertentu, seperti sistem diagnosis penyakit (di bidang kedokteran); pemodelan sistem pemasaran, riset operasi (di bidang ekonomi); kontrol kualitas air, prediksi gempa bumi, klasifikasi, dan pengenalan pola (di bidang rekayasa). Penggunaan logika fuzzy di bidang sistem tenaga listrik juga telah dilakukan, seperti analisis probabilitas, prediksi dan kontrol beban, identi",
+      "full_text": "<p>Artikel ini merupakan penjelasan tentang logika fuzzy. Logika fuzzy telah diketahui sejak lama dan digunakan dalam berbagai bidang oleh para ahli dan insinyur. Pada awalnya, logika fuzzy hanya digunakan dalam beberapa bidang tertentu, seperti sistem diagnosis penyakit (di bidang kedokteran); pemodelan sistem pemasaran, riset operasi (di bidang ekonomi); kontrol kualitas air, prediksi gempa bumi, klasifikasi, dan pengenalan pola (di bidang rekayasa). Penggunaan logika fuzzy di bidang sistem tenaga listrik juga telah dilakukan, seperti analisis probabilitas, prediksi dan kontrol beban, identifikasi kerusakan generator, dan penjadwalan perawatan generator. Artikel ini menjelaskan aplikasi logika fuzzy dalam bidang kecerdasan buatan.</p>",
+      "url": "https://doi.org/10.31219/osf.io/sg7d2",
+      "_adapter": "crossref",
+      "authors": [
+        "Muhammad Ashim Madani"
+      ],
+      "venue": null,
+      "publication_date": "2023",
+      "doi": "10.31219/osf.io/sg7d2",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "The Challenges of Artificial Inteligence in Education",
+      "snippet": "The Challenges of Artificial Inteligence in Education",
+      "full_text": null,
+      "url": "https://doi.org/10.18359/ravi.6898",
+      "_adapter": "crossref",
+      "authors": [
+        "Manuel Losada Sierra",
+        "Jairo Andrés Villalba Gómez"
+      ],
+      "venue": "Academia y Virtualidad",
+      "publication_date": "2024",
+      "doi": "10.18359/ravi.6898",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How well does ANT equip designers for socio-material speculations?",
+      "snippet": "How well does ANT equip designers for socio-material speculations?",
+      "full_text": null,
+      "url": "https://doi.org/10.4324/9781315111667-43",
+      "_adapter": "crossref",
+      "authors": [
+        "Alex Wilkie"
+      ],
+      "venue": "The Routledge Companion to Actor-Network Theory",
+      "publication_date": "2019",
+      "doi": "10.4324/9781315111667-43",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How does ANT help us to rethink the city and its promises?",
+      "snippet": "How does ANT help us to rethink the city and its promises?",
+      "full_text": null,
+      "url": "https://doi.org/10.4324/9781315111667-29",
+      "_adapter": "crossref",
+      "authors": [
+        "Alexa Färber"
+      ],
+      "venue": "The Routledge Companion to Actor-Network Theory",
+      "publication_date": "2019",
+      "doi": "10.4324/9781315111667-29",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How does an ANT approach help us rethink the notion of site?",
+      "snippet": "How does an ANT approach help us rethink the notion of site?",
+      "full_text": null,
+      "url": "https://doi.org/10.4324/9781315111667-34",
+      "_adapter": "crossref",
+      "authors": [
+        "Albena Yaneva",
+        "Brett Mommersteeg"
+      ],
+      "venue": "The Routledge Companion to Actor-Network Theory",
+      "publication_date": "2019",
+      "doi": "10.4324/9781315111667-34",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
     }
-  ]
+  ],
+  "routes": {
+    "production": {
+      "production": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    },
+    "standalone": {
+      "production": [
+        "openalex",
+        "crossref",
+        "socarxiv"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "openalex",
+        "crossref",
+        "socarxiv"
+      ]
+    }
+  },
+  "routes_added_at": "2026-11-24T16:11:20+0100",
+  "route_failed_adapters": {
+    "standalone": [
+      "socarxiv"
+    ]
+  }
 }

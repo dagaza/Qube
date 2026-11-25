@@ -1,0 +1,629 @@
+{
+  "schema_version": 2,
+  "id": "s13_trial_dapa_hf",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: trial_grounding trigger (named trial).",
+  "query_raw": "@[tool:evidence] What were the main results of the DAPA-HF trial?",
+  "query_clean": "What were the main results of the DAPA-HF trial?",
+  "retrieval_query": "What were the main results of the DAPA-HF trial?",
+  "standalone_question": "What were the main results of the DAPA-HF trial?",
+  "gold_subject": "DAPA-HF trial",
+  "gold_facet": "results",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:08:53+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "pubmed": 3,
+    "nice": 3,
+    "cdc": 3,
+    "who": 3,
+    "clinicaltrials_gov": 3,
+    "openfda": 3,
+    "europe_pmc": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "pubmed": "DAPA-HF",
+      "nice": "What were the main results of the DAPA-HF trial",
+      "cdc": "What were the main results of the DAPA-HF trial",
+      "who": "What were the main results of the DAPA-HF trial",
+      "clinicaltrials_gov": "What were the main results of the DAPA-HF trial",
+      "openfda": "What were the main results of the DAPA-HF trial",
+      "crossref": "What were the main results of the DAPA-HF trial",
+      "arxiv": "DAPA-HF",
+      "openalex": "What were the main results of the DAPA-HF trial",
+      "europe_pmc": "What were the main results of the DAPA-HF trial"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "Diabetes Pharmacotherapy: A Medicinal Chemistry Perspective on Conventional, Emerging, and Plant-derived Antidiabetic Agents.",
+      "snippet": "Diabetes mellitus is a chronic metabolic disorder characterized by persistent hyperglycemia, arising from defective insulin secretion, impaired insulin action, or both. It represents a rapidly growing global health crisis, currently affecting over 537 million adults worldwide, with devastating microvascular and macrovascular complications including nephropathy, retinopathy, neuropathy, and cardiovascular disease risk. Current pharmacotherapy encompasses diverse drug classes targeting distinct pathophysiological mechanisms. Sulfonylureas and meglitinides stimulate insulin secretion, whereas big",
+      "full_text": "Diabetes mellitus is a chronic metabolic disorder characterized by persistent hyperglycemia, arising from defective insulin secretion, impaired insulin action, or both. It represents a rapidly growing global health crisis, currently affecting over 537 million adults worldwide, with devastating microvascular and macrovascular complications including nephropathy, retinopathy, neuropathy, and cardiovascular disease risk. Current pharmacotherapy encompasses diverse drug classes targeting distinct pathophysiological mechanisms. Sulfonylureas and meglitinides stimulate insulin secretion, whereas biguanides suppress hepatic gluconeogenesis and activate AMPK. The thiazolidinediones enhance peripheral insulin sensitivity via PPAR-γ activation. The DPP-4 inhibitors and GLP-1 receptor agonists potentiate the incretin axis, whereas the SGLT-2 inhibitors promote renal glucose excretion. Amylin analogues modulate postprandial glucagon secretion. Beyond glycemic control, significant cardiovascular outcome trials, including EMPA-REG OUTCOME, DAPA-HF, DELIVER, and EMPEROR-Reduced, have established that certain agents confer significant cardio-renal protective benefits independent of their glucose-lowering effects. This review additionally surveys emerging antidiabetic compounds under clinical evaluation, including dual and triple incretin receptor agonists. The medicinal chemistry and key synthetic pathways of representative antidiabetic drugs are discussed to bridge pharmacology with chemical design, highlighting structure-activity relationships. Plant-derived antidiabetic agents are critically evaluated with emphasis laid on clinical evidence, bioavailability limitations, and regulatory considerations. A systematic literature search was conducted across PubMed/MEDLINE, Scopus, Web of Science, and ClinicalTrials.gov, prioritizing publications from 2019 to 2025. Future directions, including AI-assisted drug discovery, pharmacogenomics, and β-cell regeneration strategies, are also discussed. Copyright© Bentham Science Publishers; For any queries, please email at epub@benthamscience.net.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42983242/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Kaur, Kawalpreet",
+        "Kaur, Charanjit",
+        "Kumar, Rajesh",
+        "Singh, Gurvinder"
+      ],
+      "venue": "Mini reviews in medicinal chemistry",
+      "publication_date": "2026-Oct",
+      "doi": "10.2174/0113895575489956261022071547",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "42983242",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Estimating the Benefits of the Comprehensive Disease-modifying Pharmacological Treatment in Patients with Heart Failure.",
+      "snippet": "To determine the effects of the comprehensive disease-modifying pharmacological approach among patients with heart failure with reduced ejection fraction, a cross-trial, aggregate-data analysis was performed to estimate the expected combined effect of quintuple therapy by multiplying trial-level HRs, assuming independent and multiplicative treatment effects from Phase III randomised clinical trials: EMPHASIS-HF, PARADIGM-HF, pooled DAPA-HF and EMPEROR-Reduced, and pooled VICTORIA and VICTOR. The imputed aggregate treatment effects on the primary endpoint of cardiovascular death or first heart ",
+      "full_text": "To determine the effects of the comprehensive disease-modifying pharmacological approach among patients with heart failure with reduced ejection fraction, a cross-trial, aggregate-data analysis was performed to estimate the expected combined effect of quintuple therapy by multiplying trial-level HRs, assuming independent and multiplicative treatment effects from Phase III randomised clinical trials: EMPHASIS-HF, PARADIGM-HF, pooled DAPA-HF and EMPEROR-Reduced, and pooled VICTORIA and VICTOR. The imputed aggregate treatment effects on the primary endpoint of cardiovascular death or first heart failure hospitalisation were favourable to the quintuple compared with conventional therapy (HR 0.34; 95% CI [0.27-0.42]). This also occurred for cardiovascular death alone (HR 0.47; 95% CI [0.35-0.63]), first heart failure hospitalisation (HR 0.31; 95% CI [0.23-0.40]) and all-cause mortality (HR 0.51; 95% CI [0.39-0.67]). The numbers needed to treat per year for the primary outcome, cardiovascular death and first heart failure hospitalisation were 10, 23 and 15, respectively. Our findings support the potential benefit of comprehensive therapy, with the incremental role of vericiguat likely greatest in higher-risk patients or those with recent worsening heart failure. Copyright © The Author(s), 2026. Published by Radcliffe Group Ltd.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42741561/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Escobar, Carlos",
+        "Caravaca-Pérez, Pedro",
+        "Fernandez-Rodriguez, José Maria",
+        "Gomez-Otero, Ines",
+        "Lozano-Bahamonde, Ainara",
+        "Pérez-Cabeza, Alejandro I",
+        "Pérez-Silvestre, José",
+        "Rafols, Carles",
+        "Saldaña-García, Jesús",
+        "Esteban-Fernández, Alberto"
+      ],
+      "venue": "Cardiac failure review",
+      "publication_date": "2026",
+      "doi": "10.15420/cfr.2026.02",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "42741561",
+      "publication_types": [
+        "Journal Article",
+        "Review"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 1
+        },
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Clinical Evidence of Cardioprotective Effects of SGLT2 Inhibitors.",
+      "snippet": "Sodium-glucose cotransporter 2 (SGLT2) inhibitors have emerged as foundational therapies across the cardio-kidney-metabolic (CKM) syndrome. Initially developed as glucose-lowering agents for type 2 diabetes mellitus (T2DM), these medications demonstrated substantial cardiovascular and renal benefits in large cardiovascular outcomes trials, fundamentally changing the management of heart failure (HF), chronic kidney disease (CKD), and T2DM. Early landmark trials, including EMPA-REG OUTCOME, CANVAS, DECLARE-TIMI 58, and VERTIS CV, established reductions in hospitalization for heart failure (HHF) ",
+      "full_text": "Sodium-glucose cotransporter 2 (SGLT2) inhibitors have emerged as foundational therapies across the cardio-kidney-metabolic (CKM) syndrome. Initially developed as glucose-lowering agents for type 2 diabetes mellitus (T2DM), these medications demonstrated substantial cardiovascular and renal benefits in large cardiovascular outcomes trials, fundamentally changing the management of heart failure (HF), chronic kidney disease (CKD), and T2DM. Early landmark trials, including EMPA-REG OUTCOME, CANVAS, DECLARE-TIMI 58, and VERTIS CV, established reductions in hospitalization for heart failure (HHF) and favorable renal outcomes in patients with T2DM, with more selective effects on atherosclerotic cardiovascular disease outcomes. Subsequent dedicated HF trials demonstrated that SGLT2 inhibitors provide clinically meaningful benefit across the left ventricular ejection fraction spectrum. In patients with heart failure with reduced ejection fraction (HFrEF), DAPA-HF and EMPEROR-Reduced showed significant reductions in worsening HF and cardiovascular death regardless of diabetes status. Similar benefits were later demonstrated in heart failure with preserved or mildly reduced ejection fraction (HFpEF/HFmrEF) in EMPEROR-Preserved and DELIVER, establishing SGLT2 inhibitors as among the first therapy classes to consistently reduce HF events across the HF spectrum. Dedicated CKD trials, including CREDENCE, DAPA-CKD, and EMPA-KIDNEY, further showed substantial slowing of kidney disease progression and reduction in cardiorenal outcomes, both in patients with and without T2DM. Despite robust evidence and incorporation into major international guidelines, uptake of these therapies in clinical practice remains suboptimal. Increased implementation of these therapies in routine clinical practice is essential to improve outcomes across the CKM spectrum. © 2026. The Author(s), under exclusive license to Springer Nature Switzerland AG.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42730804/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Usman, Muhammad Shariq",
+        "Verma, Subodh",
+        "Pandey, Ambarish"
+      ],
+      "venue": "Handbook of experimental pharmacology",
+      "publication_date": "2026-Sep",
+      "doi": "10.1007/164_2026_827",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "42730804",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Systematic review of the use of honey as a wound dressing",
+      "snippet": "Objective\n          To investigate topical honey in superficial burns and wounds though a systematic review of randomised controlled trials.\n        \n        \n          Data sources\n          Cochrane Library, MEDLINE, EMBASE, PubMed, reference lists and databases were used to seek randomised controlled trials. Seven randomised trials involved superficial burns, partial thickness burns, moderate to severe burns that included full thickness injury, and infected postoperative wounds.\n        \n        \n          Review methods\n          Studies were randomised trials using honey, published papers",
+      "full_text": "Objective\n          To investigate topical honey in superficial burns and wounds though a systematic review of randomised controlled trials.\n        \n        \n          Data sources\n          Cochrane Library, MEDLINE, EMBASE, PubMed, reference lists and databases were used to seek randomised controlled trials. Seven randomised trials involved superficial burns, partial thickness burns, moderate to severe burns that included full thickness injury, and infected postoperative wounds.\n        \n        \n          Review methods\n          Studies were randomised trials using honey, published papers, with a comparator. Main outcomes were relative benefit and number-needed-to-treat to prevent an outcome relating to wound healing time or infection rate.\n        \n        \n          Results\n          One study in infected postoperative wounds compared honey with antiseptics plus systemic antibiotics. The number needed to treat with honey for good wound healing compared with antiseptic was 2.9 (95% confidence interval 1.7 to 9.7). Five studies in patients with partial thickness or superficial burns involved less than 40% of the body surface. Comparators were polyurethane film, amniotic membrane, potato peel and silver sulphadiazine. The number needed to treat for seven days with honey to produce one patient with a healed burn was 2.6 (2.1 to 3.4) compared with any other treatment and 2.7 (2.0 to 4.1) compared with potato and amniotic membrane. For some or all outcomes honey was superior to all these treatments. Time for healing was significantly shorter for honey than all these treatments. The quality of studies was low.\n        \n        \n          Conclusion\n          Confidence in a conclusion that honey is a useful treatment for superficial wounds or burns is low. There is biological plausibility.",
+      "url": "https://data.cdc.gov/d/piu6-h527",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "piu6-h527",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Sildenafil (Viagra) for male erectile dysfunction: a meta-analysis of clinical trial reports",
+      "snippet": "Background\n          Evaluation of company clinical trial reports could provide information for meta-analysis at the commercial introduction of a new technology.\n        \n        \n          Methods\n          Clinical trial reports of sildenafil for erectile dysfunction from September 1997 were used for meta-analysis of randomised trials (at least four weeks duration) and using fixed or dose optimisation regimens. The main outcome sought was an erection, sufficiently rigid for penetration, followed by successful intercourse, and conducted at home.\n        \n        \n          Results\n          T",
+      "full_text": "Background\n          Evaluation of company clinical trial reports could provide information for meta-analysis at the commercial introduction of a new technology.\n        \n        \n          Methods\n          Clinical trial reports of sildenafil for erectile dysfunction from September 1997 were used for meta-analysis of randomised trials (at least four weeks duration) and using fixed or dose optimisation regimens. The main outcome sought was an erection, sufficiently rigid for penetration, followed by successful intercourse, and conducted at home.\n        \n        \n          Results\n          Ten randomised controlled trials fulfilled the inclusion criteria (2123 men given sildenafil and 1131 placebo). NNT or NNH were calculated for important efficacy, adverse event and discontinuation outcomes. Dose optimisation led to at least 60% of attempts at sexual intercourse being successful in 49% of men, compared with 11% with placebo; the NNT was 2.7 (95% confidence interval 2.3 to 3.3). For global improvement in erections the NNT was 1.7 (1.6 to 1.9). Treatment-related adverse events occurred in 30% of men on dose optimised sildenafil compared with 11% on placebo; the NNH was 5.4 (4.3 to 7.3). All cause discontinuations were less frequent with sildenafil (10%) than with placebo (20%). Sildenafil dose optimisation gave efficacy equivalent to the highest fixed doses, and adverse events equivalent to the lowest fixed doses.\n        \n        \n          Conclusion\n          This review of clinical trial reports available at the time of licensing agreed with later reviews that had many more trials and patients. Making reports submitted for marketing approval available publicly would provide better information when it was most needed, and would improve evidence-based introduction of new technologies.",
+      "url": "https://data.cdc.gov/d/8zeu-fjz4",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "8zeu-fjz4",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Imiquimod for the treatment of genital warts: a quantitative systematic review",
+      "snippet": "Objective\n          To review published randomised controlled trials to assess the benefit and harm of imiquimod in the treatment of external genital warts.\n        \n        \n          Data sources\n          MEDLINE (1966 - December 2000), Cochrane Library (Issue 3, 2000) and PubMed (December 15, 2000), review articles and reference lists.\n        \n        \n          Review methods\n          Included studies had to be randomised trials of imiquimod, to be full published papers, and to have a comparison group. Quality of trial reporting was assessed. Relative benefit and number needed to treat ",
+      "full_text": "Objective\n          To review published randomised controlled trials to assess the benefit and harm of imiquimod in the treatment of external genital warts.\n        \n        \n          Data sources\n          MEDLINE (1966 - December 2000), Cochrane Library (Issue 3, 2000) and PubMed (December 15, 2000), review articles and reference lists.\n        \n        \n          Review methods\n          Included studies had to be randomised trials of imiquimod, to be full published papers, and to have a comparison group. Quality of trial reporting was assessed. Relative benefit and number needed to treat were calculated for the main outcomes of wart clearance at the end of therapy, of at least 50% reduction in wart area, and of complete clearance at the end of treatment and no recurrence of warts during a follow-up period, as well as for adverse effect withdrawal or lack of efficacy withdrawal.\n        \n        \n          Results\n          There were six trials, all with quality scores of 3 (out of 5) or greater. In five trials with HIV-negative patients complete clearance of warts at the end of treatment occurred in 51% of patients treated with imiquimod 2% or 5% cream and 6% of placebo treated patients. The number needed to treat was 2.2 (95% confidence interval 2.0 to 2.6). In four trials at least 50% wart area reduction occurred with 72% of patients treated with imiquimod 5% cream and 20% of placebo treated patients. The number needed to treat was 1.9 (1.7 to 2.2). In three trials complete clearance of warts at the end of treatment plus no recurrence occurred in 37% of patients treated with imiquimod 5% cream and 4% of those treated with placebo. The number needed to treat was 3.0 (2.5 to 3.8). Adverse event withdrawal was rare and no more likely with imiquimod than with placebo. Imiquimod was not effective in one trial in HIV-positive patients.\n        \n        \n          Conclusion\n          The evidence base for imiquimod in treating genital warts is of high quality and the necessary size from which to draw useful conclusions. Imiquimod is effective in home application, though not in patients with HIV infection with the evidence presently available.",
+      "url": "https://data.cdc.gov/d/4dp2-jcyb",
+      "_adapter": "cdc",
+      "authors": [
+        "Centers for Disease Control and Prevention"
+      ],
+      "venue": "CDC Open Data",
+      "publication_date": "2025-09-06",
+      "document_type": "government_publication",
+      "dataset_id": "4dp2-jcyb",
+      "retrieval_method": "cdc_open_data_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "cdc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Modern approaches to interpretation of clinical trial results to evaluate the effectiveness of heart failure therapy. Analysis of the results of randomized trials PARADIGM-HF, DAPA-HF, EMPEROR-Reduced and VICTORIA",
+      "snippet": "The article discusses the results of modern studies evaluating the effectiveness of drug therapy for heart failure with reduced ejection fraction (HFrEF). Modern approaches to a comprehensive evaluation of data obtained in various randomized clinical trials (RCTs) are presented. The role of methods for presenting the RCT results is considered, as well as the difference between hazard ratio and relative risk is clarified. Expert opinions are discussed about the limitations of simplified approaches to comparing the results of large RCTs, which are based only on comparisons of hazard ratio withou",
+      "full_text": "The article discusses the results of modern studies evaluating the effectiveness of drug therapy for heart failure with reduced ejection fraction (HFrEF). Modern approaches to a comprehensive evaluation of data obtained in various randomized clinical trials (RCTs) are presented. The role of methods for presenting the RCT results is considered, as well as the difference between hazard ratio and relative risk is clarified. Expert opinions are discussed about the limitations of simplified approaches to comparing the results of large RCTs, which are based only on comparisons of hazard ratio without taking consideration of patient characteristics, study duration, and the absolute number of adverse outcomes that developed. Information is provided on the role of accounting for multiple comparisons in assessing clinical outcomes in RCTs. The article compares the VICTORIA results on the study of vericiguat in patients with a recent episode of HFrEF decompensation with RCTs on the evaluation of the effects of drugs that are part of standard therapy.",
+      "url": "https://doi.org/10.15829/1560-4071-2023-5422",
+      "_adapter": "crossref",
+      "authors": [
+        "S. R. Gilyarevsky",
+        "Yu. V. Mareev"
+      ],
+      "venue": "Russian Journal of Cardiology",
+      "publication_date": "2023",
+      "doi": "10.15829/1560-4071-2023-5422",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "DAPA-HF trial signals the birth of ‘diabetic cardiology’ and more",
+      "snippet": "[no abstract - showing first paragraph of article]Sodium-glucose co-transporter-2 (SGLT2) inhibitors are relatively new class of antihyperglycemic medication that is well established in the management of type 2 diabetes mellitus (DM). It has a unique mechanism of action that targets the kidneys through inhibiting 90% of glucose reabsorption.",
+      "full_text": "[no abstract - showing first paragraph of article]Sodium-glucose co-transporter-2 (SGLT2) inhibitors are relatively new class of antihyperglycemic medication that is well established in the management of type 2 diabetes mellitus (DM). It has a unique mechanism of action that targets the kidneys through inhibiting 90% of glucose reabsorption.",
+      "url": "https://doi.org/10.21542/gcsp.2020.22",
+      "_adapter": "crossref",
+      "authors": [
+        "Kerolos Wagdy",
+        "Peter Selwanos"
+      ],
+      "venue": "Global Cardiology Science and Practice",
+      "publication_date": "2020",
+      "doi": "10.21542/gcsp.2020.22",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "DAPA-HF trial: dapagliflozin evolves from a glucose-lowering agent to a therapy for heart failure",
+      "snippet": "DAPA-HF trial: dapagliflozin evolves from a glucose-lowering agent to a therapy for heart failure",
+      "full_text": null,
+      "url": "https://doi.org/10.7573/dic.2019-11-3",
+      "_adapter": "crossref",
+      "authors": [
+        "Edgardo Kaplinsky"
+      ],
+      "venue": "Drugs in Context",
+      "publication_date": "2020",
+      "doi": "10.7573/dic.2019-11-3",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "A Comparative Evaluation of Statistical Methods in Hybrid Controlled Trials",
+      "snippet": "Randomized clinical trials (RCTs) are widely considered the gold standard for evaluating the effectiveness of new treatments or interventions in drug development. Still, they may not be feasible in certain cases, such as with rare diseases where randomization to a control group is ethically challenging. In such scenarios, external data can complement either a single-arm trial or a hybrid-controlled trial. The hybrid-control design involves enrolling fewer concurrent control patients and then supplementing the control arm using external or historical data. Various statistical approaches, includ",
+      "full_text": "Randomized clinical trials (RCTs) are widely considered the gold standard for evaluating the effectiveness of new treatments or interventions in drug development. Still, they may not be feasible in certain cases, such as with rare diseases where randomization to a control group is ethically challenging. In such scenarios, external data can complement either a single-arm trial or a hybrid-controlled trial. The hybrid-control design involves enrolling fewer concurrent control patients and then supplementing the control arm using external or historical data. Various statistical approaches, including frequentist methods (e.g., propensity score methods), Bayesian borrowing approaches (e.g., meta-analytic-predictive prior), and their integration, have been utilized to incorporate external information in hybrid-controlled trials. We evaluate several accessible methods for their robustness to between-study heterogeneity and unmeasured confounding utilizing a case study based on data from the DAPA-HF trial, along with comprehensive simulation studies. Our findings indicate that the optimal methods must take into account the heterogeneities from both measured and unmeasured confounding. Since no single method consistently outperforms all others, researchers should explore multiple methods through extensive simulations to evaluate their effectiveness across various scenarios.",
+      "url": "https://arxiv.org/abs/2508.01052v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Di Ran",
+        "Fanni Zhang",
+        "Sima Shahsavari",
+        "Kristine Broglio",
+        "Alasdair Henderson",
+        "Binbing Yu"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-08-01",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2508.01052v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Optimizing Clinical Trial Protocols Using EHR-Derived Heterogeneous Treatment Effects",
+      "snippet": "Traditional randomized trials often obscure clinically meaningful heterogeneity in treatment response by focusing on average effects. Leveraging real-world data to emulate clinical trials and estimate heterogeneous treatment effects (HTEs) offers a promising path toward more precise and efficient trial design. In this study, we emulate the DAPA-HF trial using electronic health records from the Mayo Clinic Cloud (MCC) to investigate whether HTE-guided stratification can identify patient subgroups with distinct treatment responses to dapagliflozin versus placebo in patients with heart failure wi",
+      "full_text": "Traditional randomized trials often obscure clinically meaningful heterogeneity in treatment response by focusing on average effects. Leveraging real-world data to emulate clinical trials and estimate heterogeneous treatment effects (HTEs) offers a promising path toward more precise and efficient trial design. In this study, we emulate the DAPA-HF trial using electronic health records from the Mayo Clinic Cloud (MCC) to investigate whether HTE-guided stratification can identify patient subgroups with distinct treatment responses to dapagliflozin versus placebo in patients with heart failure with reduced ejection fraction. All-cause mortality was evaluated using Cox proportional hazards models, with HTEs estimated using a Meta-S learner and subgroups defined using a decision tree-based thresholding approach. In the overall cohort of the emulation, no significant treatment difference was observed (HR, 1.681; 95% CI, 0.828-3.413; p = 0.1507). However, compared with the overall emulated cohort, in which dapagliflozin showed no statistically significant survival benefit, HTE-driven stratification identified subgroups with significant and directionally distinct treatment effects. The beneficial (low-HTE) subgroup showed a significant survival benefit from dapagliflozin (HR = 0.203, 95% CI, 0.087-0.476, p = 0.0002), whereas the harmful (high-HTE) subgroup showed a significant harmful association with markedly increased mortality risk (HR = 6.680, 95% CI, 2.759-16.171, p < 0.0001). These findings indicate that HTE-guided stratification can uncover clinically meaningful beneficial and harmful treatment-effect patterns that are masked in the full-cohort emulation.",
+      "url": "https://arxiv.org/abs/2607.16934v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Xiaodi Li",
+        "Munhuwan Lee",
+        "Pengyang Li",
+        "Xiaoke Liu",
+        "Jose K. James",
+        "Patricia A. Pellikka",
+        "Cui Tao",
+        "Nansu Zong"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-07-18",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2607.16934v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Efficacy of Dapagliflozin on Renal Function and Outcomes in Patients With Heart Failure With Reduced Ejection Fraction: Results of DAPA-HF",
+      "snippet": "Background: Many patients with heart failure and reduced ejection fraction (HFrEF) have chronic kidney disease that complicates pharmacological management and is associated with worse outcomes. We assessed the safety and efficacy of dapagliflozin in patients with HFrEF, according to baseline kidney function, in the DAPA-HF trial (Dapagliflozin and Prevention of Adverse-outcomes in Heart Failure). We also examined the effect of dapagliflozin on kidney function after randomization. Methods: Patients who have HFrEF with or without type 2 diabetes and an estimated glomerular filtration rate (eGFR)",
+      "full_text": "Background: Many patients with heart failure and reduced ejection fraction (HFrEF) have chronic kidney disease that complicates pharmacological management and is associated with worse outcomes. We assessed the safety and efficacy of dapagliflozin in patients with HFrEF, according to baseline kidney function, in the DAPA-HF trial (Dapagliflozin and Prevention of Adverse-outcomes in Heart Failure). We also examined the effect of dapagliflozin on kidney function after randomization. Methods: Patients who have HFrEF with or without type 2 diabetes and an estimated glomerular filtration rate (eGFR) ≥30 mL·min –1 ·1.73 m –2 were enrolled in DAPA-HF. We calculated the incidence of the primary outcome (cardiovascular death or worsening heart failure) according to eGFR category at baseline (<60 and ≥60 mL·min –1 ·1.73 m –2 ) and used eGFR at baseline as a continuous measure, as well. Secondary cardiovascular outcomes and a prespecified composite renal outcome (≥50% sustained decline eGFR, end-stage renal disease, or renal death) were also examined, along with a decline in eGFR over time. Results: Of 4742 patients with a baseline eGFR, 1926 (41%) had eGFR <60 mL·min –1 ·1.73 m –2 . The effect of dapagliflozin on the primary and secondary outcomes did not differ by eGFR category or examining eGFR as a continuous measurement. The hazard ratio (95% CI) for the primary end point in patients with chronic kidney disease was 0.71 (0.59–0.86) versus 0.77 (0.64–0.93) in those with an eGFR ≥60 mL·min –1 ·1.73 m –2 (interaction P =0.54). The composite renal outcome was not reduced by dapagliflozin (hazard ratio=0.71 [95% CI, 0.44–1.16]; P =0.17) but the rate of decline in eGFR between day 14 and 720 was less with dapagliflozin, –1.09 (–1.40 to –0.77) versus placebo –2.85 (–3.17 to –2.53) mL·min –1 ·1.73 m –2 per year ( P <0.001). This was observed in those with and without type 2 diabetes ( P for interaction=0.92). Conclusions: Baseline kidney function did not modify the benefits of dapagliflozin on morbidity and mortality in HFrEF, and dapagliflozin slowed the rate of decline in eGFR, including in patients without diabetes. Registration: URL: https://www.clinicaltrials.gov ; Unique identifier: NCT03036124.",
+      "url": "https://openalex.org/W3092582090",
+      "_adapter": "openalex",
+      "authors": [
+        "Pardeep S. Jhund",
+        "Scott David Solomon",
+        "Kieran F. Docherty",
+        "Hiddo J.L. Heerspink",
+        "Inder S. Anand",
+        "Michael Böhm",
+        "Vijay Chopra",
+        "Rudolf A. de Boer",
+        "Akshay Suvas Desai",
+        "Junbo Ge",
+        "Masafumi Kitakaze",
+        "Bela Merkley",
+        "Eileen O’Meara",
+        "Morten Shou",
+        "Sergey N. Tereshchenko",
+        "Subodh Verma",
+        "Pham Nguyễn Vinh",
+        "Silvio E. Inzucchi",
+        "Lars Køber",
+        "Mikhail Kosiborod",
+        "Felipe A. Martínez",
+        "Piotr P. Ponikowski",
+        "Marc Steven Sabatine",
+        "Olof Bengtsson",
+        "Anna Maria Langkilde",
+        "Mikaela Sjöstrand",
+        "John J.V. McMurray"
+      ],
+      "venue": "Circulation",
+      "publication_date": "2020",
+      "doi": "10.1161/circulationaha.120.050391",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Dapagliflozin and Diuretic Use in Patients With Heart Failure and Reduced Ejection Fraction in DAPA-HF",
+      "snippet": "Background: In the DAPA-HF trial (Dapagliflozin and Prevention of Adverse-Outcomes in Heart Failure), the sodium-glucose cotransporter 2 inhibitor dapagliflozin reduced the risk of worsening heart failure and death in patients with heart failure and reduced ejection fraction. We examined the efficacy and tolerability of dapagliflozin in relation to background diuretic treatment and change in diuretic therapy after randomization to dapagliflozin or placebo. Methods: We examined the effects of study treatment in the following subgroups: no diuretic and diuretic dose equivalent to furosemide <40,",
+      "full_text": "Background: In the DAPA-HF trial (Dapagliflozin and Prevention of Adverse-Outcomes in Heart Failure), the sodium-glucose cotransporter 2 inhibitor dapagliflozin reduced the risk of worsening heart failure and death in patients with heart failure and reduced ejection fraction. We examined the efficacy and tolerability of dapagliflozin in relation to background diuretic treatment and change in diuretic therapy after randomization to dapagliflozin or placebo. Methods: We examined the effects of study treatment in the following subgroups: no diuretic and diuretic dose equivalent to furosemide <40, 40, and >40 mg daily at baseline. We examined the primary composite end point of cardiovascular death or a worsening heart failure event and its components, all-cause death and symptoms. Results: Of 4616 analyzable patients, 736 (15.9%) were on no diuretic, 1311 (28.4%) were on <40 mg, 1365 (29.6%) were on 40 mg, and 1204 (26.1%) were taking >40 mg. Compared with placebo, dapagliflozin reduced the risk of the primary end point across each of these subgroups: hazard ratios were 0.57 (95% CI, 0.36–0.92), 0.83 (95% CI, 0.63–1.10), 0.77 (95% CI, 0.60–0.99), and 0.78 (95% CI, 0.63–0.97), respectively ( P for interaction=0.61). The hazard ratio in patients taking any diuretic was 0.78 (95% CI, 0.68–0.90). Improvements in symptoms and treatment toleration were consistent across the diuretic subgroups. Diuretic dose did not change in most patients during follow-up, and mean diuretic dose did not differ between the dapagliflozin and placebo groups after randomization. Conclusions: The efficacy and safety of dapagliflozin were consistent across the diuretic subgroups examined in DAPA-HF. Registration: URL: https://www.clinicaltrials.gov ; Unique identifier: NCT03036124.",
+      "url": "https://openalex.org/W3042528593",
+      "_adapter": "openalex",
+      "authors": [
+        "Alice M. Jackson",
+        "Pooja Dewan",
+        "Inder S. Anand",
+        "Jan Bělohlávek",
+        "Olof Bengtsson",
+        "Rudolf A. de Boer",
+        "Michael Böhm",
+        "David W. Boulton",
+        "Vijay Chopra",
+        "David L. DeMets",
+        "Kieran F. Docherty",
+        "Andrej Dukát",
+        "Peter J. Greasley",
+        "Jonathan G. Howlett",
+        "Silvio E. Inzucchi",
+        "Tzvetana Katova",
+        "Lars Køber",
+        "Mikhail Kosiborod",
+        "Anna Maria Langkilde",
+        "Daniel P. Lindholm",
+        "Charlotta E. A. Ljungman",
+        "Felipe A. Martínez",
+        "Eileen O’Meara",
+        "Marc Steven Sabatine",
+        "Mikaela Sjöstrand",
+        "Scott David Solomon",
+        "Sergey N. Tereshchenko",
+        "Subodh Verma",
+        "Pardeep S. Jhund",
+        "John J.V. McMurray"
+      ],
+      "venue": "Circulation",
+      "publication_date": "2020",
+      "doi": "10.1161/circulationaha.120.047077",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Efficacy and safety of dapagliflozin according to aetiology in heart failure with reduced ejection fraction: insights from the DAPA‐HF trial",
+      "snippet": "AIMS: We examined the efficacy and safety of dapagliflozin, compared with placebo, according to aetiology in patients with heart failure (HF) with reduced ejection fraction (HFrEF) enrolled in the Dapagliflozin And Prevention of Adverse-outcomes in Heart Failure trial (DAPA-HF). METHODS AND RESULTS: Aetiology was investigator-reported and categorized as ischaemic or non-ischaemic. The primary outcome was the composite of an episode of worsening HF or cardiovascular death. A total of 4744 patients were randomized in DAPA-HF, of whom 2674 (56.4%) patients had an ischaemic aetiology. Participants",
+      "full_text": "AIMS: We examined the efficacy and safety of dapagliflozin, compared with placebo, according to aetiology in patients with heart failure (HF) with reduced ejection fraction (HFrEF) enrolled in the Dapagliflozin And Prevention of Adverse-outcomes in Heart Failure trial (DAPA-HF). METHODS AND RESULTS: Aetiology was investigator-reported and categorized as ischaemic or non-ischaemic. The primary outcome was the composite of an episode of worsening HF or cardiovascular death. A total of 4744 patients were randomized in DAPA-HF, of whom 2674 (56.4%) patients had an ischaemic aetiology. Participants with an ischaemic aetiology had a higher risk of cardiovascular mortality [hazard ratio (HR) 1.35, 95% confidence interval (CI) 1.13-1.63], but lower risk of HF hospitalization (HR 0.83, 95% CI 0.70-0.98) than non-ischaemic patients. Compared with placebo, dapagliflozin reduced the risk of worsening HF or cardiovascular death to a similar extent in both patients with ischaemic and non-ischaemic aetiology (HR 0.77, 95% CI 0.65-0.92, and HR 0.71, 95% CI 0.58-0.87, respectively; P for interaction = 0.55). Consistent benefits were observed for the components of the primary outcome and all-cause mortality. Dapagliflozin, as compared with placebo, increased the proportion of patients with an improvement of Kansas City Cardiomyopathy Questionnaire total symptom score (KCCQ-TSS) of ≥5 points (P for interaction = 0.32) and decreased the proportion with a deterioration in KCCQ-TSS of ≥5 points (P for interaction = 0.76), irrespective of aetiology. Study drug discontinuation and serious adverse events were similar according to treatment groups, irrespective of aetiology. CONCLUSIONS: Dapagliflozin reduced the risk of worsening HF and death, and improved symptoms, similarly in patients with ischaemic and non-ischaemic aetiology. In addition, dapagliflozin was safe and well-tolerated, irrespective of aetiology.",
+      "url": "https://openalex.org/W3132186621",
+      "_adapter": "openalex",
+      "authors": [
+        "Jawad H. Butt",
+        "José Carlos Nicolau",
+        "Subodh Verma",
+        "Kieran F. Docherty",
+        "Mark Colquhoun Petrie",
+        "Silvio E. Inzucchi",
+        "Morten Schou",
+        "Mikhail Kosiborod",
+        "Anna Maria Langkilde",
+        "Felipe A. Martínez",
+        "Piotr P. Ponikowski",
+        "Marc Steven Sabatine",
+        "Mikaela Sjöstrand",
+        "Scott David Solomon",
+        "Olof Bengtsson",
+        "Pardeep S. Jhund",
+        "John J.V. McMurray",
+        "Lars Køber"
+      ],
+      "venue": "European Journal of Heart Failure",
+      "publication_date": "2021",
+      "doi": "10.1002/ejhf.2124",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Cardiorenal Syndrome: Pathophysiology, Management, and the Challenge of Therapeutic Inertia.",
+      "snippet": "Cardiorenal syndrome describes the clinical consequences of the bidirectional influence that cardiac and renal dysfunction exert on each other-a domain in which single-organ care proves insufficient. A 2024 meta-analysis estimated the pooled prevalence of chronic kidney disease among patients with heart failure at 49%. Across individual cohorts, this figure ranges between 30% and 60%, with the spread reflecting the population studied and the threshold used to define kidney disease. Among acute heart failure admissions, 64% of cases have an estimated glomerular filtration rate below 60 mL/min/1",
+      "full_text": "Cardiorenal syndrome describes the clinical consequences of the bidirectional influence that cardiac and renal dysfunction exert on each other-a domain in which single-organ care proves insufficient. A 2024 meta-analysis estimated the pooled prevalence of chronic kidney disease among patients with heart failure at 49%. Across individual cohorts, this figure ranges between 30% and 60%, with the spread reflecting the population studied and the threshold used to define kidney disease. Among acute heart failure admissions, 64% of cases have an estimated glomerular filtration rate below 60 mL/min/1.73 m<sup>2</sup>, and mortality reaches 7.6% once it falls into the severe range (15-29 mL/min/1.73 m<sup>2</sup>). The same can be described in the other \"direction\": congestive heart failure is reported in 28% of adults aged 66 years or older with chronic kidney disease, compared to 6% of those without. The Acute Dialysis Quality Initiative distinguishes a five-subtype framework by direction and chronicity of organ injury, and each subtype shows characteristic prescribing failure patterns. In types 1 and 2, the dominant problem is premature de-escalation of neurohormonal therapy at the first creatinine rise. In type 4, the failure is upstream in the cascade: cardiovascular surveillance lags behind the increasing rate of chronic kidney disease. Randomized trials over the past decade have expanded the therapeutic options. Sodium-glucose cotransporter 2 inhibitors showed cardiorenal benefit across every ejection fraction studied and at estimated glomerular filtration rate values down to 20 mL/min/1.73 m<sup>2</sup>. These findings have expanded treatment eligibility to patients with advanced CKD. The FINE-HEART pooled analysis of finerenone suggested a nominal reduction in all-cause mortality, alongside fewer heart failure hospitalizations and improvement in the kidney composite outcome. In the FLOW trial, semaglutide showed a reduction in the composite of major kidney events and cardiovascular death in diabetic adults with chronic kidney disease. In this cohort, the estimated glomerular filtration rate slope was slower in the active arm and secondary outcomes showed reductions in major adverse cardiovascular events and in all-cause mortality. However, observational registries show that these classes of drugs are less used in patients with the highest baseline risk, with advancing renal disease identified as an independent predictor of under-prescription. Therapeutic inertia in this setting reflects determinants at the patient, clinician, and system levels, which is compounded because each prescribing decision must be justified for both the heart and the kidney. The primary objective of the present narrative review is the therapeutic inertia that separates this evidence from routine prescribing: the sections on pathophysiology, imaging and biomarker tools, and subtype-specific pharmacotherapy supply the clinical rationale, and the closing sections cover the implementation strategies and the multidisciplinary framework required to act on the trial findings.",
+      "url": "https://doi.org/10.3390/medicina62101855",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Gembillo G",
+        "Calabrese V",
+        "Soraci L",
+        "Lo Cicero L",
+        "Scapellato M",
+        "Messina R",
+        "Ricca MF",
+        "Stancanelli MR",
+        "Corsonello A",
+        "Santoro D"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-09-25",
+      "doi": "10.3390/medicina62101855",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42942386",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Can ARNI prevent atrial fibrillation in heart failure with reduced ejection fraction? Real-world evidence meets the randomized benchmark.",
+      "snippet": "Can ARNI prevent atrial fibrillation in heart failure with reduced ejection fraction? Real-world evidence meets the randomized benchmark.",
+      "full_text": null,
+      "url": "https://doi.org/10.1093/ehjcvp/pvag080",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Volpe E",
+        "Jankauskas S",
+        "Mone P",
+        "Pande S",
+        "Danza ML",
+        "Santulli G"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-11-01",
+      "doi": "10.1093/ehjcvp/pvag080",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42768938",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:20+0100"
+}

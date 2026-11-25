@@ -94,6 +94,36 @@ def apply_scientific_adapter_policy(
     return reorder_adapters_for_query_type(ordered, query=query, enabled=enabled)
 
 
+# Plan S13: the adapter route each A/B arm would query. ``production`` is
+# ``apply_scientific_adapter_policy``; each other arm switches one heuristic off.
+ROUTE_PRODUCTION = "production"
+ROUTE_NO_DISCIPLINE = "no_discipline_routing"
+ROUTE_NO_QUERY_TYPE = "no_query_type_routing"
+ROUTE_ARMS: tuple[str, ...] = (ROUTE_PRODUCTION, ROUTE_NO_DISCIPLINE, ROUTE_NO_QUERY_TYPE)
+
+
+def scientific_adapter_routes(
+    enabled: tuple[str, ...],
+    *,
+    query: str,
+) -> dict[str, tuple[str, ...]]:
+    """Adapter order per S13 arm, for the eval capture.
+
+    ``no_discipline_routing`` routes every query as ``general_science`` (the
+    route an undetected query gets today) and still applies query-type routing;
+    ``no_query_type_routing`` keeps the discipline order only.
+    """
+    return {
+        ROUTE_PRODUCTION: apply_scientific_adapter_policy(enabled, query=query),
+        ROUTE_NO_DISCIPLINE: reorder_adapters_for_query_type(
+            discipline_ordered_adapters(enabled, query=""),
+            query=query,
+            enabled=enabled,
+        ),
+        ROUTE_NO_QUERY_TYPE: discipline_ordered_adapters(enabled, query=query),
+    }
+
+
 def default_scientific_adapters_for_query(
     query: str,
     *,

@@ -16,12 +16,15 @@
   "capture_profile": "balanced",
   "production_depth": {
     "openalex": 3,
-    "arxiv": 3
+    "arxiv": 3,
+    "crossref": 3,
+    "socarxiv": 3
   },
   "adapter_queries": {
     "production": {
       "openalex": "What is the social construction of technology (SCOT) approach",
-      "arxiv": "What is the social construction of technology (SCOT) approach"
+      "arxiv": "What is the social construction of technology (SCOT) approach",
+      "crossref": "What is the social construction of technology (SCOT) approach"
     }
   },
   "candidates": [
@@ -73,6 +76,12 @@
           "query": "production",
           "adapter": "openalex",
           "rank": 1
+        },
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
         }
       ],
       "label": "partial",
@@ -350,6 +359,83 @@
       ],
       "label": "irrelevant",
       "label_source": "model"
+    },
+    {
+      "title": "Social Construction of Technology Approach (SCOT)",
+      "snippet": "Social Construction of Technology Approach (SCOT)",
+      "full_text": null,
+      "url": "https://doi.org/10.4135/9781446215159.n756",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "The Sage Dictionary of Health and Society",
+      "publication_date": "2006",
+      "doi": "10.4135/9781446215159.n756",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What Is Social Memory?",
+      "snippet": "What Is Social Memory?",
+      "full_text": null,
+      "url": "https://doi.org/10.1353/scu.1995.0049",
+      "_adapter": "crossref",
+      "authors": [
+        "Scot A. French"
+      ],
+      "venue": "Southern Cultures",
+      "publication_date": "1995",
+      "doi": "10.1353/scu.1995.0049",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
     }
-  ]
+  ],
+  "routes": {
+    "production": {
+      "production": [
+        "openalex",
+        "crossref",
+        "socarxiv"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "openalex",
+        "crossref",
+        "socarxiv"
+      ]
+    }
+  },
+  "routes_added_at": "2026-11-24T16:11:33+0100",
+  "route_failed_adapters": {
+    "production": [
+      "socarxiv"
+    ]
+  }
 }

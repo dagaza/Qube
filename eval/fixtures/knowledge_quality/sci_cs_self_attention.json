@@ -19,7 +19,8 @@
     "dblp": 3,
     "openreview": 3,
     "acl_anthology": 3,
-    "openalex": 3
+    "openalex": 3,
+    "crossref": 3
   },
   "adapter_queries": {
     "production": {
@@ -27,7 +28,8 @@
       "dblp": "How does self-attention work in transformer models",
       "openreview": "How does self-attention work in transformer models",
       "acl_anthology": "How does self-attention work in transformer models",
-      "openalex": "How does self-attention work in transformer models"
+      "openalex": "How does self-attention work in transformer models",
+      "crossref": "How does self-attention work in transformer models"
     }
   },
   "candidates": [
@@ -741,6 +743,105 @@
       ],
       "label": "irrelevant",
       "label_source": "model"
+    },
+    {
+      "title": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "snippet": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "full_text": null,
+      "url": "https://doi.org/10.1088/2058-9565/ae8b21/v1/review2",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.1088/2058-9565/ae8b21/v1/review2",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "snippet": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "full_text": null,
+      "url": "https://doi.org/10.1088/2058-9565/ae8b21/v3/review1",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.1088/2058-9565/ae8b21/v3/review1",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "snippet": "Review for \"Quantum Adaptive Self-Attention for Quantum Transformer Models\"",
+      "full_text": null,
+      "url": "https://doi.org/10.1088/2058-9565/ae8b21/v2/review1",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.1088/2058-9565/ae8b21/v2/review1",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
     }
-  ]
+  ],
+  "routes": {
+    "production": {
+      "production": [
+        "arxiv",
+        "dblp",
+        "openreview",
+        "acl_anthology",
+        "openalex"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "arxiv",
+        "dblp",
+        "openreview",
+        "acl_anthology",
+        "openalex"
+      ]
+    }
+  },
+  "routes_added_at": "2026-11-24T16:11:35+0100"
 }

@@ -32,12 +32,14 @@
     "who": 3,
     "clinicaltrials_gov": 3,
     "openfda": 3,
-    "europe_pmc": 3
+    "europe_pmc": 3,
+    "crossref": 3
   },
   "adapter_queries": {
     "production": {
       "openalex": "Regarding Evidence: what about side effects in that group",
-      "arxiv": "Regarding Evidence: what about side effects in that group"
+      "arxiv": "Regarding Evidence: what about side effects in that group",
+      "crossref": "Regarding Evidence: what about side effects in that group"
     },
     "standalone": {
       "pubmed": "Statins",
@@ -47,7 +49,9 @@
       "clinicaltrials_gov": "What are the side effects of statins in older adults",
       "openfda": "What are the side effects of statins in older adults",
       "openalex": "What are the side effects of statins in older adults",
-      "europe_pmc": "What are the side effects of statins in older adults"
+      "europe_pmc": "What are the side effects of statins in older adults",
+      "crossref": "What are the side effects of statins in older adults",
+      "arxiv": "Statins"
     }
   },
   "candidates": [
@@ -1069,6 +1073,315 @@
       ],
       "label": "partial",
       "label_source": "model"
+    },
+    {
+      "title": "What about negative side effects of coaching? Are there risks? Can coaching do harm?",
+      "snippet": "What about negative side effects of coaching? Are there risks? Can coaching do harm?",
+      "full_text": null,
+      "url": "https://doi.org/10.4324/9781003127055-13",
+      "_adapter": "crossref",
+      "authors": [
+        "Erik de Haan"
+      ],
+      "venue": "What Works in Executive Coaching",
+      "publication_date": "2021",
+      "doi": "10.4324/9781003127055-13",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Breast Cancer Patients' Experiences and Reflections Regarding Information about Adjuvant Endocrine Therapy and its Side-Effects - A Focus Group Study",
+      "snippet": "Breast Cancer Patients' Experiences and Reflections Regarding Information about Adjuvant Endocrine Therapy and its Side-Effects - A Focus Group Study",
+      "full_text": null,
+      "url": "https://doi.org/10.15226/2471-6529/1/1/00102",
+      "_adapter": "crossref",
+      "authors": [
+        "Aina Johnsson"
+      ],
+      "venue": "SOJ Nursing &amp; Health Care",
+      "publication_date": "2015",
+      "doi": "10.15226/2471-6529/1/1/00102",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ADHD Medications and Cardiac Side Effects: What the Evidence Actually Shows",
+      "snippet": "Do not view cardiovascular disease as an absolute contraindication for ADHD pharmacotherapy. Current evidence indicates that serious risks are rare and typically outweighed by the benefits. Lisdexamfetamine cohort data suggest little or no increased cardiovascular risk compared to other ADHD medications. Treat its safety profile as similar to other stimulants. Among older adults starting ADHD medications, concentrate vigilance in the first 30 days. The risk of cardiovascular events may peak early and then attenuate.",
+      "full_text": "Do not view cardiovascular disease as an absolute contraindication for ADHD pharmacotherapy. Current evidence indicates that serious risks are rare and typically outweighed by the benefits. Lisdexamfetamine cohort data suggest little or no increased cardiovascular risk compared to other ADHD medications. Treat its safety profile as similar to other stimulants. Among older adults starting ADHD medications, concentrate vigilance in the first 30 days. The risk of cardiovascular events may peak early and then attenuate.",
+      "url": "https://doi.org/10.64239/pi-vl10401",
+      "_adapter": "crossref",
+      "authors": [
+        "Siobhan Gee"
+      ],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.64239/pi-vl10401",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Statins: the evidence, side‐effects and interactions in older people",
+      "snippet": "Abstract Our series Prescribing in older people gives practical advice for successful management of the special problems experienced by this patient group. Here, the author discusses the use of statins and high‐lights some of the issues to consider when prescribing them in older people. Copyright © 2006 Wiley Interface Ltd",
+      "full_text": "Abstract Our series Prescribing in older people gives practical advice for successful management of the special problems experienced by this patient group. Here, the author discusses the use of statins and high‐lights some of the issues to consider when prescribing them in older people. Copyright © 2006 Wiley Interface Ltd",
+      "url": "https://doi.org/10.1002/psb.359",
+      "_adapter": "crossref",
+      "authors": [
+        "Peter Passmore"
+      ],
+      "venue": "Prescriber",
+      "publication_date": "2006",
+      "doi": "10.1002/psb.359",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "SSRI and SNRI Considerations for Older Adults: Dosing, Side Effects, and Monitoring",
+      "snippet": "Start low, go slow but don't stop when prescribing antidepressants for older adults. Begin with quarter to half the usual starting dose. Consider sertraline, citalopram or escitalopram as first-line antidepressants for older adults. SNRIs (duloxetine, venlafaxine, desvenlafaxine) are beneficial for patients with both depression and chronic pain.",
+      "full_text": "Start low, go slow but don't stop when prescribing antidepressants for older adults. Begin with quarter to half the usual starting dose. Consider sertraline, citalopram or escitalopram as first-line antidepressants for older adults. SNRIs (duloxetine, venlafaxine, desvenlafaxine) are beneficial for patients with both depression and chronic pain.",
+      "url": "https://doi.org/10.64239/pi-vl9604",
+      "_adapter": "crossref",
+      "authors": [
+        "Lauren B. Gerlach"
+      ],
+      "venue": null,
+      "publication_date": "2025",
+      "doi": "10.64239/pi-vl9604",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What are the common side effects of glucagon-like peptide 1 agonists in older adults with diabetes?",
+      "snippet": "What are the common side effects of glucagon-like peptide 1 agonists in older adults with diabetes?",
+      "full_text": null,
+      "url": "https://doi.org/10.1097/ebp.0000000000001393",
+      "_adapter": "crossref",
+      "authors": [
+        "Mark Wirtz",
+        "Julia Lubsen"
+      ],
+      "venue": "Evidence-Based Practice",
+      "publication_date": "2022",
+      "doi": "10.1097/ebp.0000000000001393",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Statin Recommendations among US Adults with the 2026 Dyslipidemia Guidelines",
+      "snippet": "Importance: The 2026 multisociety dyslipidemia guideline recommended the PREVENT equations in place of the PCE equations, introduced 30-year risk assessment as a new treatment pathway, and lowered risk-based treatment thresholds. The net population impact of these concurrent changes on statin recommendations is unknown. Objective: To estimate changes in statin recommendations under 2026 PREVENT-based dyslipidemia guidelines compared with 2018 PCE-based guidelines. Design and Participants: Cross-sectional analysis of pooled data from NHANES, spanning 2011-2023 and comprising 24,199 participants",
+      "full_text": "Importance: The 2026 multisociety dyslipidemia guideline recommended the PREVENT equations in place of the PCE equations, introduced 30-year risk assessment as a new treatment pathway, and lowered risk-based treatment thresholds. The net population impact of these concurrent changes on statin recommendations is unknown. Objective: To estimate changes in statin recommendations under 2026 PREVENT-based dyslipidemia guidelines compared with 2018 PCE-based guidelines. Design and Participants: Cross-sectional analysis of pooled data from NHANES, spanning 2011-2023 and comprising 24,199 participants aged 30-79 years. Main Outcomes and Measures: Number and proportion of US adults receiving or recommended for statin therapy. Results: At the class 1 threshold, the number of US adults receiving or recommended for statin therapy decreased by an estimated 3.0 million (95% CI, 2.3 million to 3.6 million), with larger reductions among Black adults (-4.2 percentage points [pp]), men (-4.0pp), and adults aged 50-69 years (-5.6pp). At the class 2 threshold--which additionally recommends statins for adults aged 30-59 years based on 30-year risk--the number of adults recommended increased by an estimated 20.8 million (95% CI, 19.6 million to 22.0 million), or +11.6pp. The increase was largest among adults aged 50-59 years (+19.7pp) and 40-49 years (+14.8pp). Conclusions: The net population impact of the 2026 dyslipidemia guidelines depends critically on which recommendation class is applied. At the class 1 threshold, statin recommendations decreased modestly; at the class 2 threshold, inclusion of 30-year risk assessment substantially expanded recommendations, particularly among younger adults. These divergent effects underscore the importance of the 30-year risk criterion as a major driver of new eligibility and the need for outcomes and equity monitoring during guideline implementation.",
+      "url": "https://arxiv.org/abs/2605.10979v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "James A. Diao",
+        "Thomas A. Buckley",
+        "Andrew Z. Zhou",
+        "Smaraki Dash",
+        "Rishi K. Wadhera",
+        "Arjun K. Manrai"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-05-09",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2605.10979v1",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Assessing the Most Vulnerable Subgroup to Type II Diabetes Associated with Statin Usage: Evidence from Electronic Health Record Data",
+      "snippet": "There have been increased concerns that the use of statins, one of the most commonly prescribed drugs for treating coronary artery disease, is potentially associated with the increased risk of new-onset type II diabetes (T2D). Nevertheless, to date, there is no robust evidence supporting as to whether and what kind of populations are indeed vulnerable for developing T2D after taking statins. In this case study, leveraging the biobank and electronic health record data in the Partner Health System, we introduce a new data analysis pipeline and a novel statistical methodology that address existin",
+      "full_text": "There have been increased concerns that the use of statins, one of the most commonly prescribed drugs for treating coronary artery disease, is potentially associated with the increased risk of new-onset type II diabetes (T2D). Nevertheless, to date, there is no robust evidence supporting as to whether and what kind of populations are indeed vulnerable for developing T2D after taking statins. In this case study, leveraging the biobank and electronic health record data in the Partner Health System, we introduce a new data analysis pipeline and a novel statistical methodology that address existing limitations by (i) designing a rigorous causal framework that systematically examines the causal effects of statin usage on T2D risk in observational data, (ii) uncovering which patient subgroup is most vulnerable for developing T2D after taking statins, and (iii) assessing the replicability and statistical significance of the most vulnerable subgroup via a bootstrap calibration procedure. Our proposed approach delivers asymptotically sharp confidence intervals and debiased estimate for the treatment effect of the most vulnerable subgroup in the presence of high-dimensional covariates. With our proposed approach, we find that females with high T2D genetic risk are at the highest risk of developing T2D due to statin usage.",
+      "url": "https://arxiv.org/abs/2205.06960v3",
+      "_adapter": "arxiv",
+      "authors": [
+        "Xinzhou Guo",
+        "Waverly Wei",
+        "Molei Liu",
+        "Tianxi Cai",
+        "Chong Wu",
+        "Jingshen Wang"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2022-05-14",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2205.06960v3",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Detecting gene-environment interactions to guide personalized intervention: boosting distributional regression for polygenic scores",
+      "snippet": "Polygenic risk scores can be used to model the individual genetic liability for human traits. Current methods primarily focus on modeling the mean of a phenotype neglecting the variance. However, genetic variants associated with phenotypic variance can provide important insights to gene-environment interaction studies. To overcome this, we propose snpboostlss, a cyclical gradient boosting algorithm for a Gaussian location-scale model to jointly derive sparse polygenic models for both the mean and the variance of a quantitative phenotype. To improve computational efficiency on high-dimensional ",
+      "full_text": "Polygenic risk scores can be used to model the individual genetic liability for human traits. Current methods primarily focus on modeling the mean of a phenotype neglecting the variance. However, genetic variants associated with phenotypic variance can provide important insights to gene-environment interaction studies. To overcome this, we propose snpboostlss, a cyclical gradient boosting algorithm for a Gaussian location-scale model to jointly derive sparse polygenic models for both the mean and the variance of a quantitative phenotype. To improve computational efficiency on high-dimensional and large-scale genotype data (large n and large p), we only consider a batch of most relevant variants in each boosting step. We investigate the effect of statins therapy (the environmental factor) on low-density lipoprotein in the UK Biobank cohort using the new snpboostlss algorithm. We are able to verify the interaction between statins usage and the polygenic risk scores for phenotypic variance in both cross sectional and longitudinal analyses. Particularly, following the spirit of target trial emulation, we observe that the treatment effect of statins is more substantial in people with higher polygenic risk scores for phenotypic variance, indicating gene-environment interaction. When applying to body mass index, the newly constructed polygenic risk scores for variance show significant interaction with physical activity and sedentary behavior. Therefore, the polygenic risk scores for phenotypic variance derived by snpboostlss have potential to identify individuals that could benefit more from environmental changes (e.g. medical intervention and lifestyle changes).",
+      "url": "https://arxiv.org/abs/2509.20850v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Qiong Wu",
+        "Hannah Klinkhammer",
+        "Kiran Kunwar",
+        "Christian Staerk",
+        "Carlo Maj",
+        "Andreas Mayr"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-09-25",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2509.20850v1",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
     }
-  ]
+  ],
+  "routes": {
+    "production": {
+      "production": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    },
+    "standalone": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ]
+    }
+  },
+  "routes_added_at": "2026-11-24T16:11:37+0100"
 }

@@ -147,12 +147,32 @@ def pool_variant(fixture: dict[str, Any], query_mode: str = "production") -> str
     return "production"
 
 
+def fixture_route(
+    fixture: dict[str, Any], variant: str, route_arm: str | None
+) -> tuple[str, ...] | None:
+    """Adapter order of ``route_arm`` for ``variant``, ``None`` when not captured."""
+    if not route_arm:
+        return None
+    routes = (fixture.get("routes") or {}).get(variant) or {}
+    route = routes.get(route_arm)
+    return tuple(str(a) for a in route) if route is not None else None
+
+
+def fixture_has_routes(fixture: dict[str, Any], query_mode: str = "production") -> bool:
+    """True when the fixture captured every S13 route arm for ``query_mode``."""
+    from core.knowledge.scientific_adapters import ROUTE_ARMS
+
+    routes = (fixture.get("routes") or {}).get(pool_variant(fixture, query_mode)) or {}
+    return all(arm in routes for arm in ROUTE_ARMS)
+
+
 def fixture_pool(
     fixture: dict[str, Any],
     *,
     include_synthetic: bool = False,
     query_mode: str = "production",
     pool_mode: str = "production",
+    route_arm: str | None = None,
 ) -> list[dict[str, Any]]:
     """Candidate rows to rank (copies), in the order the adapters returned them.
 
@@ -163,6 +183,10 @@ def fixture_pool(
     capture (recall-widening experiments). Rows without ``retrieved`` (v1 or
     hand-built fixtures) are always in the pool. Synthetic rows are dropped
     unless ``include_synthetic``.
+
+    ``route_arm`` (S13) selects the adapters one A/B arm would query, from the
+    fixture's ``routes``. Without it, hits captured only for an arm
+    (``route_added``) are left out, so the pool is the one first captured.
     """
     if pool_mode not in POOL_MODES:
         raise ValueError(f"pool_mode must be one of {POOL_MODES}")
@@ -172,7 +196,8 @@ def fixture_pool(
         if pool_mode == "widened"
         else dict(fixture.get("production_depth") or {})
     )
-    adapter_order = {name: i for i, name in enumerate(depth)}
+    route = fixture_route(fixture, variant, route_arm)
+    adapter_order = {name: i for i, name in enumerate(route if route is not None else depth)}
     picked: list[tuple[tuple[int, int, int], dict[str, Any]]] = []
     for idx, row in enumerate(fixture.get("candidates") or []):
         if not isinstance(row, dict):
@@ -189,6 +214,11 @@ def fixture_pool(
             if not isinstance(hit, dict) or hit.get("query") != variant:
                 continue
             adapter = str(hit.get("adapter") or "")
+            if route is None:
+                if hit.get("route_added"):
+                    continue
+            elif adapter not in route:
+                continue
             rank = int(hit.get("rank") or 0)
             if pool_mode != "full" and adapter in depth and rank >= int(depth[adapter]):
                 continue
@@ -243,6 +273,12 @@ def validate_fixture(fixture: dict[str, Any]) -> list[str]:
         errors.append(
             f"capture degraded for {degraded} (discovery fell back from the primary "
             "provider); re-capture before using as a baseline"
+        )
+    deferred = fixture.get("deferred_adapters")
+    if deferred:
+        errors.append(
+            f"capture incomplete: adapters deferred {deferred}; fill them with "
+            "tools/capture_knowledge_fixture.py --add-routes before using as a baseline"
         )
     seen: set[str] = set()
     for idx, row in enumerate(candidates):
@@ -371,6 +407,32 @@ class RankerOutput:
 # that date shifted forward to replay the same pool as if it had aged.
 _EVAL_TODAY: contextvars.ContextVar[date | None] = contextvars.ContextVar("kq_eval_today", default=None)
 
+# Plan S13: ranking-side heuristics the scientific replay can switch off, one
+# A/B arm each. Routing heuristics are pool-side (``fixture_pool(route_arm=…)``).
+ABLATE_TRIAL_GROUNDING = "trial_grounding"
+ABLATE_DISCIPLINE_SLOTS = "discipline_slots"
+RANKING_ABLATIONS: tuple[str, ...] = (ABLATE_TRIAL_GROUNDING, ABLATE_DISCIPLINE_SLOTS)
+_EVAL_ABLATE: contextvars.ContextVar[frozenset[str]] = contextvars.ContextVar(
+    "kq_eval_ablate", default=frozenset()
+)
+
+
+def _scientific_heuristics(query: str) -> tuple[frozenset[str], str | None]:
+    """Trial signals and slot discipline ``pipeline_scientific.run`` derives from the turn.
+
+    Production detects both on the user's turn (``ctx.query``); the replay uses
+    the ranking query, which is the same text for single-turn cases.
+    """
+    from core.knowledge.ranking.trial_grounding import extract_trial_signal
+    from core.knowledge.scientific_discipline import detect_scientific_discipline
+
+    ablate = _EVAL_ABLATE.get()
+    trial = frozenset() if ABLATE_TRIAL_GROUNDING in ablate else extract_trial_signal(query)
+    discipline = (
+        None if ABLATE_DISCIPLINE_SLOTS in ablate else detect_scientific_discipline(query).discipline
+    )
+    return trial, discipline
+
 
 def fixture_today(fixture: dict[str, Any], *, shift_days: int = 0) -> date | None:
     """Capture date of ``fixture`` (plus ``shift_days``), or ``None`` if unknown."""
@@ -413,8 +475,9 @@ def _rest(rows: list[dict[str, Any]], kept: list[dict[str, Any]]) -> list[dict[s
 
 
 def _rank_scientific(query, rows, budget, *, query_vector, embed_fn) -> RankerOutput:
-    # pipeline_scientific: score_rows → MMR → reliability.
-    from core.knowledge.pipeline_scientific import _rank_candidates
+    # pipeline_scientific (UNSCORED path): score_rows with the trial boost → MMR
+    # → reliability, then the discipline slots over the whole pool.
+    from core.knowledge.pipeline_scientific import _rank_candidates, apply_discipline_slots
     from core.knowledge.types import RetrievalBudget, RetrievalContext
 
     ctx = RetrievalContext(
@@ -425,7 +488,12 @@ def _rank_scientific(query, rows, budget, *, query_vector, embed_fn) -> RankerOu
         embed_fn=embed_fn,
         budget=RetrievalBudget(max_results=budget),
     )
-    kept, rejected = _rank_candidates(rows, ctx=ctx, max_results=budget)
+    trial, discipline = _scientific_heuristics(query)
+    kept, rejected = _rank_candidates(rows, ctx=ctx, max_results=budget, trial_signals=trial)
+    if discipline is not None:
+        kept = apply_discipline_slots(
+            kept, list(rows), discipline=discipline, query=query, max_results=budget
+        )
     return RankerOutput(kept=list(kept), rejected=list(rejected))
 
 
@@ -658,7 +726,12 @@ def _build_ce_ranker() -> RankerFn:
     def rank(query: str, rows: list[dict[str, Any]], budget: int, path: str = PATH_SCIENTIFIC) -> RankerOutput:
         key = _normalize_path(path)
         if key == PATH_SCIENTIFIC:
-            from core.knowledge.pipeline_scientific import _rank_candidates_gated
+            from core.knowledge.pipeline_scientific import (
+                SCIENTIFIC_THRESHOLDS,
+                _final_sufficiency,
+                _rank_candidates_gated,
+                apply_discipline_slots,
+            )
             from core.knowledge.types import RetrievalBudget, RetrievalContext
 
             ctx = RetrievalContext(
@@ -667,9 +740,23 @@ def _build_ce_ranker() -> RankerFn:
                 knowledge_service=PATH_SCIENTIFIC,
                 budget=RetrievalBudget(max_results=budget),
             )
-            ranking = _rank_candidates_gated(rows, ctx=ctx, max_results=budget, question=query)
-            state = ranking.sufficiency.state.value
-            return RankerOutput(kept=list(ranking.kept), rejected=list(ranking.rejected), state=state)
+            # Mirrors ``pipeline_scientific.run``: trial boost in the pre-order,
+            # discipline slots over the gate's survivors, state recomputed.
+            trial, discipline = _scientific_heuristics(query)
+            ranking = _rank_candidates_gated(
+                rows, ctx=ctx, max_results=budget, trial_signals=trial, question=query
+            )
+            kept = list(ranking.kept)
+            if discipline is not None:
+                kept = apply_discipline_slots(
+                    kept, ranking.slot_pool, discipline=discipline, query=query, max_results=budget
+                )
+            sufficiency = ranking.sufficiency
+            if ranking.scored:
+                sufficiency = _final_sufficiency(kept, ranking.sufficiency, SCIENTIFIC_THRESHOLDS)
+            return RankerOutput(
+                kept=kept, rejected=list(ranking.rejected), state=sufficiency.state.value
+            )
         output = _ce_rank_non_scientific(query, rows, budget, key)
         return output if output is not None else _token_ranker(query, rows, budget, path)
 
@@ -763,8 +850,13 @@ def evaluate_fixture(
     pool_mode: str = "production",
     k: int = 3,
     recency_shift_days: int = 0,
+    ablate: Iterable[str] = (),
+    route_arm: str | None = None,
 ) -> dict[str, Any]:
     """Rank a fixture's pool and report graded ranking + abstention metrics.
+
+    ``ablate`` switches ranking heuristics off (``RANKING_ABLATIONS``);
+    ``route_arm`` picks the pool of one S13 routing arm (``fixture_pool``).
 
     ``recency_shift_days`` replays the pool as if it were that many days older
     (S7: a fresh capture becomes a stale one without a new capture).
@@ -780,12 +872,15 @@ def evaluate_fixture(
         include_synthetic=include_synthetic,
         query_mode=query_mode,
         pool_mode=pool_mode,
+        route_arm=route_arm,
     )
     query = fixture_ranking_query(fixture, query_mode=query_mode)
     token = _EVAL_TODAY.set(fixture_today(fixture, shift_days=recency_shift_days))
+    ablate_token = _EVAL_ABLATE.set(frozenset(ablate))
     try:
         output = rank_fn(query, [dict(r) for r in pool], budget, _normalize_path(fixture.get("path")))
     finally:
+        _EVAL_ABLATE.reset(ablate_token)
         _EVAL_TODAY.reset(token)
     kept = output.kept
     recency = _recency_report(query, kept, output, fixture, recency_shift_days)

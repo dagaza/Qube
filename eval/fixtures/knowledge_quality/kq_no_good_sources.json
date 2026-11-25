@@ -19,7 +19,9 @@
     "dblp": 3,
     "openreview": 3,
     "acl_anthology": 3,
-    "openalex": 3
+    "openalex": 3,
+    "crossref": 3,
+    "socarxiv": 3
   },
   "adapter_queries": {
     "production": {
@@ -27,7 +29,9 @@
       "dblp": "How does actor-network theory analyze large language model deployment",
       "openreview": "How does actor-network theory analyze large language model deployment",
       "acl_anthology": "How does actor-network theory analyze large language model deployment",
-      "openalex": "How does actor-network theory analyze large language model deployment"
+      "openalex": "How does actor-network theory analyze large language model deployment",
+      "crossref": "How does actor-network theory analyze large language model deployment",
+      "socarxiv": "How does actor-network theory analyze large language model deployment"
     }
   },
   "candidates": [
@@ -715,6 +719,108 @@
       ],
       "label": "partial",
       "label_source": "model"
+    },
+    {
+      "title": "Does Actor Network Theory help planners to think about change?",
+      "snippet": "Does Actor Network Theory help planners to think about change?",
+      "full_text": null,
+      "url": "https://doi.org/10.4324/9781315714882-10",
+      "_adapter": "crossref",
+      "authors": [
+        "Robert A. Beauregard",
+        "Laura Lieto"
+      ],
+      "venue": "Actor Networks of Planning",
+      "publication_date": "2016",
+      "doi": "10.4324/9781315714882-10",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How well does ANT equip designers for socio-material speculations?",
+      "snippet": "How well does ANT equip designers for socio-material speculations?",
+      "full_text": null,
+      "url": "https://doi.org/10.4324/9781315111667-43",
+      "_adapter": "crossref",
+      "authors": [
+        "Alex Wilkie"
+      ],
+      "venue": "The Routledge Companion to Actor-Network Theory",
+      "publication_date": "2019",
+      "doi": "10.4324/9781315111667-43",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How does ANT help us to rethink the city and its promises?",
+      "snippet": "How does ANT help us to rethink the city and its promises?",
+      "full_text": null,
+      "url": "https://doi.org/10.4324/9781315111667-29",
+      "_adapter": "crossref",
+      "authors": [
+        "Alexa Färber"
+      ],
+      "venue": "The Routledge Companion to Actor-Network Theory",
+      "publication_date": "2019",
+      "doi": "10.4324/9781315111667-29",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
     }
-  ]
+  ],
+  "routes": {
+    "production": {
+      "production": [
+        "openalex",
+        "crossref",
+        "socarxiv"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "openalex",
+        "crossref",
+        "socarxiv"
+      ]
+    }
+  },
+  "routes_added_at": "2026-11-24T16:11:49+0100"
 }

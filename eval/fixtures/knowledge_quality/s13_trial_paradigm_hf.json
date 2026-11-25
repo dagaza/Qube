@@ -1,0 +1,555 @@
+{
+  "schema_version": 2,
+  "id": "s13_trial_paradigm_hf",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: trial_grounding trigger (named trial).",
+  "query_raw": "@[tool:evidence] What did the PARADIGM-HF trial find for sacubitril-valsartan?",
+  "query_clean": "What did the PARADIGM-HF trial find for sacubitril-valsartan?",
+  "retrieval_query": "What did the PARADIGM-HF trial find for sacubitril-valsartan?",
+  "standalone_question": "What did the PARADIGM-HF trial find for sacubitril-valsartan?",
+  "gold_subject": "PARADIGM-HF trial",
+  "gold_facet": "results",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:08:59+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "pubmed": 3,
+    "nice": 3,
+    "cdc": 3,
+    "who": 3,
+    "clinicaltrials_gov": 3,
+    "openfda": 3,
+    "europe_pmc": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "pubmed": "PARADIGM-HF",
+      "nice": "What did the PARADIGM-HF trial find for sacubitril-valsartan",
+      "cdc": "What did the PARADIGM-HF trial find for sacubitril-valsartan",
+      "who": "What did the PARADIGM-HF trial find for sacubitril-valsartan",
+      "clinicaltrials_gov": "What did the PARADIGM-HF trial find for sacubitril-valsartan",
+      "openfda": "What did the PARADIGM-HF trial find for sacubitril-valsartan",
+      "europe_pmc": "What did the PARADIGM-HF trial find for sacubitril-valsartan",
+      "crossref": "What did the PARADIGM-HF trial find for sacubitril-valsartan",
+      "arxiv": "PARADIGM-HF",
+      "openalex": "What did the PARADIGM-HF trial find for sacubitril-valsartan"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "Who would have entered PARADIGM-HF, and does it still matter?",
+      "snippet": "Who would have entered PARADIGM-HF, and does it still matter?",
+      "full_text": null,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42754099/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Aimo, Alberto",
+        "Tomasoni, Daniela"
+      ],
+      "venue": "International journal of cardiology",
+      "publication_date": "2026-Dec",
+      "doi": "10.1016/j.ijcard.2026.134931",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "42754099",
+      "publication_types": [
+        "Editorial"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Estimating the Benefits of the Comprehensive Disease-modifying Pharmacological Treatment in Patients with Heart Failure.",
+      "snippet": "To determine the effects of the comprehensive disease-modifying pharmacological approach among patients with heart failure with reduced ejection fraction, a cross-trial, aggregate-data analysis was performed to estimate the expected combined effect of quintuple therapy by multiplying trial-level HRs, assuming independent and multiplicative treatment effects from Phase III randomised clinical trials: EMPHASIS-HF, PARADIGM-HF, pooled DAPA-HF and EMPEROR-Reduced, and pooled VICTORIA and VICTOR. The imputed aggregate treatment effects on the primary endpoint of cardiovascular death or first heart ",
+      "full_text": "To determine the effects of the comprehensive disease-modifying pharmacological approach among patients with heart failure with reduced ejection fraction, a cross-trial, aggregate-data analysis was performed to estimate the expected combined effect of quintuple therapy by multiplying trial-level HRs, assuming independent and multiplicative treatment effects from Phase III randomised clinical trials: EMPHASIS-HF, PARADIGM-HF, pooled DAPA-HF and EMPEROR-Reduced, and pooled VICTORIA and VICTOR. The imputed aggregate treatment effects on the primary endpoint of cardiovascular death or first heart failure hospitalisation were favourable to the quintuple compared with conventional therapy (HR 0.34; 95% CI [0.27-0.42]). This also occurred for cardiovascular death alone (HR 0.47; 95% CI [0.35-0.63]), first heart failure hospitalisation (HR 0.31; 95% CI [0.23-0.40]) and all-cause mortality (HR 0.51; 95% CI [0.39-0.67]). The numbers needed to treat per year for the primary outcome, cardiovascular death and first heart failure hospitalisation were 10, 23 and 15, respectively. Our findings support the potential benefit of comprehensive therapy, with the incremental role of vericiguat likely greatest in higher-risk patients or those with recent worsening heart failure. Copyright © The Author(s), 2026. Published by Radcliffe Group Ltd.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42741561/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Escobar, Carlos",
+        "Caravaca-Pérez, Pedro",
+        "Fernandez-Rodriguez, José Maria",
+        "Gomez-Otero, Ines",
+        "Lozano-Bahamonde, Ainara",
+        "Pérez-Cabeza, Alejandro I",
+        "Pérez-Silvestre, José",
+        "Rafols, Carles",
+        "Saldaña-García, Jesús",
+        "Esteban-Fernández, Alberto"
+      ],
+      "venue": "Cardiac failure review",
+      "publication_date": "2026",
+      "doi": "10.15420/cfr.2026.02",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "42741561",
+      "publication_types": [
+        "Journal Article",
+        "Review"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Low-Normal Hemoglobin Concentrations and Clinical Outcomes in Heart Failure.",
+      "snippet": "The World Health Organization (WHO) defines anemia as hemoglobin concentration <12 g/dL in women and <13 g/dL in men. Although widely used clinically, these thresholds were based on distributions in healthy populations rather than on outcomes. Whether these WHO thresholds adequately reflect the relationship between hemoglobin concentration and clinical outcomes in patients with heart failure (HF) is uncertain. We sought to characterize sex-specific associations between hemoglobin concentration and clinical outcomes and to identify the hemoglobin concentrations associated with the lowest observ",
+      "full_text": "The World Health Organization (WHO) defines anemia as hemoglobin concentration <12 g/dL in women and <13 g/dL in men. Although widely used clinically, these thresholds were based on distributions in healthy populations rather than on outcomes. Whether these WHO thresholds adequately reflect the relationship between hemoglobin concentration and clinical outcomes in patients with heart failure (HF) is uncertain. We sought to characterize sex-specific associations between hemoglobin concentration and clinical outcomes and to identify the hemoglobin concentrations associated with the lowest observed risk in patients with HF across the spectrum of left ventricular ejection fraction. Patient-level data were pooled from 6 trials in heart failure with reduced ejection fraction (HFrEF) and 5 trials in heart failure with preserved ejection fraction (HFpEF) or heart failure with mildly reduced ejection fraction (HFmrEF). Associations among baseline hemoglobin and a first HF hospitalization or cardiovascular death, the components of this composite, and all-cause death were examined using Cox proportional hazards models. Sex-specific hemoglobin concentrations associated with the lowest incidence rates were estimated using Poisson regression with restricted cubic splines. Outcomes were also examined by hemoglobin categories defined relative to WHO anemia thresholds. Overall, 25,003 patients with HFrEF (5,581 women, 19,422 men) and 17,210 with HFpEF/HFmrEF (8,763 women, 8,447 men) were included. In HFrEF, median hemoglobin was 13.0 g/dL (Q1-Q3: 12.1-13.9 g/dL) in women and 14.0 g/dL (Q1-Q3: 12.9-15.1 g/dL) in men; corresponding values in HFpEF/HFmrEF were 13.1 g/dL (Q1-Q3: 12.1-14.0 g/dL) and 14.0 g/dL (Q1-Q3: 12.8-15.0 g/dL), respectively. Across HF phenotypes and outcomes, the lowest risk occurred at hemoglobin concentrations of approximately 14 g/dL in women and 15 g/dL in men, above the WHO anemia thresholds. With hemoglobin ≥2 g/dL above the WHO anemia thresholds as the reference, WHO-defined anemia was associated with the highest adjusted risk. Excess risk was also observed at 0 to <1 g/dL above the thresholds. In patients with HF, hemoglobin concentrations associated with the lowest risk of death and HF hospitalization were approximately 14 g/dL in women and 15 g/dL in men. Hemoglobin concentrations above WHO anemia thresholds may still carry prognostic information and, in conjunction with other clinical findings, may prompt consideration of potentially reversible contributors such as iron deficiency. (Candesartan Cilexetil in Heart Failure Assessment of Reduction in Mortality and Morbidity [CHARM-Added], NCT00634309; Candesartan in Heart Failure Assessment of Reduction in Mortality and Morbidity [CHARM-Alternative], NCT00634400; Candesartan Cilexetil in Heart Failure Assessment of Reduction in Mortality and Morbidity [CHARM-Preserved], NCT00634712; A Comparison Of Outcomes In Patients In New York Heart Association [NYHA] Class II Heart Failure When Treated With Eplerenone Or Placebo In Addition To Standard Heart Failure Medicines [EMPHASIS-HF], NCT00232180; Irbesartan in Heart Failure With Preserved Systolic Function [I-Preserve], NCT00095238; Aldosterone Antagonist Therapy for Adults With Heart Failure and Preserved Systolic Function [TOPCAT], NCT00094302; This Study Will Evaluate the Efficacy and Safety of LCZ696 Compared to Enalapril on Morbidity and Mortality of Patients With Chronic Heart Failure [PARADIGM-HF], NCT01035255; Efficacy and Safety of LCZ696 Compared to Valsartan, on Morbidity and Mortality in Heart Failure Patients With Preserved Ejection Fraction [PARAGON-HF], NCT01920711; Study to Evaluate the Effect of Dapagliflozin on the Incidence of Worsening Heart Failure or Cardiovascular Death in Patients With Chronic Heart Failure [DAPA-HF], NCT03036124; Registrational Study With Omecamtiv Mecarbil [AMG 423] to Treat Chronic Heart Failure With Reduced Ejection Fraction [GALACTIC-HF], NCT02929329; Study to Evaluate the Effi",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42663359/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Chimura, Misato",
+        "Pellicori, Pierpaolo",
+        "Docherty, Kieran",
+        "Claggett, Brian L",
+        "Campbell, Ross T",
+        "Desai, Akshay S",
+        "Packer, Milton",
+        "Jhund, Pardeep S",
+        "Petrie, Mark C",
+        "Rouleau, Jean L",
+        "Teerlink, John R",
+        "Vaduganathan, Muthiah",
+        "van Veldhuisen, Dirk J",
+        "Zannad, Faiez",
+        "Zile, Michael R",
+        "Solomon, Scott D",
+        "McMurray, John J V"
+      ],
+      "venue": "Journal of the American College of Cardiology",
+      "publication_date": "2026-Aug",
+      "doi": "10.1016/j.jacc.2026.08.013",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "42663359",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Modest Contribution of Bradykinin to Blood Pressure Reduction by Sacubitril/Valsartan in Chronic Heart Failure.",
+      "snippet": "<h4>Background</h4>Symptomatic hypotension can limit sacubitril/valsartan therapy. Neprilysin inhibition may augment vasodilators, such as bradykinin. We hypothesized that bradykinin contributes to blood pressure (BP) lowering with sacubitril/valsartan in stable ambulatory patients with heart failure and reduced ejection fraction <50%.<h4>Methods</h4>In a randomized, double-blind crossover trial, participants received intravenous infusion of the bradykinin B2 receptor inhibitor icatibant and a matching placebo for 6 hours following sacubitril/valsartan dosing at acute initiation (n=36) and aft",
+      "full_text": "<h4>Background</h4>Symptomatic hypotension can limit sacubitril/valsartan therapy. Neprilysin inhibition may augment vasodilators, such as bradykinin. We hypothesized that bradykinin contributes to blood pressure (BP) lowering with sacubitril/valsartan in stable ambulatory patients with heart failure and reduced ejection fraction <50%.<h4>Methods</h4>In a randomized, double-blind crossover trial, participants received intravenous infusion of the bradykinin B2 receptor inhibitor icatibant and a matching placebo for 6 hours following sacubitril/valsartan dosing at acute initiation (n=36) and after 8 weeks of chronic therapy (n=30). The primary end point was maximal change in mean arterial pressure (MAP). Plasma natriuretic peptides, urine cyclic GMP, urine volume, sodium excretion, renal plasma flow, and renovascular resistance were measured.<h4>Results</h4>The first dose of sacubitril/valsartan (50 mg) significantly lowered MAP by a mean maximum of ≈10 mm Hg, which was similar during icatibant and placebo. Within 6 hours after the first sacubitril/valsartan dose, plasma ANP (atrial natriuretic peptide [1-28]) and urine cGMP/creatinine increased significantly, whereas B-type NP (1-32) and NT-proBNP (N-terminal pro B-type natriuretic peptide) did not. Icatibant partially blunted the rise in urine cGMP/creatinine, but did not affect other parameters. After 8 weeks of sacubitril/valsartan titrated to maximally tolerated doses, baseline ANP (1-28) remained increased, and baseline MAP and NT-proBNP were decreased compared with before sacubitril/valsartan initiation. MAP decreased further after dose administration of sacubitril/valsartan, and the mean maximal reduction in MAP was significantly attenuated during icatibant compared with placebo (9 versus 12 mm Hg; <i>P</i>=0.013). Icatibant also decreased renal plasma flow and increased renal vascular resistance after chronic dosing, without affecting heart rate, urine volume, urine sodium, cGMP/creatinine, or natriuretic peptides.<h4>Conclusions</h4>BP lowering with sacubitril/valsartan occurs with both acute and chronic dosing. ANP (1-28) appears to mediate the initial BP reduction, whereas bradykinin contributes to BP lowering after dosing during chronic therapy. Clarifying these mechanisms may inform clinical management to optimize the benefit of this important heart failure and reduced ejection fraction therapy.<h4>Registration</h4>URL: https://www.clinicaltrials.gov; Unique identifier: NCT04113109.",
+      "url": "https://doi.org/10.1161/circheartfailure.125.014117",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Gupta DK",
+        "Stevenson LW",
+        "Garner EM",
+        "Maulion C",
+        "Nian H",
+        "Wright PR",
+        "Turcu AF",
+        "Wei S",
+        "Brown NJ"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-04-24",
+      "doi": "10.1161/circheartfailure.125.014117",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "pmid": "42028604",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Extrapolation of Adult Evidence to Pediatric Practice: Bridging the Gap in Pediatric Heart Failure Pharmacotherapy.",
+      "snippet": "Heart failure (HF) is a complex clinical syndrome that represents an increasingly relevant health issue, associated with substantial morbidity and mortality in pediatric patients. While considerable therapeutic advances have transformed the prognosis of adult patients with heart failure over the past three decades, progress in pediatric heart failure has been considerably slower. In adult patients, large randomized controlled trials (RCTs) have established angiotensin-converting enzyme inhibitors (ACE inhibitors), beta-blockers, mineralocorticoid receptor antagonists (MRAs), angiotensin recept",
+      "full_text": "Heart failure (HF) is a complex clinical syndrome that represents an increasingly relevant health issue, associated with substantial morbidity and mortality in pediatric patients. While considerable therapeutic advances have transformed the prognosis of adult patients with heart failure over the past three decades, progress in pediatric heart failure has been considerably slower. In adult patients, large randomized controlled trials (RCTs) have established angiotensin-converting enzyme inhibitors (ACE inhibitors), beta-blockers, mineralocorticoid receptor antagonists (MRAs), angiotensin receptor-neprilysin inhibitors (ARNIs), and, more recently, sodium-glucose cotransporter-2 (SGLT2) inhibitors as the cornerstone of guideline-directed medical therapy. Evidence supporting pharmacological therapy in pediatric heart failure remains scarce and frequently inconclusive, with most available studies being limited by small sample sizes and heterogeneous patient populations. Therefore, heart failure treatment in children is mostly extrapolated from adult studies and guidelines. However, developmental differences in myocardial structure and function, neurohormonal signaling, pharmacokinetics and pharmacodynamics may substantially influence therapeutic response. In addition, the rarity and the etiological heterogeneity of pediatric HF create major methodological challenges for adequately powered clinical trials. This review compares the pharmacological management of HF in adult and pediatric populations, examines the strength of evidence for contemporary therapies and discusses the biological and methodological limitations of translating adult evidence into pediatric practice. Multicenter collaborative studies and well-designed pediatric randomized controlled trials are essential for establishing truly evidence-based pharmacological strategies for children with HF.",
+      "url": "https://doi.org/10.3390/children13091223",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Sorescu AM",
+        "Ghiță CIV",
+        "Stoleru S",
+        "Duică G",
+        "Nicolescu AM",
+        "Cinteză EE",
+        "Fulga I",
+        "Coman OA"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2026-09-10",
+      "doi": "10.3390/children13091223",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "42794242",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What to do with key cardiovascular drugs when kidney function worsens?",
+      "snippet": "Patients with advanced cardiovascular kidney metabolic syndrome generally face a high risk of cardiovascular complications. Guideline-directed medical therapies (GDMT) are critical for mitigating cardiovascular risk and improving prognosis. However, patients with more advanced kidney disease have frequently been excluded from the foundational cardiovascular outcome trials, leaving clinicians with a paucity of evidence with regards to the cardiovascular benefits and potential risks involved in initiating or maintaining GDMT for cardiovascular diseases in patients with chronic kidney disease sta",
+      "full_text": "Patients with advanced cardiovascular kidney metabolic syndrome generally face a high risk of cardiovascular complications. Guideline-directed medical therapies (GDMT) are critical for mitigating cardiovascular risk and improving prognosis. However, patients with more advanced kidney disease have frequently been excluded from the foundational cardiovascular outcome trials, leaving clinicians with a paucity of evidence with regards to the cardiovascular benefits and potential risks involved in initiating or maintaining GDMT for cardiovascular diseases in patients with chronic kidney disease stages 4 and 5. Numerous studies have demonstrated a systematic underutilization of GDMT among patients with advanced chronic kidney disease (CKD), likely caused by a combination of clinical inertia and a legitimate fear of potential side-effects such as hyperkalemia and rises in creatinine, which may necessitate repeat laboratory monitoring, dose adjustment, and additional potassium-lowering treatment. In this clinical review, we aim to summarize the accumulating evidence with regards to the use of key cardiovascular drugs among patients with advanced CKD, with an emphasis on GDMT in patients with heart failure, and outline the treatment approach used in our integrated heart-nephrology-diabetes clinic. Since the evidence is not always clear and our patients are generally both older, frailer, and have more multimorbidity than those included in clinical trials, sound clinical judgment, individual patient tolerability as well as shared decision-making are key. We also address the need to continuously align treatment goals with patient preferences across different phases of life and adjusting GDMT in the face of increasing frailty.",
+      "url": "https://doi.org/10.1093/ckj/sfaf354",
+      "_adapter": "europe_pmc",
+      "authors": [
+        "Bergen K",
+        "Spaak J"
+      ],
+      "venue": "Europe PMC",
+      "publication_date": "2025-11-21",
+      "doi": "10.1093/ckj/sfaf354",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "pmid": "41531854",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "europe_pmc",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Faculty Opinions recommendation of B-Type Natriuretic Peptide During Treatment With Sacubitril/Valsartan: The PARADIGM-HF Trial.",
+      "snippet": "Faculty Opinions recommendation of B-Type Natriuretic Peptide During Treatment With Sacubitril/Valsartan: The PARADIGM-HF Trial.",
+      "full_text": null,
+      "url": "https://doi.org/10.3410/f.735287600.793583485",
+      "_adapter": "crossref",
+      "authors": [
+        "Alan Maisel"
+      ],
+      "venue": "Faculty Opinions – Post-Publication Peer Review of the Biomedical Literature",
+      "publication_date": "2021",
+      "doi": "10.3410/f.735287600.793583485",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Sacubitril/Valsartan versus enalapril in nonischemic heart failure in Paradigm-Hf trial",
+      "snippet": "Background: We compared the angiotensin receptor–neprilysin inhibitor LCZ696 (sacubitril/valsartan) with enalapril in patients who had nonischemic heart failure with a reduced ejection fraction. Methods: In this double-blind trial, we randomly assigned 8442 patients with class II, III, or IV heart failure and an ejection fraction of 40% or less to receive either LCZ696 (at a dose of 200 mg twice daily) or enalapril (at a dose of 10 mg twice daily), in addition to recommended therapy. The primary outcome was a composite of death from cardiovascular causes or hospitalization for heart failure, b",
+      "full_text": "Background: We compared the angiotensin receptor–neprilysin inhibitor LCZ696 (sacubitril/valsartan) with enalapril in patients who had nonischemic heart failure with a reduced ejection fraction. Methods: In this double-blind trial, we randomly assigned 8442 patients with class II, III, or IV heart failure and an ejection fraction of 40% or less to receive either LCZ696 (at a dose of 200 mg twice daily) or enalapril (at a dose of 10 mg twice daily), in addition to recommended therapy. The primary outcome was a composite of death from cardiovascular causes or hospitalization for heart failure, but the trial was designed to detect a difference in the rates of death from cardiovascular causes. Results: The trial was stopped early, according to prespecified rules, after a median follow up of 27 months, because the boundary for an overwhelming benefit with LCZ696 had been crossed. The ischemic patients were 5036 (60%) patients and non-ischemic patients were 3363 (40%) patients. In ischemic and in non-ischemic group the LCZ696 was superior to enalapril for reduce primary outcome and CV death (P&lt; 0.001). In LCZ696 group: the primary outcome had occurred in 339 patients (20.16 %) in the non-ischemic group and 575 patients (22.9 %) in the ischemic group (P: 0.03). A total of 199 patients (11.8%) in non-ischemic group and 359 patients in ischemic group (14.3%) died from cardiovascular causes (P: 0.01). and no significant difference between in CV death and primary outcome in enalapril group in the ischemic and non-ischemic patients. Conclusions: LCZ696 was superior to enalapril in reducing the risks of cardiovascular death and hospitalization for heart failure in ischemic and non-ischemic heart failure.",
+      "url": "https://doi.org/10.17352/2455-2976.000070",
+      "_adapter": "crossref",
+      "authors": [
+        "Mohammed Habib"
+      ],
+      "venue": "Journal of Cardiovascular Medicine and Cardiology",
+      "publication_date": "2018",
+      "doi": "10.17352/2455-2976.000070",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Applying PARADIGM-HF to the use of sacubitril/valsartan in clinical practice",
+      "snippet": "Applying PARADIGM-HF to the use of sacubitril/valsartan in clinical practice",
+      "full_text": null,
+      "url": "https://doi.org/10.5837/bjc.2019.s02",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "British Journal of Cardiology",
+      "publication_date": "2019",
+      "doi": "10.5837/bjc.2019.s02",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "From OSS to Open Source AI: an Exploratory Study of Collaborative Development Paradigm Divergence",
+      "snippet": "AI development is embracing open-source paradigm, but the fundamental distinction between AI models and traditional software artifacts may lead to a divergent open-source development paradigm with different collaborative practices, which remains unexplored. We therefore bridge the knowledge gap by quantifying and characterizing the differences in the collaborative development paradigms of traditional open source software (OSS) and open source AI models (OSM), and investigating the underlying factors that may drive these distinctions. We collect 1,428,792 OSS repositories from GitHub and 1,440,",
+      "full_text": "AI development is embracing open-source paradigm, but the fundamental distinction between AI models and traditional software artifacts may lead to a divergent open-source development paradigm with different collaborative practices, which remains unexplored. We therefore bridge the knowledge gap by quantifying and characterizing the differences in the collaborative development paradigms of traditional open source software (OSS) and open source AI models (OSM), and investigating the underlying factors that may drive these distinctions. We collect 1,428,792 OSS repositories from GitHub and 1,440,527 OSM repositories from HF Hub, and conduct comprehensive statistical, social network and content analyses to measure and understand the differences in collaboration intensity, collaboration openness, and user innovation across the two development paradigms, complementing these quantitative results with semi-structured interviews. In consequence, we find that compared to OSS development paradigm, the OSM development paradigm exhibits significantly lower collaboration intensity; lower collaboration openness regarding direct contribution while persisting relatively open knowledge exchange; and a divergence toward adaptive utilization user-innovation rather than collaborative improvement. Through semi-structured interviews, we further elucidate the socio-technical factors underlying these differences. These findings reveal the paradigmatic divergence in open source development between traditional OSS and OSM across three critical dimensions of open source collaboration and potential underlying factors, shedding light on how to improve collaborative work techniques and practices within the context of AI development.",
+      "url": "https://arxiv.org/abs/2604.08888v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Hengzhi Ye",
+        "Minghui Zhou"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-04-10",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2604.08888v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Measuring density-driven errors using Kohn-Sham inversion",
+      "snippet": "Kohn-Sham inversion, that is, the finding of the exact Kohn-Sham potential for a given density, is difficult in localized basis sets. We study the precision and reliability of several inversion schemes, finding estimates of density-driven errors at a useful level of accuracy. In typical cases of substantial density-driven errors, HF-DFT is almost as accurate as DFT evaluated on CCSD(T) densities. A simple approximation in practical HF-DFT also makes errors much smaller than the density-driven errors being calculated. Two paradigm examples, stretched NaCl and the HO$\\cdot$Cl$^-$ radical, illust",
+      "full_text": "Kohn-Sham inversion, that is, the finding of the exact Kohn-Sham potential for a given density, is difficult in localized basis sets. We study the precision and reliability of several inversion schemes, finding estimates of density-driven errors at a useful level of accuracy. In typical cases of substantial density-driven errors, HF-DFT is almost as accurate as DFT evaluated on CCSD(T) densities. A simple approximation in practical HF-DFT also makes errors much smaller than the density-driven errors being calculated. Two paradigm examples, stretched NaCl and the HO$\\cdot$Cl$^-$ radical, illustrate just how accurate HF-DFT is.",
+      "url": "https://arxiv.org/abs/2004.11595v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Seungsoo Nam",
+        "Suhwan Song",
+        "Eunji Sim",
+        "Kieron Burke"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2020-04-24",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2004.11595v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Common field-induced quantum critical point in high-temperature superconductors and heavy-fermion metals",
+      "snippet": "High-temperature superconductors (HTSC) and heavy-fermion (HF) metals exhibit extraordinary properties. They are so unusual that the traditional Landau paradigm of quasiparticles does not apply. It is widely believed that utterly new concepts are required to describe the underlying physics. There is a fundamental question: how many concepts do we need to describe the above physical mechanisms? This cannot be answered on purely experimental or theoretical grounds. Rather, we have to use both of them. Recently, in HTSC, the new and exciting measurements have been performed, demonstrating a puzzl",
+      "full_text": "High-temperature superconductors (HTSC) and heavy-fermion (HF) metals exhibit extraordinary properties. They are so unusual that the traditional Landau paradigm of quasiparticles does not apply. It is widely believed that utterly new concepts are required to describe the underlying physics. There is a fundamental question: how many concepts do we need to describe the above physical mechanisms? This cannot be answered on purely experimental or theoretical grounds. Rather, we have to use both of them. Recently, in HTSC, the new and exciting measurements have been performed, demonstrating a puzzling magnetic field induced transition from non-Fermi liquid to Landau Fermi liquid behavior. We show, that in spite of very different microscopic nature of HTSC and HF metals, the behavior of HTSC is similar to that observed in HF compounds. We employ a theory, based on fermion condensation quantum phase transition which is able to resolve the above puzzles.",
+      "url": "https://arxiv.org/abs/0806.3936v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "V. R. Shaginyan",
+        "M. Ya. Amusia",
+        "K. G. Popov",
+        "V. A. Stephanovich"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2008-06-24",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "0806.3936v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What Proportion of Patients with Chronic Heart Failure are Eligible for Sacubitril–Valsartan?",
+      "snippet": "AIMS: The PARADIGM-HF trial showed that sacubitril-valsartan, an ARB-neprilysin inhibitor, is more effective than enalapril for some patients with heart failure (HF). It is uncertain what proportion of patients with HF would be eligible for sacubitril-valsartan in clinical practice. METHODS AND RESULTS: Between 2001 and 2014, 6131 patients consecutively referred to a community HF clinic with suspected HF were assessed. The criteria required to enter the randomized phase of PARADIGM-HF, including symptoms, NT-proBNP, and current treatment with or without target doses of ACE inhibitors or ARBs, ",
+      "full_text": "AIMS: The PARADIGM-HF trial showed that sacubitril-valsartan, an ARB-neprilysin inhibitor, is more effective than enalapril for some patients with heart failure (HF). It is uncertain what proportion of patients with HF would be eligible for sacubitril-valsartan in clinical practice. METHODS AND RESULTS: Between 2001 and 2014, 6131 patients consecutively referred to a community HF clinic with suspected HF were assessed. The criteria required to enter the randomized phase of PARADIGM-HF, including symptoms, NT-proBNP, and current treatment with or without target doses of ACE inhibitors or ARBs, were applied to identify the proportion of patients eligible for sacubitril-valsartan. Recognizing the diversity of clinical opinion and guideline recommendations concerning this issue, entry criteria were applied singly and in combination. Of 1396 patients with reduced left ventricular ejection fraction (≤40%, HFrEF) and contemporary measurement of NT-proBNP, 379 were on target doses of an ACE inhibitor or ARB at their initial visit and, of these, 172 (45%) fulfilled the key entry criteria for the PARADIGM-HF trial. Lack of symptoms (32%) and NT-proBNP <600 ng/L (49%) were common reasons for failure to fulfil criteria. A further 122 patients became eligible during follow-up (n = 294, 21%). However, if background medication and doses were ignored, then 701 (50%) were eligible initially and a further 137 became eligible during follow-up. CONCLUSIONS: Of patients with HFrEF referred to a clinic such as ours, only 21% fulfilled the PARADIGM-HF randomization criteria, on which the ESC Guidelines are based; this proportion rises to 60% if background medication is ignored.",
+      "url": "https://openalex.org/W2594697054",
+      "_adapter": "openalex",
+      "authors": [
+        "Pierpaolo Pellicori",
+        "Alessia Urbinati",
+        "Parin Purvin Shah",
+        "Alexandra Macnamara",
+        "Syed Kazmi",
+        "Riet Dierckx",
+        "Jufen Zhang",
+        "John G.F. Cleland",
+        "Andrew L. Clark"
+      ],
+      "venue": "European Journal of Heart Failure",
+      "publication_date": "2017",
+      "doi": "10.1002/ejhf.788",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Role of BNP vs NT-proBNP Testing in the Age of New Drug Therapies: Sacubitril-Valsartan",
+      "snippet": "Sacubitril-valsartan (Entresto), a new dual drug therapy that includes an angiotensin receptor neprilysin (NEP)15 inhibitor (sacubitril), is directed at reducing the risk of cardiovascular death and hospitalization for heart failure (HF) in patients with chronic HF (New York Heart Association classes II–IV) and reduced ejection fraction (HFrEF). Since its approval for the treatment of HFrEF, a commonly raised question has been whether treatment with this drug can complicate the interpretation of B-type natriuretic peptide (BNP) testing results compared to those of the N-terminal proBNP assay b",
+      "full_text": "Sacubitril-valsartan (Entresto), a new dual drug therapy that includes an angiotensin receptor neprilysin (NEP)15 inhibitor (sacubitril), is directed at reducing the risk of cardiovascular death and hospitalization for heart failure (HF) in patients with chronic HF (New York Heart Association classes II–IV) and reduced ejection fraction (HFrEF). Since its approval for the treatment of HFrEF, a commonly raised question has been whether treatment with this drug can complicate the interpretation of B-type natriuretic peptide (BNP) testing results compared to those of the N-terminal proBNP assay because Entresto may interfere with BNP clearance. The clinical and analytical studies addressing this issue are limited. Furthermore, the diversity of both BNP and NT-proBNP assays used in clinical laboratory practice have not been adequately evaluated in clinical trials, and studies to provide an evidence-based conclusion regarding the appropriate assays to use when a patient is on Entresto are lacking. In this article, 5 experts from the US and Europe provide their views regarding this issue. Do you think the differences between BNP and NT-proBNP measurements in patients receiving Entresto are only an early phenomenon because they both seem to be reduced over time? James Januzzi: In the PARADIGM-HF trial, NT-proBNP fell acutely after initiation of Entresto and then continued to drop over time until the end of the trial. Both the enalapril and Entresto arms had a slow, gradual drop in NT-proBNP by the end of trial. This drop likely reflects one of 2 possibilities. First, it may be the subtraction of noncompleters by the end of trial led to a perceived further drop in NT-proBNP (sicker patients that withdrew or died who likely had higher NT-proBNP concentrations). Alternatively, longer treatment with either therapy (angiotensin-converting enzyme inhibitor or angiotensin receptor neprilysin inhibitors) led to further stability, resulting in less synthesis and release of NT-proBNP and BNP. In contrast with NT-proBNP, BNP concentrations exhibited an acute rise, modest, but significant. PARADIGM-HF patients showed a 19% increase in Siemens BNP. However, there was great heterogeneity: 14% did not increase at all, whereas in 18% of the participants BNP doubled and in 6% tripled. Thus, the increase related to Entresto is not predictable. The “drop” in BNP by end of trial cannot be interpreted as an “escape” from NEP inhibition, because BNP essentially paralleled the NT-proBNP reduction. This result implies that the finding is explainable by the same reasons as for the decline in NT-proBNP: removal of “noncompleters” and/or greater stability of those finishing the trial. It does not offer any insights into how BNP concentrations behave chronically under therapy with Entresto. Although higher concentrations of BNP might inhibit activity of NEP, acting as a “sink” for enzyme activity, the concentrations in PARADIGM were much lower than the threshold effect (over 900 ng/L). It is imperative to note that effects of Entresto in PARADIGM-HF and PARAMOUNT were documented for only one assay, Siemens BNP. A publication in 2018 in the Journal of the American College of Cardiology showed that there is definitely heterogeneity across assays with respect to how much change is observed. This variation is logical because NEP cleaves the BNP molecule in several places, which also reflect binding sites for the various BNP immunoassays. Little is known about the speed of effect of Entresto on BNP and NT-proBNP, whether they are dose dependent and how both markers behave when sampled more frequently. In PARADIGM, measurements were at baseline, 1 month, and 9 months. Owing to the length of the intervals between measurements, it is not known if BNP rose more and then declined or vice versa, or if NT-proBNP decreased further and increased back upward. The PROVE-HF study (NCT02887183) will examine 794 patients with a range of baseline BNP/NT-proBNP values initiated and",
+      "url": "https://openalex.org/W2956964192",
+      "_adapter": "openalex",
+      "authors": [
+        "Fred S. Apple",
+        "Lori B. Daniels",
+        "James L. Januzzi",
+        "Torbjørn Omland",
+        "Jordi Ordóñez‐Llanos",
+        "Allan S. Jaffe"
+      ],
+      "venue": "Clinical Chemistry",
+      "publication_date": "2019",
+      "doi": "10.1373/clinchem.2018.289371",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Eligibility of Sacubitril–Valsartan in a Real-World Heart Failure Population: A Community-Based Single-Centre Study",
+      "snippet": "AIMS: This study aims to investigate the eligibility of the Prospective Comparison of Angiotensin Receptor-Neprilysin Inhibitor (ARNI) with ACE inhibitor to Determine Impact on Global Mortality and Morbidity in Heart Failure (PARADIGM-HF) study to a real-world heart failure population. METHODS AND RESULTS: Medical records of all heart failure patients living within the catchment area of Umeå University Hospital were reviewed. This district consists of around 150 000 people. Out of 2029 patients with a diagnosis of heart failure, 1924 (95%) had at least one echocardiography performed, and 401 p",
+      "full_text": "AIMS: This study aims to investigate the eligibility of the Prospective Comparison of Angiotensin Receptor-Neprilysin Inhibitor (ARNI) with ACE inhibitor to Determine Impact on Global Mortality and Morbidity in Heart Failure (PARADIGM-HF) study to a real-world heart failure population. METHODS AND RESULTS: Medical records of all heart failure patients living within the catchment area of Umeå University Hospital were reviewed. This district consists of around 150 000 people. Out of 2029 patients with a diagnosis of heart failure, 1924 (95%) had at least one echocardiography performed, and 401 patients had an ejection fraction of ≤35% at their latest examination. The major PARADIGM-HF criteria were applied, and 95 patients fulfilled all enrolment criteria and thus were eligible for sacubitril-valsartan. This corresponds to 5% of the overall heart failure population and 24% of the population with ejection fraction ≤ 35%. The eligible patients were significantly older (73.2 ± 10.3 vs. 63.8 ± 11.5 years), had higher blood pressure (128 ± 17 vs. 122 ± 15 mmHg), had higher heart rate (77 ± 17 vs. 72 ± 12 b.p.m.), and had more atrial fibrillation (51.6% vs. 36.2%) than did the PARADIGM-HF population. CONCLUSIONS: Only 24% of our real-world heart failure and reduced ejection fraction population was eligible for sacubitril-valsartan, and the real-world heart failure and reduced ejection fraction patients were significantly older than the PARADIGM-HF population. The lack of data on a majority of the patients that we see in clinical practice is a real problem, and we are limited to extrapolation of results on a slightly different population. This is difficult to address, but perhaps registry-based randomized clinical trials will help to solve this issue.",
+      "url": "https://openalex.org/W2789596123",
+      "_adapter": "openalex",
+      "authors": [
+        "Helena Norberg",
+        "Ellinor Bergdahl",
+        "Krister Lindmark"
+      ],
+      "venue": "ESC Heart Failure",
+      "publication_date": "2018",
+      "doi": "10.1002/ehf2.12251",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:21+0100"
+}

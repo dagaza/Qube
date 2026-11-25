@@ -1,0 +1,625 @@
+{
+  "schema_version": 2,
+  "id": "s13_chem_her_catalysts",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: chemistry discipline route + PubChem slot.",
+  "query_raw": "@[tool:evidence] Which catalysts work best for the hydrogen evolution reaction in water splitting?",
+  "query_clean": "Which catalysts work best for the hydrogen evolution reaction in water splitting?",
+  "retrieval_query": "Which catalysts work best for the hydrogen evolution reaction in water splitting?",
+  "standalone_question": "Which catalysts work best for the hydrogen evolution reaction in water splitting?",
+  "gold_subject": "hydrogen evolution reaction catalysts",
+  "gold_facet": "performance",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:09:51+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "pubchem": 3,
+    "chembl": 3,
+    "chemrxiv": 3,
+    "uspto_patentsview": 3,
+    "epo_espacenet": 3,
+    "pubmed": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "pubchem": "Which catalysts work best for the hydrogen evolution reaction in water splitting",
+      "chembl": "Which catalysts work best for the hydrogen evolution reaction in water splitting",
+      "chemrxiv": "Which catalysts work best for the hydrogen evolution reaction in water splitting",
+      "uspto_patentsview": "Which catalysts work best for the hydrogen evolution reaction in water splitting",
+      "epo_espacenet": "Which catalysts work best for the hydrogen evolution reaction in water splitting",
+      "pubmed": "Which catalysts work best for the hydrogen evolution reaction in water splitting",
+      "crossref": "Which catalysts work best for the hydrogen evolution reaction in water splitting",
+      "arxiv": "Which catalysts work best for the hydrogen evolution reaction in water splitting",
+      "openalex": "Which catalysts work best for the hydrogen evolution reaction in water splitting"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "pubchem",
+        "chembl",
+        "chemrxiv",
+        "uspto_patentsview",
+        "epo_espacenet",
+        "openalex",
+        "pubmed"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "pubchem",
+        "chembl",
+        "chemrxiv",
+        "uspto_patentsview",
+        "epo_espacenet",
+        "openalex",
+        "pubmed"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "Hydrogen (CID 783)",
+      "snippet": "Molecular formula: H2\nMolecular weight: 2.016\nIUPAC name: molecular hydrogen",
+      "full_text": "Molecular formula: H2\nMolecular weight: 2.016\nIUPAC name: molecular hydrogen",
+      "url": "https://pubchem.ncbi.nlm.nih.gov/compound/783",
+      "_adapter": "pubchem",
+      "authors": [
+        "PubChem"
+      ],
+      "venue": "PubChem",
+      "publication_date": null,
+      "doi": null,
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "compound_record",
+      "pubchem_cid": 783,
+      "molecular_formula": "H2",
+      "molecular_weight": "2.016",
+      "iupac_name": "molecular hydrogen",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubchem",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Water (CID 962)",
+      "snippet": "Molecular formula: H2O\nMolecular weight: 18.015\nIUPAC name: oxidane",
+      "full_text": "Molecular formula: H2O\nMolecular weight: 18.015\nIUPAC name: oxidane",
+      "url": "https://pubchem.ncbi.nlm.nih.gov/compound/962",
+      "_adapter": "pubchem",
+      "authors": [
+        "PubChem"
+      ],
+      "venue": "PubChem",
+      "publication_date": null,
+      "doi": null,
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "compound_record",
+      "pubchem_cid": 962,
+      "molecular_formula": "H2O",
+      "molecular_weight": "18.015",
+      "iupac_name": "oxidane",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubchem",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "CHEMBL5999162",
+      "snippet": "CHEMBL5999162. C20H14F2N4O3; MW 396.35 SMILES: O=C(Nc1ccc(F)c(F)c1)N[C@@H]1[C@H]2Oc3ccc(Oc4ccncn4)cc3[C@@H]12",
+      "full_text": "CHEMBL5999162. C20H14F2N4O3; MW 396.35 SMILES: O=C(Nc1ccc(F)c(F)c1)N[C@@H]1[C@H]2Oc3ccc(Oc4ccncn4)cc3[C@@H]12",
+      "url": "https://www.ebi.ac.uk/chembl/compound_report/CHEMBL5999162",
+      "_adapter": "chembl",
+      "authors": [
+        "ChEMBL"
+      ],
+      "venue": "ChEMBL",
+      "publication_date": null,
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "bioactive_compound",
+      "chembl_id": "CHEMBL5999162",
+      "molecular_formula": "C20H14F2N4O3",
+      "molecular_weight": "396.35",
+      "canonical_smiles": "O=C(Nc1ccc(F)c(F)c1)N[C@@H]1[C@H]2Oc3ccc(Oc4ccncn4)cc3[C@@H]12",
+      "max_clinical_phase": null,
+      "retrieval_method": "chembl_molecule_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "chembl",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "WATER",
+      "snippet": "WATER. Small molecule; H2O; MW 18.02; phase 4.0 SMILES: O",
+      "full_text": "WATER. Small molecule; H2O; MW 18.02; phase 4.0 SMILES: O",
+      "url": "https://www.ebi.ac.uk/chembl/compound_report/CHEMBL1098659",
+      "_adapter": "chembl",
+      "authors": [
+        "ChEMBL"
+      ],
+      "venue": "ChEMBL",
+      "publication_date": null,
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "bioactive_compound",
+      "chembl_id": "CHEMBL1098659",
+      "molecular_formula": "H2O",
+      "molecular_weight": "18.02",
+      "canonical_smiles": "O",
+      "max_clinical_phase": "4.0",
+      "retrieval_method": "chembl_molecule_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "chembl",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DEUTERIUM OXIDE",
+      "snippet": "DEUTERIUM OXIDE. Small molecule; H2O; MW 20.03; phase 2.0 SMILES: [2H]O[2H]",
+      "full_text": "DEUTERIUM OXIDE. Small molecule; H2O; MW 20.03; phase 2.0 SMILES: [2H]O[2H]",
+      "url": "https://www.ebi.ac.uk/chembl/compound_report/CHEMBL1232306",
+      "_adapter": "chembl",
+      "authors": [
+        "ChEMBL"
+      ],
+      "venue": "ChEMBL",
+      "publication_date": null,
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "bioactive_compound",
+      "chembl_id": "CHEMBL1232306",
+      "molecular_formula": "H2O",
+      "molecular_weight": "20.03",
+      "canonical_smiles": "[2H]O[2H]",
+      "max_clinical_phase": "2.0",
+      "retrieval_method": "chembl_molecule_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "chembl",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Superhydrophobic Porous Coordination Polymer-Confined Co",
+      "snippet": "In this work, we report three robust, cost-effective, and efficient post-synthetic nanoparticle-embedded metal-organic framework (MOF)-based electrocatalysts, Co 3 O 4 @Zn 2 M 2 (μ 2 -OH) 2 (BTMB) 2 (M = Zn ( 1 ), Co ( 2 ), and Ni ( 3 )), for overall water splitting. The pristine frameworks, Zn 2 M 2 (μ 2 -OH) 2 (BTMB) 2 , were transformed from relatively low-conducting materials into conductive analogues through post-synthetic encapsulation of approximately 2.5-3.1 wt % Co 3 O 4 nanoparticles via a sonochemical approach. Successful nanoparticle incorporation and preservation of framework inte",
+      "full_text": "In this work, we report three robust, cost-effective, and efficient post-synthetic nanoparticle-embedded metal-organic framework (MOF)-based electrocatalysts, Co 3 O 4 @Zn 2 M 2 (μ 2 -OH) 2 (BTMB) 2 (M = Zn ( 1 ), Co ( 2 ), and Ni ( 3 )), for overall water splitting. The pristine frameworks, Zn 2 M 2 (μ 2 -OH) 2 (BTMB) 2 , were transformed from relatively low-conducting materials into conductive analogues through post-synthetic encapsulation of approximately 2.5-3.1 wt % Co 3 O 4 nanoparticles via a sonochemical approach. Successful nanoparticle incorporation and preservation of framework integrity were confirmed by PXRD, SEM, TEM, XPS, EDX, ICP-OES, and TGA analyses. Notably, the Co 3 O 4 @MOF composites exhibited enhanced superhydrophobicity, displaying water contact angles of 162.41° ( 1 ), 166.42° ( 2 ), and 164.47° ( 3 ), compared to those of the corresponding pristine MOFs (155.5°, 159.3°, and 160.8°, respectively), which is one of the key steps for enhancing the electrochemical activity of this type of composite. The Co 3 O 4 @MOF composites achieved low overpotentials for the hydrogen evolution reaction (HER) of 196, 147, and 169 mV, and for the oxygen evolution reaction (OER) of 499, 425, and 486 mV, respectively, for 1-3 in 1 M KOH electrolyte. These catalysts also exhibited low Tafel slopes of 101, 94, and 96 mV dec -1 for HER and 123, 118, and 122 mV dec -1 for OER, indicating significantly improved electrocatalytic activity and reaction kinetics. Further, we also carried out an overall water-splitting study to understand their bifunctional behavior under similar electrochemical conditions, delivering a cell potential of 1.78 V at 10 mA cm -2 . Compared with the parent MOFs, the nanoparticle-embedded composites demonstrated nearly fourfold enhancement in HER catalytic performance. Among the series, 2 exhibited the best overall electrocatalytic performance, combining the lowest overpotentials, superior kinetics, and remarkable operational stability, maintaining consistent activity for more than 50 h under continuous electrolysis. The integration of Co 3 O 4 nanoparticles into a MOF matrix improves superhydrophobicity and durability, creating affordable, efficient electrocatalysts for overall water splitting and green hydrogen production. © 2026 The Authors. Published by American Chemical Society.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42890035/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Nagaraju, Ravula",
+        "Pradhan, Litun Kumar",
+        "Behera, J N",
+        "Rao, Koya Prabhakara"
+      ],
+      "venue": "ACS omega",
+      "publication_date": "2026-Oct",
+      "doi": "10.1021/acsomega.6c07951",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "42890035",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Nitrogen-doped iron-cobalt alloy and tungsten oxide heterostructures: active electrocatalysts for alkaline hydrogen evolution.",
+      "snippet": "Hydrogen has become an ideal alternative energy carrier in response to the growing global energy crisis and the transition away from fossil fuel dependence. The development of effective, affordable and long-lasting electrocatalysts for water splitting to produce hydrogen remains a major challenge. In this work, a facile coprecipitation of nitrogen-doped FeCo alloy (FCN) nanoparticles in the presence of preformed WO 3 nanostructures of various quantities resulted in nitrogen-doped FeCo/WO 3 -based heterostructures (FCNWO). This heterostructure engineering of electrocatalysts improves the hydrog",
+      "full_text": "Hydrogen has become an ideal alternative energy carrier in response to the growing global energy crisis and the transition away from fossil fuel dependence. The development of effective, affordable and long-lasting electrocatalysts for water splitting to produce hydrogen remains a major challenge. In this work, a facile coprecipitation of nitrogen-doped FeCo alloy (FCN) nanoparticles in the presence of preformed WO 3 nanostructures of various quantities resulted in nitrogen-doped FeCo/WO 3 -based heterostructures (FCNWO). This heterostructure engineering of electrocatalysts improves the hydrogen evolution reaction (HER) by creating interfaces that expose active sites and accelerate the charge transfer. The morphology and crystal structure of the FCNWO samples synthesised with different FCN : WO 3 ratios were characterised and electrochemical hydrogen generation activity evaluated. Among them, the FCNWO-2 catalyst, prepared with a precursor FeCo : WO 3 ratio of 1 : 0.75 exhibited optimal performance and demonstrated the best HER activity in 1.0 M KOH, with an overpotential of 275 mV at 10 mA cm -2 , a small Tafel slope of 71 mV dec -1 and a high electrochemical surface area of 322.5 cm 2 . These results demonstrate its promise as an effective electrocatalyst for energy conversion and storage applications.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42862347/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Lakhan, Muhammad Nazim",
+        "Ekanayake, S Amanda",
+        "Zhang, Xiaoli",
+        "Arandiyan, Hamidreza",
+        "Caruso, Rachel A"
+      ],
+      "venue": "Faraday discussions",
+      "publication_date": "2026-Oct",
+      "doi": "10.1039/d6fd00095a",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "42862347",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Descriptor-guided Fe/V co-doped hollow MoO",
+      "snippet": "Conductive oxides with chemically distinct local environments are attractive for bifunctional water splitting because hydrogen evolution reaction (HER) and oxygen evolution reaction (OER) impose different requirements on adsorption and charge transfer. Here, a descriptor-informed Fe/V co-doping strategy is proposed to regulate MoO 2 for photo-assisted electrocatalysis. Density functional theory (DFT) screening based on incorporation thermodynamics, local M-O bond mismatch, and near-Fermi-level electronic states identifies V as the most favorable dopant for lattice incorporation and Fe as the d",
+      "full_text": "Conductive oxides with chemically distinct local environments are attractive for bifunctional water splitting because hydrogen evolution reaction (HER) and oxygen evolution reaction (OER) impose different requirements on adsorption and charge transfer. Here, a descriptor-informed Fe/V co-doping strategy is proposed to regulate MoO 2 for photo-assisted electrocatalysis. Density functional theory (DFT) screening based on incorporation thermodynamics, local M-O bond mismatch, and near-Fermi-level electronic states identifies V as the most favorable dopant for lattice incorporation and Fe as the dopant that minimizes local bond-length mismatch while strongly perturbing the electronic structure. Guided by this complementarity, Mo 0.9 Fe 0.05 V 0.05 O 2 was synthesized and compared with pristine MoO 2 and single-doped controls. The co-doped catalyst preserves the MoO 2 framework and delivers the best overall performance, requiring 166 and 243 mV for HER and 253 and 281 mV for OER to reach 10 and 50 mA cm -2 under illumination. Electrochemical measurements reveal improved charge-transfer behavior and enhanced light-induced current response. Optical characterization and finite-difference time-domain (FDTD) simulations indicate that the hollow architecture promotes optical-field localization, while DFT reaction energetics suggest site-dependent catalytic preferences, with V-associated sites favoring hydrogen adsorption and Fe-associated sites facilitating OER intermediate conversion. This study demonstrates that pairing dopants according to lattice compatibility and electronic perturbation is an effective route to activate MoO 2 for photo-assisted bifunctional water splitting. Copyright © 2026 Elsevier Inc. All rights reserved.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42330768/",
+      "_adapter": "pubmed",
+      "authors": [
+        "Lu, Zi-Ang",
+        "Jin, Shan",
+        "Qu, Tingting",
+        "Liang, Ranran",
+        "Du, Yunchen",
+        "Chen, Mengxin",
+        "Xu, Ping"
+      ],
+      "venue": "Journal of colloid and interface science",
+      "publication_date": "2026-Dec",
+      "doi": "10.1016/j.jcis.2026.140965",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "pmid": "42330768",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "mesh_terms": [],
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "pubmed",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Study on electrochemical water splitting : designing efficient oxygen evolution reaction catalysts and Exploring Scientific Issues in activity evaluation of hydrogen evolution reaction",
+      "snippet": "Study on electrochemical water splitting : designing efficient oxygen evolution reaction catalysts and Exploring Scientific Issues in activity evaluation of hydrogen evolution reaction",
+      "full_text": null,
+      "url": "https://doi.org/10.32657/10356/72864",
+      "_adapter": "crossref",
+      "authors": [
+        "Rong Chen"
+      ],
+      "venue": null,
+      "publication_date": "2020",
+      "doi": "10.32657/10356/72864",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Development of metal sulfide catalysts for electrocatalytic hydrogen evolution reaction in water splitting with pH-universalism",
+      "snippet": "Development of metal sulfide catalysts for electrocatalytic hydrogen evolution reaction in water splitting with pH-universalism",
+      "full_text": null,
+      "url": "https://doi.org/10.14711/thesis-991012879765503412",
+      "_adapter": "crossref",
+      "authors": [
+        "Xuanhao Mei"
+      ],
+      "venue": null,
+      "publication_date": "2021",
+      "doi": "10.14711/thesis-991012879765503412",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Three-dimensional porous NiSe2 foam-based hybrid catalysts for ultra-efficient hydrogen evolution reaction in water splitting",
+      "snippet": "Three-dimensional porous NiSe2 foam-based hybrid catalysts for ultra-efficient hydrogen evolution reaction in water splitting",
+      "full_text": null,
+      "url": "https://doi.org/10.1016/j.focat.2021.11.042",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Focus on Catalysts",
+      "publication_date": "2021",
+      "doi": "10.1016/j.focat.2021.11.042",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Time-of-Flight Spectroscopy of Muonic Hydrogen Atoms and Molecules",
+      "snippet": "Studies of muonic hydrogen atoms and molecules have been performed traditionally in bulk targets of gas, liquid or solid. At TRIUMF, Canada's meson facility, we have developed a new type of target system using multilayer thin films of solid hydrogen, which provides a beam of muonic hydrogen atoms in vacuum. Using the time-of-flight of the muonic atoms, the energy-dependent information of muonic reactions are obtained in direct manner. We discuss some unique measurements enabled by the new technique, with emphasis on processes relevant to muon catalyzed fusion.",
+      "full_text": "Studies of muonic hydrogen atoms and molecules have been performed traditionally in bulk targets of gas, liquid or solid. At TRIUMF, Canada's meson facility, we have developed a new type of target system using multilayer thin films of solid hydrogen, which provides a beam of muonic hydrogen atoms in vacuum. Using the time-of-flight of the muonic atoms, the energy-dependent information of muonic reactions are obtained in direct manner. We discuss some unique measurements enabled by the new technique, with emphasis on processes relevant to muon catalyzed fusion.",
+      "url": "https://arxiv.org/abs/nucl-ex/0101007v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "TRIUMF Muonic Hydrogen Collaboration",
+        "M. C. Fujiwara",
+        "A. Adamczak",
+        "J. M. Bailey",
+        "G. A. Beer",
+        "J. L. Beveridge",
+        "M. P. Faifman",
+        "T. M. Huber",
+        "P. Kammel",
+        "S. K. Kim",
+        "P. E. Knowles",
+        "A. R. Kunselman",
+        "V. E. Markushin",
+        "G. M. Marshall",
+        "G. R. Mason",
+        "F. Mulhauser",
+        "A. Olin",
+        "C. Petitjean",
+        "T. A. Porcelli",
+        "J. Zmeskal"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2001-01-22",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "nucl-ex/0101007v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Catalyst GFlowNet for electrocatalyst design: A hydrogen evolution reaction case study",
+      "snippet": "Efficient and inexpensive energy storage is essential for accelerating the adoption of renewable energy and ensuring a stable supply, despite fluctuations in sources such as wind and solar. Electrocatalysts play a key role in hydrogen energy storage (HES), allowing the energy to be stored as hydrogen. However, the development of affordable and high-performance catalysts for this process remains a significant challenge. We introduce Catalyst GFlowNet, a generative model that leverages machine learning-based predictors of formation and adsorption energy to design crystal surfaces that act as eff",
+      "full_text": "Efficient and inexpensive energy storage is essential for accelerating the adoption of renewable energy and ensuring a stable supply, despite fluctuations in sources such as wind and solar. Electrocatalysts play a key role in hydrogen energy storage (HES), allowing the energy to be stored as hydrogen. However, the development of affordable and high-performance catalysts for this process remains a significant challenge. We introduce Catalyst GFlowNet, a generative model that leverages machine learning-based predictors of formation and adsorption energy to design crystal surfaces that act as efficient catalysts. We demonstrate the performance of the model through a proof-of-concept application to the hydrogen evolution reaction, a key reaction in HES, for which we successfully identified platinum as the most efficient known catalyst. In future work, we aim to extend this approach to the oxygen evolution reaction, where current optimal catalysts are expensive metal oxides, and open the search space to discover new materials. This generative modeling framework offers a promising pathway for accelerating the search for novel and efficient catalysts.",
+      "url": "https://arxiv.org/abs/2510.02142v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Lena Podina",
+        "Christina Humer",
+        "Alexandre Duval",
+        "Victor Schmidt",
+        "Ali Ramlaoui",
+        "Shahana Chatterjee",
+        "Yoshua Bengio",
+        "Alex Hernandez-Garcia",
+        "David Rolnick",
+        "Félix Therrien"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-10-02",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2510.02142v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Photocatalytic water splitting ability of Fe/MgO-rGO nanocomposites towards hydrogen evolution",
+      "snippet": "Photocatalytic water splitting has greatly stimulated as an ideal technique for producing hydrogen (H$_{2}$) fuel by employing two renewable sources, i.e., water and solar energy. Here, we have adopted a facile hydrothermal approach for the successful synthesis of reduced graphene oxide (rGO) incorporated Fe/MgO nanocomposites followed by thermal treatment at inert atmosphere to investigate their ability for photodegradation and photocatalytic hydrogen evolution via water splitting. Transmission Electron Microscopy images of Fe/MgO-rGO nanocomposite ensured the distribution of Fe/MgO nanoparti",
+      "full_text": "Photocatalytic water splitting has greatly stimulated as an ideal technique for producing hydrogen (H$_{2}$) fuel by employing two renewable sources, i.e., water and solar energy. Here, we have adopted a facile hydrothermal approach for the successful synthesis of reduced graphene oxide (rGO) incorporated Fe/MgO nanocomposites followed by thermal treatment at inert atmosphere to investigate their ability for photodegradation and photocatalytic hydrogen evolution via water splitting. Transmission Electron Microscopy images of Fe/MgO-rGO nanocomposite ensured the distribution of Fe/MgO nanoparticles throughout rGO sheets. Notably, all rGO supported nanocomposites, especially the one, thermally treated at 500 $^{o}$C at Argon (Ar) atmosphere has demonstrated significantly higher photocatalytic efficiency towards the photodegradation of a toxic textile dye, rhodamine B, than pristine MgO and commercially available Degussa P25 titania nanoparticles as well as other composites. Under solar irradiation, Fe/MgO-rGO(500) nanocomposite exhibited 86% degradation of rhodamine B dye and generated almost four times higher H$_{2}$ via photocatalytic water splitting compared to commercially available P25 titania nanoparticles. This promising photocatalytic ability of the Fe/MgO-rGO(500) nanocomposite can be attributed to the improved morphological and surface features due to heat treatment at inert atmosphere as well as escalated charge carrier separation with increased light absorption capacity imputed to rGO incorporation.",
+      "url": "https://arxiv.org/abs/2111.01831v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Fahmida Sharmin",
+        "Dayal Chandra Roy",
+        "M. A. Basith"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2021-11-02",
+      "doi": "10.1016/j.ijhydene.2021.09.072",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2111.01831v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Design principles for hydrogen evolution reaction catalyst materials",
+      "snippet": "Design principles for hydrogen evolution reaction catalyst materials",
+      "full_text": null,
+      "url": "https://openalex.org/W2338864617",
+      "_adapter": "openalex",
+      "authors": [
+        "Dusan S. Strmcnik",
+        "Pietro Papa Lopes",
+        "Boštjan Genorio",
+        "Vojislav R. Stamenković",
+        "Nenad M. Marković"
+      ],
+      "venue": "Nano Energy",
+      "publication_date": "2016",
+      "doi": "10.1016/j.nanoen.2016.04.017",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Rational Design of Better Hydrogen Evolution Electrocatalysts for Water Splitting: A Review",
+      "snippet": "emissions, influencing on the climate change. One promising alternative to fossil fuels is green hydrogen, which can be produced through water electrolysis from renewable electricity. However, the variety and complexity of hydrogen evolution electrocatalysts currently studied increases the difficulty in the integration of catalytic theory, catalyst design and preparation, and characterization methods. Herein, this review first highlights design principles for hydrogen evolution reaction (HER) electrocatalysts, presenting the thermodynamics, kinetics, and related electronic and structural descr",
+      "full_text": "emissions, influencing on the climate change. One promising alternative to fossil fuels is green hydrogen, which can be produced through water electrolysis from renewable electricity. However, the variety and complexity of hydrogen evolution electrocatalysts currently studied increases the difficulty in the integration of catalytic theory, catalyst design and preparation, and characterization methods. Herein, this review first highlights design principles for hydrogen evolution reaction (HER) electrocatalysts, presenting the thermodynamics, kinetics, and related electronic and structural descriptors for HER. Second, the reasonable design, preparation, mechanistic understanding, and performance enhancement of electrocatalysts are deeply discussed based on intrinsic and extrinsic effects. Third, recent advancements in the electrocatalytic water splitting technology are further discussed briefly. Finally, the challenges and perspectives of the development of highly efficient hydrogen evolution electrocatalysts for water splitting are proposed.",
+      "url": "https://openalex.org/W4224013593",
+      "_adapter": "openalex",
+      "authors": [
+        "Fan Liu",
+        "Chengxiang Shi",
+        "Xiaolei Guo",
+        "Zexing He",
+        "Lun Pan",
+        "Zhen‐Feng Huang",
+        "Xiangwen Zhang",
+        "Ji‐Jun Zou"
+      ],
+      "venue": "Advanced Science",
+      "publication_date": "2022",
+      "doi": "10.1002/advs.202200307",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Weyl Semimetals as Hydrogen Evolution Catalysts",
+      "snippet": "The search for highly efficient and low-cost catalysts is one of the main driving forces in catalytic chemistry. Current strategies for the catalyst design focus on increasing the number and activity of local catalytic sites, such as the edge sites of molybdenum disulfides in the hydrogen evolution reaction (HER). Here, the study proposes and demonstrates a different principle that goes beyond local site optimization by utilizing topological electronic states to spur catalytic activity. For HER, excellent catalysts have been found among the transition-metal monopnictides-NbP, TaP, NbAs, and Ta",
+      "full_text": "The search for highly efficient and low-cost catalysts is one of the main driving forces in catalytic chemistry. Current strategies for the catalyst design focus on increasing the number and activity of local catalytic sites, such as the edge sites of molybdenum disulfides in the hydrogen evolution reaction (HER). Here, the study proposes and demonstrates a different principle that goes beyond local site optimization by utilizing topological electronic states to spur catalytic activity. For HER, excellent catalysts have been found among the transition-metal monopnictides-NbP, TaP, NbAs, and TaAs-which are recently discovered to be topological Weyl semimetals. Here the study shows that the combination of robust topological surface states and large room temperature carrier mobility, both of which originate from bulk Dirac bands of the Weyl semimetal, is a recipe for high activity HER catalysts. This approach has the potential to go beyond graphene based composite photocatalysts where graphene simply provides a high mobility medium without any active catalytic sites that have been found in these topological materials. Thus, the work provides a guiding principle for the discovery of novel catalysts from the emerging field of topological materials.",
+      "url": "https://openalex.org/W2596954985",
+      "_adapter": "openalex",
+      "authors": [
+        "Catherine R. Rajamathi",
+        "Uttam Gupta",
+        "Nitesh Kumar",
+        "Hao Yang",
+        "Yan Sun",
+        "Vicky Süß",
+        "Chandra Shekhar",
+        "Marcus Peter Schmidt",
+        "H. Blumtritt",
+        "P. Werner",
+        "Binghai Yan",
+        "S. Parkin",
+        "Claudia Felser",
+        "C. N. R. Rao"
+      ],
+      "venue": "Advanced Materials",
+      "publication_date": "2017",
+      "doi": "10.1002/adma.201606202",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:33+0100"
+}

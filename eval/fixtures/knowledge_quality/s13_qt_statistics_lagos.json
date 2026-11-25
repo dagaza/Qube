@@ -1,0 +1,452 @@
+{
+  "schema_version": 2,
+  "id": "s13_qt_statistics_lagos",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: query-type routing (statistics) adds BLS/World Bank/Eurostat/OECD/US Census to a general route.",
+  "query_raw": "@[tool:evidence] Population estimate for Lagos from census data",
+  "query_clean": "Population estimate for Lagos from census data",
+  "retrieval_query": "Population estimate for Lagos from census data",
+  "standalone_question": "Population estimate for Lagos from census data",
+  "gold_subject": "Lagos population",
+  "gold_facet": "census estimate",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:10:12+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "bls": 3,
+    "world_bank": 3,
+    "eurostat": 3,
+    "oecd": 3,
+    "us_census": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "bls": "Population estimate for Lagos from census data",
+      "world_bank": "Population estimate for Lagos from census data",
+      "eurostat": "Population estimate for Lagos from census data",
+      "oecd": "Population estimate for Lagos from census data",
+      "us_census": "Population estimate for Lagos from census data",
+      "crossref": "Population estimate for Lagos from census data",
+      "arxiv": "Population estimate for Lagos from census data",
+      "openalex": "Population estimate for Lagos from census data"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "bls",
+        "world_bank",
+        "eurostat",
+        "oecd",
+        "us_census",
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_discipline_routing": [
+        "bls",
+        "world_bank",
+        "eurostat",
+        "oecd",
+        "us_census",
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "2.1_PRE.PRIMARY.GER — School enrolment, preprimary, national source (% gross)",
+      "snippet": "Pre-Primary Gross Enrolment Rate (GER): The number of pupils enrolled in pre-primary school, regardless of age, expressed as a percentage of the population in the theoretical age group in pre-primary school. The purpose of this indicator is to measure the general level of participation of children in Early Childhood Education (ECE) programs. Country-specific definition, method and targets are determined by countries themselves.",
+      "full_text": "Pre-Primary Gross Enrolment Rate (GER): The number of pupils enrolled in pre-primary school, regardless of age, expressed as a percentage of the population in the theoretical age group in pre-primary school. The purpose of this indicator is to measure the general level of participation of children in Early Childhood Education (ECE) programs. Country-specific definition, method and targets are determined by countries themselves.",
+      "url": "https://data.worldbank.org/indicator/2.1_PRE.PRIMARY.GER",
+      "_adapter": "world_bank",
+      "authors": [
+        "Data were collected from national and other publicly available sources, and validated by the Local Education Group (LEG) in each country. LEGs are typically led by the Ministry of Education and include development partners and other education stakeholders. Data were not processed or analyzed by the Global Partnership for Education. It is reported as it was presented in the original sources, or as it was communicated to us through the Coordinating Agency or Lead Donor of the LEG."
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "2.1_PRE.PRIMARY.GER",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "2.2_GIR — Gross intake ratio in grade 1, total, national source (% of relevant age group)",
+      "snippet": "Gross intake ratio (GIR): This indicator measures the total number of new entrants in the first grade of primary education, regardless of age, expressed as a percentage of the population at the official primary school-entrance age. Country-specific definition, method and targets are determined by countries themselves.",
+      "full_text": "Gross intake ratio (GIR): This indicator measures the total number of new entrants in the first grade of primary education, regardless of age, expressed as a percentage of the population at the official primary school-entrance age. Country-specific definition, method and targets are determined by countries themselves.",
+      "url": "https://data.worldbank.org/indicator/2.2_GIR",
+      "_adapter": "world_bank",
+      "authors": [
+        "Data were collected from national and other publicly available sources, and validated by the Local Education Group (LEG) in each country. LEGs are typically led by the Ministry of Education and include development partners and other education stakeholders. Data were not processed or analyzed by the Global Partnership for Education. It is reported as it was presented in the original sources, or as it was communicated to us through the Coordinating Agency or Lead Donor of the LEG."
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "2.2_GIR",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "2.4_OOSC.RATE — Rate of out of school children, national source (% of relevant age group)",
+      "snippet": "Number of children of official primary school age who are not enrolled in primary or secondary school, expressed as a percentage of the population of official primary school age. This indicator is intended to measure the size of the population in the official primary school age range that should be targeted by policies and efforts to achieve universal primary education. Country-specific definition, method and targets are determined by countries themselves.",
+      "full_text": "Number of children of official primary school age who are not enrolled in primary or secondary school, expressed as a percentage of the population of official primary school age. This indicator is intended to measure the size of the population in the official primary school age range that should be targeted by policies and efforts to achieve universal primary education. Country-specific definition, method and targets are determined by countries themselves.",
+      "url": "https://data.worldbank.org/indicator/2.4_OOSC.RATE",
+      "_adapter": "world_bank",
+      "authors": [
+        "Data were collected from national and other publicly available sources, and validated by the Local Education Group (LEG) in each country. LEGs are typically led by the Ministry of Education and include development partners and other education stakeholders. Data were not processed or analyzed by the Global Partnership for Education. It is reported as it was presented in the original sources, or as it was communicated to us through the Coordinating Agency or Lead Donor of the LEG."
+      ],
+      "venue": "World Bank Open Data",
+      "publication_date": null,
+      "document_type": "statistical_indicator",
+      "indicator_id": "2.4_OOSC.RATE",
+      "retrieval_method": "world_bank_indicator_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "world_bank",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_MIG_F@DF_MIG_POPF — International migration database - stocks of foreign-born population",
+      "snippet": "International migration database - stocks of foreign-born population",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_MIG_F@DF_MIG_POPF&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.ELS.IMD,DSD_MIG_F@DF_MIG_POPF",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_FUA_DEMO@DF_ORIGIN — Foreign-born population - Cities and FUAs",
+      "snippet": "Foreign-born population - Cities and FUAs",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_FUA_DEMO@DF_ORIGIN&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CFE.EDS,DSD_FUA_DEMO@DF_ORIGIN",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "DSD_REG_MIGRANT@DF_MIGR_STOCK — Foreign-born population - Regions",
+      "snippet": "Foreign-born population - Regions",
+      "full_text": null,
+      "url": "https://data-explorer.oecd.org/vis?df[ds]=DisseminateFinalDMZ&df[id]=DSD_REG_MIGRANT@DF_MIGR_STOCK&df[ag]=OECD",
+      "_adapter": "oecd",
+      "authors": [
+        "Organisation for Economic Co-operation and Development"
+      ],
+      "venue": "OECD Data Explorer",
+      "publication_date": null,
+      "document_type": "statistical_release",
+      "dataflow_id": "OECD.CFE.EDS,DSD_REG_MIGRANT@DF_MIGR_STOCK",
+      "retrieval_method": "oecd_dataflow_search",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "oecd",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Census Places, Arizona, 1910",
+      "snippet": "Census Places, Arizona, 1910",
+      "full_text": null,
+      "url": "https://doi.org/10.2458/azu_geo_arizona_censusplaces_1910",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Spatial Data Explorer Repository",
+      "publication_date": "2007",
+      "doi": "10.2458/azu_geo_arizona_censusplaces_1910",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Census Places, Arizona, 1900",
+      "snippet": "Census Places, Arizona, 1900",
+      "full_text": null,
+      "url": "https://doi.org/10.2458/azu_geo_arizona_censusplaces_1900",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Spatial Data Explorer Repository",
+      "publication_date": "2007",
+      "doi": "10.2458/azu_geo_arizona_censusplaces_1900",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Census Places, Arizona, 1940",
+      "snippet": "Census Places, Arizona, 1940",
+      "full_text": null,
+      "url": "https://doi.org/10.2458/azu_geo_arizona_censusplaces_1940",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Spatial Data Explorer Repository",
+      "publication_date": "2007",
+      "doi": "10.2458/azu_geo_arizona_censusplaces_1940",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Constraints on dark energy from H II starburst galaxy apparent magnitude versus redshift data",
+      "snippet": "In this paper we use H II starburst galaxy apparent magnitude versus redshift data from Siegel et al. (2005) to constrain dark energy cosmological model parameters. These constraints are generally consistent with those derived using other data sets, but are not as restrictive as the tightest currently available constraints.",
+      "full_text": "In this paper we use H II starburst galaxy apparent magnitude versus redshift data from Siegel et al. (2005) to constrain dark energy cosmological model parameters. These constraints are generally consistent with those derived using other data sets, but are not as restrictive as the tightest currently available constraints.",
+      "url": "https://arxiv.org/abs/1110.5626v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Data Mania",
+        "Bharat Ratra"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2011-10-25",
+      "doi": "10.1016/j.physletb.2012.07.011",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1110.5626v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Data Encoding for Byzantine-Resilient Distributed Optimization",
+      "snippet": "We study distributed optimization in the presence of Byzantine adversaries, where both data and computation are distributed among $m$ worker machines, $t$ of which may be corrupt. The compromised nodes may collaboratively and arbitrarily deviate from their pre-specified programs, and a designated (master) node iteratively computes the model/parameter vector for generalized linear models. In this work, we primarily focus on two iterative algorithms: Proximal Gradient Descent (PGD) and Coordinate Descent (CD). Gradient descent (GD) is a special case of these algorithms. PGD is typically used in ",
+      "full_text": "We study distributed optimization in the presence of Byzantine adversaries, where both data and computation are distributed among $m$ worker machines, $t$ of which may be corrupt. The compromised nodes may collaboratively and arbitrarily deviate from their pre-specified programs, and a designated (master) node iteratively computes the model/parameter vector for generalized linear models. In this work, we primarily focus on two iterative algorithms: Proximal Gradient Descent (PGD) and Coordinate Descent (CD). Gradient descent (GD) is a special case of these algorithms. PGD is typically used in the data-parallel setting, where data is partitioned across different samples, whereas, CD is used in the model-parallelism setting, where data is partitioned across the parameter space. In this paper, we propose a method based on data encoding and error correction over real numbers to combat adversarial attacks. We can tolerate up to $t\\leq \\lfloor\\frac{m-1}{2}\\rfloor$ corrupt worker nodes, which is information-theoretically optimal. We give deterministic guarantees, and our method does not assume any probability distribution on the data. We develop a {\\em sparse} encoding scheme which enables computationally efficient data encoding and decoding. We demonstrate a trade-off between the corruption threshold and the resource requirements (storage, computational, and communication complexity). As an example, for $t\\leq\\frac{m}{3}$, our scheme incurs only a {\\em constant} overhead on these resources, over that required by the plain distributed PGD/CD algorithms which provide no adversarial protection. To the best of our knowledge, ours is the first paper that makes CD secure against adversarial attacks. Our encoding scheme extends efficiently to the data streaming model and for stochastic gradient descent (SGD). We also give experimental results to show the efficacy of our proposed schemes.",
+      "url": "https://arxiv.org/abs/1907.02664v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Deepesh Data",
+        "Linqi Song",
+        "Suhas Diggavi"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2019-07-05",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1907.02664v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Byzantine-Resilient SGD in High Dimensions on Heterogeneous Data",
+      "snippet": "We study distributed stochastic gradient descent (SGD) in the master-worker architecture under Byzantine attacks. We consider the heterogeneous data model, where different workers may have different local datasets, and we do not make any probabilistic assumptions on data generation. At the core of our algorithm, we use the polynomial-time outlier-filtering procedure for robust mean estimation proposed by Steinhardt et al. (ITCS 2018) to filter-out corrupt gradients. In order to be able to apply their filtering procedure in our {\\em heterogeneous} data setting where workers compute {\\em stochas",
+      "full_text": "We study distributed stochastic gradient descent (SGD) in the master-worker architecture under Byzantine attacks. We consider the heterogeneous data model, where different workers may have different local datasets, and we do not make any probabilistic assumptions on data generation. At the core of our algorithm, we use the polynomial-time outlier-filtering procedure for robust mean estimation proposed by Steinhardt et al. (ITCS 2018) to filter-out corrupt gradients. In order to be able to apply their filtering procedure in our {\\em heterogeneous} data setting where workers compute {\\em stochastic} gradients, we derive a new matrix concentration result, which may be of independent interest. We provide convergence analyses for smooth strongly-convex and non-convex objectives. We derive our results under the bounded variance assumption on local stochastic gradients and a {\\em deterministic} condition on datasets, namely, gradient dissimilarity; and for both these quantities, we provide concrete bounds in the statistical heterogeneous data model. We give a trade-off between the mini-batch size for stochastic gradients and the approximation error. Our algorithm can tolerate up to $\\frac{1}{4}$ fraction Byzantine workers. It can find approximate optimal parameters in the strongly-convex setting exponentially fast and reach to an approximate stationary point in the non-convex setting with a linear speed, thus, matching the convergence rates of vanilla SGD in the Byzantine-free setting. We also propose and analyze a Byzantine-resilient SGD algorithm with gradient compression, where workers send $k$ random coordinates of their gradients. Under mild conditions, we show a $\\frac{d}{k}$-factor saving in communication bits as well as decoding complexity over our compression-free algorithm without affecting its convergence rate (order-wise) and the approximation error.",
+      "url": "https://arxiv.org/abs/2005.07866v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Deepesh Data",
+        "Suhas Diggavi"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2020-05-16",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2005.07866v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Monitoring urban growth in greater Lagos : a case study using GIS to monitor the urban growth of Lagos 1990 - 2008 and produce future growth prospects for the city",
+      "snippet": "The aim of this thesis is to show how the city of Lagos has grown in size and population between the years 1990-2008. Comparisons over the city for the years 1990, 1999 and 2008 have been made so that the main characteristics of the city’s growth can be shown and analyzed. Based on this expansion future prospects for the city has been provided through producing three different scenarios on how Lagos might look in the year 2020. The study has been conducted through remote sensing where satellite images over the city have been acquired; these images have been edited and combined with population ",
+      "full_text": "The aim of this thesis is to show how the city of Lagos has grown in size and population between the years 1990-2008. Comparisons over the city for the years 1990, 1999 and 2008 have been made so that the main characteristics of the city’s growth can be shown and analyzed. Based on this expansion future prospects for the city has been provided through producing three different scenarios on how Lagos might look in the year 2020. The study has been conducted through remote sensing where satellite images over the city have been acquired; these images have been edited and combined with population data so that demographical comparisons can be done. The results indicate that the city has experienced an extreme growth, both in area and in population. The growth has however been more characterized by an expansion in area than population increase. Over the total study time the population in the city more than doubled from around five million inhabitants in 1990 to over ten million in 2008, during the same time period the city expanded almost three times in size. The lack of high resolution satellite data and the fact that the population figures used is based on estimates however create some unreliability in the results. That the city has experienced growth over the study time was not surprising since it is the type of region that has grown the fastest in the world during the last decades, an urban area in a developing country.",
+      "url": "https://openalex.org/W1868588130",
+      "_adapter": "openalex",
+      "authors": [
+        "Jonathan Higgins"
+      ],
+      "venue": "Lund University Publications Student Papers (Lund University)",
+      "publication_date": "2011",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Socioeconomic Implications of Population Trend: A Case Study of Lagos State, Nigeria",
+      "snippet": "This study investigated residents’ perceptions of the socioeconomic implications of projected population trend in Lagos State, Nigeria. A cross-sectional survey design was used, and secondary population projections for the 2015–2023 period were reviewed descriptively. Primary data were collected through a questionnaire administered to 250 adult residents selected from Ikeja, Surulere, Ojo, Somolu and Alimosho Local Government Areas. Fifty respondents were selected from each Local Government Area. Questionnaire responses were analysed using frequencies and percentages. Population projections we",
+      "full_text": "This study investigated residents’ perceptions of the socioeconomic implications of projected population trend in Lagos State, Nigeria. A cross-sectional survey design was used, and secondary population projections for the 2015–2023 period were reviewed descriptively. Primary data were collected through a questionnaire administered to 250 adult residents selected from Ikeja, Surulere, Ojo, Somolu and Alimosho Local Government Areas. Fifty respondents were selected from each Local Government Area. Questionnaire responses were analysed using frequencies and percentages. Population projections were analysed using time-series trend analysis. The secondary population estimates were regarded as projections, rather than census counts, because the last national population census in Nigeria was conducted in 2006. The time-series examination revealed a statistically significant upward trend in the projected population of Lagos State between 2015 and 2023. The survey findings showed that 80% of respondents associated projected population trend with increased demand for infrastructure, 70% with unemployment, 100% with increased competition for resources, 100% with higher living costs, and 80.8% with increased crime. In contrast, 79.2% of the respondents viewed projected population trend as having a positive effect on economic growth and development. Further statistical testing showed that a significantly greater proportion than 50% of the respondents believed that projected population trend had positive economic contributions. In addition, a significant majority felt that social infrastructure had not kept pace with projected population trend. The responses to the open-ended questions showed that the major challenges associated with projected population trend were high living and rental costs, pressure on public facilities, crime, traffic congestion and noise. The respondents suggested strategies to address the challenges, such as better leadership, stronger security, effective traffic management, expansion of public facilities, industrial development, job creation and easily accessible family-planning services. The findings show that the sampled residents perceive projected population trend as an economic opportunity as well as a strain on urban services, resources and living conditions. However, owing to the study’s use of projected population data and a cross-sectional, perception-based survey conducted in only five local government areas, the results should not be interpreted as evidence of direct causal relationships between projected population trend and socioeconomic conditions or as fully representative of all residents of Lagos State.",
+      "url": "https://openalex.org/W7203668418",
+      "_adapter": "openalex",
+      "authors": [
+        "Faith Iwejingi Sajini",
+        "Cynthia Esohe OKUOIMOSE"
+      ],
+      "venue": "Asian Research Journal of Arts & Social Sciences",
+      "publication_date": "2026",
+      "doi": "10.9734/arjass/2026/v24i9934",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "How Many People in the USA Have Essential Tremor? Deriving a Population Estimate Based on Epidemiological Data",
+      "snippet": "BACKGROUND: Essential tremor (ET) is often reported to be among the most prevalent movement disorders, yet the precise number of cases in the USA is not known. The goal of the current analyses was to use published data from epidemiological studies to derive an estimate of the number of people currently residing in the USA who have ET. METHODS: A PubMed search was conducted to identify population-based prevalence studies of ET. The methodology of 34 identified studies was assessed. Then the three most methodologically rigorous studies were selected, and age-specific prevalence data were abstrac",
+      "full_text": "BACKGROUND: Essential tremor (ET) is often reported to be among the most prevalent movement disorders, yet the precise number of cases in the USA is not known. The goal of the current analyses was to use published data from epidemiological studies to derive an estimate of the number of people currently residing in the USA who have ET. METHODS: A PubMed search was conducted to identify population-based prevalence studies of ET. The methodology of 34 identified studies was assessed. Then the three most methodologically rigorous studies were selected, and age-specific prevalence data were abstracted. US census data from 2012 were used to determine the population in the USA by 10-year age categories. RESULTS: Using data from three studies, estimates of the number of ET cases (2012) ranged from 6.38 to 7.63 million (mean = 7.01 million). This corresponds to approximately 2.2% of the US population. DISCUSSION: Knowing the number of ET cases in the USA is important in terms of estimating the medical burden on communities and society, and providing an objective metric on which to base health resource planning.",
+      "url": "https://openalex.org/W4243264765",
+      "_adapter": "openalex",
+      "authors": [
+        "Elan D. Louis",
+        "Ruth Ottman"
+      ],
+      "venue": "Tremor and Other Hyperkinetic Movements",
+      "publication_date": "2014",
+      "doi": "10.5334/tohm.198",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:38+0100"
+}

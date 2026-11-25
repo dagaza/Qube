@@ -17,6 +17,9 @@ Examples::
     .venv/bin/python tools/evaluate_knowledge_quality.py --ranker embed --query-mode standalone
     .venv/bin/python tools/evaluate_knowledge_quality.py --json > baseline.json
     .venv/bin/python tools/evaluate_knowledge_quality.py --compare baseline.json
+    # S13 A/B arms: one heuristic off, compared against the default run
+    .venv/bin/python tools/evaluate_knowledge_quality.py --ranker ce --ablate trial_grounding
+    .venv/bin/python tools/evaluate_knowledge_quality.py --ranker ce --route-arm no_discipline_routing
 """
 
 from __future__ import annotations
@@ -35,6 +38,7 @@ from core.knowledge.quality_eval import (  # noqa: E402
     POOL_MODES,
     QUERY_MODES,
     RANKER_NAMES,
+    RANKING_ABLATIONS,
     RankerUnavailable,
     aggregate_reports,
     compare_to_baseline,
@@ -44,6 +48,7 @@ from core.knowledge.quality_eval import (  # noqa: E402
     load_json,
     validate_fixture,
 )
+from core.knowledge.scientific_adapters import ROUTE_ARMS  # noqa: E402
 
 _GATES = (
     # (cli flag, metric, direction)
@@ -135,6 +140,20 @@ def main() -> int:
         default=0,
         help="Judge source freshness as if each capture were this many days older (S7)",
     )
+    parser.add_argument(
+        "--ablate",
+        action="append",
+        default=[],
+        choices=RANKING_ABLATIONS,
+        help="Switch one scientific ranking heuristic off (S13 A/B arm; repeatable)",
+    )
+    parser.add_argument(
+        "--route-arm",
+        default=None,
+        choices=ROUTE_ARMS,
+        help="Rank the pool of one S13 routing arm; fixtures without captured "
+        "routes keep their first-captured pool",
+    )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON summary")
     args = parser.parse_args()
 
@@ -169,8 +188,14 @@ def main() -> int:
             pool_mode=args.pool_mode,
             k=args.k,
             recency_shift_days=args.recency_shift_days,
+            ablate=args.ablate,
+            route_arm=args.route_arm,
         )
         report["ranker"] = args.ranker
+        if args.ablate:
+            report["ablate"] = sorted(args.ablate)
+        if args.route_arm:
+            report["route_arm"] = args.route_arm
         report["id"] = entry.get("id")
         report["skipped"] = False
         report["schema_errors"] = schema_errors

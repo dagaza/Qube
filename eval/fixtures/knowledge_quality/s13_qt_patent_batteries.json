@@ -1,0 +1,279 @@
+{
+  "schema_version": 2,
+  "id": "s13_qt_patent_batteries",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: query-type routing (patent) adds USPTO/Espacenet to a general route.",
+  "query_raw": "@[tool:evidence] Patent landscape for solid-state battery electrolytes",
+  "query_clean": "Patent landscape for solid-state battery electrolytes",
+  "retrieval_query": "Patent landscape for solid-state battery electrolytes",
+  "standalone_question": "Patent landscape for solid-state battery electrolytes",
+  "gold_subject": "solid-state battery electrolytes",
+  "gold_facet": "patents",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:10:22+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "uspto_patentsview": 3,
+    "epo_espacenet": 3,
+    "crossref": 3,
+    "arxiv": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "uspto_patentsview": "Patent landscape for solid-state battery electrolytes",
+      "epo_espacenet": "Patent landscape for solid-state battery electrolytes",
+      "crossref": "Patent landscape for solid-state battery electrolytes",
+      "arxiv": "Patent landscape for solid-state battery electrolytes",
+      "openalex": "Patent landscape for solid-state battery electrolytes"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "uspto_patentsview",
+        "epo_espacenet",
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_discipline_routing": [
+        "uspto_patentsview",
+        "epo_espacenet",
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "Na-ion Solid Electrolytes for Solid-state Batteries",
+      "snippet": "Solid-state sodium-ion batteries have gradually become a research hotspot in the field of energy storage, with their significant advantages of high safety and low cost. The inorganic solid electrolyte system has high ionic conductivity and high ion migration number, and has significant advantages in terms of mechanical properties and stability. Different types of solid electrolyte face problems such as low ion conductivity and poor electrochemical stability. Chapter 7 introduces the migration mechanism of sodium ions in solids, and comprehensively discusses the research progress on sodium-ion ",
+      "full_text": "Solid-state sodium-ion batteries have gradually become a research hotspot in the field of energy storage, with their significant advantages of high safety and low cost. The inorganic solid electrolyte system has high ionic conductivity and high ion migration number, and has significant advantages in terms of mechanical properties and stability. Different types of solid electrolyte face problems such as low ion conductivity and poor electrochemical stability. Chapter 7 introduces the migration mechanism of sodium ions in solids, and comprehensively discusses the research progress on sodium-ion solid electrolytes, such as oxides, sulfides, and complex hydrides. The chapter introduces improvement strategies for electrolyte ionic conductivity and electrochemical stability for different crystal structures. Finally, a summary of the current status of solid sodium-ion electrolytes is given and the challenges faced for future trends in development are presented.",
+      "url": "https://doi.org/10.1039/9781839167577-00172",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Rechargeable Battery Electrolytes",
+      "publication_date": "2024",
+      "doi": "10.1039/9781839167577-00172",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Application in All-Solid-State Battery",
+      "snippet": "Application in All-Solid-State Battery",
+      "full_text": null,
+      "url": "https://doi.org/10.1142/9789813233898_0007",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "Ceramic Electrolytes for All-Solid-State Li Batteries",
+      "publication_date": "2018",
+      "doi": "10.1142/9789813233898_0007",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Modern Solid Electrolytes for All-Solid-State Batteries: Materials Chemistry, Structure, and Transport",
+      "snippet": "In this review, from crystallographic symmetry to amorphous local polyhedra arrangement and combinations, we examine inorganic solid state electrolytes through the lens of structure property relationships, with oxides, sulfides, and halides representing three major framework chemistries. Halide solid electrolytes and their derivatives, including mixed anion halides and antiperovskite related materials, have expanded this landscape further by introducing new ways to regulate local coordination chemistry, defect populations, and transport active frameworks. Across these families, fast ion conduc",
+      "full_text": "In this review, from crystallographic symmetry to amorphous local polyhedra arrangement and combinations, we examine inorganic solid state electrolytes through the lens of structure property relationships, with oxides, sulfides, and halides representing three major framework chemistries. Halide solid electrolytes and their derivatives, including mixed anion halides and antiperovskite related materials, have expanded this landscape further by introducing new ways to regulate local coordination chemistry, defect populations, and transport active frameworks. Across these families, fast ion conduction depends not simply on composition or crystallographic diffusion pathways, but on the coupled effects of framework topology, site energy distribution, defect chemistry, bottleneck response, and local anion flexibility. Oxides illustrate transport within chemically robust but geometrically constrained frameworks. Sulfides demonstrate that a soft, easily polarizable lattice can broaden the array of low energy migration pathways. Halides occupy an intermediate state, in which the closely packed anion sublattices, an approximately degenerate lithium environment, and mixed anion coordination enable effective transport while simultaneously enhancing oxidation stability and compatibility with cathodes. Building on these comparisons, we argue that long range ion transport is increasingly understood not as motion along a single idealized pathway, but as the macroscopic outcome of statistically connected low barrier local migration events distributed across the structure. We further discuss the experimental and computational approaches required to establish such multiscale structure property relationships and outline future strategies for designing transport active frameworks in which conductivity, stability, and processability are optimized together.",
+      "url": "https://arxiv.org/abs/2604.17380v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Denys Butenko",
+        "Mustafa Khan",
+        "Liusuo Wu",
+        "Jinlong Zhu"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-04-19",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2604.17380v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Introduction to High-Temperature Superconductivity for Solid State Chemists",
+      "snippet": "Superconductivity is one of the most amazing properties that metallic conductors exhibit. Electrical resistance is completely eliminated below the critical temperature (Tc), which is the most important parameter in superconductivity. Since the discovery of copper oxide superconductors 39 years ago, many solid state chemists have made significant contributions to the field by discovering new compounds and producing high-quality samples for physical measurements. However, superconductivity research remains challenging for most solid state chemists because it requires knowledge of complicated sol",
+      "full_text": "Superconductivity is one of the most amazing properties that metallic conductors exhibit. Electrical resistance is completely eliminated below the critical temperature (Tc), which is the most important parameter in superconductivity. Since the discovery of copper oxide superconductors 39 years ago, many solid state chemists have made significant contributions to the field by discovering new compounds and producing high-quality samples for physical measurements. However, superconductivity research remains challenging for most solid state chemists because it requires knowledge of complicated solid state physics. This manuscript aims to provide a simple, intuitive introduction to superconductivity using only fundamental physics concepts that solid state chemists are familiar with. The author investigates a wide range of materials and classifies them according to the superconductivity mechanisms that may drive them. Specifically focusing on a series of copper oxide superconductors with the highest Tc at ambient conditions, the remarkable material dependence of Tc and the underlying, unconventional superconductivity mechanism that leads to the high Tc are thoroughly examined. Although our understanding of cuprate superconductivity is still fragmented, the author believes that once the branches and leaves are removed, the story will be fairly simple, similar to the phonon-based superconductivity mechanism revealed by the BCS theory. Furthermore, potential strategies for raising the Tc of cuprates and other superconductors are discussed. The author hopes that this article will pique interest in superconductors in young solid state chemists and encourage them to pursue the discovery of still unknown and unexplored room-temperature superconductors in the future.",
+      "url": "https://arxiv.org/abs/2602.12608v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Zenji Hiroi"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-02-13",
+      "doi": "10.1016/j.progsolidstchem.2026.100574",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2602.12608v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Polymer-based solid-state electrolytes for lithium sulfur batteries",
+      "snippet": "Lithium-sulfur (Li-S) batteries offer substantial theoretical energy density gains over Li-ion bat-teries, a crucial factor for transportation electrification. In addition, sulfur is an earth-abundant, inexpensive material obtainable from multiple resources; thus, Li-S batteries are envisioned to provide environmentally sustainable solutions to the growing demand for energy storage. A crit-ical roadblock to the realization of commercial Li-S batteries is the formation of polysulfides and their secondary reactions with liquid organic electrolytes, resulting in low coulombic efficiency for charg",
+      "full_text": "Lithium-sulfur (Li-S) batteries offer substantial theoretical energy density gains over Li-ion bat-teries, a crucial factor for transportation electrification. In addition, sulfur is an earth-abundant, inexpensive material obtainable from multiple resources; thus, Li-S batteries are envisioned to provide environmentally sustainable solutions to the growing demand for energy storage. A crit-ical roadblock to the realization of commercial Li-S batteries is the formation of polysulfides and their secondary reactions with liquid organic electrolytes, resulting in low coulombic efficiency for charging and fast self-discharge rates. The realization of solid-state electrolytes for Li-S bat-teries provides potential pathways to address the safety concerns of liquid electrolytes and inhib-it the formation of polysulfides and/or prevent their diffusion into the anode electrode. However, current solid-state electrolytes are limited by low ionic conductivity, inadequate electrode inter-facial compatibility, and restricted electrochemical windows. This review discusses the status of polymer-based electrolytes for Li-S batteries, and outlines current methods for their fabrication, their transport characteristics and ongoing research aimed at overcoming material properties hindering the development of all-solid-state Li-S batteries.",
+      "url": "https://arxiv.org/abs/2501.10567v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Praveen Balaji T",
+        "Soumyadip Choudhury",
+        "Ernesto E. Marinero"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2025-01-17",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2501.10567v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Material-resolved patent landscape of all-solid-state battery electrolytes: technology evolution, collaboration networks, and commercialization implications",
+      "snippet": "Material-resolved patent landscape of all-solid-state battery electrolytes: technology evolution, collaboration networks, and commercialization implications",
+      "full_text": null,
+      "url": "https://openalex.org/W7171770693",
+      "_adapter": "openalex",
+      "authors": [
+        "Kyeong-Weon Park",
+        "Young-Jun Lee",
+        "Ji-Wan Kim",
+        "Da-Ae Lim",
+        "Ki Tae Kim",
+        "Dong-Won Kim"
+      ],
+      "venue": "Journal of Energy Storage",
+      "publication_date": "2026",
+      "doi": "10.1016/j.est.2026.123916",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": false,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "An Industrial Perspective and Intellectual Property Landscape on Solid-State Battery Technology with a Focus on Solid-State Electrolyte Chemistries",
+      "snippet": "This review focuses on the promising technology of solid-state batteries (SSBs) that utilize lithium metal and solid electrolytes. SSBs offer significant advantages in terms of high energy density and enhanced safety. This review categorizes solid electrolytes into four classes: polymer, oxide, hybrid, and sulfide solid electrolytes. Each class has its own unique characteristics and benefits. By exploring these different classes, this review aims to shed light on the diversity of materials and their contributions to the advancement of SSB technology. In order to gain insights into the latest t",
+      "full_text": "This review focuses on the promising technology of solid-state batteries (SSBs) that utilize lithium metal and solid electrolytes. SSBs offer significant advantages in terms of high energy density and enhanced safety. This review categorizes solid electrolytes into four classes: polymer, oxide, hybrid, and sulfide solid electrolytes. Each class has its own unique characteristics and benefits. By exploring these different classes, this review aims to shed light on the diversity of materials and their contributions to the advancement of SSB technology. In order to gain insights into the latest technological developments and identify potential avenues for accelerating the progress of SSBs, this review examines the intellectual property landscape related to solid electrolytes. Thus, this review focuses on the recent SSB technology patent filed by the main companies in this area, chosen based on their contribution and influence in the field of batteries. The analysis of the patent application was performed through the Espacenet database. The number of patents related to SSBs from Toyota, Samsung, and LG is very important; they represent more than 3400 patents, the equivalent of 2/3 of the world’s patent production in the field of SSBs. In addition to focusing on these three famous companies, we also focused on 15 other companies by analyzing a hundred patents. The objective of this review is to provide a comprehensive overview of the strategies employed by various companies in the field of solid-state battery technologies, bridging the gap between applied and academic research. Some of the technologies presented in this review have already been commercialized and, certainly, an acceleration in SSB industrialization will be seen in the years to come.",
+      "url": "https://openalex.org/W4390726100",
+      "_adapter": "openalex",
+      "authors": [
+        "Zouina Karkar",
+        "Mohamed S.E. Houache",
+        "Chae-Ho Yim",
+        "Yaser Abu‐Lebdeh"
+      ],
+      "venue": "Batteries",
+      "publication_date": "2024",
+      "doi": "10.3390/batteries10010024",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Solid-State Battery Developments: A Cross-Sectional Patent Analysis",
+      "snippet": "Solid-state batteries (SSBs) hold the potential to revolutionize energy storage systems by offering enhanced safety, higher energy density, and longer life cycles compared with conventional lithium-ion batteries. However, the widespread adoption of SSBs faces significant challenges, including low charge mobility, high internal resistance, mechanical degradation, and the use of unsustainable materials. These technical and manufacturing hurdles have hindered the large-scale commercialization of SSBs, which are crucial for applications such as electric vehicles, portable electronics, and renewabl",
+      "full_text": "Solid-state batteries (SSBs) hold the potential to revolutionize energy storage systems by offering enhanced safety, higher energy density, and longer life cycles compared with conventional lithium-ion batteries. However, the widespread adoption of SSBs faces significant challenges, including low charge mobility, high internal resistance, mechanical degradation, and the use of unsustainable materials. These technical and manufacturing hurdles have hindered the large-scale commercialization of SSBs, which are crucial for applications such as electric vehicles, portable electronics, and renewable energy storage. This study systematically reviews the global SSB patent landscape using a cross-sectional bibliometric and thematic analysis to identify innovations addressing key technical challenges. The study classifies innovations into key problem and solution areas by meticulously examining 244 patents across multiple dimensions, including year, geographic distribution, inventor engagement, award latency, and technological focus. The analysis reveals significant advancements in electrolyte materials, electrode designs, and manufacturability. This research contributes a comprehensive analysis of the technological landscape, offering valuable insights into ongoing advancements and providing a roadmap for future research and development. This work will benefit researchers, industry professionals, and policymakers by highlighting the most promising areas for innovation, thereby accelerating the commercialization of SSBs, and supporting the transition toward more sustainable and efficient energy storage solutions.",
+      "url": "https://openalex.org/W4405453828",
+      "_adapter": "openalex",
+      "authors": [
+        "Raj Bridgelall"
+      ],
+      "venue": "Sustainability",
+      "publication_date": "2024",
+      "doi": "10.3390/su162410994",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:41+0100"
+}

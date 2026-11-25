@@ -26,6 +26,14 @@ Usage::
     .venv/bin/python tools/capture_knowledge_fixture.py --all-missing
     .venv/bin/python tools/capture_knowledge_fixture.py --from-evidence-cache \\
         ~/.qube/evidence_cache/<key>.json --case kq_ant_resolved
+    .venv/bin/python tools/capture_knowledge_fixture.py --add-routes --case sci_sts_scot
+
+Scientific captures (plan S13) query the union of the adapter routes each A/B
+arm would use (``scientific_adapters.scientific_adapter_routes``) and record
+them as ``routes[variant][arm]``. ``--add-routes`` extends an existing fixture
+with only the adapters it is missing: existing rows and labels are untouched,
+and every new hit is marked ``route_added`` so the first-captured pool stays
+the default replay.
 """
 
 from __future__ import annotations
@@ -50,6 +58,14 @@ _PROVIDER_PAUSE_S = {"arxiv": 3.2, "duckduckgo": 4.0, "discovery": 110.0}
 _last_call: dict[str, float] = {}
 # Discovery provider used by the most recent web capture (None for adapter-only paths).
 _last_discovery: dict[str, str | None] = {"provider": None, "primary": None}
+# Adapter route per S13 arm from the most recent scientific capture.
+_last_routes: dict[str, list[str]] = {}
+# Adapters not called now (``--defer-adapter``, e.g. a spent daily quota) and
+# the ones the most recent scientific capture skipped; ``--add-routes`` fills them.
+_DEFERRED: set[str] = set()
+_last_deferred: list[str] = []
+# Adapters whose host did not answer in the most recent adapter sweep.
+_last_failed: list[str] = []
 
 
 # Outcomes that mean the provider did not really answer (vs. a genuine empty SERP).
@@ -123,49 +139,178 @@ def production_query_for(entry: dict[str, Any]) -> str:
 # --- per-path capture -------------------------------------------------------
 
 
-def _capture_scientific(query: str, depth: int) -> tuple[dict[str, list[dict]], dict[str, int], dict[str, str]]:
+def _scientific_routes(query: str) -> dict[str, list[str]]:
+    """Adapter route per S13 arm; ``production`` is the pipeline's own resolution."""
     from core.app_settings import get_knowledge_source_preferences
-    from core.knowledge.adapters.registry import get_search_function
     from core.knowledge.retrieval_profiles import (
         get_profile_spec,
         normalize_profile_id,
         order_adapter_ids,
     )
-    from core.knowledge.scientific_query_planner import adapter_query_for, plan_scientific_query
-    from core.knowledge.source_preferences import resolve_service_adapters
+    from core.knowledge.scientific_adapters import ROUTE_PRODUCTION, scientific_adapter_routes
+    from core.knowledge.source_preferences import (
+        get_effective_enabled_adapters,
+        resolve_service_adapters,
+    )
     from core.knowledge.types import SERVICE_SCIENTIFIC_EVIDENCE
 
-    plan = plan_scientific_query(query, semantic_query=query)
+    prefs = get_knowledge_source_preferences()
     profile = get_profile_spec(normalize_profile_id("balanced"))
-    adapter_ids = order_adapter_ids(
-        tuple(
-            resolve_service_adapters(
-                SERVICE_SCIENTIFIC_EVIDENCE,
-                query=query,
-                composer_adapter_filter=None,
-                stored_preferences=get_knowledge_source_preferences(),
-            )
-        ),
-        profile=profile,
+    enabled = get_effective_enabled_adapters(SERVICE_SCIENTIFIC_EVIDENCE, stored_preferences=prefs)
+    routes = {arm: list(ids) for arm, ids in scientific_adapter_routes(enabled, query=query).items()}
+    routes[ROUTE_PRODUCTION] = list(
+        order_adapter_ids(
+            tuple(
+                resolve_service_adapters(
+                    SERVICE_SCIENTIFIC_EVIDENCE,
+                    query=query,
+                    composer_adapter_filter=None,
+                    stored_preferences=prefs,
+                )
+            ),
+            profile=profile,
+        )
     )
-    budget = profile.budget.max_results
-    per_adapter_prod = max(2, budget)  # pipeline_scientific: per_adapter = max(2, budget)
+    return routes
+
+
+def _query_scientific_adapters(
+    query: str, adapter_ids: list[str], depth: int
+) -> tuple[dict[str, list[dict]], dict[str, str]]:
+    """Rows per adapter. An adapter whose host never answered (timeout, 5xx,
+    429, quota; S12 ``failed_sources``) and that returned nothing is left out
+    of both maps and listed in ``_last_failed``: an outage is not an empty result.
+    """
+    from core.knowledge.adapters.registry import get_search_function
+    from core.knowledge.http_metrics import (
+        begin_turn_http_metrics,
+        failed_sources,
+        snapshot_turn_http_summary,
+    )
+    from core.knowledge.scientific_query_planner import adapter_query_for, plan_scientific_query
+
+    plan = plan_scientific_query(query, semantic_query=query)
     results: dict[str, list[dict]] = {}
     adapter_queries: dict[str, str] = {}
+    _last_failed.clear()
     for aid in adapter_ids:
         fn = get_search_function(aid)
         if fn is None:
             continue
         q = adapter_query_for(plan, aid)
-        adapter_queries[aid] = q
         _pace(aid)
+        begin_turn_http_metrics()
+        raised = False
         try:
             rows = fn(q, max_results=depth) or []
         except Exception as exc:  # adapter failures are recorded, not fatal
             print(f"    ! {aid} failed: {exc}", file=sys.stderr)
-            rows = []
+            rows, raised = [], True
+        failed = failed_sources(snapshot_turn_http_summary())
+        if not rows and (raised or failed):
+            reason = ", ".join(f"{f['host']}:{f['reason']}" for f in failed) or "raised"
+            print(f"    ! {aid}: no answer ({reason}); deferred", file=sys.stderr)
+            _last_failed.append(aid)
+            continue
+        adapter_queries[aid] = q
         results[aid] = [_clean_row(r, aid) for r in rows if isinstance(r, dict)]
-    return results, {aid: per_adapter_prod for aid in results}, adapter_queries
+    return results, adapter_queries
+
+
+def _per_adapter_production() -> int:
+    from core.knowledge.retrieval_profiles import get_profile_spec, normalize_profile_id
+
+    budget = get_profile_spec(normalize_profile_id("balanced")).budget.max_results
+    return max(2, budget)  # pipeline_scientific: per_adapter = max(2, budget)
+
+
+def _capture_scientific(query: str, depth: int) -> tuple[dict[str, list[dict]], dict[str, int], dict[str, str]]:
+    routes = _scientific_routes(query)
+    union = list(dict.fromkeys(aid for ids in routes.values() for aid in ids))
+    deferred = [aid for aid in union if aid in _DEFERRED]
+    results, adapter_queries = _query_scientific_adapters(
+        query, [aid for aid in union if aid not in _DEFERRED], depth
+    )
+    _last_routes.clear()
+    _last_routes.update(routes)
+    _last_deferred[:] = [aid for aid in union if aid in set(deferred) | set(_last_failed)]
+    per_adapter = _per_adapter_production()
+    return results, {aid: per_adapter for aid in results}, adapter_queries
+
+
+def add_routes(fixture: dict[str, Any], *, depth: int) -> int:
+    """Extend a scientific fixture with the adapters its S13 arms need (in place).
+
+    Each variant is re-routed with the query it was captured with. Adapters the
+    variant already queried are not called again; existing rows keep their
+    labels. Hits are ``route_added`` (kept out of the default pool) except for
+    adapters the capture deferred, which join the pool they were deferred from.
+    Returns the number of new candidate rows.
+    """
+    if fixture.get("path") != "scientific_evidence":
+        raise SystemExit(f"{fixture.get('id')}: --add-routes is for scientific fixtures only")
+    queries = {"production": str(fixture.get("retrieval_query") or fixture.get("query_clean") or "")}
+    standalone = str(fixture.get("standalone_question") or "").strip()
+    variants_seen = {
+        str(h.get("query"))
+        for c in fixture.get("candidates") or []
+        for h in c.get("retrieved") or []
+        if isinstance(h, dict)
+    }
+    if "standalone" in variants_seen and standalone:
+        queries["standalone"] = standalone
+    by_key = {_row_key(c): c for c in fixture.get("candidates") or [] if isinstance(c, dict)}
+    adapter_queries = fixture.setdefault("adapter_queries", {})
+    depths = fixture.setdefault("production_depth", {})
+    routes_out = fixture.setdefault("routes", {})
+    per_adapter = _per_adapter_production()
+    added = 0
+    for variant, query in queries.items():
+        if not query:
+            continue
+        deferred = set((fixture.get("deferred_adapters") or {}).get(variant) or ())
+        stored = (fixture.get("routes") or {}).get(variant)
+        # A deferred capture keeps the routes it was captured with.
+        routes = stored if deferred and stored else _scientific_routes(query)
+        have = set((adapter_queries.get(variant) or {}).keys())
+        union = list(dict.fromkeys(aid for ids in routes.values() for aid in ids))
+        missing = [aid for aid in union if aid not in have and aid not in _DEFERRED]
+        print(f"  [{variant}] {query!r}: adding {missing or 'nothing'}")
+        results, aq = _query_scientific_adapters(query, missing, depth)
+        adapter_queries.setdefault(variant, {}).update(aq)
+        # An arm-only adapter that did not answer stays out of the arm; one the
+        # capture had deferred stays deferred until it answers.
+        still = sorted((deferred - set(results)) | (set(_last_failed) & deferred))
+        for adapter, rows in results.items():
+            print(f"    {adapter}: {len(rows)} rows")
+            depths.setdefault(adapter, per_adapter)
+            for rank, row in enumerate(rows):
+                key = _row_key(row)
+                cand = by_key.get(key)
+                if cand is None:
+                    cand = dict(row)
+                    cand["retrieved"] = []
+                    cand["label"] = None
+                    by_key[key] = cand
+                    fixture["candidates"].append(cand)
+                    added += 1
+                hit = {"query": variant, "adapter": adapter, "rank": rank}
+                if adapter not in deferred or adapter not in routes.get("production", ()):
+                    hit["route_added"] = True
+                cand.setdefault("retrieved", []).append(hit)
+        routes_out[variant] = routes
+        if deferred:
+            if still:
+                fixture["deferred_adapters"][variant] = still
+            else:
+                fixture["deferred_adapters"].pop(variant, None)
+        arm_failed = [aid for aid in _last_failed if aid not in deferred]
+        if arm_failed:
+            fixture.setdefault("route_failed_adapters", {})[variant] = arm_failed
+    if "deferred_adapters" in fixture and not fixture["deferred_adapters"]:
+        fixture.pop("deferred_adapters")
+    fixture["routes_added_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    return added
 
 
 def _discovery_rows(discovery) -> list[dict[str, Any]]:
@@ -277,11 +422,20 @@ def capture_case(entry: dict[str, Any], *, depth: int) -> dict[str, Any]:
     production_depth: dict[str, int] = {}
     adapter_queries: dict[str, dict[str, str]] = {}
     discovery_provider: dict[str, str] = {}
+    routes: dict[str, dict[str, list[str]]] = {}
+    deferred_adapters: dict[str, list[str]] = {}
     degraded: list[str] = []
     for variant, query in variants.items():
         print(f"  [{variant}] {query!r}")
         _last_discovery.update(provider=None, primary=None)
+        _last_routes.clear()
+        _last_deferred.clear()
         results, depths, aq = capturer(query, depth)
+        if _last_routes:
+            routes[variant] = {arm: list(ids) for arm, ids in _last_routes.items()}
+        if _last_deferred:
+            deferred_adapters[variant] = list(_last_deferred)
+            print(f"    deferred: {_last_deferred}")
         if _last_discovery["provider"]:
             discovery_provider[variant] = _last_discovery["provider"]
             if _last_discovery["provider"] != _last_discovery["primary"]:
@@ -303,7 +457,12 @@ def capture_case(entry: dict[str, Any], *, depth: int) -> dict[str, Any]:
                     cand["retrieved"] = []
                     cand["label"] = None
                     candidates[key] = cand
-                cand["retrieved"].append({"query": variant, "adapter": adapter, "rank": rank})
+                hit = {"query": variant, "adapter": adapter, "rank": rank}
+                production_route = (routes.get(variant) or {}).get("production")
+                if production_route is not None and adapter not in production_route:
+                    # Queried only for a non-production S13 arm: not in the default pool.
+                    hit["route_added"] = True
+                cand["retrieved"].append(hit)
 
     raw = str(entry.get("query") or "").strip()
     tool = str(entry.get("tool") or "").strip()
@@ -330,6 +489,9 @@ def capture_case(entry: dict[str, Any], *, depth: int) -> dict[str, Any]:
         # (e.g. DuckDuckGo bot challenge -> Wikipedia). Such captures do not
         # represent the production pool and must be re-captured (V15).
         "capture_degraded": degraded or None,
+        # S13: adapter route per A/B arm (scientific captures only).
+        "routes": routes or None,
+        "deferred_adapters": deferred_adapters or None,
         "candidates": list(candidates.values()),
     }
     return {k: v for k, v in fixture.items() if v is not None}
@@ -396,11 +558,20 @@ def main() -> int:
     )
     parser.add_argument("--path", action="append", default=[], help="Only cases on this path (repeatable)")
     parser.add_argument(
+        "--defer-adapter", action="append", default=[],
+        help="Do not call this adapter now (e.g. a spent daily quota); --add-routes fills it later",
+    )
+    parser.add_argument(
+        "--add-routes", action="store_true",
+        help="Extend existing scientific fixtures with the adapters their S13 A/B arms need",
+    )
+    parser.add_argument(
         "--redo-degraded", action="store_true",
         help="Select web/trusted cases whose fixture is missing, degraded, or predates provider tracking",
     )
     args = parser.parse_args()
     _PROVIDER_PAUSE_S["discovery"] = max(0.0, args.discovery_pause)
+    _DEFERRED.update(a.strip().lower() for a in args.defer_adapter if a.strip())
 
     corpus = json.loads(args.corpus.read_text(encoding="utf-8"))
     entries = {e["id"]: e for e in corpus.get("queries") or [] if e.get("id")}
@@ -434,6 +605,19 @@ def main() -> int:
     if not selected:
         print("nothing to capture", file=sys.stderr)
         return 2
+
+    if args.add_routes:
+        for entry in selected:
+            out = ROOT / str(entry.get("fixture") or "")
+            if not out.is_file():
+                print(f"skip {entry['id']}: no fixture to extend", file=sys.stderr)
+                continue
+            fixture = json.loads(out.read_text(encoding="utf-8"))
+            print(f"add routes {entry['id']}")
+            added = add_routes(fixture, depth=args.depth)
+            out.write_text(json.dumps(fixture, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            print(f"  wrote {out.relative_to(ROOT)} (+{added} candidates)")
+        return 0
 
     for entry in selected:
         out = ROOT / str(entry.get("fixture") or f"eval/fixtures/knowledge_quality/{entry['id']}.json")

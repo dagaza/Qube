@@ -22,7 +22,9 @@
     "clinicaltrials_gov": 3,
     "openfda": 3,
     "openalex": 3,
-    "europe_pmc": 3
+    "europe_pmc": 3,
+    "crossref": 3,
+    "arxiv": 3
   },
   "adapter_queries": {
     "production": {
@@ -33,7 +35,9 @@
       "clinicaltrials_gov": "ACE inhibitors heart failure outcomes randomized trials",
       "openfda": "ACE inhibitors heart failure outcomes randomized trials",
       "openalex": "ACE inhibitors heart failure outcomes randomized trials",
-      "europe_pmc": "ACE inhibitors heart failure outcomes randomized trials"
+      "europe_pmc": "ACE inhibitors heart failure outcomes randomized trials",
+      "crossref": "ACE inhibitors heart failure outcomes randomized trials",
+      "arxiv": "ACE inhibitors heart failure"
     },
     "standalone": {
       "pubmed": "ACE inhibitors heart failure",
@@ -43,7 +47,9 @@
       "clinicaltrials_gov": "What do randomized trials show about ACE inhibitor outcomes in heart failure",
       "openfda": "What do randomized trials show about ACE inhibitor outcomes in heart failure",
       "openalex": "What do randomized trials show about ACE inhibitor outcomes in heart failure",
-      "europe_pmc": "What do randomized trials show about ACE inhibitor outcomes in heart failure"
+      "europe_pmc": "What do randomized trials show about ACE inhibitor outcomes in heart failure",
+      "crossref": "What do randomized trials show about ACE inhibitor outcomes in heart failure",
+      "arxiv": "ACE inhibitors heart failure"
     }
   },
   "candidates": [
@@ -1862,6 +1868,342 @@
       ],
       "label": "irrelevant",
       "label_source": "model"
+    },
+    {
+      "title": "Neurohormonal Responses in Congestive Heart Failure: Effect of Ace Inhibitors in Randomized Controlled Clinical Trials",
+      "snippet": "Neurohormonal Responses in Congestive Heart Failure: Effect of Ace Inhibitors in Randomized Controlled Clinical Trials",
+      "full_text": null,
+      "url": "https://doi.org/10.1007/978-1-4613-1237-6_35",
+      "_adapter": "crossref",
+      "authors": [
+        "Inder S. Anand",
+        "Y. Chandrashekhar"
+      ],
+      "venue": "Developments in Cardiovascular Medicine",
+      "publication_date": "1995",
+      "doi": "10.1007/978-1-4613-1237-6_35",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Review for \"SGLT2 Inhibitors Reduce Heart Failure Hospitalization, Cardiovascular Death, and Kidney Outcomes in Type 2 Diabetes: A Meta-Analysis of Randomized Controlled Trials\"",
+      "snippet": "Review for \"SGLT2 Inhibitors Reduce Heart Failure Hospitalization, Cardiovascular Death, and Kidney Outcomes in Type 2 Diabetes: A Meta-Analysis of Randomized Controlled Trials\"",
+      "full_text": null,
+      "url": "https://doi.org/10.1111/dom.71411/v1/review4",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.1111/dom.71411/v1/review4",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Review for \"SGLT2 Inhibitors Reduce Heart Failure Hospitalization, Cardiovascular Death, and Kidney Outcomes in Type 2 Diabetes: A Meta-Analysis of Randomized Controlled Trials\"",
+      "snippet": "Review for \"SGLT2 Inhibitors Reduce Heart Failure Hospitalization, Cardiovascular Death, and Kidney Outcomes in Type 2 Diabetes: A Meta-Analysis of Randomized Controlled Trials\"",
+      "full_text": null,
+      "url": "https://doi.org/10.1111/dom.71411/v1/review5",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.1111/dom.71411/v1/review5",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Patient Specific Congestive Heart Failure Detection From Raw ECG signal",
+      "snippet": "In this study; in order to diagnose congestive heart failure (CHF) patients, non-linear second-order difference plot (SODP) obtained from raw 256 Hz sampled frequency and windowed record with different time of ECG records are used. All of the data rows are labelled with their belongings to classify much more realistically. SODPs are divided into different radius of quadrant regions and numbers of the points fall in the quadrants are computed in order to extract feature vectors. Fisher's linear discriminant, Naive Bayes, Radial basis function, and artificial neural network are used as classifie",
+      "full_text": "In this study; in order to diagnose congestive heart failure (CHF) patients, non-linear second-order difference plot (SODP) obtained from raw 256 Hz sampled frequency and windowed record with different time of ECG records are used. All of the data rows are labelled with their belongings to classify much more realistically. SODPs are divided into different radius of quadrant regions and numbers of the points fall in the quadrants are computed in order to extract feature vectors. Fisher's linear discriminant, Naive Bayes, Radial basis function, and artificial neural network are used as classifier. The results are considered in two step validation methods as general k-fold cross-validation and patient based cross-validation. As a result, it is shown that using neural network classifier with features obtained from SODP, the constructed system could distinguish normal and CHF patients with 100% accuracy rate. Keywords",
+      "url": "https://arxiv.org/abs/1703.00396v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Yakup Kutlu",
+        "Apdullah Yayık",
+        "Esen Yıldırım",
+        "Mustafa Yeniad",
+        "Serdar Yıldırım"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-02-01",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1703.00396v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ASB1 differential methylation in ischaemic cardiomyopathy. Relationship with left ventricular performance in end stage heart failure patients",
+      "snippet": "Aims: Ischaemic cardiomyopathy (ICM) leads to impaired contraction and ventricular dysfunction causing high rates of morbidity and mortality. Epigenomics allows the identification of epigenetic signatures in human diseases. We analyse the differential epigenetic patterns of ASB gene family in ICM patients and relate these alterations to their haemodynamic and functional status. Methods and Results: Epigenomic analysis was carried out using 16 left ventricular (LV) tissue samples, 8 from ICM patients undergoing heart transplantation and 8 from control (CNT) subjects without cardiac disease. We ",
+      "full_text": "Aims: Ischaemic cardiomyopathy (ICM) leads to impaired contraction and ventricular dysfunction causing high rates of morbidity and mortality. Epigenomics allows the identification of epigenetic signatures in human diseases. We analyse the differential epigenetic patterns of ASB gene family in ICM patients and relate these alterations to their haemodynamic and functional status. Methods and Results: Epigenomic analysis was carried out using 16 left ventricular (LV) tissue samples, 8 from ICM patients undergoing heart transplantation and 8 from control (CNT) subjects without cardiac disease. We increased the sample size up to 13 ICM and 10 CNT for RNA-sequencing and to 14 ICM for pyrosequencing analyses. We found a hypermethylated profile (cg11189868) in the ASB1 gene that showed a differential methylation of 0.26 beta difference, P < 0.05. This result was validated by pyrosequencing technique (0.23 beta difference, P < 0.05). Notably, the methylation pattern was strongly related to LV ejection fraction (r = -0.849, P = 0.008) stroke volume (r = -0.929, P = 0.001) and end-systolic and diastolic LV diameters (r = -0.743, P = 0.035 for both). ASB1 showed a down regulation in mRNA levels (-1.2 fold, P < 0.05). Conclusion: Our findings link a specific ASB1 methylation pattern to LV structure and performance in end-stage ICM, opening new therapeutic opportunities and providing new insights regarding which is the functionally relevant genome in the ischemic failing myocardium. Keywords: ischaemic cardiomyopathy; epigenomics; heart failure; left ventricular dysfunction; stroke volume; ASB1.",
+      "url": "https://arxiv.org/abs/1704.00945v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Ana Ortega",
+        "Estefanía Tarazón",
+        "Carolina Gil-Cayuela",
+        "Luis Martínez-Dolz",
+        "Francisca Lago",
+        "José Ramón González-Juanatey",
+        "Juan Sandoval",
+        "Manuel Portolés",
+        "Esther Roselló-Lletí",
+        "Miguel Rivera"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2017-04-04",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1704.00945v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Non-Adaptive Group Testing with Inhibitors",
+      "snippet": "Group testing with inhibitors (GTI) introduced by Farach at al. is studied in this paper. There are three types of items, $d$ defectives, $r$ inhibitors and $n-d-r$ normal items in a population of $n$ items. The presence of any inhibitor in a test can prevent the expression of a defective. For this model, we propose a probabilistic non-adaptive pooling design with a low complexity decoding algorithm. We show that the sample complexity of the number of tests required for guaranteed recovery with vanishing error probability using the proposed algorithm scales as $T=O(d \\log n)$ and $T=O(\\frac{r^",
+      "full_text": "Group testing with inhibitors (GTI) introduced by Farach at al. is studied in this paper. There are three types of items, $d$ defectives, $r$ inhibitors and $n-d-r$ normal items in a population of $n$ items. The presence of any inhibitor in a test can prevent the expression of a defective. For this model, we propose a probabilistic non-adaptive pooling design with a low complexity decoding algorithm. We show that the sample complexity of the number of tests required for guaranteed recovery with vanishing error probability using the proposed algorithm scales as $T=O(d \\log n)$ and $T=O(\\frac{r^2}{d}\\log n)$ in the regimes $r=O(d)$ and $d=o(r)$ respectively. In the former regime, the number of tests meets the lower bound order while in the latter regime, the number of tests is shown to exceed the lower bound order by a $\\log \\frac{r}{d}$ multiplicative factor. When only upper bounds on the number of defectives $D$ and the number of inhibitors $R$ are given instead of their exact values, the sample complexity of the number of tests using the proposed algorithm scales as $T=O(D \\log n)$ and $T=O(R^2 \\log n)$ in the regimes $R^2=O(D)$ and $D=o(R^2)$ respectively. In the former regime, the number of tests meets the lower bound order while in the latter regime, the number of tests exceeds the lower bound order by a $\\log R$ multiplicative factor. The time complexity of the proposed decoding algorithms scale as $O(nT)$.",
+      "url": "https://arxiv.org/abs/1410.8440v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Abhinav Ganesan",
+        "Javad Ebrahimi",
+        "Sidharth Jaggi",
+        "Venkatesh Saligrama"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2014-10-30",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1410.8440v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "ACE inhibitor trials influence prescribing in heart failure",
+      "snippet": "ACE inhibitor trials influence prescribing in heart failure",
+      "full_text": null,
+      "url": "https://doi.org/10.1007/bf03277300",
+      "_adapter": "crossref",
+      "authors": [],
+      "venue": "PharmacoEconomics &amp; Outcomes News",
+      "publication_date": "1998",
+      "doi": "10.1007/bf03277300",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "ACE inhibitor trials influence prescribing in heart failure",
+      "snippet": "ACE inhibitor trials influence prescribing in heart failure",
+      "full_text": null,
+      "url": "https://doi.org/10.2165/00128413-199811200-00002",
+      "_adapter": "crossref",
+      "authors": [
+        "&NA;"
+      ],
+      "venue": "Inpharma Weekly",
+      "publication_date": "1998",
+      "doi": "10.2165/00128413-199811200-00002",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Why Do Patients Decline Heart Failure Trials, and What Should We Do About It?",
+      "snippet": "<title>Abstract</title>\n        <p>Background: Low patient enrollment in randomized clinical trials (RCTs) escalates costs, leads to under-representation of real-world patient populations, and delays generation of knowledge. Limited data exists on why patients decline participation in RCTs and what factors may lead to increased participation rates.\n\nMethods: In-person and telephone interviews were conducted with 19 patients with congestive heart failure who declined participation in RCTs. Interviews were conducted using a structured interview guide. Interviews were transcribed verbatim, and qu",
+      "full_text": "<title>Abstract</title>\n        <p>Background: Low patient enrollment in randomized clinical trials (RCTs) escalates costs, leads to under-representation of real-world patient populations, and delays generation of knowledge. Limited data exists on why patients decline participation in RCTs and what factors may lead to increased participation rates.\n\nMethods: In-person and telephone interviews were conducted with 19 patients with congestive heart failure who declined participation in RCTs. Interviews were conducted using a structured interview guide. Interviews were transcribed verbatim, and qualitative descriptive analysis was performed.\n\nResults: Participants’ median age was 63 years (IQR 51.5-69), 42% were female, and 53% were Black or African-American. Only 6 participants could accurately describe the intervention and clearly understood design of the trial in which they were asked to participate. Most participants made the decision not to participate quickly; only 1 participant took time to deliberate. The most common reasons for not participating were concern for adverse events from the intervention being studied (n=15) and perception of participation being too burdensome (n=10). The most common suggestion provided to increase participant recruitment was involving primary care physicians or cardiologists known to the patients.\n\nConclusion: These findings suggest that patients often decide not to participate in clinical trials quickly, with relatively minimal understanding of the trial. Reasons for declining were heterogeneous, but the most common suggestions for improvement were engaging physicians known to them in the process of recruitment and making participation less burdensome. Addressing these issues may reduce barriers to participation and enhance respect for patients.</p>",
+      "url": "https://doi.org/10.21203/rs.2.10610/v1",
+      "_adapter": "crossref",
+      "authors": [
+        "Supriya Shore",
+        "Candace Speight",
+        "Anita Kelkar",
+        "Divya Kishore",
+        "Neal Dickert"
+      ],
+      "venue": null,
+      "publication_date": "2019",
+      "doi": "10.21203/rs.2.10610/v1",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
     }
-  ]
+  ],
+  "routes": {
+    "production": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ]
+    },
+    "standalone": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ]
+    }
+  },
+  "routes_added_at": "2026-11-24T16:11:06+0100"
 }

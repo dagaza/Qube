@@ -22,7 +22,9 @@
     "clinicaltrials_gov": 3,
     "openfda": 3,
     "openalex": 3,
-    "europe_pmc": 3
+    "europe_pmc": 3,
+    "crossref": 3,
+    "arxiv": 3
   },
   "adapter_queries": {
     "production": {
@@ -33,7 +35,9 @@
       "clinicaltrials_gov": "Clinical trials of zelvoraxine for migraine",
       "openfda": "Clinical trials of zelvoraxine for migraine",
       "openalex": "Clinical trials of zelvoraxine for migraine",
-      "europe_pmc": "Clinical trials of zelvoraxine for migraine"
+      "europe_pmc": "Clinical trials of zelvoraxine for migraine",
+      "crossref": "Clinical trials of zelvoraxine for migraine",
+      "arxiv": "Clinical trials of zelvoraxine for migraine"
     },
     "standalone": {
       "pubmed": "What do clinical trials show about zelvoraxine for migraine",
@@ -43,7 +47,9 @@
       "clinicaltrials_gov": "What do clinical trials show about zelvoraxine for migraine",
       "openfda": "What do clinical trials show about zelvoraxine for migraine",
       "openalex": "What do clinical trials show about zelvoraxine for migraine",
-      "europe_pmc": "What do clinical trials show about zelvoraxine for migraine"
+      "europe_pmc": "What do clinical trials show about zelvoraxine for migraine",
+      "crossref": "What do clinical trials show about zelvoraxine for migraine",
+      "arxiv": "What do clinical trials show about zelvoraxine for migraine"
     }
   },
   "candidates": [
@@ -811,6 +817,344 @@
       ],
       "label": "irrelevant",
       "label_source": "model"
+    },
+    {
+      "title": "Methodology of clinical trials in migraine",
+      "snippet": "Methodology of clinical trials in migraine",
+      "full_text": null,
+      "url": "https://doi.org/10.1007/978-1-349-08943-7_5",
+      "_adapter": "crossref",
+      "authors": [
+        "Jes Olesen",
+        "Peer Tfelt-Hansen"
+      ],
+      "venue": "Methods in Clinical Trials in Neurology",
+      "publication_date": "1988",
+      "doi": "10.1007/978-1-349-08943-7_5",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Conduct of Clinical Trials in Acute Migraine Treatment and Their Interpretation",
+      "snippet": "Conduct of Clinical Trials in Acute Migraine Treatment and Their Interpretation",
+      "full_text": null,
+      "url": "https://doi.org/10.1159/000061604",
+      "_adapter": "crossref",
+      "authors": [
+        "P. Tfelt-Hansen",
+        "B.H. Rasmussen"
+      ],
+      "venue": "Monographs in Clinical Neuroscience",
+      "publication_date": "2000",
+      "doi": "10.1159/000061604",
+      "peer_reviewed": false,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "How transparent are migraine clinical trials?",
+      "snippet": "How transparent are migraine clinical trials?",
+      "full_text": null,
+      "url": "https://doi.org/10.1212/wnl.0000000000000866",
+      "_adapter": "crossref",
+      "authors": [
+        "Faustine L. Dufka",
+        "Robert H. Dworkin",
+        "Michael C. Rowbotham"
+      ],
+      "venue": "Neurology",
+      "publication_date": "2014",
+      "doi": "10.1212/wnl.0000000000000866",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Enhancing Longitudinal Clinical Trial Efficiency with Digital Twins and Prognostic Covariate-Adjusted Mixed Models for Repeated Measures (PROCOVA-MMRM)",
+      "snippet": "Clinical trials are critical in advancing medical treatments but often suffer from immense time and financial burden. Advances in statistical methodologies and artificial intelligence (AI) present opportunities to address these inefficiencies. Here we introduce Prognostic Covariate-Adjusted Mixed Models for Repeated Measures (PROCOVA-MMRM) as an advantageous combination of prognostic covariate adjustment (PROCOVA) and Mixed Models for Repeated Measures (MMRM). PROCOVA-MMRM utilizes time-matched prognostic scores generated from AI models to enhance the precision of treatment effect estimators f",
+      "full_text": "Clinical trials are critical in advancing medical treatments but often suffer from immense time and financial burden. Advances in statistical methodologies and artificial intelligence (AI) present opportunities to address these inefficiencies. Here we introduce Prognostic Covariate-Adjusted Mixed Models for Repeated Measures (PROCOVA-MMRM) as an advantageous combination of prognostic covariate adjustment (PROCOVA) and Mixed Models for Repeated Measures (MMRM). PROCOVA-MMRM utilizes time-matched prognostic scores generated from AI models to enhance the precision of treatment effect estimators for longitudinal continuous outcomes, enabling reductions in sample size and enrollment times. We first provide a description of the background and implementation of PROCOVA-MMRM, followed by two case study reanalyses where we compare the performance of PROCOVA-MMRM versus the unadjusted MMRM. These reanalyses demonstrate significant improvements in statistical power and precision in clinical indications with unmet medical need, specifically Alzheimer's Disease (AD) and Amyotrophic Lateral Sclerosis (ALS). We also explore the potential for sample size reduction with the prospective implementation of PROCOVA-MMRM, finding that the same or better results could have been achieved with fewer participants in these historical trials if the enhanced precision provided by PROCOVA-MMRM had been prospectively leveraged. We also confirm the robustness of the statistical properties of PROCOVA-MMRM in a variety of realistic simulation scenarios. Altogether, PROCOVA-MMRM represents a rigorous method of incorporating advances in the prediction of time-matched prognostic scores generated by AI into longitudinal analysis, potentially reducing both the cost and time required to bring new treatments to patients while adhering to regulatory standards.",
+      "url": "https://arxiv.org/abs/2404.17576v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Jessica L. Ross",
+        "Arman Sabbaghi",
+        "Run Zhuang",
+        "Daniele Bertolini",
+        "the Alzheimer's Disease Cooperative Study",
+        "Alzheimer's Disease Neuroimaging Initiative",
+        "the Critical Path for Alzheimer's Disease Database",
+        "the European Prevention of Alzheimer's Disease",
+        "Consortium",
+        "the Pooled Resource Open-Access ALS Clinical Trials Consortium"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2024-04-26",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2404.17576v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Small-Sample Behavior of Novel Phase I Cancer Trial Designs",
+      "snippet": "Novel dose-finding designs, using estimation to assign the best estimated maximum- tolerated-dose (MTD) at each point in the experiment, most commonly via Bayesian techniques, have recently entered large-scale implementation in Phase I cancer clinical trials. We examine the small-sample behavior of these \"Bayesian Phase I\" (BP1) designs, and also of non-Bayesian designs sharing the same main \"long-memory\" traits (hereafter: LMP1s). For all LMP1s examined, the number of cohorts treated at the true MTD (denoted here as n*) was highly variable between numerical runs drawn from the same toxicity-t",
+      "full_text": "Novel dose-finding designs, using estimation to assign the best estimated maximum- tolerated-dose (MTD) at each point in the experiment, most commonly via Bayesian techniques, have recently entered large-scale implementation in Phase I cancer clinical trials. We examine the small-sample behavior of these \"Bayesian Phase I\" (BP1) designs, and also of non-Bayesian designs sharing the same main \"long-memory\" traits (hereafter: LMP1s). For all LMP1s examined, the number of cohorts treated at the true MTD (denoted here as n*) was highly variable between numerical runs drawn from the same toxicity-threshold distribution, especially when compared with \"up-and-down\" (U&D) short-memory designs. Further investigation using the same set of thresholds in permuted order, produced a nearly-identical magnitude of variability in n*. Therefore, this LMP1 behavior is driven by a strong sensitivity to the order in which toxicity thresholds appear in the experiment. We suggest that the sensitivity is related to LMP1's tendency to \"settle\" early on a specific dose level - a tendency caused by the repeated likelihood-based \"winner-takes-all\" dose assignment rule, which grants the early cohorts a disproportionately large influence upon experimental trajectories. Presently, U&D designs offer a simpler and more stable alternative, with roughly equivalent MTD estimation performance. A promising direction for combining the two approaches is briefly discussed (note: the '3+3' protocol is not a U&D design).",
+      "url": "https://arxiv.org/abs/1202.4962v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Assaf P. Oron",
+        "Peter D. Hoff"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2012-02-22",
+      "doi": "10.1177/1740774512469311",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1202.4962v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Leveraging contact network structure in the design of cluster randomized trials",
+      "snippet": "Background: In settings where proof-of-principle trials have succeeded but the effectiveness of different forms of implementation remains uncertain, trials that not only generate information about intervention effects but also provide public health benefit would be useful. Cluster randomized trials (CRT) capture both direct and indirect intervention effects; the latter depends heavily on contact networks within and across clusters. We propose a novel class of connectivity-informed trial designs that leverages information about such networks in order to improve public health impact and preserve",
+      "full_text": "Background: In settings where proof-of-principle trials have succeeded but the effectiveness of different forms of implementation remains uncertain, trials that not only generate information about intervention effects but also provide public health benefit would be useful. Cluster randomized trials (CRT) capture both direct and indirect intervention effects; the latter depends heavily on contact networks within and across clusters. We propose a novel class of connectivity-informed trial designs that leverages information about such networks in order to improve public health impact and preserve ability to detect intervention effects. Methods: We consider CRTs in which the order of enrollment is based on the total number of ties between individuals across clusters (based either on the total number of inter-cluster connections or on connections only to untreated clusters). We include options analogous both to traditional Parallel and Stepped Wedge designs. We also allow for control clusters to be \"held-back\" from re-randomization for some period. We investigate the performance epidemic control and power to detect vaccine effect performance of these designs by simulating vaccination trials during an SEIR-type epidemic using a network-structured agent-based model. Results: In our simulations, connectivity-informed designs have lower peak infectiousness than comparable traditional designs and reduce cumulative incidence by 20%, but with little impact on time to end of epidemic and reduced power to detect differences in incidence across clusters. However even a brief \"holdback\" period restores most of the power lost compared to traditional approaches. Conclusion: Incorporating information about cluster connectivity in design of CRTs can increase their public health impact, especially in acute outbreak settings, with modest cost in power to detect an effective intervention.",
+      "url": "https://arxiv.org/abs/1610.09926v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Guy Harling",
+        "Rui Wang",
+        "Jukka-Pekka Onnela",
+        "Victor De Gruttola"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2016-10-28",
+      "doi": "10.1177/1740774516673355",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "1610.09926v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        },
+        {
+          "query": "standalone",
+          "adapter": "arxiv",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "What can we do about exploratory analyses in clinical trials?",
+      "snippet": "What can we do about exploratory analyses in clinical trials?",
+      "full_text": null,
+      "url": "https://doi.org/10.1016/j.cct.2015.09.012",
+      "_adapter": "crossref",
+      "authors": [
+        "Lem Moyé"
+      ],
+      "venue": "Contemporary Clinical Trials",
+      "publication_date": "2015",
+      "doi": "10.1016/j.cct.2015.09.012",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Middle meningeal artery embolization: what clinical trials demonstrate, and what their results do not show",
+      "snippet": "Middle meningeal artery embolization: what clinical trials demonstrate, and what their results do not show",
+      "full_text": null,
+      "url": "https://doi.org/10.1016/j.neurad.2026.101609",
+      "_adapter": "crossref",
+      "authors": [
+        "Jildaz Caroff"
+      ],
+      "venue": "Journal of Neuroradiology",
+      "publication_date": "2026",
+      "doi": "10.1016/j.neurad.2026.101609",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Inference Without Stakes: What Large Language Models Do-and Do Not-Show About Intelligence",
+      "snippet": "Large language models have made a powerful case for the reach of statistical inference. They produce fluent language, solve heterogeneous problems, and exhibit forms of abstraction that cannot be dismissed as simple retrieval. Their success, however, does not establish that inference is sufficient for intelligence. That conclusion follows only by sliding between distinct ideas: inferential competence, task performance, agency, and phenomenal awareness. This essay separates them. It argues that inference is always organized by a prior structure of relevance-a specification of which distinctions",
+      "full_text": "Large language models have made a powerful case for the reach of statistical inference. They produce fluent language, solve heterogeneous problems, and exhibit forms of abstraction that cannot be dismissed as simple retrieval. Their success, however, does not establish that inference is sufficient for intelligence. That conclusion follows only by sliding between distinct ideas: inferential competence, task performance, agency, and phenomenal awareness. This essay separates them. It argues that inference is always organized by a prior structure of relevance-a specification of which distinctions, errors, goals, and outcomes matter. In biological agents, that relevance is continually shaped through self-maintenance, embodied action, developmental history, and exposure to the consequences of action. Present language models largely inherit it from humangenerated corpora, training objectives, prompts, evaluation procedures, and deployment institutions. They therefore possess what I call borrowed worldliness: genuine competence acquired from the traces of human engagement with the world, without yet displaying the autonomous normative organization characteristic of ecological agency. Drawing on active inference, ecological psychology, Umwelt theory, and enactivism, the essay develops a substrate-neutral account of this distinction. The argument neither denies the capacities of language models nor rules out artificial agency. It establishes a narrower conclusion: successful inference, even when remarkably general, is not by itself sufficient evidence of an agent for whom anything is at stake.",
+      "url": "https://doi.org/10.2139/ssrn.7537048",
+      "_adapter": "crossref",
+      "authors": [
+        "Balaraju Battu"
+      ],
+      "venue": null,
+      "publication_date": "2026",
+      "doi": "10.2139/ssrn.7537048",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "standalone",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
     }
-  ]
+  ],
+  "routes": {
+    "production": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ]
+    },
+    "standalone": {
+      "production": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "pubmed",
+        "nice",
+        "cdc",
+        "who",
+        "clinicaltrials_gov",
+        "openfda",
+        "openalex",
+        "europe_pmc"
+      ]
+    }
+  },
+  "routes_added_at": "2026-11-24T16:11:55+0100"
 }

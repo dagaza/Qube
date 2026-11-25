@@ -369,6 +369,35 @@ def _ensure_physics_arxiv_slot(
     return [best, *trimmed]
 
 
+def apply_discipline_slots(
+    kept: list[dict[str, Any]],
+    slot_pool: list[dict[str, Any]],
+    *,
+    discipline: str,
+    query: str,
+    max_results: int,
+) -> list[dict[str, Any]]:
+    """Run every discipline slot reservation (chemistry, economics, physics).
+
+    Slots may only reserve a row from ``slot_pool``: rows that passed the
+    relevance gate, or the whole pool when UNSCORED (as before S4). Shared by
+    ``run`` and the offline eval (S13).
+    """
+    for ensure in (
+        _ensure_chemistry_pubchem_slot,
+        _ensure_economics_repec_slot,
+        _ensure_physics_arxiv_slot,
+    ):
+        kept = ensure(
+            kept,
+            slot_pool,
+            discipline=discipline,
+            query=query,
+            max_results=max_results,
+        )
+    return kept
+
+
 WARNING_ADAPTER_TIMEOUT = "adapter_timeout"
 # Plan S8: extra query wordings go only to OpenAlex, the one host that took a
 # second request in the same turn without a 429 in the S8 live runs. arXiv's
@@ -673,26 +702,9 @@ class ScientificEvidencePipeline:
             question=semantic or query,
         )
         kept, rejected = ranking.kept, ranking.rejected
-        # Discipline slots may only reserve a row that passed the relevance gate
-        # (the whole pool when UNSCORED, as before S4).
-        slot_pool = ranking.slot_pool
-        kept = _ensure_chemistry_pubchem_slot(
+        kept = apply_discipline_slots(
             kept,
-            slot_pool,
-            discipline=discipline_match.discipline,
-            query=query,
-            max_results=budget,
-        )
-        kept = _ensure_economics_repec_slot(
-            kept,
-            slot_pool,
-            discipline=discipline_match.discipline,
-            query=query,
-            max_results=budget,
-        )
-        kept = _ensure_physics_arxiv_slot(
-            kept,
-            slot_pool,
+            ranking.slot_pool,
             discipline=discipline_match.discipline,
             query=query,
             max_results=budget,

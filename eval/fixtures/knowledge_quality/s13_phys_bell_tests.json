@@ -1,0 +1,322 @@
+{
+  "schema_version": 2,
+  "id": "s13_phys_bell_tests",
+  "path": "scientific_evidence",
+  "category": "heuristic_trigger",
+  "description": "S13: physics discipline route + arXiv slot.",
+  "query_raw": "@[tool:evidence] What do loophole-free Bell test experiments show about quantum entanglement?",
+  "query_clean": "What do loophole-free Bell test experiments show about quantum entanglement?",
+  "retrieval_query": "What do loophole-free Bell test experiments show about quantum entanglement?",
+  "standalone_question": "What do loophole-free Bell test experiments show about quantum entanglement?",
+  "gold_subject": "loophole-free Bell tests",
+  "gold_facet": "findings",
+  "budget": 3,
+  "history": [],
+  "captured_at": "2026-11-24T16:08:13+0100",
+  "capture_profile": "balanced",
+  "production_depth": {
+    "arxiv": 3,
+    "inspire_hep": 3,
+    "crossref": 3,
+    "openalex": 3
+  },
+  "adapter_queries": {
+    "production": {
+      "arxiv": "What do loophole-free Bell test experiments show about quantum entanglement",
+      "inspire_hep": "What do loophole-free Bell test experiments show about quantum entanglement",
+      "crossref": "What do loophole-free Bell test experiments show about quantum entanglement",
+      "openalex": "What do loophole-free Bell test experiments show about quantum entanglement"
+    }
+  },
+  "routes": {
+    "production": {
+      "production": [
+        "arxiv",
+        "inspire_hep",
+        "openalex"
+      ],
+      "no_discipline_routing": [
+        "openalex",
+        "crossref",
+        "arxiv"
+      ],
+      "no_query_type_routing": [
+        "arxiv",
+        "inspire_hep",
+        "openalex"
+      ]
+    }
+  },
+  "candidates": [
+    {
+      "title": "Cqlib: A High-Performance Software Stack for Quantum Computing",
+      "snippet": "This paper presents Cqlib, a high-performance software stack for quantum computing built around a unified quantum circuit model. Its native Rust core provides efficient implementations of circuit processing, quantum-state and operator computation, compilation, and optimization, while Python and C interfaces support algorithm development and system integration. Cqlib covers quantum program construction, simulation, analysis, compilation, device adaptation, and result processing under consistent program semantics. Through OpenQASM and the Quantum Control Instruction Set (QCIS), Cqlib supports pr",
+      "full_text": "This paper presents Cqlib, a high-performance software stack for quantum computing built around a unified quantum circuit model. Its native Rust core provides efficient implementations of circuit processing, quantum-state and operator computation, compilation, and optimization, while Python and C interfaces support algorithm development and system integration. Cqlib covers quantum program construction, simulation, analysis, compilation, device adaptation, and result processing under consistent program semantics. Through OpenQASM and the Quantum Control Instruction Set (QCIS), Cqlib supports program representation and hardware-oriented execution. Cqlib further provides backend interfaces for device execution, with Cqlib-Tianyan serving as one implementation for QCIS-compatible quantum hardware. Evaluations using parameterized compilation tasks from Benchpress and related tests show that Cqlib achieves good functional coverage, compilation correctness, and execution efficiency within the evaluated task scope. We develop Cqlib-Algorithm as a modular library of reusable operators and composable components for widely used quantum algorithms, including quantum search, phase estimation, and variational algorithms, with additional support for error mitigation. To complement these building blocks with domain-specific workflows, we further develop Cqlib-VQE, Cqlib-QAOA, and Cqlib-QML for application-level studies in quantum chemistry, combinatorial optimization, and quantum machine learning, respectively. Cqlib also integrates source-grounded Skills and MCP-based tools to support agent-assisted program generation, backend execution, and result-guided workflow refinement. Overall, Cqlib provides a unified and extensible software foundation that connects quantum algorithm development, simulation, compilation, and execution on QCIS-compatible quantum hardware.",
+      "url": "https://arxiv.org/abs/2611.29983v1",
+      "_adapter": "arxiv",
+      "authors": [
+        "Tianyan Quantum Group"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2026-11-23",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2611.29983v1",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 0
+        }
+      ],
+      "label": "irrelevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Macroscopic polarization entanglement and loophole-free Bell inequality test",
+      "snippet": "The question whether Quantum Mechanics describes all aspects of both the micro-world of elementary particles and living organisms adequately is still open. A Bell inequality test without locality and detection loopholes will deliver the answer when applied to macroscopic systems. Here we show that an experimentally feasible loophole-free Bell test is possible using only multi-photon polarization entanglement and linear optics. We apply a preselection protocol which produces genuine macroscopic superpositions and entanglement, thus eliminating postselection and dark counts. Such superpositions ",
+      "full_text": "The question whether Quantum Mechanics describes all aspects of both the micro-world of elementary particles and living organisms adequately is still open. A Bell inequality test without locality and detection loopholes will deliver the answer when applied to macroscopic systems. Here we show that an experimentally feasible loophole-free Bell test is possible using only multi-photon polarization entanglement and linear optics. We apply a preselection protocol which produces genuine macroscopic superpositions and entanglement, thus eliminating postselection and dark counts. Such superpositions are usually difficult to generate. Their study paves the way for testing the quantum nature of biological organisms such as plants, viruses and human brain. Our results find application in creating quantum superpositions of living organisms and their manipulation.",
+      "url": "https://arxiv.org/abs/0909.1545v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "M. Stobińska",
+        "P. Horodecki",
+        "A. Buraczewski",
+        "R. W. Chhajlany",
+        "R. Horodecki",
+        "G. Leuchs"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2009-09-08",
+      "doi": null,
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "0909.1545v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Loophole-free Bell tests with randomly chosen subsets of measurement settings",
+      "snippet": "There are bipartite quantum nonlocal correlations requiring very low detection efficiency to reach the loophole-free regime but that need too many measurement settings to be practical for actual experiments. This leads to the general problem of what can be concluded about loophole-free Bell nonlocality if only a random subset of these settings is tested. Here we develop a method to address this problem. We show that, in some cases, it is possible to detect loophole-free Bell nonlocality testing only a small random fraction of the settings. The prize to pay is a higher detection efficiency. The",
+      "full_text": "There are bipartite quantum nonlocal correlations requiring very low detection efficiency to reach the loophole-free regime but that need too many measurement settings to be practical for actual experiments. This leads to the general problem of what can be concluded about loophole-free Bell nonlocality if only a random subset of these settings is tested. Here we develop a method to address this problem. We show that, in some cases, it is possible to detect loophole-free Bell nonlocality testing only a small random fraction of the settings. The prize to pay is a higher detection efficiency. The method allows for a novel approach to the design of loophole-free Bell tests in which, given the dimension of the local system, the visibility, and the detection efficiency available, one can calculate the fraction of the contexts needed to reach the detection-loophole-free regime. The results also enforce a different way of thinking about the costs of classically simulating quantum nonlocality, as it shows that the amount of resources that are needed can be made arbitrarily large simply by considering more contexts.",
+      "url": "https://arxiv.org/abs/2309.00442v2",
+      "_adapter": "arxiv",
+      "authors": [
+        "Jaskaran Singh",
+        "Adán Cabello"
+      ],
+      "venue": "arXiv",
+      "publication_date": "2023-09-01",
+      "doi": "10.1103/PhysRevA.109.022204",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": true,
+      "document_type": "preprint",
+      "arxiv_id": "2309.00442v2",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "arxiv",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Is Quantum Theory Falsified By Loophole-free Bell Experiments?",
+      "snippet": "Quantum theory predicts a whole class of non-local phenomena, observable via coincident detection of EPR-type systems. An important feature of these observations is their non-signaling character. Technically, non-local phenomena should only be observable for post-selected sub-ensembles, rather than for complete projections. Otherwise, superluminal telegraphy becomes possible. Yet, a couple of recent Bell experiments reported the observation of quantum non-locality for 100% of the detected events. Does it follow that signaling non-locality is possible? If so, was quantum theory falsified? This ",
+      "full_text": "Quantum theory predicts a whole class of non-local phenomena, observable via coincident detection of EPR-type systems. An important feature of these observations is their non-signaling character. Technically, non-local phenomena should only be observable for post-selected sub-ensembles, rather than for complete projections. Otherwise, superluminal telegraphy becomes possible. Yet, a couple of recent Bell experiments reported the observation of quantum non-locality for 100% of the detected events. Does it follow that signaling non-locality is possible? If so, was quantum theory falsified? This puzzle is solved by revisiting the interpretation of the spin projection operator, with special focus on its dual nature (combining spectral decomposition with spectral transformation). &amp;ldquo;Component switching&amp;rdquo; is not a loophole, but rather a requirement of quantum mechanics in this context, because sharp spin projections are partial (as well as partially overlapping). Surprisingly, it is possible to pre-select incompatible statistical sub-ensembles with heralded detection and to reveal the same behavior as in post-selected observations. Therefore, Bell experiments confirm the predictions of quantum theory without violating the non-signaling principle.",
+      "url": "https://doi.org/10.20944/preprints202202.0049.v1",
+      "_adapter": "crossref",
+      "authors": [
+        "Ghenadie N. Mardari"
+      ],
+      "venue": null,
+      "publication_date": "2022",
+      "doi": "10.20944/preprints202202.0049.v1",
+      "peer_reviewed": false,
+      "preprint": true,
+      "open_access": null,
+      "document_type": "preprint",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 0,
+          "route_added": true
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Loophole-Free Bell Inequality Test via Preselected Macro-Qubit Entanglement",
+      "snippet": "Loophole-Free Bell Inequality Test via Preselected Macro-Qubit Entanglement",
+      "full_text": null,
+      "url": "https://doi.org/10.1364/cleo.2010.cmcc3",
+      "_adapter": "crossref",
+      "authors": [
+        "M. Stobińska",
+        "P. Horodecki",
+        "R. Chhajlany",
+        "R. Horodecki"
+      ],
+      "venue": "Conference on Lasers and Electro-Optics 2010",
+      "publication_date": "2010",
+      "doi": "10.1364/cleo.2010.cmcc3",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 1,
+          "route_added": true
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Quantum entanglement, loophole free",
+      "snippet": "Quantum entanglement, loophole free",
+      "full_text": null,
+      "url": "https://doi.org/10.1063/pt.5.7221",
+      "_adapter": "crossref",
+      "authors": [
+        "Johanna L. Miller"
+      ],
+      "venue": "Physics Today",
+      "publication_date": "2015",
+      "doi": "10.1063/pt.5.7221",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": null,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "crossref",
+          "rank": 2,
+          "route_added": true
+        }
+      ],
+      "label": "relevant",
+      "label_source": "model"
+    },
+    {
+      "title": "Detection-Loophole-Free Test of Quantum Nonlocality, and Applications",
+      "snippet": "We present a source of entangled photons that violates a Bell inequality free of the \"fair-sampling\" assumption, by over 7 standard deviations. This violation is the first reported experiment with photons to close the detection loophole, and we demonstrate enough \"efficiency\" overhead to eventually perform a fully loophole-free test of local realism. The entanglement quality is verified by maximally violating additional Bell tests, testing the upper limit of quantum correlations. Finally, we use the source to generate \"device-independent\" private quantum random numbers at rates over 4 orders o",
+      "full_text": "We present a source of entangled photons that violates a Bell inequality free of the \"fair-sampling\" assumption, by over 7 standard deviations. This violation is the first reported experiment with photons to close the detection loophole, and we demonstrate enough \"efficiency\" overhead to eventually perform a fully loophole-free test of local realism. The entanglement quality is verified by maximally violating additional Bell tests, testing the upper limit of quantum correlations. Finally, we use the source to generate \"device-independent\" private quantum random numbers at rates over 4 orders of magnitude beyond previous experiments.",
+      "url": "https://openalex.org/W2006166792",
+      "_adapter": "openalex",
+      "authors": [
+        "Bradley Christensen",
+        "Kevin T. McCusker",
+        "Joseph B. Altepeter",
+        "Brice Calkins",
+        "Thomas Gerrits",
+        "Adriana E. Lita",
+        "Aaron Miller",
+        "Lynden K. Shalm",
+        "Yu Zhang",
+        "Sae Woo Nam",
+        "Nicolas Brunner",
+        "Charles Ci Wen Lim",
+        "Nicolas Gisin",
+        "Paul G. Kwiat"
+      ],
+      "venue": "Physical Review Letters",
+      "publication_date": "2013",
+      "doi": "10.1103/physrevlett.111.130406",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 0
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Loopholes in Bell inequality tests of local realism",
+      "snippet": "Bell inequalities are intended to show that local realist theories cannot describe the world. A local realist theory is one where physical properties are defined prior to and independent of measurement, and no physical influence can propagate faster than the speed of light. Quantum-mechanical predictions for certain experiments violate the Bell inequality while a local realist theory cannot, and this shows that a local realist theory cannot give those quantum-mechanical predictions. However, because of unexpected circumstances or 'loopholes' in available experiment tests, local realist theorie",
+      "full_text": "Bell inequalities are intended to show that local realist theories cannot describe the world. A local realist theory is one where physical properties are defined prior to and independent of measurement, and no physical influence can propagate faster than the speed of light. Quantum-mechanical predictions for certain experiments violate the Bell inequality while a local realist theory cannot, and this shows that a local realist theory cannot give those quantum-mechanical predictions. However, because of unexpected circumstances or 'loopholes' in available experiment tests, local realist theories can reproduce the data from these experiments. This paper reviews such loopholes, what effect they have on Bell inequality tests, and how to avoid them in experiment. Avoiding all these simultaneously in one experiment, usually called a 'loophole-free' or 'definitive' Bell test, remains an open task, but is very important for technological tasks such as device-independent security of quantum cryptography, and ultimately for our understanding of the world. This article is part of a special issue of Journal of Physics A: Mathematical and Theoretical devoted to '50 years of Bell's theorem'.",
+      "url": "https://openalex.org/W1990727816",
+      "_adapter": "openalex",
+      "authors": [
+        "Jan-Åke Larsson"
+      ],
+      "venue": "Journal of Physics A Mathematical and Theoretical",
+      "publication_date": "2014",
+      "doi": "10.1088/1751-8113/47/42/424003",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 1
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    },
+    {
+      "title": "Realistic loophole-free Bell test with atom–photon entanglement",
+      "snippet": "Realistic loophole-free Bell test with atom–photon entanglement",
+      "full_text": null,
+      "url": "https://openalex.org/W1995954448",
+      "_adapter": "openalex",
+      "authors": [
+        "Colin Teo",
+        "Mateus Araújo",
+        "Marco Túlio Quintino",
+        "Jiří Minář",
+        "Daniel Cavalcanti",
+        "Valerio Scarani",
+        "Marcelo Terra Cunha",
+        "Marcelo França Santos"
+      ],
+      "venue": "Nature Communications",
+      "publication_date": "2013",
+      "doi": "10.1038/ncomms3104",
+      "peer_reviewed": true,
+      "preprint": false,
+      "open_access": true,
+      "document_type": "journal_abstract",
+      "retrieved": [
+        {
+          "query": "production",
+          "adapter": "openalex",
+          "rank": 2
+        }
+      ],
+      "label": "partial",
+      "label_source": "model"
+    }
+  ],
+  "routes_added_at": "2026-11-25T01:02:37+0100"
+}
