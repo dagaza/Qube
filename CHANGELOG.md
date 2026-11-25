@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+## [1.3.60] - 2026-11-25
+
+### Added
+- **Knowledge:** Optional **relevance reranker** for web and knowledge sources — local ONNX cross-encoder (~87 MB) with **Settings → Knowledge** toggle and one-click download; wide parallel recall, query resolution, cross-encoder relevance gating, sufficiency/consolidation, and richer **evidence packs** in prompts for Evidence, Live Sources, and related routes (retrieval quality S1–S13).
+- **Developer tooling:** Knowledge-quality capture and evaluation (`tools/capture_knowledge_fixture.py`, graded metrics and A/B harnesses); assessment roadmap in `docs/knowledge_retrieval_quality_assessment.md`.
+
+### Changed
+- **Knowledge routing:** Scientific adapter selection is discipline-driven (legacy query-type routing removed); recency and ranking heuristics tuned across scientific, trusted, finance, and web paths.
+- **Web retrieval:** Balanced depth may fetch up to **two** result pages (tooltip in **Settings → Knowledge**).
+
 ### Fixed
 - **Release / Chocolatey:** The push script attempts every package before failing, so a `qube-cuda` push rejected while an older version is stuck in moderation (HTTP 403) no longer blocks the `qube` and `qube-vulkan` pushes.
 - **CI / knowledge eval:** `tools/evaluate_knowledge_quality.py` no longer crashes on Windows cp1252 consoles when printing the recency summary.
