@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Added
+- **Release tooling:** `Qube --self-check-bundle <result.json>` checks, offline and before Qt or any model loads, that a packaged build can import the relevance reranker and correct a misspelled word; the Linux, Windows and macOS smoke scripts run it, so a build missing either part fails its smoke job.
+- **Developer docs:** Knowledge-retrieval follow-up plan (`docs/knowledge_retrieval_followups.md`, stages S14+); `docs/knowledge_retrieval_quality_assessment.md` is closed.
+
+### Fixed
+- **Knowledge / packaging:** Installed builds now include the spellchecker's English word list, so web and knowledge searches again add a correctly spelt variant of a misspelled query word. 1.3.60 builds left out `spellchecker/resources/en.json.gz`, which switched the variant off; the build now stops if the file is missing.
+- **Native engine:** The cap that keeps `max_tokens` within the loaded context window now runs. It was skipped on every turn, logging `[OutputTokenBudget] clamp skipped`; llama-cpp's own limit meant no request overflowed.
+- **Tests:** The scientific evidence test no longer calls live APIs, and the bootstrap download tests no longer write into the developer's `~/.qube`.
+
 ## [1.3.60] - 2026-11-25
 
 ### Added
