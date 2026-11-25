@@ -162,7 +162,8 @@ _ADAPTER_STRATEGY: dict[str, AdapterReadinessMeta] = {
     ),
     "ietf_rfc": AdapterReadinessMeta(
         "production",
-        "IETF Datatracker document search (anonymous).",
+        "IETF Datatracker document search for RFCs (anonymous); since plan S22 (D38) "
+        "a title term plus an abstract term, ranked locally.",
     ),
     "bls": AdapterReadinessMeta(
         "production",
