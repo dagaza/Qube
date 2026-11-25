@@ -49,6 +49,20 @@ def test_early_splash_is_static_opaque_branded_card(qapp_cls) -> None:
     app.processEvents()
 
 
+def test_splash_title_label_qss_pins_bold_inter_typography() -> None:
+    """App QSS sets QLabel to 400 during MainWindow boot; splash title must resist it."""
+    from ui.branded_theme import (
+        SPLASH_TITLE_FONT_FAMILY,
+        SPLASH_TITLE_FONT_WEIGHT,
+        splash_title_label_qss,
+    )
+
+    qss = splash_title_label_qss()
+    assert SPLASH_TITLE_FONT_FAMILY.strip('"') in qss
+    assert f"font-weight: {SPLASH_TITLE_FONT_WEIGHT} !important" in qss
+    assert "font-size: 22px" in qss
+
+
 def test_qss_color_produces_hex_for_cross_platform_splash_qss() -> None:
     from ui.branded_theme import qss_color, splash_split_card_qss
 

@@ -53,6 +53,25 @@ class UiPerfProbeEnvTests(unittest.TestCase):
         self.assertEqual(payload["event"], "tools_pane_toggle_end")
         self.assertEqual(payload["counters"]["wallpaper.paint"], 3)
 
+    def test_window_resize_session_summary_json_logged(self) -> None:
+        with patch.dict("os.environ", {"QUBE_UI_PERF": "1"}, clear=True):
+            probe.reset_ui_perf_probe_state()
+            probe.begin_window_resize_session(coalesce_interval_ms=120)
+            probe.record_window_resize_frame(width=1200, height=900)
+            probe.record_window_resize_frame(width=1210, height=905)
+            probe.ui_perf_count("wallpaper.background_cache_build", 1)
+            with self.assertLogs("Qube.UiPerf", level="INFO") as captured:
+                probe.finish_window_resize_session()
+        summary_line = next(
+            line for line in captured.output if "window_resize_session_summary" in line
+        )
+        payload = json.loads(summary_line.split("window_resize_session_summary ", 1)[1])
+        self.assertEqual(payload["event"], "window_resize_session_end")
+        self.assertEqual(payload["main_resize_events"], 2)
+        self.assertEqual(payload["start_size"], [1200, 900])
+        self.assertEqual(payload["end_size"], [1210, 905])
+        self.assertEqual(payload["counters"]["wallpaper.background_cache_build"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

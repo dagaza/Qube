@@ -31,6 +31,11 @@ def qss_color(r: int, g: int, b: int, alpha: float = 1.0) -> str:
 # Not derived from user theme overrides (same policy as logo/confetti).
 SPLASH_SURFACE_BG = "#12151f"
 SPLASH_TITLE_COLOR = "#f8fafc"
+# Bundled Inter stops at Bold (700); pinning widget QSS beats app ``QLabel { 400 }``
+# without synthetic ExtraBold emboldening when ``MainWindow`` theme QSS loads.
+SPLASH_TITLE_FONT_FAMILY = '"Inter"'
+SPLASH_TITLE_FONT_SIZE_PX = 22
+SPLASH_TITLE_FONT_WEIGHT = "700"
 SPLASH_HINT_COLOR = qss_color(148, 163, 184, 0.9)
 SPLASH_DETAIL_COLOR = qss_color(148, 163, 184, 0.95)
 SPLASH_DIVIDER_COLOR = qss_color(255, 255, 255, 0.12)
@@ -67,7 +72,12 @@ def branded_theme(*, is_dark: bool = True) -> ResolvedTheme:
 
 
 def splash_title_label_qss() -> str:
-    return f"color: {SPLASH_TITLE_COLOR}; background-color: transparent;"
+    return (
+        f"color: {SPLASH_TITLE_COLOR}; background-color: transparent;"
+        f" font-family: {SPLASH_TITLE_FONT_FAMILY};"
+        f" font-size: {SPLASH_TITLE_FONT_SIZE_PX}px;"
+        f" font-weight: {SPLASH_TITLE_FONT_WEIGHT} !important;"
+    )
 
 
 def splash_hint_label_qss(*, font_size_px: int = 12) -> str:
@@ -119,7 +129,8 @@ def splash_step_row_qss(state: str) -> str:
     """Widget-level QSS for one splash step row (beats application ``* {{ color }}`` rules)."""
     if state == "active":
         color = SPLASH_STEP_ACTIVE
-        weight = "600"
+        # Match pending/done weight so word-wrapped rows do not reflow when activating.
+        weight = "400"
     elif state == "done":
         color = SPLASH_STEP_DONE_OPAQUE
         weight = "400"
@@ -157,6 +168,9 @@ def splash_split_card_qss(_theme: ResolvedTheme | None = None) -> str:
             }}
             QLabel#QubeSplashTitle {{
                 color: {SPLASH_TITLE_COLOR};
+                font-family: {SPLASH_TITLE_FONT_FAMILY};
+                font-size: {SPLASH_TITLE_FONT_SIZE_PX}px;
+                font-weight: {SPLASH_TITLE_FONT_WEIGHT} !important;
             }}
             QLabel#QubeFirstRunSplashHint {{
                 color: {SPLASH_HINT_COLOR};
@@ -181,6 +195,9 @@ def splash_compact_card_qss(_theme: ResolvedTheme | None = None) -> str:
             }}
             QLabel#QubeSplashTitle {{
                 color: {SPLASH_TITLE_COLOR};
+                font-family: {SPLASH_TITLE_FONT_FAMILY};
+                font-size: {SPLASH_TITLE_FONT_SIZE_PX}px;
+                font-weight: {SPLASH_TITLE_FONT_WEIGHT} !important;
             }}
             QLabel#QubeSplashDetail {{
                 color: {SPLASH_DETAIL_COLOR};
@@ -199,6 +216,9 @@ def early_splash_card_qss(_theme: ResolvedTheme | None = None) -> str:
             }}
             QLabel#QubeEarlySplashTitle {{
                 color: {SPLASH_TITLE_COLOR};
+                font-family: {SPLASH_TITLE_FONT_FAMILY};
+                font-size: {SPLASH_TITLE_FONT_SIZE_PX}px;
+                font-weight: {SPLASH_TITLE_FONT_WEIGHT} !important;
             }}
             QLabel#QubeEarlySplashStatus {{
                 color: {SPLASH_DETAIL_COLOR};

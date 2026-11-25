@@ -119,6 +119,8 @@ KEY_NATIVE_AUTO_LOAD_ON_STARTUP = "qube.native.autoLoadOnStartup"
 KEY_ONBOARDING_LOCAL_LLM_TOUR = "qube.onboarding.localLlmTourCompleted"
 KEY_COMPOSER_AT_MENTION_DISCOVERED = "qube.composer.atMentionDiscovered"
 KEY_COMPOSER_BARE_MENTION_ROUTING = "qube.composer.bareMentionRouting"
+KEY_COMPOSER_KEEP_DOCUMENT_ATTACHED = "qube.composer.keepDocumentAttachedForChat"
+KEY_COMPOSER_SHOW_STICKY_DOCUMENT_SCOPE_HINT = "qube.composer.showStickyDocumentScopeHint"
 KEY_MODEL_MANAGER_HARDWARE_SUGGESTIONS = "qube.modelManager.hardwareSuggestions"
 KEY_MODELS_DIRECTORY = "qube.models.directory"
 KEY_NATIVE_REASONING_DISPLAY = "qube.native.reasoningDisplay"
@@ -1539,6 +1541,23 @@ def get_composer_bare_mention_routing_enabled() -> bool:
 
 def set_composer_bare_mention_routing_enabled(enabled: bool) -> None:
     _store().set(KEY_COMPOSER_BARE_MENTION_ROUTING, bool(enabled))
+
+
+def get_composer_keep_document_attached_for_chat() -> bool:
+    """When True, library file scope persists per conversation until removed."""
+    return bool(_store().get(KEY_COMPOSER_KEEP_DOCUMENT_ATTACHED, True))
+
+
+def set_composer_keep_document_attached_for_chat(enabled: bool) -> None:
+    _store().set(KEY_COMPOSER_KEEP_DOCUMENT_ATTACHED, bool(enabled))
+
+
+def get_composer_show_sticky_document_scope_hint() -> bool:
+    return bool(_store().get(KEY_COMPOSER_SHOW_STICKY_DOCUMENT_SCOPE_HINT, True))
+
+
+def set_composer_show_sticky_document_scope_hint(enabled: bool) -> None:
+    _store().set(KEY_COMPOSER_SHOW_STICKY_DOCUMENT_SCOPE_HINT, bool(enabled))
 
 
 def get_model_manager_hardware_suggestions() -> bool:

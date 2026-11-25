@@ -123,6 +123,39 @@ def build_section(host, *, is_dark: bool) -> QWidget:
         host._on_composer_bare_mention_routing_toggled
     )
     add_settings_full_width_row(composer_form, host.composer_bare_mention_routing_cb)
+
+    host.composer_keep_document_attached_cb = QCheckBox(
+        "Keep attached library document for this chat"
+    )
+    host.composer_keep_document_attached_cb.setToolTip(
+        "When enabled, a file chip stays on the conversation across sends, session "
+        "switches, and voice follow-ups until you remove it. Each message still "
+        "searches that file again."
+    )
+    host.composer_keep_document_attached_cb.setChecked(
+        _general_settings.get_composer_keep_document_attached_for_chat()
+    )
+    host.composer_keep_document_attached_cb.toggled.connect(
+        host._on_composer_keep_document_attached_toggled
+    )
+    add_settings_full_width_row(composer_form, host.composer_keep_document_attached_cb)
+
+    host.composer_show_sticky_document_scope_hint_cb = QCheckBox(
+        "Show “scoped to this document” hint above composer chips"
+    )
+    host.composer_show_sticky_document_scope_hint_cb.setToolTip(
+        "Shows a short label above file and tool chips while a library document "
+        "is attached for the current chat."
+    )
+    host.composer_show_sticky_document_scope_hint_cb.setChecked(
+        _general_settings.get_composer_show_sticky_document_scope_hint()
+    )
+    host.composer_show_sticky_document_scope_hint_cb.toggled.connect(
+        host._on_composer_show_sticky_document_scope_hint_toggled
+    )
+    add_settings_full_width_row(
+        composer_form, host.composer_show_sticky_document_scope_hint_cb
+    )
     general_layout.addWidget(composer_card)
 
     discovery_card, discovery_card_layout = begin_settings_section_card(host, is_dark=is_dark)

@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, Qt
-from PyQt6.QtGui import QFont, QPixmap, QShowEvent
+from PyQt6.QtGui import QPixmap, QShowEvent
 from PyQt6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
 
 from core.paths import install_root
@@ -92,10 +92,6 @@ class EarlySplashController(QObject):
         title = QLabel("Qube")
         title.setObjectName("QubeEarlySplashTitle")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_font = QFont(title.font())
-        title_font.setPointSize(22)
-        title_font.setWeight(QFont.Weight.ExtraBold)
-        title.setFont(title_font)
         card_layout.addWidget(title)
 
         self._status = QLabel("Loading…")

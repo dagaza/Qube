@@ -162,6 +162,19 @@ def _splash_minimize_leading_edge() -> bool:
     return sys.platform == "darwin"
 
 
+class _ChromeAnchorRepositionFilter(QObject):
+    """Keep frameless chrome aligned when the splash card shifts or resizes."""
+
+    def __init__(self, shell: "_StartupSplashShell") -> None:
+        super().__init__(shell)
+        self._shell = shell
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() in (QEvent.Type.Resize, QEvent.Type.Move):
+            self._shell._position_chrome_buttons()
+        return False
+
+
 class _DownloadProgressBridge(QObject):
     """Thread-safe bridge for download progress callbacks from worker threads."""
 
@@ -200,6 +213,15 @@ class _StartupSplashShell(QWidget):
             "Close",
             self.close,
         )
+        self._content_anchor: QWidget | None = None
+        self._chrome_anchor_filter = _ChromeAnchorRepositionFilter(self)
+
+    def set_content_anchor(self, widget: QWidget) -> None:
+        if self._content_anchor is not None:
+            self._content_anchor.removeEventFilter(self._chrome_anchor_filter)
+        self._content_anchor = widget
+        widget.installEventFilter(self._chrome_anchor_filter)
+        self._position_chrome_buttons()
 
     def _create_chrome_button(
         self,
@@ -223,17 +245,28 @@ class _StartupSplashShell(QWidget):
     def _position_chrome_buttons(self) -> None:
         margin = _SPLASH_CHROME_MARGIN
         gap = _SPLASH_CHROME_BTN_GAP
+        anchor = self._content_anchor
+        if anchor is not None and anchor.isVisible():
+            card_top = anchor.y()
+            card_left = anchor.x()
+            card_right = anchor.x() + anchor.width()
+        else:
+            card_top = 0
+            card_left = 0
+            card_right = self.width()
+
+        y = card_top + margin
         if _splash_minimize_leading_edge():
-            x = margin
+            x = card_left + margin
             for btn in (self._minimize_btn, self._close_btn):
-                btn.move(x, margin)
+                btn.move(x, y)
                 btn.raise_()
                 x += btn.width() + gap
         else:
-            x = self.width() - margin
+            x = card_right - margin
             for btn in (self._close_btn, self._minimize_btn):
                 x -= btn.width()
-                btn.move(x, margin)
+                btn.move(x, y)
                 btn.raise_()
                 x -= gap
 
@@ -244,6 +277,7 @@ class _StartupSplashShell(QWidget):
     def showEvent(self, event: QShowEvent) -> None:  # noqa: N802
         super().showEvent(event)
         self._position_chrome_buttons()
+        QTimer.singleShot(0, self._position_chrome_buttons)
         activate_toplevel_window(self)
 
     def closeEvent(self, event: QCloseEvent | None) -> None:
@@ -303,6 +337,7 @@ class StartupSplashController(QObject):
             self._consent_panel.selection_confirmed.connect(self._on_consent_confirmed)
             self._split.set_consent_widget(self._consent_panel)
             shell_layout.addWidget(self._split)
+            self._shell.set_content_anchor(self._split)
         else:
             self._card = QubeSplashCard(
                 logo_path=self._logo_path,
@@ -310,6 +345,7 @@ class StartupSplashController(QObject):
                 parent=self._shell,
             )
             shell_layout.addWidget(self._card)
+            self._shell.set_content_anchor(self._card)
 
         self._drag_filter = _SplashWindowDragFilter(self._shell)
         self._drag_filter.register_widget_tree(self._shell)
@@ -473,7 +509,7 @@ class StartupSplashController(QObject):
         self._consent_resolved = True
         if self._split is not None:
             self._split.dismiss_consent_side()
-        self._recenter_on_primary_screen()
+        self._stabilize_splash_after_show()
         self._set_logo_rotating(True)
         self._start_spinner()
         logger.info("First-run consent confirmed; starting downloads.")
@@ -502,6 +538,14 @@ class StartupSplashController(QObject):
                 self._split.advance_logo(interval)
         elif self._card is not None:
             self._card.spinner.advance(interval)
+
+    def refresh_title_typography(self) -> None:
+        """Re-apply splash wordmark QSS after global app theme QSS loads."""
+        from ui.branded_theme import apply_splash_label_styles
+
+        title = getattr(self._view, "title", None)
+        if title is not None:
+            apply_splash_label_styles(title=title)
 
     def _on_phase(self, step_index: int, percent: int) -> None:
         if self._exit_requested:
@@ -554,6 +598,7 @@ class StartupSplashController(QObject):
             selected_count=len(self._selected_models),
         )
         QTimer.singleShot(0, self._start_fade_in)
+        QTimer.singleShot(0, self._stabilize_splash_after_show)
         QTimer.singleShot(_BOOTSTRAP_FALLBACK_MS, self._bootstrap_fallback)
 
     def request_activation(self) -> bool:
@@ -589,6 +634,16 @@ class StartupSplashController(QObject):
 
     def _center_on_primary_screen(self) -> None:
         center_widget_on_screen(self._shell)
+
+    def _stabilize_splash_after_show(self) -> None:
+        """Pin height and re-center once Qt has resolved post-show layout metrics."""
+        view = self._card if self._card is not None else self._split
+        if view is not None:
+            freeze = getattr(view, "freeze_layout_height", None)
+            if callable(freeze):
+                freeze()
+        self._shell._position_chrome_buttons()
+        self._center_on_primary_screen()
 
     def _recenter_on_primary_screen(self) -> None:
         """Re-center after layout settles so the splash sits in screen middle."""
@@ -1104,6 +1159,14 @@ class _PhasedQubeRunner(QObject):
         if self._cancelled:
             return
         record_startup_progress("phase_complete", phase=phase_index)
+        if phase_index == 3:
+            app = QApplication.instance()
+            splash = (
+                getattr(app, "_startup_splash_controller", None) if app is not None else None
+            )
+            if splash is not None and hasattr(splash, "refresh_title_typography"):
+                splash.refresh_title_typography()
+                app.processEvents()
         self._phase += 1
         QTimer.singleShot(0, self._run_next)
 

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QRect
-from PyQt6.QtGui import QPainter
+from PyQt6.QtCore import QRect, QSize
+from PyQt6.QtGui import QImage, QPainter
 
 from core.surface_fill.compositor import SurfaceFillCompositor
 from core.surface_fill.models import OverlaySpec, SurfaceProfile, WallpaperNone
@@ -89,3 +89,33 @@ class SurfaceFillRenderer:
 
     def clear(self, painter: QPainter, rect: QRect, *, theme: ResolvedTheme) -> None:
         self._compositor.fill_rect_color(painter, rect, theme.background)
+
+    def render_to_image(
+        self,
+        size: QSize,
+        profile: SurfaceProfile,
+        *,
+        theme: ResolvedTheme,
+        overlay_boost: int = 0,
+        suppressed: bool = False,
+        resolved_wallpaper=None,
+    ) -> QImage:
+        """Render a full surface fill to a QImage (safe to call off the GUI thread)."""
+        if size.width() <= 0 or size.height() <= 0:
+            return QImage()
+        image = QImage(size, QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(0)
+        painter = QPainter(image)
+        try:
+            self.paint(
+                painter,
+                QRect(0, 0, size.width(), size.height()),
+                profile,
+                theme=theme,
+                overlay_boost=overlay_boost,
+                suppressed=suppressed,
+                resolved_wallpaper=resolved_wallpaper,
+            )
+        finally:
+            painter.end()
+        return image
