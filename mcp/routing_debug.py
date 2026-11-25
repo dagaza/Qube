@@ -502,6 +502,12 @@ def build_retrieval_outcome_snapshot(
             if isinstance(decision.get("retrieval_budget"), dict)
             else {}
         ),
+        # Plan S17: token-fitted chat history (kept, dropped, tokens, budget, reason).
+        "history_window": (
+            dict(decision.get("history_window"))
+            if isinstance(decision.get("history_window"), dict)
+            else {}
+        ),
         "hybrid_extra_memory": int(hybrid_extra_memory),
         "hybrid_extra_rag": int(hybrid_extra_rag),
         "top_intent": str(decision.get("top_intent") or ""),

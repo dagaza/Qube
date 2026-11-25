@@ -503,6 +503,20 @@ class NativeLlamaEngine(QThread):
             value = int(self._n_ctx or 0)
         return value if value > 0 else None
 
+    def count_tokens(self, text: str) -> Optional[int]:
+        """Tokens for ``text`` with the loaded model's tokenizer (no BOS), or None if unloaded.
+
+        Plan S17: the worker fits chat history with it on the native path.
+        Tokenizing only reads the model's vocabulary; it does not touch the context.
+        """
+        llama = self._llama
+        if llama is None or not callable(getattr(llama, "tokenize", None)):
+            return None
+        try:
+            return len(llama.tokenize((text or "").encode("utf-8"), add_bos=False, special=True) or [])
+        except Exception:
+            return None
+
     def _clamp_max_tokens_for_prompt(
         self,
         max_tokens: int,

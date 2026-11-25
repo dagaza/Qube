@@ -184,6 +184,30 @@ flowchart LR
 - **Risks:** losing context the user expects on long threads; models with large windows must behave exactly as today.
 - **Tests:** the S10 4k / 8k / 32k matrix with real tokenizers (Gemma 4 E4B, Qwen3.5-9B, Phi-4-mini) and history sizes up to the overflow case; unchanged output when everything fits.
 - **Acceptance:** no prompt over `n_ctx` minus the answer reserve on the matrix; ≥ 8k windows unchanged on every existing test.
+- **As built (2026-11-25, branch `feat/kr-followups-phase1`, stacked on Phase 0):**
+  - **Where.** `core/retrieval_budget.py`: `history_token_budget`, `fit_history_to_token_budget`, `HistoryWindow`. Its fixed costs are a shared helper that S10's `retrieval_char_budget` now uses too, with the same numbers. In the worker, `_fit_history_for_turn` runs where the S10 budget is computed: after the sources are known, and before the retrieval budget, which then sizes the block from the kept history. The follow-up resolver, discourse state, query expansion and shadow slots still see the message-count window, unchanged.
+  - **Budget.** The room is `n_ctx` − answer reserve − prompt overhead (skills, attachment and tool context included) − 128-token margin, as in S10. On a turn with sources, retrieval keeps `min(its cap, half the room)`, where the cap is 8000 chars = 2000 tokens, and history gets the rest. On a turn without sources, history gets the whole room. Unknown `n_ctx` means no limit.
+    - With a 1200-char skills budget: 4k → 1444 tokens of room, so 722 for history with sources and 1444 without; 8k → 2516 / 4516; 32k → 25 044 / 27 044.
+  - **Fit.** Newest message first.
+    - The current question is always kept. If it alone exceeds the budget, the result is `over_budget` rather than an empty history.
+    - If the next message does not fit whole, it is not an assistant turn, and at least 128 tokens remain, its head is kept with the existing "[…message truncated for context window]" marker. This is what keeps the last exchange on a small window.
+    - A leading assistant message is still dropped. Kept messages are the original dicts (a truncated one is a copy), and messages older than the cut are never tokenized.
+  - **Counting (V39; a change from the plan text, which said to reuse the S10 estimate).** On the native path the worker counts history with the loaded model's tokenizer: `NativeLlamaEngine.count_tokens` calls `llama_tokenize` on the vocabulary only and does not touch the context.
+    - The same counter feeds the S10 budget's history term and its block re-fit, which until now re-fitted only non-ASCII blocks.
+    - External engines keep the estimate. If a count fails, that text falls back to the estimate.
+  - **Trace.** `decision["history_window"]` holds kept, dropped, tokens, budget_tokens, reason, truncated and counter. It is persisted in the routing-debug `retrieval_outcome`. When anything is dropped or truncated, the log shows `[LLM] Chat history token-fitted: kept … of … messages (…)`.
+  - **Behaviour change.** Only when history and a full retrieval block do not both fit. Example: the S10 test history, estimate counter:
+    - *4k, 10 × 1500 chars, with sources:* before, the block was at its 1000-char floor and the prompt overflowed the window. Now 3 of 11 messages are kept (the last exchange, one message truncated) and the block gets 2888 chars.
+    - *8k, same history, with sources:* 7 of 11 messages kept, block 8000 chars (S10 alone: all 11 kept, block 2652).
+    - *8k without sources, and 32k at every size up to 10 × 1500:* unchanged.
+  - **Real-tokenizer matrix** (scratch script, not committed). Gemma 4 E4B, Qwen3.5-9B and Phi-4-mini tokenizers (vocab-only) × 4k / 8k / 32k × 7 history sizes (up to 30 × 1500 and 10 × 14 000 chars) × with and without sources: 126 cases. History and sources are English prose from the predecessor document with markdown stripped, number tables included.
+    - Pipeline as on the native path (model counter, one block re-fit): **0 of 126** over `n_ctx` − answer reserve.
+    - Estimate only (the external path): 5 cases over, all 8k with 30 × 1500, using up to 1270 of the 2048-token reserve. No prompt reaches `n_ctx`.
+  - **Known limits.**
+    - A boundary assistant message is not truncated, since it would lead the history. So with 10 × 14 000-char turns, 4k keeps only the question.
+    - The fixed prompt overhead stays an estimate.
+    - External engines count by the estimate (V39).
+  - **Not changed:** memory v7 salvage, which does not work with or without S17 (V40); it is fixed in Phase 6 (D26).
 
 #### S18 — Sidecar thread counts (V18)
 
@@ -314,6 +338,8 @@ Correction to the planning summary given in chat: Library and memory search **do
 
 What they lack is the cross-encoder gate, the sufficiency state and honest "not found" wording. V4 found the same kind of floor dead on the web path (jina-v2 cosine 0.62–0.91 for every row), so the first job is to measure whether these floors filter anything with the shipped embedders.
 
+**Carried in (D26):** memory v7 salvage never receives dropped messages (V40). Fix it in this phase: keep message ids through `_bound_session_history`, and collect the ids of messages dropped by both the message-count window and S17's token fit (`HistoryWindow`). Salvage stays off by default; turning it on is a separate owner decision.
+
 #### S33 — Library and memory fixtures, and a baseline
 
 - **Fixtures:** library chunks (long, local) and memory entries (short stubs), built from a synthetic or owner-approved document set, never private documents, including:
@@ -365,7 +391,7 @@ What they lack is the cross-encoder gate, the sufficiency state and honest "not 
 
 A new session has no memory of earlier ones. Read this section, then §3–§6, then the open stage's entry and the progress log.
 
-**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 implemented, not pushed: S14 `1b6fb88`, S15 `2fd25be`, S16 the commit after it (`git log`). Next is pushing Phase 0 and opening its PR (owner's call), then S40 (test isolation, D25), then S17: Phase 1, on a new branch and PR from `main` per D23.
+**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 committed, not pushed: S14 `1b6fb88`, S15 `2fd25be`, S16 `3ad0a90`. Phase 1 is on `feat/kr-followups-phase1`, branched from Phase 0's head because the plan document exists only there; rebase it onto `main` once Phase 0 merges. S17 was done first, at the owner's request, and is committed (`git log`). Next: S40 (test isolation, D25), then S18. D26: salvage fix goes to Phase 6.
 
 **Commands** (repo root, `.venv`):
 
@@ -373,7 +399,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 - Full suite: `QT_QPA_PLATFORM=offscreen HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings -m "not packaging" tests > <log> 2>&1`.
   - The process ends with the known Qt teardown abort (exit 134, no summary line), so count results from the log: `grep -o PASSED <log> | wc -l` and `grep -o FAILED <log> | wc -l`. Do **not** count ` PASSED` with a leading space: a test that prints output pushes its result to the start of the next line, and that count misses it (V34).
   - Cross-check against the collected count: `... -m "not packaging" --collect-only -q tests | tail -1` must equal passed + failed (+ skipped).
-  - Reference (S16): **4251 passed** of 4256 collected; S15 4244 of 4249; on `main` before S15, 4228 of 4233. Known-flaky (V38): `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` can fail, error at its teardown (an extra ERROR, pass count unchanged), or leave `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` with a setup ERROR (pass count one lower). Exactly these 5 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
+  - Reference (S17): **4277 passed** of 4282 collected; S16 4251 of 4256; S15 4244 of 4249; on `main` before S15, 4228 of 4233. Known-flaky (V38): `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` can fail, error at its teardown (an extra ERROR, pass count unchanged), or leave `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` with a setup ERROR (pass count one lower). Exactly these 5 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
 - Offline eval (needs the reranker model at `~/.qube/models/search/reranker/`): `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_knowledge_quality.py --corpus eval/retrieval_corpus/v1_knowledge_quality.json --ranker <token|embed|ce> --query-mode <production|standalone> [--pool-mode widened] [--json] [--compare <baseline>]`.
   - Compare against `eval/retrieval_corpus/baselines/kq_s13_*`, using `--pool-mode widened` for `ce`. Always pass the relative `--corpus` path.
 - Heuristic A/B: `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_heuristic_ab.py` (S13).
@@ -398,7 +424,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 
 ## 8. Progress log
 
-> **Last reviewed:** 2026-11-25, S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
+> **Last reviewed:** 2026-11-25, S17 implemented (token-fitted history, counted by the loaded model on the native path, V39; salvage finding, V40, fix in Phase 6 per D26); S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
 
 ### Deliverables
 
@@ -416,6 +442,11 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | 2026-11-25 | S16 | `~/.qube` writes (V37) | Partly | Audit hook over a full run; `tests/test_bootstrap_search_download.py`: the two marker tests use `tmp_path`; fake model entry removed from the owner's `model_performance_store.json` (backup kept) | Suite-wide isolation: S40 (D25) |
 | 2026-11-25 | S16 | Tests | Done | `tests/test_output_token_budget.py` +7 (old expression raises on a method; clamp to the loaded window; cap kept when it fits; uncapped; no prompt; tokenizer failure; unexpected error logs "clamp skipped"). Full suite: **4251 passed** of 4256 (S15 4244, +7), the 5 known failures; the V38 test errored at teardown after passing. No assertion weakened | — |
 | 2026-11-25 | S16 | Acceptance | Done | No network calls ✓ (V35); the clamp runs ✓ (real `Llama`, no "clamp skipped"); full suite matches the reference ✓ (+7, known failures only, apart from V38) | A smoke turn in the app was not run |
+| 2026-11-25 | S17 | Token-fitted history (V20) | Done | `core/retrieval_budget.py` (`history_token_budget`, `fit_history_to_token_budget`); `workers/llm_worker.py` (`_fit_history_for_turn` before the S10 budget; trace `history_window`); `mcp/routing_debug.py` | Boundary assistant turns are not truncated (10 × 14 000 on 4k keeps only the question) |
+| 2026-11-25 | S17 | Model-token counting (V39) | Done | `NativeLlamaEngine.count_tokens`; `_turn_token_counter` feeds the history fit, the S10 history term and the block re-fit | External engines keep the estimate |
+| 2026-11-25 | S17 | Real-tokenizer matrix | Done | 3 tokenizers × 4k/8k/32k × 7 history sizes × with/without sources = 126 cases: 0 over `n_ctx` − reserve with the model counter; estimate only: 5 over (8k, 30 × 1500, up to 1270 of 2048 reserve), no prompt ≥ `n_ctx` | Scratch script, not committed; not a full app turn |
+| 2026-11-25 | S17 | Tests | Done | `tests/test_s17_history_window.py` (new, 26 tests): budget split, fit (identity when it fits, oldest first, truncated boundary, leading assistant, current question kept, nothing older tokenized), estimate and dense-counter matrices, V20 case, everything-fits-unchanged (S10 budget identical), engine and worker counters with fallbacks, routing-debug trace. Full suite: **4277 passed** of 4282 (S16 4251, +26), the 5 known failures, V38 teardown ERROR. No existing test changed | — |
+| 2026-11-25 | S17 | Acceptance | Done | No prompt over `n_ctx` − reserve on the matrix ✓ (native path; external path within `n_ctx`, V39); ≥ 8k unchanged on every existing test ✓ (all pass, S10 tests unedited) | Salvage (V40) left as found; fixed in Phase 6 (D26) |
 
 ### Validated findings (V33+)
 
@@ -427,6 +458,8 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | **V36** | V21: the native engine's `max_tokens` clamp never runs | **Confirmed in the field.** This machine's `llm_debug.log`: 17 "clamp skipped" lines, all `int() argument must be … not 'method'`, and 0 clamp lines. llama-cpp's own cut kept replies inside the window. | S16 reads the window via `loaded_n_ctx()`; verified on a real `Llama` (4096 → 484 at `n_ctx` 2048) |
 | **V37** | The test suite leaves the developer's `~/.qube` alone | **No.** A full run writes, per the audit hook: `settings.json` (`test_settings_collapsible_cards`, `test_ui_nav_sidebar`, `test_theme_system`, `test_themes_action_buttons`, `test_lazy_main_stages`, `test_extensible_knowledge_platform`; its content was unchanged after the run); `model_performance_store.json` (`test_native_prompt_contract_runtime`, which has accumulated a fake `registry-model.gguf` entry with 32 requests next to the real models' stats); `companion/mood_state.json` and `motif_state.json`; `.winget-validation-boot-*` and five files in `logs/` (`test_winget_validation`); `logs/bootstrap-trace.jsonl` and `bootstrap-state.json` (from `test_knowledge_rerank`, only because an earlier test leaves the module-level trace switch on); `models/search/reranker.download_failed`, written by one `test_bootstrap_search_download` test and deleted by another. Many more create empty directories. `core.paths.user_data_root()` has no override, and 37 other lines in `core/`, `workers/` and `ui/` use `Path.home()` or `expanduser("~")` directly. | S16 fixes both marker tests. The rest needs a suite-wide isolation of the user data root: S40 (D25) |
 | **V38** | The 5 known failures are the only non-passing tests | **Not always.** `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` leaves a callback queued that can fire after its widget is deleted ("BackgroundBuildBridge has been deleted"). It fails that test, errors it at teardown, or errors the next one at setup (`test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist`); 3 of 6 runs of the phase-1 file fail on a clean `1b6fb88`. | §7 lists it as known-flaky; one non-pass there alone is not a regression |
+| **V39** | The S10 estimate (4.0 chars per token, the floor measured on English prose) is safe for sizing history | **Not for dense text.** Real tokenizers give 1.2–2.1 chars per token on number tables, 3.77 on the median chunk of the S17 matrix text and 3.76 on README prose (Qwen3.5-9B). Fitted by the estimate, 5 of 126 matrix cases (8k, 30 × 1500) use up to 1270 of the 2048-token answer reserve. No prompt reaches `n_ctx`, so since S16 the cost is a shorter answer, not a failed request. | S17 counts history with the loaded model's tokenizer on the native path (0 of 126 over); external engines keep the estimate |
+| **V40** | Memory v7 salvage receives the messages that history windowing drops | **No.** `_bound_session_history` rebuilds each message as `{role, content}`, so the `id` that `get_session_history` returns is lost, `dropped_ids` is always empty, and `_process_salvage` returns at once. Salvage is off by default (`qube.memory.v7_salvage_enabled`), and its tests cover only the enrichment-worker side. | Fixed in Phase 6, including the messages S17's token fit drops (D26) |
 
 ### Owner decisions (D23+)
 
@@ -435,6 +468,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | D23 | How should the post-S13 work be structured? | **A new plan document** (this one) with S14+ / D23+ / V33+ numbering; the predecessor is closed. **One branch and PR per phase, from `main`.** **Order:** Phase 0 → 1 → 2 → 6 → 4 → 5 → 7, with Phase 3's live sessions run when quotas allow. (Recorded 2026-11-25.) | All |
 | D24 | 1.3.60 ships without the spelling word list (V33). Cut a 1.3.61 patch release for the S15 fix? | **No.** The fix ships with the next regular release, bundled with more work; until then the spelling variant stays off in packaged builds. (Recorded 2026-11-25, after S15.) | S15 |
 | D25 | The suite writes into the developer's real `~/.qube` (V37). Fix it in this plan, and when? | **Yes, as a new stage S40, first in Phase 1** (before S17, on the Phase 1 branch). The fake `registry-model.gguf` entry in the owner's `model_performance_store.json` was removed after S16, with a backup; the test-written reranker marker was already gone (deleted by the other marker test). (Recorded 2026-11-25.) | S40 |
+| D26 | Memory v7 salvage never receives dropped messages (V40). Fix it, including the messages S17's token fit drops? | **Yes, in Phase 6** (Library and memory), collecting ids from both the message window and the token fit; the default (off) is unchanged. (Recorded 2026-11-25.) | Phase 6, V40 |
 
 ### Track 0 checkpoints
 
