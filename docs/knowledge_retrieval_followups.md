@@ -488,7 +488,32 @@ What they lack is the cross-encoder gate, the sufficiency state and honest "not 
 
 A new session has no memory of earlier ones. Read this section, then §3–§6, then the open stage's entry and the progress log.
 
-**State.** Phase 0 (S14–S16) is merged to `main` as PR #75 (`267f042`). Phase 1 is on `feat/kr-followups-phase1`, rebased onto `267f042`: S17 `e2136dd`, S40 `57545a8` (test isolation, D25), S18 `4f88385` (sidecar threads, D27), S19 `b05a67c` (pre-fill mechanism, judge and digest kept off, digest default off: D29, D30), S20 `6695542` (blurb and episode pre-filled with their fixes, others left: D31–D33), then the CHANGELOG commit. S17 was done first, at the owner's request. **Phase 1 (S40, S17–S20) is complete**; its PR comes next, then Phase 2. D26: the salvage fix goes to Phase 6.
+**State.** Phase 0 (S14–S16) is merged to `main` as PR #75 (`267f042`, squash). Phase 1 (S40, S17–S20) is complete and open as **PR #76** from `feat/kr-followups-phase1`, rebased onto `267f042`: S17 `e2136dd`, S40 `57545a8` (test isolation, D25), S18 `4f88385` (sidecar threads, D27), S19 `b05a67c` (pre-fill mechanism, judge and digest kept off, digest default off: D29, D30), S20 `6695542` (blurb and episode pre-filled with their fixes, others left: D31–D33), then the CHANGELOG commit `da76bee`. S17 was done first, at the owner's request. **Next: Phase 2 (S21–S23)**, then 6 → 4 → 5 → 7 (D23). D26: the salvage fix goes to Phase 6.
+
+**Starting a phase** (Phase 2 next):
+
+1. Check the previous phase's PR: `gh pr view <n> --json state,mergedAt` and `gh pr checks <n>`. If it is merged, `git fetch origin` and branch `feat/kr-followups-phase<N>` from `origin/main`. If it is still open and the owner wants to go on, branch from its head and rebase after the merge, as Phase 1 did. PRs land as one squash commit, so rebase with `git rebase --onto main <old base commit> <branch>`.
+2. Record a Track 0 checkpoint row (§4, §8), as counts only. Run these in `~/.qube/logs`: `grep -c '\[QuerySlots\] shadow' qube.log`, `grep -c query_slots_gate routing_debug.log`, `grep -c '"event": "citation_grounding"' llm_debug.log`. For traces: `.venv/bin/python -c "from core.knowledge.retrieval_trace_reader import read_retrieval_traces as r; print(len(r(limit=100000)))"`.
+3. Run the full suite with the home audit (below) and confirm the reference count before changing anything.
+4. Read the phase's stages in §6, then work through them one stage at a time.
+
+**Each stage:**
+
+- **Measure before you change anything.** Put a finding that contradicts the plan in a V-row, and stop to check with the owner if it invalidates the stage (rule 6).
+- **Owner decisions.** Present the measured options, with a recommendation, as a question. Record the answer as a D-row. Behaviour defaults, enabling or dropping a feature, and anything the stage's "Decisions" line names are the owner's.
+- **Close out.** Write the "As built" block, the §8 rows (deliverables, tests with the full-suite count, acceptance) and "Last reviewed". Then ask before committing.
+
+**Each phase:**
+
+- Add a CHANGELOG `[Unreleased]` commit for the user-visible changes, in the existing `- **Area:** …` style. `tests/test_prepare_release.py` reads that file.
+- Then ask before pushing and opening the PR.
+- **PR description.**
+  - Fill in `.github/pull_request_template.md`.
+  - Claim only what was run, and state what was not.
+  - Check every number against this document.
+  - End with the Claude Code line.
+- **CI.** `.github/workflows/ci.yml` runs one Windows `test` job on PRs to `main`, in about 25 min. `main` needs a review before merging, and the owner merges.
+- **Editing the description.** `gh pr edit` fails with "Projects (classic) is being deprecated". Use `gh api -X PATCH repos/dagaza/Qube/pulls/<n> -F body=@<file>` instead.
 
 **Commands** (repo root, `.venv`):
 
@@ -512,6 +537,27 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 - Before trusting an OpenAlex-dependent result, check `api.openalex.org` in `http_summary` shows no 429.
 - The S8 live ANT check snippet is in the predecessor's "Resuming" section.
 
+**Working practices (learned in Phases 0–1).**
+
+- **Scratch home for scripts.** Run measurement scripts against a scratch home, `HOME=<scratch dir>`, as the suite does since S40. Then `~` expands to the scratch home, so pass model paths as absolute paths. Keep the scripts and their outputs outside the repo.
+- **Sidecar and model behaviour: record, then replay.** S19 and S20 recorded real completions on the bundled sidecar, `~/.qube/models/cognition/Qwen3-1.7B-Q6_K.gguf`. The recordings go through the production worker method into a JSON fixture, and the tests replay the fixture offline through the production parsers.
+  - Scan every fixture before committing it. It must contain no personal paths, names or e-mail addresses. S20 dropped a sample whose repo document contained a Windows user path.
+  - Test inputs are synthetic.
+  - Owner data, such as library or memory stores and logs, is read only as aggregate counts.
+- **Qwen3 `<think>` pre-fill.** The pre-fill is per task: `QWEN3_THINK_PREFILL_TASKS` in `core/sidecar_prompts.py`. A sidecar task newly used on the raw path, including S29's slot steering, is evaluated the S19 way before it joins the set. Changing the `<think>` handling or the thread counts globally is the owner's call.
+- **Measurement machine.** Ryzen 7 7840HS (8 cores / 16 threads), llama-cpp-python 0.3.35, CPU only. GPU builds, Apple P/E cores and the running app's turns were not measured in Phases 0–1. Say so when a result depends on them.
+- **Release smoke script.** Do not run `scripts/release/smoke_linux_dist.sh` locally: it kills processes named `Qube`.
+
+**Open items from Phases 0–1.**
+
+- **PR #76 CI.** It is the first Windows run of S40's isolation (`USERPROFILE` / `LOCALAPPDATA` redirected). Check its result.
+- **D28.** The main engine's `n_threads_batch` is undecided; it belongs to the inference-settings work.
+- **Phase 6 candidates.**
+  - D26: the salvage fix.
+  - V46: half of the contradictions never reach the judge. That is the memory gate, and it is the owner's call.
+  - D31 applies to new imports only, so existing documents have no blurbs. A backfill was not discussed.
+- **Track 0 has collected nothing yet** (2026-11-25 checkpoints). Phases 4 and 5 decide on its data, so raise it with the owner before they start.
+
 **Decisions in force:** D1–D22 (predecessor §12.6), plus any D23+ below.
 
 **Carry-overs not planned as stages** (recorded so they are not lost):
@@ -522,7 +568,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 
 ## 8. Progress log
 
-> **Last reviewed:** 2026-11-25, S20 implemented (ingest blurbs and episode summaries pre-filled, with a joined blurb sample and a small-talk guard, D31, D32; reflection already works, companion copies its example, raw path unused: V49–V53, D33); S19 implemented (pre-fill mechanism with an empty opt-in set; contradiction_judge kept off, D29, because a working judge stores worse, V45; source_digest kept off and its default turned off, D30, because it cannot meet its 1.5 s budget yet cost every eligible turn 1.5 s, V47–V48); S18 implemented (sidecar 4 / 8 threads, D27: prompt eval 56 → 164 tok/s, title p50 9.3 → 2.8 s; contention, V42; main engine batch threads recorded, V43, D28); S40 implemented (suite runs against a throwaway home: audit 0 records; winget failure was a home artifact, V41); S17 implemented (token-fitted history, counted by the loaded model on the native path, V39; salvage finding, V40, fix in Phase 6 per D26); S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
+> **Last reviewed:** 2026-11-25, Phase 1 open as PR #76; §7 extended for a new session (starting a phase, working practices, open items), Track 0 checkpoint; S20 implemented (ingest blurbs and episode summaries pre-filled, with a joined blurb sample and a small-talk guard, D31, D32; reflection already works, companion copies its example, raw path unused: V49–V53, D33); S19 implemented (pre-fill mechanism with an empty opt-in set; contradiction_judge kept off, D29, because a working judge stores worse, V45; source_digest kept off and its default turned off, D30, because it cannot meet its 1.5 s budget yet cost every eligible turn 1.5 s, V47–V48); S18 implemented (sidecar 4 / 8 threads, D27: prompt eval 56 → 164 tok/s, title p50 9.3 → 2.8 s; contention, V42; main engine batch threads recorded, V43, D28); S40 implemented (suite runs against a throwaway home: audit 0 records; winget failure was a home artifact, V41); S17 implemented (token-fitted history, counted by the loaded model on the native path, V39; salvage finding, V40, fix in Phase 6 per D26); S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
 
 ### Deliverables
 
@@ -612,3 +658,4 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | Date | Shadow slot lines | Slot gate records | Grounding events | Audit traces | Notes |
 |---|---|---|---|---|---|
 | 2026-11-25 | 0 | 1 | 0 | 0 (log off) | Baseline before collection |
+| 2026-11-25 | 0 | 1 | 0 | 0 | End of Phase 1 (no checkpoint was taken at its start): nothing collected since the baseline |
