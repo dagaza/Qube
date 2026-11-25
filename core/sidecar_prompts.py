@@ -65,7 +65,37 @@ class TitleSelectionDetail:
 # pre-filled, so the completion is not cut at "<think>" by the "\n\n" stop. Opt-in
 # per task: each entry needs its own evaluation and an owner decision (D-row).
 # ``query_slots`` pre-fills in its own builder (S9); titles use the chat path.
-QWEN3_THINK_PREFILL_TASKS: frozenset[SidecarTask] = frozenset()
+# Kept out after evaluation: contradiction_judge (D29), source_digest (D30),
+# companion_line (D33: copies its prompt's example line). reflection_label uses a
+# flat prompt that never opens a think block and works as shipped (V49).
+QWEN3_THINK_PREFILL_TASKS: frozenset[SidecarTask] = frozenset(
+    {
+        SidecarTask.ingest_blurb,  # D31, with the joined sample below
+        SidecarTask.episode_summary,  # D32, with the small-talk guard in EnrichmentWorker
+    }
+)
+
+# Plan S20 (V50, D31): the blurb reads up to this many characters of the document.
+INGEST_BLURB_SAMPLE_CHARS = 2500
+
+
+def build_ingest_blurb_sample(chunks: list[str], limit: int = INGEST_BLURB_SAMPLE_CHARS) -> str:
+    """The first ingest chunks joined up to ``limit`` characters.
+
+    A first chunk that is only a heading ("## Prerequisites") made the sidecar
+    invent a generic blurb; joining the following chunks gives it the content.
+    """
+    parts: list[str] = []
+    size = 0
+    for chunk in chunks or []:
+        text = (chunk or "").strip()
+        if not text:
+            continue
+        parts.append(text)
+        size += len(text) + 2
+        if size >= limit:
+            break
+    return "\n\n".join(parts)[:limit]
 
 
 def task_inference_params(task: SidecarTask) -> dict[str, Any]:
@@ -91,13 +121,25 @@ def build_prompt_for_task(
     model_path: str = "",
     **kwargs: Any,
 ) -> str:
+    prompt = _build_task_prompt(task, chat_format=chat_format, model_path=model_path, **kwargs)
+    # One exit for every builder (companion lines have their own): the helper only
+    # touches Qwen3 ChatML prompts that end at the assistant header (plan S19 / S20).
+    if task in QWEN3_THINK_PREFILL_TASKS and task != SidecarTask.title:
+        prompt = prefill_qwen3_empty_think(prompt, chat_format, model_path)
+    return prompt
+
+
+def _build_task_prompt(
+    task: SidecarTask,
+    *,
+    chat_format: str = "chatml",
+    model_path: str = "",
+    **kwargs: Any,
+) -> str:
     def _prompt(system: str, user: str) -> str:
-        rendered = build_cognition_prompt(
+        return build_cognition_prompt(
             system, user, chat_format, model_path=model_path
         )
-        if task in QWEN3_THINK_PREFILL_TASKS:
-            rendered = prefill_qwen3_empty_think(rendered, chat_format, model_path)
-        return rendered
 
     def _finish(prebuilt: str) -> str:
         return apply_qwen3_no_think_to_prompt(prebuilt, model_path)
@@ -207,7 +249,7 @@ def build_prompt_for_task(
         return _prompt(system, sources_text)
 
     if task == SidecarTask.ingest_blurb:
-        sample = (kwargs.get("sample_text") or "").strip()[:2500]
+        sample = (kwargs.get("sample_text") or "").strip()[:INGEST_BLURB_SAMPLE_CHARS]
         system = (
             "Write ONE sentence describing what this document is about. "
             "No quotes. No markdown. Under 30 words."

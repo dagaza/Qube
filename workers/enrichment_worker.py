@@ -23,6 +23,9 @@ from core.memory_filters import (
 # unit tests can monkeypatch without touching the worker instance.
 EPISODE_SUMMARY_TURN_CADENCE = 8
 EPISODE_SUMMARY_IDLE_SEC = 15 * 60
+# Plan S20 (V51, D32): the Qwen3 sidecar never answers SKIP for small talk, so a
+# window whose user messages are this short is not summarised at all.
+EPISODE_SUMMARY_MIN_USER_WORDS = 20
 MAX_EPISODE_CHARS = 800
 SALVAGE_MAX_MESSAGES = 24
 SALVAGE_RATE_LIMIT_SEC = 5 * 60
@@ -834,6 +837,19 @@ Return JSON ONLY:
         window = all_messages[-(EPISODE_SUMMARY_TURN_CADENCE * 2):]
         scrubbed = self._scrub_assistant_failures(window)
         if not scrubbed:
+            return
+
+        user_words = sum(
+            len(str(m.get("content") or "").split())
+            for m in scrubbed
+            if (m.get("role") or "user") == "user"
+        )
+        if user_words < EPISODE_SUMMARY_MIN_USER_WORDS:
+            logger.debug(
+                "[Memory v6] episode summary skipped (small talk): %d user words < %d",
+                user_words,
+                EPISODE_SUMMARY_MIN_USER_WORDS,
+            )
             return
 
         conversation = "\n".join(

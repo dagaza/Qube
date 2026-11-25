@@ -295,6 +295,39 @@ flowchart LR
 #### S20 — Sidecar `<think>` fix: remaining tasks
 
 - Same method as S19 for `reflection_label`, `episode_summary`, `ingest_blurb`, `companion_line` and raw prompts. These are outside retrieval quality. They are here because they share S19's mechanism and are broken in production today, and they can be reordered or handed off by owner decision.
+- **As built (2026-11-25, D31–D33):**
+  - **Mechanism.** The opt-in now applies at the single exit of `build_prompt_for_task`, so prompts from their own builders (companion lines) are covered too; titles are excluded explicitly. `QWEN3_THINK_PREFILL_TASKS` ships `{ingest_blurb, episode_summary}`.
+  - **Fixture.** `tests/fixtures/sidecar_tasks_recorded_s20.json` was recorded the same way as S19's:
+    - 20 synthetic memories, 4 per reflection label;
+    - 8 synthetic conversations: 5 real tasks and 3 small talk;
+    - 19 ingest samples: the real first ingest chunk of repo docs, 6 of them heading-only, plus joined samples for those 6;
+    - 6 companion payloads (v1, the default path) with 3 runs each.
+
+    `tests/test_s20_sidecar_tasks.py` replays it through the production parsers, `MemoryReflectionWorker._call_llm` / `_parse_label`, and `EnrichmentWorker._summarise_session_now`.
+  - **ingest_blurb** (V50, D31):
+    - **As shipped:** 0 of 19 blurbs (`<think>`). The owner's library shows the same: 76 documents, 0 blurbs.
+    - **Pre-filled:** 19 of 19 blurbs. They are grounded when the first chunk has content: overlap with the sample is 0.40–0.89 across 13 of 13 cases, all accurate on reading. They are invented when the first chunk is only a heading (16–32 chars): overlap 0.00–0.29 in 6 of 6, for example "an executive assessment of the company's financial performance".
+    - **The fix:** `core/sidecar_prompts.build_ingest_blurb_sample()` joins the first chunks up to 2500 chars, and `workers/ingestion_worker.py` uses it. On the 6 heading-only cases this gave overlap 0.60–0.85, with every blurb on topic.
+    - **How common:** 6 of the owner's 76 documents have a first chunk under 100 chars, and 35 under 200.
+    - **Latency:** p50 1.6 s, p95 3.5 s; about 5 s with the joined sample (634–683 prompt tokens), in the background.
+    - New imports only; existing documents are not backfilled.
+  - **episode_summary** (V51, D32): runs only with memory enrichment on, which is off by default.
+    - **As shipped:** `<think>`, so no episode has ever been written.
+    - **Pre-filled:** 5 of 5 real conversations are summarised in 24–28 words, keeping 3 or 4 of their 3–4 key terms. The 3 small-talk chats never get SKIP (for example "The user thanked the assistant."), and the gates do not reject them either.
+    - **The guard:** `EnrichmentWorker` now skips the summariser when the window's user messages total under `EPISODE_SUMMARY_MIN_USER_WORDS = 20` words. In the fixture the real chats have 33–54 user words and small talk 1–5. With the guard: 5 of 5 written, 0 of 3 small-talk chats (no sidecar call).
+    - **Latency:** p50 3.3 s, p95 3.9 s.
+    - **One existing test's input changed:** `tests/test_episode_summary.py::test_idle_gate_fires_on_second_turn` used four 3-word turns ("user turn i", 12 words). Its turns now carry content; its assertions are unchanged. A new test there checks that small talk is not summarised.
+  - **reflection_label** (V49, D33): **works as shipped**, so S9's "every raw-path task returns only `<think>`" does not hold for it.
+    - Its prompt is flat text with no chat template, so Qwen3 never opens a think block, and it answers `Just the JSON. {"label": ...}`.
+    - 16 of 20 labels are right; the 4 "unclear" memories get "transient". All 20 flag decisions are right, since both labels are flagged.
+    - Latency p50 4.0 s, because it runs to the 64-token limit. A ChatML-plus-pre-fill variant gives the same labels in 2.1 s. Not adopted (D33).
+  - **companion_line** (V52, D33): off by default.
+    - Pre-filled, all 18 runs return the example line from its own system prompt (`Good: {"line":"Still here if you need me.",...}`), whatever the trigger.
+    - Kept off. The prompt needs separate rework.
+  - **Raw prompts** (V53, D33): `SidecarLlmClient.generate` has no production callers. Left in place.
+  - **Not measured:**
+    - real memory payloads and conversations (synthetic fixtures; the owner's memory store is empty and enrichment is off);
+    - companion cognition v2 payloads (off by default).
 
 ### Phase 2 — Scholarly routing and adapters
 
@@ -455,7 +488,7 @@ What they lack is the cross-encoder gate, the sufficiency state and honest "not 
 
 A new session has no memory of earlier ones. Read this section, then §3–§6, then the open stage's entry and the progress log.
 
-**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 committed, not pushed: S14 `1b6fb88`, S15 `2fd25be`, S16 `3ad0a90`. Phase 1 is on `feat/kr-followups-phase1`, branched from Phase 0's head because the plan document exists only there; rebase it onto `main` once Phase 0 merges. S17 was done first, at the owner's request, and is committed (`5dc3c19`). S40 (test isolation, D25) is committed (`e8e0da3`). S18 (sidecar threads, D27) is committed (`b71ba2f`). S19 (pre-fill mechanism, judge and digest kept off, digest default off: D29, D30) is committed (`git log`). Next: S20. D26: the salvage fix goes to Phase 6.
+**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 committed, not pushed: S14 `1b6fb88`, S15 `2fd25be`, S16 `3ad0a90`. Phase 1 is on `feat/kr-followups-phase1`, branched from Phase 0's head because the plan document exists only there; rebase it onto `main` once Phase 0 merges. S17 was done first, at the owner's request, and is committed (`5dc3c19`). S40 (test isolation, D25) is committed (`e8e0da3`). S18 (sidecar threads, D27) is committed (`b71ba2f`). S19 (pre-fill mechanism, judge and digest kept off, digest default off: D29, D30) is committed (`d35349b`). S20 (blurb and episode pre-filled with their fixes, others left: D31–D33) is committed (`git log`). **Phase 1 (S40, S17–S20) is complete**; next is Phase 2 (after the owner decides on pushing Phases 0–1). D26: the salvage fix goes to Phase 6.
 
 **Commands** (repo root, `.venv`):
 
@@ -463,7 +496,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 - Full suite: `QT_QPA_PLATFORM=offscreen HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings -m "not packaging" tests > <log> 2>&1`.
   - The process ends with the known Qt teardown abort (exit 134, no summary line), so count results from the log: `grep -o PASSED <log> | wc -l` and `grep -o FAILED <log> | wc -l`. Do **not** count ` PASSED` with a leading space: a test that prints output pushes its result to the start of the next line, and that count misses it (V34).
   - Cross-check against the collected count: `... -m "not packaging" --collect-only -q tests | tail -1` must equal passed + failed (+ skipped).
-  - Reference (S19): **4319 passed** of 4323 collected, the 4 known failures below (measured 4318: the V38 flake hit once); S18 4298 of 4302; S40 4284 of 4288; S17 4277 of 4282 and S16 4251 of 4256 (5 failures then; S40 fixed the winget one, V41); S15 4244 of 4249; on `main` before S15, 4228 of 4233. Known-flaky (V38): `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` can fail, error at its teardown (an extra ERROR, pass count unchanged), or leave `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` with a setup ERROR or a FAILED (pass count one lower; the FAILED form was seen at S19). Exactly these 4 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`) and `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`). Any other failure is new. (`test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut` failed only because the suite read the real home, V41.)
+  - Reference (S20): **4331 passed** of 4335 collected, the 4 known failures below; S19 4319 of 4323 (measured 4318: the V38 flake hit once); S18 4298 of 4302; S40 4284 of 4288; S17 4277 of 4282 and S16 4251 of 4256 (5 failures then; S40 fixed the winget one, V41); S15 4244 of 4249; on `main` before S15, 4228 of 4233. Known-flaky (V38): `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` can fail, error at its teardown (an extra ERROR, pass count unchanged), or leave `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` with a setup ERROR or a FAILED (pass count one lower; the FAILED form was seen at S19). Exactly these 4 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`) and `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`). Any other failure is new. (`test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut` failed only because the suite read the real home, V41.)
 - Offline eval (needs the reranker model at `~/.qube/models/search/reranker/`): `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_knowledge_quality.py --corpus eval/retrieval_corpus/v1_knowledge_quality.json --ranker <token|embed|ce> --query-mode <production|standalone> [--pool-mode widened] [--json] [--compare <baseline>]`.
   - Compare against `eval/retrieval_corpus/baselines/kq_s13_*`, using `--pool-mode widened` for `ce`. Always pass the relative `--corpus` path.
 - Heuristic A/B: `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_heuristic_ab.py` (S13).
@@ -489,7 +522,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 
 ## 8. Progress log
 
-> **Last reviewed:** 2026-11-25, S19 implemented (pre-fill mechanism with an empty opt-in set; contradiction_judge kept off, D29, because a working judge stores worse, V45; source_digest kept off and its default turned off, D30, because it cannot meet its 1.5 s budget yet cost every eligible turn 1.5 s, V47–V48); S18 implemented (sidecar 4 / 8 threads, D27: prompt eval 56 → 164 tok/s, title p50 9.3 → 2.8 s; contention, V42; main engine batch threads recorded, V43, D28); S40 implemented (suite runs against a throwaway home: audit 0 records; winget failure was a home artifact, V41); S17 implemented (token-fitted history, counted by the loaded model on the native path, V39; salvage finding, V40, fix in Phase 6 per D26); S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
+> **Last reviewed:** 2026-11-25, S20 implemented (ingest blurbs and episode summaries pre-filled, with a joined blurb sample and a small-talk guard, D31, D32; reflection already works, companion copies its example, raw path unused: V49–V53, D33); S19 implemented (pre-fill mechanism with an empty opt-in set; contradiction_judge kept off, D29, because a working judge stores worse, V45; source_digest kept off and its default turned off, D30, because it cannot meet its 1.5 s budget yet cost every eligible turn 1.5 s, V47–V48); S18 implemented (sidecar 4 / 8 threads, D27: prompt eval 56 → 164 tok/s, title p50 9.3 → 2.8 s; contention, V42; main engine batch threads recorded, V43, D28); S40 implemented (suite runs against a throwaway home: audit 0 records; winget failure was a home artifact, V41); S17 implemented (token-fitted history, counted by the loaded model on the native path, V39; salvage finding, V40, fix in Phase 6 per D26); S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
 
 ### Deliverables
 
@@ -526,6 +559,11 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | 2026-11-25 | S19 | Owner decisions | Done | Judge stays off (D29); digest pre-fill stays off and its default is now off (D30, `core/app_settings.py`, `docs/sidecar_tasks.md` §6) | — |
 | 2026-11-25 | S19 | Tests | Done | `tests/test_s19_sidecar_think_prefill.py` (new, 21 tests): helper and opt-in per format and model, title never pre-filled, slot prompt unchanged, worker sends the pre-filled prompt; replay of the fixture pinning V44–V48; digest default and explicit setting (both fail with the old default). Full suite with the home audit: **4318 passed** of 4323 (S18 4298 of 4302, +21), the 4 known failures plus the V38 flake (`test_bundled_wallpaper_assets_exist` FAILED; the pair run reproduces "BackgroundBuildBridge has been deleted"), 0 audit records. No existing test changed | — |
 | 2026-11-25 | S19 | Acceptance | Done | Per task: success rate (shipped 0 of 36 / 0 of 6; pre-filled 36 of 36 parseable verdicts / 0 of 12 accepted digests), quality on fixtures (V45, V47), p95 latency (judge 546 ms; digest 15.2 s), owner decisions (D29, D30) ✓ | — |
+| 2026-11-25 | S20 | Mechanism | Done | Opt-in moved to the exit of `build_prompt_for_task` (covers builder prompts; title excluded); set = `{ingest_blurb, episode_summary}` | — |
+| 2026-11-25 | S20 | Evaluation: reflection_label, episode_summary, ingest_blurb, companion_line, raw prompts | Done | Fixture `tests/fixtures/sidecar_tasks_recorded_s20.json`; V49–V53; field counts from the owner's data (76 documents, 0 blurbs; memory store empty) | Synthetic memories and conversations |
+| 2026-11-25 | S20 | Owner decisions and changes | Done | D31: `build_ingest_blurb_sample()` (`core/sidecar_prompts.py`), used by `workers/ingestion_worker.py`; D32: `EPISODE_SUMMARY_MIN_USER_WORDS = 20` in `workers/enrichment_worker.py`; D33: no change | — |
+| 2026-11-25 | S20 | Tests | Done | `tests/test_s20_sidecar_tasks.py` (new, 10 tests) replays the fixture through the production parsers, the reflection worker and `EnrichmentWorker._summarise_session_now`, and checks the joined sample and the guard; S19 file +1 (builder prompts), `tests/test_episode_summary.py` +1 (small talk not summarised) and one input changed (the idle-gate test's turns, assertions unchanged); S19's shipped-set test now pins D31–D32. Without the guard the guard tests fail. Full suite with the home audit: **4331 passed** of 4335 (S19 4319, +12), the 4 known failures, 0 audit records | — |
+| 2026-11-25 | S20 | Acceptance | Done | Per task: success rate (shipped: blurb 0 of 19, episode 0 of 8, companion 0 of 6, reflection 20 of 20 parseable; pre-filled: 19 of 19, 8 of 8, 18 of 18), quality on fixtures (V49–V52), p95 latency (blurb 3.5 s, about 5 s with the joined sample; episode 3.9 s; companion 2.2 s; reflection 4.2 s), owner decisions (D31–D33) ✓ | — |
 
 ### Validated findings (V33+)
 
@@ -547,6 +585,11 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | **V46** | Contradicting facts reach the judge | **Only half do.** `_find_duplicate` (LanceDB distance < 0.22, balanced embedder) passes 11 of 12 paraphrases, 6 of 12 contradictions (median distance 0.216) and 2 of 12 complements (0.272). A contradiction beyond the gate is stored next to the fact it contradicts. | Memory gate, not the sidecar: a candidate for Phase 6 (owner) |
 | **V47** | The source digest can work on the CPU sidecar | **No.** It needs 11.0–15.2 s pre-filled (1309–1476 prompt tokens) against a 1.5 s foreground timeout (10 s at most). The `"\n\n"` stop cuts it after source [1] (12 of 12 runs rejected). Without that stop it takes 26–27 s, still misses ids in 3 of 6 and invents a `[6]` in 2 of 6. | Pre-fill stays off (D30) |
 | **V48** | The shipped digest is harmless because it always falls back | **No, it costs every eligible turn 1.5 s.** On by default with no Settings toggle, it blocked `digest_rag_context` for 1501–1502 ms in 6 of 6 cases (`timeout`, never applied). The sidecar kept evaluating for 8.2–9.4 s at S18 threads (about 3× longer before S18), overlapping the main model's answer. | Default off (D30) |
+| **V49** | Every raw-path sidecar task returns only `<think>` (S9, V44) | **Not `reflection_label`.** Its prompt is flat text with no ChatML template, so Qwen3 never opens a think block. On 20 synthetic memories it labels 16 right ("unclear" becomes "transient") and makes all 20 flag decisions right. It runs to its 64-token limit (p50 4.0 s); as ChatML with the pre-fill it gives the same labels in 2.1 s. | No change (D33) |
+| **V50** | A working ingest blurb would describe the document | **Only when the first chunk has content.** As shipped, 0 of 19 (the owner's library: 76 documents, 0 blurbs). Pre-filled, 13 of 13 are grounded when the first chunk has content (overlap 0.40–0.89), but 6 of 6 are invented when it is only a heading (16–32 chars, overlap 0.00–0.29). The first chunks joined up to 2500 chars fix those 6 (0.60–0.85). 6 of the owner's 76 first chunks are under 100 chars. | Pre-fill + joined sample (D31) |
+| **V51** | The episode summariser's SKIP rule filters small talk | **No.** Pre-filled, it summarises 5 of 5 real conversations well but answers SKIP for 0 of 3 small-talk chats, and the thin-content and assistant-failure gates pass them. The idle trigger fires after 2 user turns, so such sessions would get episodes. | Pre-fill + 20-user-word guard (D32) |
+| **V52** | The companion line works once the think block is pre-filled | **No.** 18 of 18 pre-filled runs (6 triggers × 3) return the example line from the system prompt, "Still here if you need me.", unchanged. | Kept off (D33); prompt rework needed |
+| **V53** | Raw prompts go through `SidecarLlmClient.generate` | **No production callers** in `core/`, `workers/`, `ui/` or `mcp/`. | Left in place (D33) |
 
 ### Owner decisions (D23+)
 
@@ -560,6 +603,9 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | D28 | The main engine's `n_threads_batch` also defaults to every logical CPU (V43). Change it? | **Record it and decide later**: it belongs to the inference-settings work, and GPU builds were not measured. (Recorded 2026-11-25.) | V43 |
 | D29 | S19: pre-fill `contradiction_judge`? | **Keep it off.** On pairs that reach it, a working judge stores worse than today's fallback (V45). Leave it out of `QWEN3_THINK_PREFILL_TASKS`; behaviour unchanged. Retiring the LLM call is a possible later change. (Recorded 2026-11-25.) | V45 |
 | D30 | S19: pre-fill `source_digest`, and its default? | **Keep the pre-fill off and make the digest's default off.** It cannot finish within its foreground budget (V47), and turned on it only cost turns 1.5 s (V48). An explicit setting still enables it. (Recorded 2026-11-25.) | V47, V48 |
+| D31 | S20: pre-fill `ingest_blurb`? | **Yes, with the sample built from the first chunks joined up to 2500 chars**, because heading-only first chunks made the sidecar invent blurbs (V50). Applies to new imports; no backfill. (Recorded 2026-11-25.) | V50 |
+| D32 | S20: pre-fill `episode_summary`? | **Yes, with a small-talk guard**: no summary when the window's user messages total under 20 words, because the sidecar never answers SKIP (V51). (Recorded 2026-11-25.) | V51 |
+| D33 | S20: `companion_line`, `reflection_label`, raw prompts | **Leave all three as they are.** The companion line stays off, since it copies its example (V52). Reflection already works (V49); its faster ChatML variant is not adopted. The raw-prompt path has no callers (V53). (Recorded 2026-11-25.) | V49, V52, V53 |
 
 ### Track 0 checkpoints
 

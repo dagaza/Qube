@@ -134,7 +134,7 @@ SUMMARY: <one paragraph, ≤120 words>
 TOPICS: <comma-separated keywords>
 ```
 
-Or `SUMMARY: SKIP` for trivial conversations.
+Or `SUMMARY: SKIP` for trivial conversations. The bundled Qwen3 sidecar never answers SKIP in practice, so since plan S20 (D32) a window whose user messages total under `EPISODE_SUMMARY_MIN_USER_WORDS` (20) words is not summarised at all.
 
 **Post-processing:** Rejects thin content, assistant failure messages, negative-list matches; embeds summary vector; deduplicates near-identical episodes.
 
@@ -217,11 +217,14 @@ Both live in `core/source_digest.py`.
 
 **Caller:** `IngestionWorker` in `workers/ingestion_worker.py`, after chunks are embedded and written to LanceDB.
 
-**Trigger:** After each file is indexed, if `get_sidecar_ingest_blurb_enabled()` and first chunk sample is available:
+**Trigger:** After each file is indexed, if `get_sidecar_ingest_blurb_enabled()` and the file produced chunks:
 
 ```python
-self.sidecar_worker.enqueue_ingest_blurb(source, sample)  # sample = chunks[0][:2500]
+sample = build_ingest_blurb_sample(chunks)  # first chunks joined up to 2500 chars (plan S20, D31)
+self.sidecar_worker.enqueue_ingest_blurb(source, sample)
 ```
+
+Until S20 the sample was `chunks[0][:2500]`; a heading-only first chunk made the sidecar invent a generic blurb.
 
 **Execution:** Fire-and-forget queue op → `SidecarLlmWorker._do_ingest_blurb()` → emits `ingest_blurb_ready(filename, blurb)`.
 
@@ -313,7 +316,7 @@ These are sidecar lifecycle operations, not `SidecarTask` values:
 
 **Model resolution:** `core/auxiliary_cognition.py` — bundled default, user override, 2 GB size cap, protected default file.
 
-**Chat format / Qwen3:** `core/cognition_prompt_adapter.py` — format inference, `/no_think` injection for Qwen3 models.
+**Chat format / Qwen3:** `core/cognition_prompt_adapter.py` — format inference, `/no_think` injection for Qwen3 models, and `prefill_qwen3_empty_think()`. On the raw path Qwen3 opens an empty think block that the `"\n\n"` stop cuts at `<think>`; tasks in `core/sidecar_prompts.QWEN3_THINK_PREFILL_TASKS` get the block pre-filled (since S20: `ingest_blurb`, `episode_summary`; `query_slots` does it in its own builder). See `docs/knowledge_retrieval_followups.md` S19–S20 for the per-task evaluation.
 
 ---
 

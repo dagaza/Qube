@@ -58,8 +58,9 @@ def test_helper_prefills_only_qwen3_chatml_at_the_assistant_turn() -> None:
 
 
 def test_shipped_opt_in_set() -> None:
-    """Changes only with an owner D-row per task (D9; S19 evaluation)."""
-    assert sp.QWEN3_THINK_PREFILL_TASKS == frozenset()
+    """Changes only with an owner D-row per task (D9; S19: D29, D30; S20: D31-D33)."""
+    assert sp.QWEN3_THINK_PREFILL_TASKS == frozenset({SidecarTask.ingest_blurb, SidecarTask.episode_summary})
+    assert not sp.QWEN3_THINK_PREFILL_TASKS & {SidecarTask.contradiction_judge, SidecarTask.source_digest}
 
 
 @pytest.mark.parametrize(
@@ -288,3 +289,12 @@ def test_default_turn_does_not_wait_on_the_digest() -> None:
         res = sd.digest_rag_context(context, case["sources"], client)
     assert (res.applied, res.skip_reason, res.text) == (False, "disabled", context)
     assert client.calls == 0
+
+
+def test_opt_in_covers_builder_made_prompts() -> None:
+    """S20: companion lines come from their own builders; the opt-in still applies."""
+    with patch.object(sp, "QWEN3_THINK_PREFILL_TASKS", frozenset({SidecarTask.companion_line})):
+        p = sp.build_prompt_for_task(SidecarTask.companion_line, chat_format="chatml", model_path=_QWEN, trigger="idle")
+    assert p.endswith(CHATML_ASSISTANT_START + QWEN3_EMPTY_THINK)
+    p = sp.build_prompt_for_task(SidecarTask.companion_line, chat_format="chatml", model_path=_QWEN, trigger="idle")
+    assert "<think>" not in p

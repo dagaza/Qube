@@ -1,0 +1,1522 @@
+{
+ "schema": "qube.sidecar_tasks_recorded.v1",
+ "description": "Plan S20: reflection_label, episode_summary, ingest_blurb and companion_line completions recorded from the bundled Qwen3-1.7B-Q6_K sidecar through SidecarLlmWorker._complete_prompt (shipped params and stops, S18 threads) on 2026-11-25. 'as_shipped' is today's prompt; 'prefill' adds Qwen3's empty think block (S19 mechanism). reflection 'chatml_prefill' sends the same flat prompt as a ChatML user turn with the pre-fill. blurb samples are the real first ingest chunk of this repo's docs ('short_sample' rows have a first chunk under 300 chars); 'prefill_joined' uses the first chunks joined up to 2500 chars. Memories, conversations and companion payloads are synthetic. Replayed offline by tests/test_s20_sidecar_tasks.py.",
+ "model": "Qwen3-1.7B-Q6_K.gguf",
+ "threads": [
+  4,
+  8
+ ],
+ "reflection": [
+  {
+   "id": "mem_00",
+   "gold": "durable_user_fact",
+   "memory": {
+    "content": "User is a nurse who works night shifts at a hospital.",
+    "subject": "user",
+    "category": "identity",
+    "origin": "chat",
+    "provenance_quote": "I'm a nurse, I work nights at the hospital"
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"durable_user_fact\"\n}\n```\n```json\n{\n  \"label\": \"third_party_stub\"\n}\n```\n```json\n{\n  \"label\": \"system_claim\"\n}\n```\n```json\n{\n  \"label\": \"transient\"\n",
+    "finish_reason": "length",
+    "prompt_tokens": 307,
+    "completion_tokens": 64,
+    "ms": 4547.7,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"durable_user_fact\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 324,
+    "completion_tokens": 11,
+    "ms": 2331.1,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_01",
+   "gold": "durable_user_fact",
+   "memory": {
+    "content": "User prefers metric units for all measurements.",
+    "subject": "user",
+    "category": "preference",
+    "origin": "chat",
+    "provenance_quote": "please always use metric"
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"durable_user_fact\"\n}\n``` The memory indicates a preference for metric units, which is a stable and long-lived preference that the assistant should remember. This is a durable user fact because it relates to the user's ongoing preference and would be relevant in future",
+    "finish_reason": "length",
+    "prompt_tokens": 296,
+    "completion_tokens": 64,
+    "ms": 4230.5,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"durable_user_fact\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 313,
+    "completion_tokens": 11,
+    "ms": 2160.9,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_02",
+   "gold": "durable_user_fact",
+   "memory": {
+    "content": "User's daughter Mia is seven years old.",
+    "subject": "user",
+    "category": "identity",
+    "origin": "chat",
+    "provenance_quote": "my daughter Mia just turned seven"
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"durable_user_fact\"\n}\n```\n```json\n{\n  \"label\": \"third_party_stub\"\n}\n```\n```json\n{\n  \"label\": \"system_claim\"\n}\n```\n```json\n{\n  \"label\": \"transient\"\n",
+    "finish_reason": "length",
+    "prompt_tokens": 299,
+    "completion_tokens": 64,
+    "ms": 4077.7,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"durable_user_fact\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 316,
+    "completion_tokens": 11,
+    "ms": 2214.1,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_03",
+   "gold": "durable_user_fact",
+   "memory": {
+    "content": "User is building a home weather station with a Raspberry Pi.",
+    "subject": "user",
+    "category": "project",
+    "origin": "chat",
+    "provenance_quote": "my weather station project on the Pi"
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"durable_user_fact\"\n}\n``` ",
+    "finish_reason": "stop",
+    "prompt_tokens": 303,
+    "completion_tokens": 21,
+    "ms": 2469.8,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"durable_user_fact\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 320,
+    "completion_tokens": 11,
+    "ms": 2226.1,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_04",
+   "gold": "third_party_stub",
+   "memory": {
+    "content": "Tom.",
+    "subject": "third_party",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": "Tom said so"
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"third_party_stub\"\n}\n``` The memory content is \"Tom.\" which is a bare reference to someone or something other than the user. The subject is third_party, and the category is context. The origin is chat, and the provenance quote is \"",
+    "finish_reason": "length",
+    "prompt_tokens": 290,
+    "completion_tokens": 64,
+    "ms": 3996.4,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"third_party_stub\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 307,
+    "completion_tokens": 10,
+    "ms": 2117.0,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_05",
+   "gold": "third_party_stub",
+   "memory": {
+    "content": "A colleague.",
+    "subject": "third_party",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": ""
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"third_party_stub\"\n}\n``` The memory content is \"A colleague.\" which is a bare reference to a third-party entity (the colleague) without any useful detail. The subject is categorized as third_party, and there is no provenance quote. Therefore,",
+    "finish_reason": "length",
+    "prompt_tokens": 289,
+    "completion_tokens": 64,
+    "ms": 4014.3,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"third_party_stub\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 306,
+    "completion_tokens": 10,
+    "ms": 2123.2,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_06",
+   "gold": "third_party_stub",
+   "memory": {
+    "content": "Sarah from work.",
+    "subject": "third_party",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": "Sarah from work mentioned it"
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"third_party_stub\"\n}\n``` The memory content is a bare reference to \"Sarah from work\" without any additional details. Since it's a reference to someone or something outside the user, it's a third_party_stub. The category is context, and the",
+    "finish_reason": "length",
+    "prompt_tokens": 294,
+    "completion_tokens": 64,
+    "ms": 4016.6,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"third_party_stub\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 311,
+    "completion_tokens": 10,
+    "ms": 2261.6,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_07",
+   "gold": "third_party_stub",
+   "memory": {
+    "content": "Someone named Alex.",
+    "subject": "third_party",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": ""
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"third_party_stub\"\n}\n```  ```json\n{\n  \"label\": \"third_party_stub\"\n}\n```  ```json\n{\n  \"label\": \"third_party_stub\"\n}\n```  ```json\n{\n  \"label\": \"third_party_stub",
+    "finish_reason": "length",
+    "prompt_tokens": 290,
+    "completion_tokens": 64,
+    "ms": 4005.0,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"third_party_stub\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 307,
+    "completion_tokens": 10,
+    "ms": 2115.9,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_08",
+   "gold": "system_claim",
+   "memory": {
+    "content": "The assistant cannot browse the internet.",
+    "subject": "system",
+    "category": "knowledge",
+    "origin": "chat",
+    "provenance_quote": ""
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"system_claim\"\n}\n``` The assistant's response is a system claim, indicating that it cannot browse the internet. This is a specific policy or limitation of the system, not a personal fact about the user. Therefore, it should be classified as a system_claim",
+    "finish_reason": "length",
+    "prompt_tokens": 292,
+    "completion_tokens": 64,
+    "ms": 4017.6,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"system_claim\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 309,
+    "completion_tokens": 9,
+    "ms": 2105.4,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_09",
+   "gold": "system_claim",
+   "memory": {
+    "content": "Qube does not support PDF files.",
+    "subject": "system",
+    "category": "knowledge",
+    "origin": "chat",
+    "provenance_quote": ""
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"system_claim\"\n}\n``` The memory content is a claim about the assistant's capabilities, specifically that Qube does not support PDF files. This is a system claim, as it pertains to the assistant's functionality rather than the user's personal information or ongoing",
+    "finish_reason": "length",
+    "prompt_tokens": 293,
+    "completion_tokens": 64,
+    "ms": 4038.7,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"system_claim\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 310,
+    "completion_tokens": 9,
+    "ms": 2124.5,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_10",
+   "gold": "system_claim",
+   "memory": {
+    "content": "The assistant has no memory of earlier chats.",
+    "subject": "system",
+    "category": "knowledge",
+    "origin": "chat",
+    "provenance_quote": ""
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"system_claim\"\n}\n``` The memory content states that \"The assistant has no memory of earlier chats.\" This is a claim about the assistant's capabilities or functionality, specifically regarding its memory. It is not a personal fact about the user but rather a statement about",
+    "finish_reason": "length",
+    "prompt_tokens": 294,
+    "completion_tokens": 64,
+    "ms": 4037.0,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"system_claim\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 311,
+    "completion_tokens": 9,
+    "ms": 2118.7,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_11",
+   "gold": "system_claim",
+   "memory": {
+    "content": "RAG search in the app is slow.",
+    "subject": "system",
+    "category": "knowledge",
+    "origin": "chat",
+    "provenance_quote": ""
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"system_claim\"\n}\n``` The memory content is a claim about the performance of RAG search in the app, which is a system-related issue. Therefore, it falls under the category of a system claim. The label is correctly identified as \"system_claim\".",
+    "finish_reason": "length",
+    "prompt_tokens": 294,
+    "completion_tokens": 64,
+    "ms": 4024.1,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"system_claim\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 311,
+    "completion_tokens": 9,
+    "ms": 2129.2,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_12",
+   "gold": "transient",
+   "memory": {
+    "content": "User is hungry right now.",
+    "subject": "user",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": "I'm starving right now"
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"transient\"\n}\n``` \nThe memory content is a momentary state indicating the user is hungry right now. It is not a stable fact about the user, nor does it relate to ongoing projects or long-term contexts. Therefore, it is classified as transient",
+    "finish_reason": "length",
+    "prompt_tokens": 295,
+    "completion_tokens": 64,
+    "ms": 4106.4,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"transient\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 312,
+    "completion_tokens": 9,
+    "ms": 2116.7,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_13",
+   "gold": "transient",
+   "memory": {
+    "content": "User is downloading a model at the moment.",
+    "subject": "user",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": ""
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"transient\"\n}\n``` The memory content indicates that the user is currently downloading a model. This is a temporary state that will likely resolve once the download is complete. Therefore, it is a transient note that should be flagged for the user to review. The",
+    "finish_reason": "length",
+    "prompt_tokens": 294,
+    "completion_tokens": 64,
+    "ms": 4010.7,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"transient\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 311,
+    "completion_tokens": 9,
+    "ms": 2131.0,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_14",
+   "gold": "transient",
+   "memory": {
+    "content": "User's train this morning is ten minutes late.",
+    "subject": "user",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": "my train is late again"
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"transient\"\n}\n```\n```json\n{\n  \"label\": \"transient\"\n}\n``` The assistant's response is a memory that the user is hungry right now. The user's train this morning is ten minutes late. The assistant should flag the",
+    "finish_reason": "length",
+    "prompt_tokens": 299,
+    "completion_tokens": 64,
+    "ms": 4072.4,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"transient\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 316,
+    "completion_tokens": 9,
+    "ms": 2135.6,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_15",
+   "gold": "transient",
+   "memory": {
+    "content": "User has a headache today.",
+    "subject": "user",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": "headache today, ugh"
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"transient\"\n}\n```\n```json\n{\n  \"label\": \"system_claim\"\n}\n```\n```json\n{\n  \"label\": \"durable_user_fact\"\n}\n```\n```json\n{\n  \"label\": \"third_party_stub\"\n",
+    "finish_reason": "length",
+    "prompt_tokens": 296,
+    "completion_tokens": 64,
+    "ms": 4030.7,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"transient\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 313,
+    "completion_tokens": 9,
+    "ms": 2143.5,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_16",
+   "gold": "unclear",
+   "memory": {
+    "content": "It was fine.",
+    "subject": "user",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": ""
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"transient\"\n}\n``` The memory content is a simple statement that says \"It was fine.\" This is a brief, momentary observation and does not represent a stable fact about the user. It is not a durable user fact, nor does it reference any",
+    "finish_reason": "length",
+    "prompt_tokens": 289,
+    "completion_tokens": 64,
+    "ms": 4011.8,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"transient\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 306,
+    "completion_tokens": 9,
+    "ms": 2077.9,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_17",
+   "gold": "unclear",
+   "memory": {
+    "content": "The thing from before.",
+    "subject": "user",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": ""
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"transient\"\n}\n``` ",
+    "finish_reason": "stop",
+    "prompt_tokens": 290,
+    "completion_tokens": 19,
+    "ms": 2345.4,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"transient\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 307,
+    "completion_tokens": 9,
+    "ms": 2106.0,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_18",
+   "gold": "unclear",
+   "memory": {
+    "content": "Yes, that one.",
+    "subject": "user",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": ""
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"transient\"\n}\n``` The memory content is a single word, \"Yes,\" which is a momentary response. It does not represent a stable fact about the user, a third-party reference, a system claim, or a long-term context. Therefore,",
+    "finish_reason": "length",
+    "prompt_tokens": 290,
+    "completion_tokens": 64,
+    "ms": 4007.5,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"transient\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 307,
+    "completion_tokens": 9,
+    "ms": 2091.4,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "mem_19",
+   "gold": "unclear",
+   "memory": {
+    "content": "Maybe later.",
+    "subject": "user",
+    "category": "context",
+    "origin": "chat",
+    "provenance_quote": ""
+   },
+   "as_shipped": {
+    "raw": " Just the JSON.\n```json\n{\n  \"label\": \"transient\"\n}\n```\n```json\n{\n  \"label\": \"transient\"\n}\n``` The assistant's response is a simple \"Maybe later.\" which is a transient note. It's a momentary state or a single event, and it's",
+    "finish_reason": "length",
+    "prompt_tokens": 288,
+    "completion_tokens": 64,
+    "ms": 4005.9,
+    "final_prompt_tail": " the JSON object. No prose. No markdown."
+   },
+   "chatml_prefill": {
+    "raw": "{ \"label\": \"transient\" }",
+    "finish_reason": "stop",
+    "prompt_tokens": 305,
+    "completion_tokens": 9,
+    "ms": 2136.1,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  }
+ ],
+ "episode": [
+  {
+   "id": "ep_0",
+   "gold": "summary",
+   "key_terms": [
+    "raised bed",
+    "tomato",
+    "basil",
+    "irrigation"
+   ],
+   "conversation": "user: I want to build raised garden beds this spring. What soil mix should I use?\nassistant: A common mix is 60% topsoil, 30% compost and 10% coarse sand or perlite for drainage.\nuser: OK. I have space for three beds of 1.2 by 2.4 metres. I'll grow tomatoes and basil.\nassistant: Three beds that size fit well. Tomatoes and basil are classic companions; give tomatoes full sun.\nuser: Should I add drip irrigation or just water by hand?\nassistant: Drip irrigation on a timer saves water and keeps tomato leaves dry, which reduces blight.\nuser: Let's go with drip irrigation then. Next I need a parts list.",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 333,
+    "completion_tokens": 2,
+    "ms": 1970.9,
+    "final_prompt_tail": "s list.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "SUMMARY: The user is planning to build three raised garden beds for tomatoes and basil, plans to use drip irrigation, and needs a parts list for the project.\nTOPICS: raised garden beds, soil mix, drip irrigation, tomato planting, basil planting",
+     "finish_reason": "stop",
+     "prompt_tokens": 337,
+     "completion_tokens": 51,
+     "ms": 3829.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "SUMMARY: The user is planning to build three raised garden beds for tomatoes and basil, plans to use drip irrigation, and needs a parts list for the project.\nTOPICS: raised garden beds, soil mix, drip irrigation, tomato planting, basil planting",
+     "finish_reason": "stop",
+     "prompt_tokens": 337,
+     "completion_tokens": 51,
+     "ms": 3853.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "ep_1",
+   "gold": "summary",
+   "key_terms": [
+    "csv",
+    "encoding",
+    "utf-8-sig",
+    "test"
+   ],
+   "conversation": "user: My Python script fails reading a CSV export: UnicodeDecodeError at position 0.\nassistant: That usually means a byte-order mark. Try open(path, encoding='utf-8-sig').\nuser: That fixed it. The first column name no longer has the weird prefix.\nassistant: Good. The BOM was being read as part of the first header.\nuser: Now I want to write tests for the parser before I refactor it.\nassistant: Start with a small fixture CSV that includes a BOM and a quoted field with a comma.",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 292,
+    "completion_tokens": 2,
+    "ms": 1707.8,
+    "final_prompt_tail": " comma.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "SUMMARY: The user resolved a UnicodeDecodeError in their Python script by using 'utf-8-sig' encoding and now wants to write tests for the parser before refactoring it.\nTOPICS: CSV testing, UnicodeDecodeError, parser tests, BOM, quoted fields",
+     "finish_reason": "stop",
+     "prompt_tokens": 296,
+     "completion_tokens": 56,
+     "ms": 3822.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "SUMMARY: The user resolved a UnicodeDecodeError in their Python script by using encoding='utf-8-sig', fixed the first column's prefix, and now wants to write tests for the parser before refactoring.\nTOPICS: CSV parsing, UnicodeDecodeError, test writing, encoding issues",
+     "finish_reason": "stop",
+     "prompt_tokens": 296,
+     "completion_tokens": 59,
+     "ms": 3906.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "ep_2",
+   "gold": "summary",
+   "key_terms": [
+    "lisbon",
+    "may",
+    "alfama",
+    "walking"
+   ],
+   "conversation": "user: I'm planning four days in Lisbon in May with a budget of about 800 euros.\nassistant: May is a good month: warm but not hot. 800 euros covers a mid-range guesthouse and food.\nuser: I prefer walking tours over buses. Which neighbourhood should I stay in?\nassistant: Alfama is walkable, close to the castle and the river, and full of small guesthouses.\nuser: Alfama it is. Can you sketch a day-by-day walking plan?",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 285,
+    "completion_tokens": 2,
+    "ms": 1669.7,
+    "final_prompt_tail": "g plan?<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "SUMMARY: The user is planning a four-day trip to Lisbon in May with a budget of 800 euros, prefers walking tours, and wants a day-by-day walking plan in Alfama.\nTOPICS: Lisbon trip, budget planning, walking tours, Alfama neighborhood",
+     "finish_reason": "stop",
+     "prompt_tokens": 289,
+     "completion_tokens": 56,
+     "ms": 3756.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "SUMMARY: The user is planning a four-day trip to Lisbon in May with a budget of 800 euros, prefers walking tours, and wants a day-by-day walking plan in Alfama.\nTOPICS: Lisbon trip, budget planning, walking tours, Alfama neighborhood",
+     "finish_reason": "stop",
+     "prompt_tokens": 289,
+     "completion_tokens": 56,
+     "ms": 3731.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "ep_3",
+   "gold": "summary",
+   "key_terms": [
+    "data analyst",
+    "cv",
+    "friday"
+   ],
+   "conversation": "user: I'm applying for a data analyst role and the deadline is Friday.\nassistant: Let's tighten your CV. What are your current bullet points for your last job?\nuser: I wrote 'responsible for reports'. It sounds weak.\nassistant: Make it outcome-based: 'Built weekly sales dashboards in Power BI used by 40 managers.'\nuser: Better. I'll rewrite the other bullets the same way and send it Thursday.",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 270,
+    "completion_tokens": 2,
+    "ms": 1582.0,
+    "final_prompt_tail": "ursday.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "SUMMARY: The user is preparing for a data analyst role by refining their CV, focusing on outcome-based language and aiming to submit it by Friday.  \nTOPICS: CV Refinement, Data Analyst Application, Outcome-Based Language",
+     "finish_reason": "stop",
+     "prompt_tokens": 274,
+     "completion_tokens": 45,
+     "ms": 3267.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "SUMMARY: The user is preparing for a data analyst job application by refining their CV, focusing on outcome-based bullet points and aiming to submit it by Friday.  \nTOPICS: CV Refinement, Data Analyst Application, Deadline Management",
+     "finish_reason": "stop",
+     "prompt_tokens": 274,
+     "completion_tokens": 46,
+     "ms": 3269.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "ep_4",
+   "gold": "summary",
+   "key_terms": [
+    "heat pump",
+    "gas boiler",
+    "quote"
+   ],
+   "conversation": "user: Should I replace my old gas boiler with a heat pump?\nassistant: It depends on insulation and electricity prices; well-insulated homes see the best savings.\nuser: The house was insulated two years ago. Running costs matter most to me.\nassistant: Then a heat pump is likely cheaper to run than gas, especially with a time-of-use tariff.\nuser: I'm leaning towards a heat pump. I'll ask three installers for quotes.",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 271,
+    "completion_tokens": 2,
+    "ms": 1604.0,
+    "final_prompt_tail": "quotes.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "SUMMARY: The user is considering replacing their gas boiler with a heat pump, focusing on running costs and insulation. They plan to consult three installers for quotes.  \nTOPICS: heat pump, insulation, running costs, quotes",
+     "finish_reason": "stop",
+     "prompt_tokens": 275,
+     "completion_tokens": 46,
+     "ms": 3305.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "SUMMARY: The user is considering replacing their old gas boiler with a heat pump, based on insulation and electricity costs, and is planning to consult three installers for quotes.  \nTOPICS: heat pump, insulation, electricity costs, quotes",
+     "finish_reason": "stop",
+     "prompt_tokens": 275,
+     "completion_tokens": 48,
+     "ms": 3359.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "ep_5",
+   "gold": "skip",
+   "key_terms": [],
+   "conversation": "user: hi\nassistant: Hello! How can I help today?\nuser: just saying hi\nassistant: Nice to hear from you!",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 208,
+    "completion_tokens": 2,
+    "ms": 1204.7,
+    "final_prompt_tail": "om you!<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "SUMMARY: The conversation was a simple exchange of greetings.  \nTOPICS: greeting, small talk",
+     "finish_reason": "stop",
+     "prompt_tokens": 212,
+     "completion_tokens": 20,
+     "ms": 1895.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "SUMMARY: The conversation was a simple greeting between two individuals.\nTOPICS: greeting, small talk",
+     "finish_reason": "stop",
+     "prompt_tokens": 212,
+     "completion_tokens": 20,
+     "ms": 1899.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "ep_6",
+   "gold": "skip",
+   "key_terms": [],
+   "conversation": "user: thanks!\nassistant: You're welcome!",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 190,
+    "completion_tokens": 2,
+    "ms": 1092.4,
+    "final_prompt_tail": "elcome!<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "SUMMARY: The user thanked the assistant.\nTOPICS: thanks, gratitude",
+     "finish_reason": "stop",
+     "prompt_tokens": 194,
+     "completion_tokens": 15,
+     "ms": 1627.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "SUMMARY: The user thanked the assistant.\nTOPICS: thanks, gratitude",
+     "finish_reason": "stop",
+     "prompt_tokens": 194,
+     "completion_tokens": 15,
+     "ms": 1617.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "ep_7",
+   "gold": "skip",
+   "key_terms": [],
+   "conversation": "user: tell me a joke\nassistant: Why did the scarecrow win an award? He was outstanding in his field.\nuser: haha",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 208,
+    "completion_tokens": 2,
+    "ms": 1225.6,
+    "final_prompt_tail": "r: haha<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "SUMMARY: The user asked for a joke and received one about a scarecrow winning an award. The conversation ended with the user laughing.\nTOPICS: joke, laughter",
+     "finish_reason": "stop",
+     "prompt_tokens": 212,
+     "completion_tokens": 34,
+     "ms": 2400.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "SUMMARY: The user asked for a joke and received one about a scarecrow winning an award. The conversation ended with the user laughing.\nTOPICS: joke, laughter",
+     "finish_reason": "stop",
+     "prompt_tokens": 212,
+     "completion_tokens": 34,
+     "ms": 2433.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  }
+ ],
+ "blurb": [
+  {
+   "id": "README",
+   "sample_text": "## What is Qube?\n\nQube is a **native desktop AI assistant** for privacy-sensitive work on **your own hardware**. Chat in text, ingest documents into a **Library**, let Qube distill **long-term memory** you can edit in **Memory Manager**, and pull **Live Sources** — scientific literature, filings, case law, and more — with numbered citations and per-turn **INSPECT RETRIEVAL**.\n\nInference stays local. Web and research tools run **only when you ask**. Help, settings tours, and troubleshooting live **inside the app** — **Library → Qube**, **`@[tool:help]`**, and **`?` guided tours** — not on a separate wiki.\n\nOptional **voice input**, text-to-speech, and a **Desktop Companion** orb are available when you want hands-free turns; precision routing with **`@` composer tools** and **skills** is richest from the main window with keyboard and mouse.\n\n---",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 241,
+    "completion_tokens": 2,
+    "ms": 1384.9,
+    "final_prompt_tail": "e.\n\n---<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "Qube is a native desktop AI assistant for privacy-sensitive work on your own hardware, offering text chat, document ingestion, memory management, and live source retrieval with INSPECT RETRIEVAL.",
+    "finish_reason": "stop",
+    "prompt_tokens": 245,
+    "completion_tokens": 39,
+    "ms": 2807.9,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "releasing",
+   "sample_text": "## Prerequisites\n\n- Maintainer access to `dagaza/Qube`\n- Git tag matching semver: `vMAJOR.MINOR.PATCH` (example: `v1.0.1`)\n- Updated [`CHANGELOG.md`](../CHANGELOG.md) entry for the release",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 97,
+    "completion_tokens": 2,
+    "ms": 574.6,
+    "final_prompt_tail": "release<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines the prerequisites for releasing a new version of the Qube project, including maintainer access, semver compliance, and updating the CHANGELOG.md file.",
+    "finish_reason": "stop",
+    "prompt_tokens": 101,
+    "completion_tokens": 33,
+    "ms": 1744.6,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "cognitive_router",
+   "sample_text": "## Route vocabulary\n\n| Route | Meaning | Typical tools / data |\n|-------|---------|----------------------|\n| `none` | **Self-knowledge (CHAT)** — no retrieval tools; the model answers from its parameters (optionally with light preference injection). | None required |\n| `memory` | **Long-term memory** — LanceDB rows under `qube_memory::*`. | `mcp/memory_tool.py` |\n| `rag` | **Document library** — uploaded PDFs, notes, ingested files. | `mcp/rag_tool.py` |\n| `web` | **Live internet** — DuckDuckGo search via the internet MCP tool. | `search_internet` |\n| `hybrid` | **Memory + RAG** — both retrievers run; the LLM synthesizes across sources. | Memory + RAG |\n\n`INTERNET` is treated as an alias of `WEB` in execution paths.\n\n---",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 234,
+    "completion_tokens": 2,
+    "ms": 1409.9,
+    "final_prompt_tail": "s.\n\n---<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document explains different route types for a system that combines self-knowledge, long-term memory, document retrieval, and internet search.",
+    "finish_reason": "stop",
+    "prompt_tokens": 238,
+    "completion_tokens": 26,
+    "ms": 2295.0,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "sidecar_tasks",
+   "sample_text": "## Task index\n\n| Task | Timing | Caller | Subsystem |\n|------|--------|--------|-----------|\n| `title` | Background | `ui/main_window.py` | Chat UI |\n| `contradiction_judge` | Background | `workers/enrichment_worker.py` | Memory |\n| `reflection_label` | Background | `workers/memory_reflection_worker.py` | Memory |\n| `episode_summary` | Background | `workers/enrichment_worker.py` (via `generate()`) | Memory |\n| `query_rewrite` | Foreground | `workers/llm_worker.py` → `core/sidecar_query_rewrite.py` | Retrieval |\n| `source_digest` | Foreground | `workers/llm_worker.py` → `core/source_digest.py` | Retrieval / prompt |\n| `ingest_blurb` | Background | `workers/ingestion_worker.py` | Library / RAG |\n| `companion_line` | Background | `ui/companion/companion_verbal_scheduler.py` | Companion UI |\n\nThere is also a legacy **`raw_prompt`** execution path (not a `SidecarTask` enum member) used by `SidecarLlmClient.generate()` for pre-built prompts.\n\n---",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 294,
+    "completion_tokens": 2,
+    "ms": 1734.0,
+    "final_prompt_tail": "s.\n\n---<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines various tasks related to the Chat UI, Memory, Retrieval, and Companion UI, including background processes for memory reflection, query rewriting, source digest, and ingestion, as well as a legacy raw prompt execution path.",
+    "finish_reason": "stop",
+    "prompt_tokens": 298,
+    "completion_tokens": 46,
+    "ms": 3468.1,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "theme_customization_design",
+   "sample_text": "## 1. Executive summary\n\nQube today has **two independent collections of colors** (dark QSS + light QSS + scattered Python inline styles), not a theme system. Users can toggle Light/Dark via the nav sidebar moon/sun button, but the choice is **not persisted**, there is **no Settings UI**, and **no way to customize colors**.\n\nThis document defines a **Python-first design system** with a clear separation between:\n\n- **Theme mode** — *how* the UI is lit: Dark, Light, or (future) Follow System, High Contrast, AMOLED, Sepia.\n- **Color scheme** — *which palette* is applied: Catppuccin, Nord, Gruvbox, Dracula, GitHub Dark, etc.\n\nA small set of **core primitive tokens** (~11) feeds a pluggable **derivation strategy** per color scheme. QSS is **rendered output** (ephemeral, never cached); Python helpers and widgets consume the same `ResolvedTheme`. User-facing customization is **color-scheme-first** with **3 primary pickers** (accent, background, text) and an optional **Advanced** section.\n\nThe application **owns one `ThemeManager` instance** (not a singleton) that **coordinates** dedicated components — it does not implement storage, rendering, or application itself.\n\nImplementation is split into **eight phases**, starting with **Phase 0** (fix known inconsistencies) through full customization, import/export, and gradual elimination of inline `setStyleSheet()` debt.\n\n---",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 359,
+    "completion_tokens": 2,
+    "ms": 2152.5,
+    "final_prompt_tail": "t.\n\n---<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines a Python-first design system with separate color collections and theme modes, emphasizing color-scheme-first customization and a pluggable derivation strategy.",
+    "finish_reason": "stop",
+    "prompt_tokens": 363,
+    "completion_tokens": 30,
+    "ms": 3232.4,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "logging_and_diagnostics",
+   "sample_text": "## Quick reference\n\n| Destination | Logger name | Default path | Terminal? | Always created? |\n|-------------|-------------|--------------|-----------|-----------------|\n| **Application log** | `Qube.*` (except dedicated debug loggers) | `~/.qube/logs/qube.log` | Yes | Yes (INFO default; disable with `QUBE_APP_LOG=0`) |\n| **LLM debug file** | `Qube.NativeLLM.Debug` | `~/.qube/logs/llm_debug.log` | No (file only) | Yes (sink attached at boot) |\n| **Routing debug file** | `Qube.RoutingDebug` | `~/.qube/logs/routing_debug.log` | No (file only) | Yes (sink attached at boot) |\n| **Skills debug file** | `Qube.SkillsDebug` | `~/.qube/logs/skills_debug.log` | No (file only) | Yes (sink attached at boot) |\n\n**Note:** The terminal still receives all loggers (including third-party DEBUG noise when `logging.basicConfig(level=DEBUG)`). The **application log file** records `Qube.*` at **INFO** by default so post-mortems stay readable without duplicating LLM/routing/skills debug files.\n\n**Important:** LLM and routing debug log files live under **`~/.qube/logs/`** (see `core/paths.logs_dir()`). They are **not** written to `<repo>/logs/` — a stale `~/.qube/logs/llm_debug.log` in the repo checkout is not updated by the running app. Other user data (SQLite, LanceDB, exports, model overrides) also uses `~/.qube`.\n\nRotating file sinks: **10 MB** per file, **5** backups (`core/app_log_sink.py`, `core/llm_debug_sink.py`, `core/routing_debug_sink.py`).",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 441,
+    "completion_tokens": 2,
+    "ms": 2562.0,
+    "final_prompt_tail": "k.py`).<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document explains the logging configuration for Qube, detailing the default paths, terminal behavior, and file rotation settings for application, LLM, and routing debug logs.",
+    "finish_reason": "stop",
+    "prompt_tokens": 445,
+    "completion_tokens": 33,
+    "ms": 3773.1,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "library_chunking_retrieval_design",
+   "sample_text": "## 1. Executive summary\n\nDirect Library imports today use **character-bounded sliding-window chunking** (`rag/chunker.py`), while web fetch uses **structure-aware chunking** (`section_chunker.py`) and the help corpus uses **heading-first chunking plus contextual embed prefixes**. None of these paths use embedding- or LLM-driven semantic segmentation.\n\nThis plan evaluates external architectural feedback against Qube's codebase and defines a phased roadmap to:\n\n1. Converge Library, help, and web ingest onto a shared **`Document` / `DocumentSection` IR** and structural chunking pipeline.\n2. Adopt **contextual embed enrichment** (already proven in the help corpus) for Library imports.\n3. Fix **PDF page-boundary artifacts** in parsing.\n4. Add **MMR reranking** to Library RAG retrieval (pattern already exists for web and memory).\n5. Introduce **token-target chunk sizing** with character safety caps.\n6. Persist **chunk metadata** (`meta_json`) for richer retrieval context.\n7. **Ship embedding-breakpoint semantic chunking** as optional **Pro: precision ingest** (per-import mode; see §14).",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 281,
+    "completion_tokens": 2,
+    "ms": 1656.6,
+    "final_prompt_tail": "e §14).<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines a phased roadmap to unify library, help, and web ingestion with a shared document and section IR, adopt contextual embed enrichment, fix PDF artifacts, add MMR reranking, implement token-target chunk sizing, persist metadata, and",
+    "finish_reason": "length",
+    "prompt_tokens": 285,
+    "completion_tokens": 48,
+    "ms": 3405.1,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "web_content_fetch_plan",
+   "sample_text": "## 0. Executive summary",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 45,
+    "completion_tokens": 2,
+    "ms": 290.5,
+    "final_prompt_tail": "summary<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines strategies for improving public health through community-based initiatives and policy reforms.",
+    "finish_reason": "stop",
+    "prompt_tokens": 49,
+    "completion_tokens": 16,
+    "ms": 854.0,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   },
+   "joined_sample_text": "## 0. Executive summary\n\n### Problem\n\nToday, Qube’s live web path (`@internet` / `general_web`) returns **DuckDuckGo SERP snippets only**. Result pages are not fetched. The audit trail explicitly notes: *“SERP snippets only; result pages are not fetched.”* For recipes, gaming walkthroughs, product reviews, and long-form articles, snippets are often insufficient or misleading.\n\nThe external knowledge platform plan already envisioned **selective fetch** after SERP discovery, but it was not implemented for general web. API adapters (PubMed, CourtListener, etc.) are mature; **non-API web content** is the remaining gap.\n\n### Proposed solution\n\nAdd a **fetch subsystem** inside the existing `general_web` knowledge service, gated by **retrieval profiles** and **composer pins** — not a separate `web_content` service (deferred until the implementation stabilizes).\n\n```\nComposer @-tool → general_web → Pipeline\n    Discovery → Fetch → Extract → Document → Chunk → Rank → [optional sidecar polish] → EvidenceBundle\n```\n\nKey design choices (v4):\n\n1. **Do not replace `EvidenceBundle`.** Internal types (`CandidateUrl`, `FetchResult`, `Document`) stay below the ADR 003 boundary.\n2. **Defer `web_content` as a separate KnowledgeService.** Extend `general_web` + `RetrievalProfileSpec` (`fetch_url_count`, `playwright_allowed`).\n3. **Hard-separate discovery from extraction.** `DiscoveryProvider` returns URLs; fetch/extract pipeline unchanged for DDG, RSS, bookmarks, or user site lists.\n4. **Canonical `Document` IR (central)** — mandatory layer between HTML and chunking:\n\n```\n   HTML → Extractor → Document → Chunker → EvidenceObject\n   ```\n\nAll page types converge on one `Document` before ranking.\n5. **Capability-based extractors only** — `supports(url, html) → confidence` + `priority` for tie-breaks. No routing table, no content-type ontology. Extractors advertise observable page signals (JSON-LD, ordered lists, code blocks).\n6. **Minimal built-in composer tools** — only `@internet`, `@fetch`, `@recipe`. Everything else (DIY, gaming, docs) → **source profiles** (`@[tool:user:…]`).\n7. **No discovery ontology in v1 MVP** — DDG scoped by `site_bias` (preset or `@recipe` default list) and query keywords only. Extractor selection is always post-fetch via `supports()`.\n8. **Deterministic fetch ladder:** HTTP → blocker detection → extractors → Playwright (v1.1+, opt-in).\n9. **Structured failures, not garbage:** Blocker HTML never becomes `EvidenceObject` content.\n10. **Fetch provenance ",
+   "prefill_joined": {
+    "raw": "This document proposes a fetch subsystem for the general_web knowledge service, enabling selective web content retrieval through retrieval profiles and composer pins, with a focus on improving SERP snippet accuracy and content diversity.",
+    "finish_reason": "stop",
+    "prompt_tokens": 640,
+    "completion_tokens": 38,
+    "ms": 5235.8,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "in_app_help_knowledge_base",
+   "sample_text": "## 1. Purpose\n\nQube needs a **first-class help knowledge base** that:\n\n1. **Humans** can browse in Library like any other collection.\n2. **Assistants** can retrieve from when users ask how to use the app, where settings live, or how to configure behavior.\n3. **Routes explicitly** via `@help` — not accidental overlap with the user’s own Library documents.\n\nThis is **not** a traditional monolithic manual and **not** “documentation” in the publishing sense. It is a **curated help corpus**: retrieval-optimized, question-led, and maintained like product data. Everything else—chunking, metadata, routing, generation, evaluation—follows from treating help as **Library content**, not a separate docs subsystem.\n\nGuided tours (`?` buttons) remain the spatial UI layer. This corpus answers *what*, *why*, *how*, *where*, and *why isn’t it working*.\n\n---",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 237,
+    "completion_tokens": 2,
+    "ms": 1365.3,
+    "final_prompt_tail": "*.\n\n---<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines the creation of a curated help corpus for Qube, designed to be browsable like a library, question-led, and optimized for retrieval.",
+    "finish_reason": "stop",
+    "prompt_tokens": 241,
+    "completion_tokens": 31,
+    "ms": 2469.2,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "app_update_roadmap",
+   "sample_text": "## Goals\n\n| Goal | Status |\n|------|--------|\n| User can **upgrade in place** without losing models, Library, memory, or settings | **Done** (manual download + install) |\n| User understands **how** to update on each platform | **Done** (docs + in-app help) |\n| Release CI **verifies** Windows upgrade path | **Done** |\n| App can **detect** a newer GitHub Release and link to the right asset | **Done** |\n| App can **download and apply** updates without user fetching an installer | **Not started** (Tier 3) |\n\nUser data is always stored outside the application bundle:\n\n| Platform | User data |\n|----------|-----------|\n| Windows | `%LOCALAPPDATA%\\Qube\\` |\n| macOS / Linux | `~/.qube/` |\n\n---",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 213,
+    "completion_tokens": 2,
+    "ms": 1240.0,
+    "final_prompt_tail": " |\n\n---<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines the goals and status of updating the Qube app, including user upgrades, platform-specific data storage, and ongoing work on CI verification.",
+    "finish_reason": "stop",
+    "prompt_tokens": 217,
+    "completion_tokens": 30,
+    "ms": 2295.5,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "conversation_file_persistence_plan",
+   "sample_text": "## Part A — Product note (short)",
+   "short_sample": true,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 48,
+    "completion_tokens": 2,
+    "ms": 330.1,
+    "final_prompt_tail": "(short)<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document provides a brief overview of a product's features and benefits.",
+    "finish_reason": "stop",
+    "prompt_tokens": 52,
+    "completion_tokens": 14,
+    "ms": 848.2,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   },
+   "joined_sample_text": "## Part A — Product note (short)\n\n### What users expect (Cursor-style products)\n\nIn tools like **Cursor**, **ChatGPT file attach**, **Claude project files**, and similar UIs, attached documents usually **stay part of the “current chat”** until the user removes them. Follow-up messages are plain text; the app still treats those files as **in scope**.\n\nOn **each new turn**, the backend typically:\n\n1. Keeps an explicit **attachment list** for the thread (UI + API metadata).\n2. **Re-fetches** relevant content — chunked **RAG** for large PDFs, or **full inline paste** when the file fits the context budget.\n3. Sends **chat history** plus **fresh document evidence** to the model.\n\nThe model is not remembering the PDF across turns. The **host** re-applies document context every time. Chat history helps coherence; **retrieval / re-injection** grounds new factual questions.\n\n### What Qube does today\n\n| Behavior | Qube today |\n|----------|------------|\n| `@[file:…]` on send | Scopes RAG to that filename for **that turn only** (`source_filter` in `llm_worker`). |\n| Composer after send | **`_reset_composer_draft()`** clears body **and** routing chips — file attachment does **not** persist in the input. |\n| Transcript | Past user bubbles **show** file chips for history; that is **display**, not live routing. |\n| Sticky toggles (Web, Evidence, …) | **Session UI state** synced to the worker — **not** the same as sticky file. |\n| Broad library | `@[tool:library]`, sticky library tools, auto-activator — search **all** ingested docs, not one file. |\n| Conversation upload (new) | Indexes to Library, auto-attaches file for the **next** send; same **per-turn** rules after that. |\n\n**User-visible gap:** After one scoped Q&A turn, follow-ups behave like a normal chat unless the user **reattaches** the file (`@ → Files`, upload, recent mentions) or uses **library-wide** retrieval. That is intentional for “one routing source per message” but unlike Cursor-style **persistent attach**.\n\n### What we are *not* claiming\n\n- We do **not** need to paste entire large PDFs into every turn (VRAM/context limits; Qube already chunks in LanceDB).\n- We do **not** need the LLM to “infer” document scope from prior turns alone — product state should drive **repeat scoped retrieval**.\n\n### Recommended product direction for Qube\n\nAlign with **sticky knowledge toggles**, but for **one library file per thread**:\n\n**“Sticky document (this chat)”** — user attaches `@[file:…]` (or uploads from Conversation",
+   "prefill_joined": {
+    "raw": "This document explains how Qube handles document scope in chat-based tools, emphasizing that files are scoped per turn and not persistent, differing from Cursor-style persistent attachments.",
+    "finish_reason": "stop",
+    "prompt_tokens": 643,
+    "completion_tokens": 32,
+    "ms": 5033.5,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "knowledge_retrieval_quality_assessment",
+   "sample_text": "## 1. Executive assessment",
+   "short_sample": true,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 45,
+    "completion_tokens": 2,
+    "ms": 337.2,
+    "final_prompt_tail": "essment<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document provides an executive assessment of the company's financial performance and strategic direction.",
+    "finish_reason": "stop",
+    "prompt_tokens": 49,
+    "completion_tokens": 16,
+    "ms": 899.2,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   },
+   "joined_sample_text": "## 1. Executive assessment\n\n### What actually failed on the ANT turn\n\nThe failure was not one bug. It was a **stack of weak gates**, each letting poor material through because **nothing downstream was calibrated to catch it**:\n\n1. **Query understanding** — Turn 2 was not classified as a follow-up (`confidence 0.0`). Discourse state had already **replaced** the conversation subject from actor-network theory with **“Artificial Inteligence”** (user’s spelling). The APIs received the raw sentence, typo included: `Yes, please tell me how ANT analyzes Artificial Inteligence for example`.\n2. **Source selection** — Discipline detection scored **0 for every discipline** → `general_science` → **only OpenAlex + arXiv**, 3 results each, despite **39 enabled adapters**. arXiv is a poor default index for STS/sociology questions.\n3. **Relevance filtering** — The `0.12` minimum score **cannot reject anything** while embeddings are on; unrelated text still scores ~**0.44**.\n4. **Confidence labels** — “Adequate” coverage and “confidence 0.68” reflect **count of abstracts and index authority**, not topical fit.\n5. **Answer generation** — Prompts say “You MUST use the TOOLS context” and “Every factual sentence … must end with a citation token.” The model complied and cited off-topic papers.\n6. **Verification** — Post-generation checks only that citation **ids exist**. Nothing verifies that a cited source supports the sentence.\n\n### Verdict on the previous agent’s analysis\n\n| | |\n|---|---|\n| **Sound diagnoses** | Missed follow-up → no query expansion; sidecar expansion not wired to web; coverage ignores relevance; need multi-turn eval |\n| **Missed entirely** | Tiny candidate pool + narrow source selection; non-functional relevance scale; prompt forces citation; `@[tool:evidence]` in model prompt; 600-char abstract truncation; no source metadata for model; dead reliability/freshness scores; medical-disclaimer branch drops citation rules |\n| **Wrong or would not have helped** | “Always expand with discourse topic” would search `Regarding Artificial Inteligence: …` (wrong anchor). Coverage threshold 0.35 is below the broken score floor (turn averaged 0.63). Homograph penalty is ANT-specific |\n\n### Core thesis\n\nQube does **not** need more layers. It needs **fewer, calibrated ones**:\n\n1. One **structured query-understanding** step  \n2. **Wide recall → one real reranker**  \n3. **Sufficiency decision in code** (not the LLM)  \n4. **Evidence pack** the model can reason over  \n5. **Cita",
+   "prefill_joined": {
+    "raw": "This document evaluates the failure of an AI agent on the ANT turn, identifying a stack of weak gates that allow poor material through due to inadequate downstream calibration, and proposes that Qube needs fewer, calibrated layers for better performance.",
+    "finish_reason": "stop",
+    "prompt_tokens": 634,
+    "completion_tokens": 45,
+    "ms": 5606.8,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "live_knowledge_adapters",
+   "sample_text": "## Implementation status (since this inventory)\n\nThe adapter tables below reflect the **Tier 3–4 expansion** (Slices 7a–11). Alongside those adapters, Qube now routes outbound knowledge HTTP through a shared resilience stack and exposes credentials + health in Settings.",
+   "short_sample": true,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 96,
+    "completion_tokens": 2,
+    "ms": 577.4,
+    "final_prompt_tail": "ttings.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines the Tier 3–4 expansion adapters and updates to Qube's outbound HTTP routing and settings.",
+    "finish_reason": "stop",
+    "prompt_tokens": 100,
+    "completion_tokens": 23,
+    "ms": 1424.2,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "manual_qa_phase6",
+   "sample_text": "## Prerequisites",
+   "short_sample": true,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 42,
+    "completion_tokens": 2,
+    "ms": 299.2,
+    "final_prompt_tail": "uisites<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines the necessary requirements and steps to set up and use a specific software or system.",
+    "finish_reason": "stop",
+    "prompt_tokens": 46,
+    "completion_tokens": 19,
+    "ms": 1009.5,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   },
+   "joined_sample_text": "## Prerequisites\n\n### Settings (Settings → Knowledge)\n\n| Toggle | Required for |\n|--------|----------------|\n| **External knowledge pipeline (v2)** | All slices — must be **ON** |\n| **Internal corpus (@library evidence service)** | Slice 2 — **ON** for positive tests |\n| **Research map (session knowledge graph)** | Slice 4 — **ON** for positive tests |\n| **Deep research (@research)** | Slice 3D only — **ON** if testing merge dedupe |\n\nAlso ensure **internet / web retrieval** is enabled for `@evidence` / `@science` and `@research` turns.\n\n**Terminology:** `@evidence` is a composer alias for the **Scientific literature** knowledge service (`scientific_evidence`). It retrieves scholarly sources across disciplines — not only biomedicine. The platform **Evidence** model (`EvidenceBundle`) is domain-agnostic and applies to all knowledge services including `@finance`.\n\n### Library index (Slice 2)\n\n1. Copy a fixture into your Library folder, e.g. `eval/fixtures/library/eval_kubernetes_notes.md`.\n2. Run **Reindex** so LanceDB has searchable chunks.\n\nSuggested fixtures:\n\n| File | Good for |\n|------|----------|\n| `eval_kubernetes_notes.md` | Ingress / NGINX / cert-manager (QA-2A) |\n| `eval_research_physics_paper.md` | Rayleigh scattering (optional extra library turn) |\n| `eval_quarterly_revenue_report.md` | Empty-hit negative test (QA-2B) if not indexed |\n\n### Entity resolution (Slice 3)\n\nEnabled by default (`qube.knowledge.entity_resolution_enabled`). No UI toggle. Leave on unless testing rollback.\n\nOptional RxNorm lookup (`qube.knowledge.rxnorm_entity_lookup_enabled`) is **off** by default; QA-3C notes expected behavior for both states.\n\n---\n\n## Slice 2 — Internal corpus (`@library`)\n\nRoutes `@library` through the evidence pipeline over your LanceDB index (`knowledge_service: internal_corpus`). Implicit RAG on non-`@library` turns is unchanged.\n\n### QA-2A — Happy path (corpus hit)\n\n**Prompt:**\n\n```text\n@library How is ingress configured on our staging cluster?\n```\n\n**Pass if:**\n\n- Answer reflects indexed content (NGINX Ingress Controller v1.11, cert-manager, `/api` → `api-gateway`, etc.).\n- **Sources** dialog shows library provenance (filename such as `eval_kubernetes_notes.md`).\n- Transparency / “why” summary reflects internal corpus retrieval — not general web search.\n- **No duplicate injection:** the answer does not appear to combine the same library chunks twice (evidence bundle + parallel RAG dump).\n\n**Optional (audit):** Retrieval trace includes `knowledge_se",
+   "prefill_joined": {
+    "raw": "This document outlines prerequisites for setting up and testing the internal corpus and evidence pipeline in LanceDB, including required slices, fixtures, and configuration settings.",
+    "finish_reason": "stop",
+    "prompt_tokens": 637,
+    "completion_tokens": 29,
+    "ms": 5009.4,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "manual_qa_phase6_slice5_finance",
+   "sample_text": "## Prerequisites",
+   "short_sample": true,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 42,
+    "completion_tokens": 2,
+    "ms": 314.6,
+    "final_prompt_tail": "uisites<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines the necessary requirements and guidelines for setting up and maintaining a secure and efficient system.",
+    "finish_reason": "stop",
+    "prompt_tokens": 46,
+    "completion_tokens": 19,
+    "ms": 993.7,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   },
+   "joined_sample_text": "## Prerequisites\n\n### Settings (Settings → Knowledge)\n\n| Toggle | Required for |\n|--------|----------------|\n| **External knowledge pipeline (v2)** | All cases — must be **ON** |\n| **Preferred sources → Finance → SEC EDGAR** | QA-5A–5D — **checked** (default) |\n\nEnsure **internet / web retrieval** is enabled.\n\n**Terminology:** `@finance` routes to the **Finance** knowledge service (`finance_knowledge`). It is separate from **Scientific literature** (`@evidence` / `@science`). Both produce the same **Evidence** output model (`EvidenceBundle`).\n\n### Automated baseline (run before manual QA)\n\n```bash\npython3 tools/evaluate_retrieval.py --live --service finance_knowledge --min-pass 3\npython3 -m unittest tests.test_finance_knowledge tests.test_sec_edgar_adapter -q\n```\n\n**Live eval target:** ≥ 3/4 queries `ok` on `eval/retrieval_corpus/v1_finance.json`.\n\n**Scientific regression (required):**\n\n```bash\nQUBE_EVIDENCE_CACHE=0 python3 tools/evaluate_retrieval.py --live --service scientific_evidence --min-pass 5\n```\n\nUse `QUBE_EVIDENCE_CACHE=0` when re-running after a prior partial run so stale cache does not mask adapter selection.\n\n---\n\n## Slice 5a — Finance (`@finance`)\n\nRoutes `@finance` through `finance_knowledge` → SEC EDGAR adapter. Bundle includes `not_financial_advice` warning.\n\n### QA-5A — Company name + form type (10-K)\n\n**Prompt:**\n\n```text\n@finance What are Apple Inc 10-K risk factors?\n```\n\n**Pass if:**\n\n- Answer references Apple SEC filings (10-K, risk factors, or filing metadata).\n- **Sources** dialog shows SEC EDGAR provenance (`sec_edgar` adapter).\n- Transparency / “why” summary reflects finance knowledge service — not general web search.\n- **`not_financial_advice`** appears in bundle warnings / transparency (wording may vary in UI).\n\n**Optional (audit):** Retrieval trace includes `knowledge_service: finance_knowledge`, `adapter_calls: [\"sec_edgar\"]`, and `finance_search_query` in relevance diagnostics.\n\n---\n\n### QA-5B — Ticker symbol query\n\n**Prompt:**\n\n```text\n@finance AMZN recent SEC filings\n```\n\n**Pass if:**\n\n- Sources include Amazon (`AMAZON COM INC` or similar) SEC filings.\n- Multiple form types may appear (10-K, 10-Q, 8-K) — acceptable.\n- Finance disclaimer present.\n\n---\n\n### QA-5C — Quarterly filing (10-Q)\n\n**Prompt:**\n\n```text\n@finance Microsoft quarterly 10-Q revenue\n```\n\n**Pass if:**\n\n- At least one Microsoft 10-Q filing in sources.\n- Authority scores reflect primary SEC source tier (high authority in trace).\n- No scientific / PubMed adapte",
+   "prefill_joined": {
+    "raw": "This document outlines the setup and requirements for using the finance_knowledge service with the SEC EDGAR adapter for financial QA tasks, including prerequisites, automated baseline checks, and specific QA scenarios.",
+    "finish_reason": "stop",
+    "prompt_tokens": 683,
+    "completion_tokens": 38,
+    "ms": 5659.1,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "manual_qa_phase6_slice5_legal",
+   "sample_text": "## Prerequisites",
+   "short_sample": true,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 42,
+    "completion_tokens": 2,
+    "ms": 299.4,
+    "final_prompt_tail": "uisites<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines the necessary requirements and guidelines for setting up and maintaining a secure and efficient system.",
+    "finish_reason": "stop",
+    "prompt_tokens": 46,
+    "completion_tokens": 19,
+    "ms": 992.4,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   },
+   "joined_sample_text": "## Prerequisites\n\n### Settings (Settings → Knowledge)\n\n| Toggle | Required for |\n|--------|----------------|\n| **External knowledge pipeline (v2)** | All cases — must be **ON** |\n| **Preferred sources → Legal → CourtListener** | QA-5L-A–5L-D — **checked** (default) |\n\nEnsure **internet / web retrieval** is enabled.\n\n**Optional:** Set `QUBE_COURTLISTENER_API_TOKEN` for higher CourtListener rate limits (not required for basic search).\n\n### Automated baseline\n\n```bash\npython3 tools/evaluate_retrieval.py --live --service legal_knowledge --min-pass 3\npython3 -m unittest tests.test_legal_knowledge tests.test_courtlistener_adapter -q\n```\n\n**Scientific regression:**\n\n```bash\nQUBE_EVIDENCE_CACHE=0 python3 tools/evaluate_retrieval.py --live --service scientific_evidence --min-pass 5\n```\n\n---\n\n## Slice 5b — Legal (`@legal`)\n\nRoutes `@legal` through `legal_knowledge` → CourtListener adapter. Bundle includes `not_legal_advice` warning.\n\n### QA-5L-A — Landmark case (Miranda)\n\n**Prompt:**\n\n```text\n@legal What did the Supreme Court hold in Miranda v Arizona about police interrogation?\n```\n\n**Pass if:**\n\n- Answer references Miranda warnings / rights during custodial interrogation.\n- **Sources** show CourtListener case law (`courtlistener` adapter).\n- **`not_legal_advice`** appears in bundle warnings / transparency.\n\n**Optional (audit):** Trace includes `knowledge_service: legal_knowledge`, `legal_search_query`, and `legal_adapters_selected: [\"courtlistener\"]`.\n\n---\n\n### QA-5L-B — Constitutional topic\n\n**Prompt:**\n\n```text\n@legal First Amendment commercial speech Supreme Court precedent\n```\n\n**Pass if:**\n\n- Sources include relevant Supreme Court or federal opinions.\n- Legal disclaimer present.\n\n---\n\n### QA-5L-C — Fourth Amendment search\n\n**Prompt:**\n\n```text\n@legal Fourth Amendment cell phone search warrant Supreme Court\n```\n\n**Pass if:**\n\n- Sources reference cell-phone / search-warrant case law (e.g. *Riley*/*Carpenter* era cases acceptable).\n- High authority scores for SCOTUS sources in trace.\n\n---\n\n### QA-5L-D — Preferred sources off (negative control)\n\n1. Open **Settings → Knowledge → Preferred sources → Legal**.\n2. Uncheck **CourtListener**.\n3. Repeat QA-5L-A.\n\n**Pass if:**\n\n- Empty or gracefully degraded bundle — no fabricated case citations.\n- Re-enable CourtListener and confirm QA-5L-A works again.\n\n---\n\n### QA-5L-E — Cross-domain regression\n\n**Prompt:**\n\n```text\n@finance Apple Inc 10-K risk factors\n```\n\n**Pass if:**\n\n- Finance service engaged; no CourtListener sour",
+   "prefill_joined": {
+    "raw": "This document outlines prerequisites and test cases for evaluating legal knowledge retrieval using the CourtListener adapter, including settings, automated baseline commands, and regression tests for various legal topics.",
+    "finish_reason": "stop",
+    "prompt_tokens": 652,
+    "completion_tokens": 33,
+    "ms": 5278.8,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "manual_qa_web_content_fetch",
+   "sample_text": "## Prerequisites\n\n- Retrieval profile **Balanced** or **Thorough** (Fast keeps SERP-only unless `@fetch` / `@recipe` / source profile sets `fetch_url_count`).\n- Network access for DuckDuckGo and target sites.\n\n---",
+   "short_sample": true,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 95,
+    "completion_tokens": 2,
+    "ms": 579.3,
+    "final_prompt_tail": "s.\n\n---<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines prerequisites for using a retrieval profile and ensuring network access for DuckDuckGo and target sites.",
+    "finish_reason": "stop",
+    "prompt_tokens": 99,
+    "completion_tokens": 22,
+    "ms": 1422.8,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "manual_qa_web_discovery_resilience",
+   "sample_text": "## Prerequisites\n\n- Fresh or reset discovery health (**Settings → Knowledge → Web search discovery → Reset discovery health** when available)\n- **Private search (recommended)** tier unless the row says otherwise\n- Network available; Brave API key **not** configured for Tier A rows\n\n---",
+   "short_sample": true,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 96,
+    "completion_tokens": 2,
+    "ms": 601.6,
+    "final_prompt_tail": "ws\n\n---<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines prerequisites for setting up private search with Brave, including resetting discovery health and ensuring network access without a Tier A API key.",
+    "finish_reason": "stop",
+    "prompt_tokens": 100,
+    "completion_tokens": 27,
+    "ms": 1608.7,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "memory_enrichment_T3_2_T3_4_plan",
+   "sample_text": "## 0. What is already live (invariants — DO NOT REGRESS)\n\nEverything below is in `main`. Any change in T3.2–T3.4 must preserve\nthese behaviours. The transcript above contains the full diagnostic\ntrail for each.",
+   "short_sample": true,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 93,
+    "completion_tokens": 2,
+    "ms": 567.5,
+    "final_prompt_tail": "r each.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": {
+    "raw": "This document outlines invariants for the `main` branch, ensuring consistency in T3.2–T3.4.",
+    "finish_reason": "stop",
+    "prompt_tokens": 97,
+    "completion_tokens": 25,
+    "ms": 1555.3,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  }
+ ],
+ "companion": [
+  {
+   "id": "idle",
+   "payload": {
+    "trigger": "idle"
+   },
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 259,
+    "completion_tokens": 2,
+    "ms": 1650.9,
+    "final_prompt_tail": "r JSON.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2125.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2100.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2103.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "startup",
+   "payload": {
+    "trigger": "startup"
+   },
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 259,
+    "completion_tokens": 2,
+    "ms": 1528.8,
+    "final_prompt_tail": "r JSON.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2109.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2118.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2108.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "ingest_complete",
+   "payload": {
+    "trigger": "ingest_complete",
+    "file_count": 3,
+    "basename": "quarterly_report.pdf"
+   },
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 241,
+    "completion_tokens": 2,
+    "ms": 1380.3,
+    "final_prompt_tail": "ibrary.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 245,
+     "completion_tokens": 16,
+     "ms": 1986.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 245,
+     "completion_tokens": 16,
+     "ms": 1964.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 245,
+     "completion_tokens": 16,
+     "ms": 1964.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "download_complete",
+   "payload": {
+    "trigger": "download_complete",
+    "filename": "Qwen3-1.7B-Q6_K.gguf"
+   },
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 242,
+    "completion_tokens": 2,
+    "ms": 1393.0,
+    "final_prompt_tail": "oading.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 246,
+     "completion_tokens": 16,
+     "ms": 1967.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 246,
+     "completion_tokens": 16,
+     "ms": 1970.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 246,
+     "completion_tokens": 16,
+     "ms": 1959.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "model_loaded",
+   "payload": {
+    "trigger": "model_loaded"
+   },
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 259,
+    "completion_tokens": 2,
+    "ms": 1528.4,
+    "final_prompt_tail": "r JSON.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2221.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2166.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2122.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  },
+  {
+   "id": "milestone",
+   "payload": {
+    "trigger": "milestone"
+   },
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 259,
+    "completion_tokens": 2,
+    "ms": 1524.0,
+    "final_prompt_tail": "r JSON.<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2110.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2118.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "{\"line\":\"Still here if you need me.\",\"kind\":\"idle_quip\"}",
+     "finish_reason": "stop",
+     "prompt_tokens": 263,
+     "completion_tokens": 16,
+     "ms": 2112.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ]
+  }
+ ]
+}

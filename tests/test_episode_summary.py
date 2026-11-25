@@ -160,10 +160,10 @@ class _FakeStore:
         return _FakeTable(self)
 
 
-def _build_turn_messages(n_turns: int) -> list[dict]:
+def _build_turn_messages(n_turns: int, user_text: str = "user turn {i}") -> list[dict]:
     msgs: list[dict] = []
     for i in range(n_turns):
-        msgs.append({"id": f"u{i}", "role": "user", "content": f"user turn {i}"})
+        msgs.append({"id": f"u{i}", "role": "user", "content": user_text.format(i=i)})
         msgs.append({"id": f"a{i}", "role": "assistant", "content": f"assistant turn {i}"})
     return msgs
 
@@ -254,7 +254,9 @@ class TestEpisodeSummariser(unittest.TestCase):
         )
 
     def test_idle_gate_fires_on_second_turn(self):
-        msgs = _build_turn_messages(4)
+        # Plan S20: windows under EPISODE_SUMMARY_MIN_USER_WORDS user words are
+        # not summarised, so the four turns carry real content.
+        msgs = _build_turn_messages(4, user_text="user turn {i} about the enrichment pipeline refactor")
         worker, llm = _make_worker(
             messages=msgs,
             llm_response=(
@@ -269,6 +271,25 @@ class TestEpisodeSummariser(unittest.TestCase):
         worker._maybe_summarise_session("sess-idle")
         self.assertEqual(len(llm.calls), 1)
         self.assertEqual(len(worker.store.rows), 1)
+
+
+    def test_small_talk_window_is_not_summarised(self):
+        """Plan S20 (D32): the sidecar never says SKIP for small talk."""
+        msgs = [
+            {"id": "u0", "role": "user", "content": "hi"},
+            {"id": "a0", "role": "assistant", "content": "Hello! How can I help?"},
+            {"id": "u1", "role": "user", "content": "just saying hi"},
+            {"id": "a1", "role": "assistant", "content": "Nice to hear from you!"},
+        ]
+        worker, llm = _make_worker(
+            messages=msgs,
+            llm_response="SUMMARY: The conversation was a simple exchange of greetings.\nTOPICS: greeting",
+        )
+        worker._session_turns_since_summary["sess-small"] = 1
+        worker._session_last_turn_ts["sess-small"] = 0.0
+        worker._maybe_summarise_session("sess-small")
+        self.assertEqual(llm.calls, [])
+        self.assertEqual(worker.store.rows, [])
 
 
 if __name__ == "__main__":
