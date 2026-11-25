@@ -1,0 +1,3042 @@
+{
+ "schema": "qube.sidecar_tasks_recorded.v1",
+ "description": "Plan S19: contradiction_judge and source_digest completions recorded from the bundled Qwen3-1.7B-Q6_K sidecar through SidecarLlmWorker._complete_prompt (shipped params, S18 threads 4/8) on 2026-11-25. 'as_shipped' is the prompt without the pre-fill; 'prefill' adds Qwen3's empty think block; 'prefill_definitions' also sends the definitions EnrichmentWorker builds but never uses. Judge facts are synthetic; digest sources are chunks of this repo's docs. Replayed offline by tests/test_s19_sidecar_think_prefill.py. 'gate' is the EnrichmentWorker pre-judge check computed with the balanced fastembed preset and a LanceDB table (distance < 0.22 and Jaccard < 0.85 reach the judge). 'prefill_no_blank_line_stop' is one digest run with only <|im_end|> as the stop. 'shipped_turn_cost' times core.source_digest.digest_rag_context through SidecarLlmClient with the shipped prompt (no pre-fill) and the default foreground timeout.",
+ "model": "Qwen3-1.7B-Q6_K.gguf",
+ "threads": [
+  4,
+  8
+ ],
+ "judge": [
+  {
+   "id": "pair_00",
+   "a": "User prefers dark mode in code editors.",
+   "b": "User likes using a dark theme in their editor.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 69,
+    "completion_tokens": 2,
+    "ms": 433.6,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 73,
+     "completion_tokens": 2,
+     "ms": 489.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 73,
+     "completion_tokens": 2,
+     "ms": 520.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 73,
+     "completion_tokens": 2,
+     "ms": 478.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 118,
+     "completion_tokens": 2,
+     "ms": 727.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 118,
+     "completion_tokens": 2,
+     "ms": 741.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 118,
+     "completion_tokens": 2,
+     "ms": 748.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.1682,
+    "jaccard": 0.231,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_01",
+   "a": "User lives in Berlin.",
+   "b": "User is based in Berlin, Germany.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 64,
+    "completion_tokens": 2,
+    "ms": 411.9,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 470.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 473.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 468.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 716.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 706.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 718.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.0675,
+    "jaccard": 0.429,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_02",
+   "a": "User is vegetarian.",
+   "b": "User does not eat meat.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 61,
+    "completion_tokens": 2,
+    "ms": 386.2,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 1,
+     "ms": 401.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 1,
+     "ms": 409.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 1,
+     "ms": 399.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 2,
+     "ms": 713.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 2,
+     "ms": 706.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 2,
+     "ms": 696.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.177,
+    "jaccard": 0.143,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_03",
+   "a": "User works as a backend engineer.",
+   "b": "User's job is backend software engineering.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 66,
+    "completion_tokens": 2,
+    "ms": 419.7,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 1,
+     "ms": 436.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 1,
+     "ms": 452.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 1,
+     "ms": 433.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 754.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 725.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 746.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.0992,
+    "jaccard": 0.182,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_04",
+   "a": "User prefers Python for scripting.",
+   "b": "User's go-to language for scripts is Python.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 67,
+    "completion_tokens": 2,
+    "ms": 483.7,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 2,
+     "ms": 495.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 2,
+     "ms": 495.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 2,
+     "ms": 484.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 2,
+     "ms": 747.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 2,
+     "ms": 750.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 2,
+     "ms": 736.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.1971,
+    "jaccard": 0.273,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_05",
+   "a": "User has two children.",
+   "b": "User is a parent of two kids.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 64,
+    "completion_tokens": 2,
+    "ms": 415.9,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 486.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 497.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 482.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 728.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 715.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 733.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.0525,
+    "jaccard": 0.222,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_06",
+   "a": "User drinks coffee without sugar.",
+   "b": "User takes their coffee unsweetened.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 65,
+    "completion_tokens": 2,
+    "ms": 436.8,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 1,
+     "ms": 441.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 1,
+     "ms": 446.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 1,
+     "ms": 438.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 2,
+     "ms": 745.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 2,
+     "ms": 734.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 2,
+     "ms": 730.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.1884,
+    "jaccard": 0.25,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_07",
+   "a": "User is learning Japanese.",
+   "b": "User is currently studying the Japanese language.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 64,
+    "completion_tokens": 2,
+    "ms": 413.7,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 476.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 471.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 461.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 738.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 760.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 721.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.0793,
+    "jaccard": 0.375,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_08",
+   "a": "User's birthday is on 14 March.",
+   "b": "User was born on March 14.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 70,
+    "completion_tokens": 2,
+    "ms": 452.3,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 74,
+     "completion_tokens": 2,
+     "ms": 510.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 74,
+     "completion_tokens": 2,
+     "ms": 518.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 74,
+     "completion_tokens": 2,
+     "ms": 506.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 119,
+     "completion_tokens": 2,
+     "ms": 769.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 119,
+     "completion_tokens": 2,
+     "ms": 766.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 119,
+     "completion_tokens": 2,
+     "ms": 764.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.0739,
+    "jaccard": 0.444,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_09",
+   "a": "User prefers concise answers.",
+   "b": "User wants short, to-the-point replies.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 65,
+    "completion_tokens": 2,
+    "ms": 407.7,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 2,
+     "ms": 477.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 2,
+     "ms": 478.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 2,
+     "ms": 490.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 1,
+     "ms": 703.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 1,
+     "ms": 689.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 1,
+     "ms": 685.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.2657,
+    "jaccard": 0.1,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_10",
+   "a": "User runs Linux on their laptop.",
+   "b": "User's laptop runs a Linux distribution.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 66,
+    "completion_tokens": 2,
+    "ms": 429.2,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 1,
+     "ms": 463.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 1,
+     "ms": 437.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 1,
+     "ms": 441.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 748.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 742.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 748.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.0825,
+    "jaccard": 0.444,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_11",
+   "a": "User is allergic to peanuts.",
+   "b": "User has a peanut allergy.",
+   "gold": "duplicate",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 63,
+    "completion_tokens": 2,
+    "ms": 418.6,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 67,
+     "completion_tokens": 2,
+     "ms": 465.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 67,
+     "completion_tokens": 2,
+     "ms": 490.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 67,
+     "completion_tokens": 2,
+     "ms": 479.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 112,
+     "completion_tokens": 2,
+     "ms": 732.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 112,
+     "completion_tokens": 2,
+     "ms": 716.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 112,
+     "completion_tokens": 2,
+     "ms": 730.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.0464,
+    "jaccard": 0.111,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_12",
+   "a": "User lives in Berlin.",
+   "b": "User moved to Munich last month.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 63,
+    "completion_tokens": 2,
+    "ms": 405.3,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 67,
+     "completion_tokens": 1,
+     "ms": 434.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 67,
+     "completion_tokens": 1,
+     "ms": 435.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 67,
+     "completion_tokens": 1,
+     "ms": 424.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 112,
+     "completion_tokens": 3,
+     "ms": 773.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 112,
+     "completion_tokens": 3,
+     "ms": 772.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 112,
+     "completion_tokens": 3,
+     "ms": 768.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.2487,
+    "jaccard": 0.111,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_13",
+   "a": "User is vegetarian.",
+   "b": "User started eating meat again.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 61,
+    "completion_tokens": 2,
+    "ms": 414.0,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 3,
+     "ms": 534.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 3,
+     "ms": 503.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 3,
+     "ms": 488.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 3,
+     "ms": 757.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 3,
+     "ms": 806.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 3,
+     "ms": 752.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.255,
+    "jaccard": 0.143,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_14",
+   "a": "User works at Siemens.",
+   "b": "User left Siemens and now works at Bosch.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 65,
+    "completion_tokens": 2,
+    "ms": 418.3,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 1,
+     "ms": 446.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 1,
+     "ms": 458.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 1,
+     "ms": 470.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 1,
+     "ms": 691.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 3,
+     "ms": 757.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 1,
+     "ms": 691.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.1352,
+    "jaccard": 0.5,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_15",
+   "a": "User prefers dark mode in code editors.",
+   "b": "User now prefers a light theme in their editor.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 69,
+    "completion_tokens": 2,
+    "ms": 442.1,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 73,
+     "completion_tokens": 3,
+     "ms": 545.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 73,
+     "completion_tokens": 3,
+     "ms": 539.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 73,
+     "completion_tokens": 3,
+     "ms": 549.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 118,
+     "completion_tokens": 3,
+     "ms": 819.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 118,
+     "completion_tokens": 3,
+     "ms": 797.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 118,
+     "completion_tokens": 3,
+     "ms": 803.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.1839,
+    "jaccard": 0.231,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_16",
+   "a": "User uses Windows as their main operating system.",
+   "b": "User switched their main operating system to Linux.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 69,
+    "completion_tokens": 2,
+    "ms": 438.8,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 73,
+     "completion_tokens": 1,
+     "ms": 472.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 73,
+     "completion_tokens": 1,
+     "ms": 456.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 73,
+     "completion_tokens": 1,
+     "ms": 467.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 118,
+     "completion_tokens": 3,
+     "ms": 785.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 118,
+     "completion_tokens": 3,
+     "ms": 784.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 118,
+     "completion_tokens": 3,
+     "ms": 794.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.2491,
+    "jaccard": 0.455,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_17",
+   "a": "User has a dog named Max.",
+   "b": "User does not have any pets.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 65,
+    "completion_tokens": 2,
+    "ms": 410.7,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 3,
+     "ms": 525.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 3,
+     "ms": 516.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 3,
+     "ms": 531.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 3,
+     "ms": 771.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 3,
+     "ms": 767.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 3,
+     "ms": 813.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.3649,
+    "jaccard": 0.091,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_18",
+   "a": "User likes jazz music.",
+   "b": "User dislikes jazz music.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 61,
+    "completion_tokens": 2,
+    "ms": 406.4,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 3,
+     "ms": 490.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 3,
+     "ms": 510.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 3,
+     "ms": 515.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 3,
+     "ms": 752.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 3,
+     "ms": 742.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 3,
+     "ms": 754.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.133,
+    "jaccard": 0.6,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_19",
+   "a": "User is single.",
+   "b": "User recently got married.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 60,
+    "completion_tokens": 2,
+    "ms": 407.8,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 64,
+     "completion_tokens": 3,
+     "ms": 514.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 64,
+     "completion_tokens": 3,
+     "ms": 490.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 64,
+     "completion_tokens": 3,
+     "ms": 480.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 109,
+     "completion_tokens": 3,
+     "ms": 732.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 109,
+     "completion_tokens": 3,
+     "ms": 740.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 109,
+     "completion_tokens": 3,
+     "ms": 744.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.3115,
+    "jaccard": 0.167,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_20",
+   "a": "User drives a Volkswagen Golf.",
+   "b": "User sold their car and no longer drives.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 66,
+    "completion_tokens": 2,
+    "ms": 419.9,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 1,
+     "ms": 441.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 1,
+     "ms": 445.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 1,
+     "ms": 466.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 766.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 855.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 866.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.3506,
+    "jaccard": 0.182,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_21",
+   "a": "User prefers detailed, long answers.",
+   "b": "User prefers short, concise answers.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 65,
+    "completion_tokens": 2,
+    "ms": 496.3,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 3,
+     "ms": 611.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 3,
+     "ms": 636.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 3,
+     "ms": 597.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 3,
+     "ms": 859.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 3,
+     "ms": 895.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 3,
+     "ms": 919.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.0803,
+    "jaccard": 0.429,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_22",
+   "a": "User's favourite programming language is Java.",
+   "b": "User's favourite programming language is Rust.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 67,
+    "completion_tokens": 2,
+    "ms": 445.7,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 3,
+     "ms": 533.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 3,
+     "ms": 527.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 3,
+     "ms": 535.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 3,
+     "ms": 783.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 3,
+     "ms": 785.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 3,
+     "ms": 787.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.1676,
+    "jaccard": 0.75,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_23",
+   "a": "User is 34 years old.",
+   "b": "User is 41 years old.",
+   "gold": "contradiction",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 67,
+    "completion_tokens": 2,
+    "ms": 410.6,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 3,
+     "ms": 510.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 3,
+     "ms": 505.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 3,
+     "ms": 498.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 3,
+     "ms": 776.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 3,
+     "ms": 764.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "contradiction",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 3,
+     "ms": 747.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.0964,
+    "jaccard": 0.667,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_24",
+   "a": "User has a dog named Max.",
+   "b": "User also has a cat named Luna.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 66,
+    "completion_tokens": 2,
+    "ms": 403.8,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 2,
+     "ms": 467.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 2,
+     "ms": 455.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 2,
+     "ms": 471.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 711.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 709.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 800.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.2616,
+    "jaccard": 0.444,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_25",
+   "a": "User speaks German.",
+   "b": "User also speaks Spanish.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 60,
+    "completion_tokens": 2,
+    "ms": 359.2,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 64,
+     "completion_tokens": 1,
+     "ms": 391.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 64,
+     "completion_tokens": 1,
+     "ms": 394.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 64,
+     "completion_tokens": 1,
+     "ms": 399.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 109,
+     "completion_tokens": 2,
+     "ms": 684.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 109,
+     "completion_tokens": 2,
+     "ms": 686.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 109,
+     "completion_tokens": 2,
+     "ms": 681.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.2162,
+    "jaccard": 0.4,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_26",
+   "a": "User likes hiking.",
+   "b": "User enjoys cycling on weekends.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 61,
+    "completion_tokens": 2,
+    "ms": 378.2,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 2,
+     "ms": 438.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 2,
+     "ms": 438.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 65,
+     "completion_tokens": 2,
+     "ms": 433.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 2,
+     "ms": 683.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 2,
+     "ms": 705.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 110,
+     "completion_tokens": 2,
+     "ms": 725.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.3208,
+    "jaccard": 0.143,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_27",
+   "a": "User works as a backend engineer.",
+   "b": "User is the tech lead of their team.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 67,
+    "completion_tokens": 2,
+    "ms": 426.6,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 2,
+     "ms": 468.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 2,
+     "ms": 500.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 71,
+     "completion_tokens": 2,
+     "ms": 498.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 2,
+     "ms": 719.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 2,
+     "ms": 710.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 116,
+     "completion_tokens": 2,
+     "ms": 709.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.2414,
+    "jaccard": 0.077,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_28",
+   "a": "User prefers Python for scripting.",
+   "b": "User uses Go for backend services.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 64,
+    "completion_tokens": 2,
+    "ms": 406.5,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 448.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 459.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 452.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 694.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 710.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 702.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.4509,
+    "jaccard": 0.222,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_29",
+   "a": "User lives in Berlin.",
+   "b": "User grew up in Hamburg.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 62,
+    "completion_tokens": 2,
+    "ms": 387.7,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 66,
+     "completion_tokens": 1,
+     "ms": 406.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 66,
+     "completion_tokens": 1,
+     "ms": 407.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 66,
+     "completion_tokens": 1,
+     "ms": 402.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 111,
+     "completion_tokens": 2,
+     "ms": 693.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 111,
+     "completion_tokens": 2,
+     "ms": 705.2,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 111,
+     "completion_tokens": 2,
+     "ms": 705.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.2468,
+    "jaccard": 0.286,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_30",
+   "a": "User is vegetarian.",
+   "b": "User loves Indian food.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 60,
+    "completion_tokens": 2,
+    "ms": 401.2,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 64,
+     "completion_tokens": 2,
+     "ms": 468.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 64,
+     "completion_tokens": 2,
+     "ms": 454.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 64,
+     "completion_tokens": 2,
+     "ms": 448.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 109,
+     "completion_tokens": 2,
+     "ms": 690.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 109,
+     "completion_tokens": 2,
+     "ms": 784.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 109,
+     "completion_tokens": 2,
+     "ms": 769.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.2679,
+    "jaccard": 0.167,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_31",
+   "a": "User has two children.",
+   "b": "User's eldest child is starting school this year.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 66,
+    "completion_tokens": 2,
+    "ms": 432.6,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 2,
+     "ms": 472.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 2,
+     "ms": 507.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 70,
+     "completion_tokens": 2,
+     "ms": 503.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 913.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 755.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 115,
+     "completion_tokens": 2,
+     "ms": 712.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.2757,
+    "jaccard": 0.083,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_32",
+   "a": "User is learning Japanese.",
+   "b": "User plans to visit Japan next spring.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 64,
+    "completion_tokens": 2,
+    "ms": 402.1,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 460.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 457.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 2,
+     "ms": 579.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 687.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 710.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 2,
+     "ms": 708.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.284,
+    "jaccard": 0.1,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_33",
+   "a": "User drinks coffee every morning.",
+   "b": "User drinks green tea in the afternoon.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 65,
+    "completion_tokens": 2,
+    "ms": 406.8,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 2,
+     "ms": 488.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 2,
+     "ms": 470.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 2,
+     "ms": 478.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 2,
+     "ms": 725.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 2,
+     "ms": 718.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 2,
+     "ms": 717.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.2158,
+    "jaccard": 0.2,
+    "reaches_judge": true,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_34",
+   "a": "User runs Linux on their laptop.",
+   "b": "User uses a Mac at work.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 65,
+    "completion_tokens": 2,
+    "ms": 412.4,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 2,
+     "ms": 467.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 2,
+     "ms": 464.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 69,
+     "completion_tokens": 2,
+     "ms": 468.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 2,
+     "ms": 748.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 2,
+     "ms": 712.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "complement",
+     "finish_reason": "stop",
+     "prompt_tokens": 114,
+     "completion_tokens": 2,
+     "ms": 715.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.2842,
+    "jaccard": 0.091,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  },
+  {
+   "id": "pair_35",
+   "a": "User prefers concise answers.",
+   "b": "User likes answers to include code examples.",
+   "gold": "complement",
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 64,
+    "completion_tokens": 2,
+    "ms": 396.1,
+    "final_prompt_tail": "Answer:<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 1,
+     "ms": 429.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 1,
+     "ms": 466.8,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 68,
+     "completion_tokens": 1,
+     "ms": 497.0,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_definitions": [
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 1,
+     "ms": 704.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 1,
+     "ms": 713.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "duplicate",
+     "finish_reason": "stop",
+     "prompt_tokens": 113,
+     "completion_tokens": 1,
+     "ms": 704.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "gate": {
+    "distance": 0.3095,
+    "jaccard": 0.222,
+    "reaches_judge": false,
+    "jaccard_fast_path": false
+   }
+  }
+ ],
+ "digest": [
+  {
+   "id": "releasing",
+   "sources": [
+    {
+     "id": 1,
+     "filename": "releasing.md",
+     "content": "CI does **not** guess the version from files on `main`. It strips the `v` prefix from the tag and runs `set_version.py` before PyInstaller, so the installer, embedded app version, WinGet manifests, and Chocolatey package always match the tag you pushed.\n\n## Pre-release checklist\n\n0. Read **[Release versioning — quick reference](release_versioning_quick_reference.md)** — fix on `main` and get CI green **before** tagging; do not burn patch numbers on failed release attempts.\n1. Ensure [`main`](https://github.com/dagaza/Qube) is green (PR CI workflow).\n2. **Documentation pass** — see [Launch documentation guidelines](launch_documentation_guidelines.md) (**Final launch pass**). At minimum before a public launch:\n   - [ ] README accurate (features, install paths, screenshots)\n   - [ ] [`CHANGELOG.md`](../CHANGELOG.md) — `[Unreleased]` moved into the versioned section\n   - [ ] [`docs/user/`](user/README.md) install and requirements match shipping platforms\n   - [ ] In-app help corpus regenerated if settings/tools changed (checklist below)\n   - [ ] GitHub **Social preview** uploaded ([`assets/social/`](../assets/social/README.md)) if image"
+    },
+    {
+     "id": 2,
+     "filename": "releasing.md",
+     "content": "```powershell\n   pytest tests/test_memory_qa_smoke.py -q\n   pytest tests/ -m \"not packaging\" -q\n   ```\n\n4. Optional local packaging parity with CI (uses `core/__version__.py` if `-Version` omitted):\n\n```powershell\n   python scripts/prepare_release.py 1.0.1\n   .\\scripts\\build_windows.ps1\n   ```\n\n## Cut a release\n\n1. Merge release changes to `main`.\n2. Prepare version files and CHANGELOG (recommended before tagging):\n\n```powershell\n   # Edit CHANGELOG.md: move [Unreleased] notes into ## [1.0.1] - YYYY-MM-DD\n   python scripts/prepare_release.py 1.0.1\n   git add core/__version__.py pyproject.toml CHANGELOG.md\n   git commit -m \"Release 1.0.1\"\n   ```\n\n3. Create and push the tag (must match the prepared version):\n\n```powershell\n   git tag v1.0.1\n   git push origin main\n   git push origin v1.0.1\n   ```"
+    },
+    {
+     "id": 3,
+     "filename": "releasing.md",
+     "content": "4. GitHub Actions **Build & Release** workflow will:\n   - Sync version into `core/__version__.py` and `pyproject.toml`\n   - Run pytest\n   - Build PyInstaller output and Inno Setup installer\n   - Smoke-test dist EXE, **installer upgrade**, silent install, installed EXE launch, and uninstall\n   - Compute SHA256 and render WinGet manifests and Chocolatey package\n   - Create a GitHub Release with `Qube-<version>-Setup.exe`\n   - Smoke-test Chocolatey install/uninstall (after release is published)\n   - Optionally push the Chocolatey package to community.chocolatey.org\n\n5. Verify the release asset and SHA256 in the release notes.\n\n## WinGet\n\n### First catalog entry (one-time manual PR)\n\nFollow [`winget/README.md`](../winget/README.md). Submit **`dagaza.Qube`** (CPU) first if needed, then add **`dagaza.Qube.Vulkan`** and **`dagaza.Qube.CUDA`** as separate folders in the same or follow-up PR.\n\n### Automated updates\n\nSet repository **variable** `WINGET_AUTO_SUBMIT=true` and secret `WINGET_SUBMIT_TOKEN` (PAT with fork/PR access to `microsoft/winget-pkgs`).\n\nAfter each tagged release, the workflow opens a WinGet Community PR automatically."
+    },
+    {
+     "id": 4,
+     "filename": "releasing.md",
+     "content": "Users install or upgrade with:\n\n```powershell\nwinget install -e --id dagaza.Qube\nwinget install -e --id dagaza.Qube.Vulkan\nwinget install -e --id dagaza.Qube.CUDA\nwinget upgrade -e --id dagaza.Qube\n```\n\nInstall **one** Windows variant only (CPU, Vulkan, or CUDA). WinGet uses separate package IDs so GPU builds are opt-in and CPU stays the safe default for `winget upgrade --all`.\n\nDirect download: run the matching **`Qube-<version>-Setup.exe`**, **`-vulkan-Setup.exe`**, or **`-cuda-Setup.exe`** over an existing install to update in place (user data in **`%LOCALAPPDATA%\\Qube`** is kept). See **[Update Qube](../user/update-qube.md)**.\n\nIn-app: **Settings → About → Software updates → Check for updates** queries GitHub Releases and opens the platform-matching download when a newer build exists.\n\n**Update roadmap (Tiers 1–3):** see **[App update roadmap](app_update_roadmap.md)** — shipped manual/check flows vs deferred automatic apply.\n\n## Chocolatey\n\n### First catalog entry (one-time manual submission)\n\nFollow [`chocolatey/README.md`](../chocolatey/README.md).\n\n### Automated updates"
+    },
+    {
+     "id": 5,
+     "filename": "releasing.md",
+     "content": "Set repository **variable** `CHOCOLATEY_AUTO_PUSH=true` and secret `CHOCOLATEY_API_KEY` (push-only API key from chocolatey.org).\n\nAfter each tagged release, the workflow pushes `qube`, `qube-vulkan`, and `qube-cuda` packages automatically once the GitHub Release is live and the Chocolatey smoke test passes.\n\nUsers install or upgrade with:\n\n```powershell\nchoco install qube              # CPU\nchoco install qube-vulkan       # AMD/Intel (Vulkan)\nchoco install qube-cuda         # NVIDIA (CUDA)\nchoco upgrade qube -y\nchoco upgrade qube-vulkan -y\nchoco upgrade qube-cuda -y\n```\n\n## macOS\n\nThe `macos-build` job runs on the same `v*` tag trigger and produces a `.app`\nbundle (via the shared `qube.spec` `BUNDLE()` block) packaged into a DMG, one\nper architecture:\n\n| Runner | Architecture | Artifact |\n|--------|--------------|----------|\n| `macos-15` | Apple Silicon (arm64) | `Qube-<version>-arm64.dmg` |\n| `macos-15-intel` | Intel (x86_64) | `Qube-<version>-x86_64.dmg` |"
+    }
+   ],
+   "sources_chars": 5263,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 1458,
+    "completion_tokens": 2,
+    "ms": 9175.4,
+    "final_prompt_tail": ".dmg` |<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "[1] CI does not guess the version from files on `main`. It strips the `v` prefix from the tag and runs `set_version.py` before PyInstaller, so the installer, embedded app version, WinGet manifests, and Chocolatey package always match the tag you pushed.",
+     "finish_reason": "stop",
+     "prompt_tokens": 1462,
+     "completion_tokens": 59,
+     "ms": 11526.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "[1] CI does not guess the version from files on `main`. It strips the `v` prefix from the tag and runs `set_version.py` before PyInstaller, so the installer, embedded app version, WinGet manifests, and Chocolatey package always match the tag you pushed.",
+     "finish_reason": "stop",
+     "prompt_tokens": 1462,
+     "completion_tokens": 59,
+     "ms": 11870.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_no_blank_line_stop": {
+    "raw": "[1] CI does not guess the version from files on `main`. It strips the `v` prefix from the tag and runs `set_version.py` before PyInstaller, so the installer, embedded app version, WinGet manifests, and Chocolatey package always match the tag you pushed.\n\n[2] pytest tests/test_memory_qa_smoke.py -q pytest tests/ -m \"not packaging\" -q\n\n[3] Prepare version files and CHANGELOG (recommended before tagging):\n\n```powershell\n# Edit CHANGELOG.md: move [Unreleased] notes into ## [1.0.1] - YYYY-MM-DD\npython scripts/prepare_release.py 1.0.1\ngit add core/__version__.py pyproject.toml CHANGELOG.md\ngit commit -m \"Release 1.0.1\"\n```\n\n[4] GitHub Actions Build & Release workflow will:\n- Sync version into `core/__version__.py` and `pyproject.toml`\n- Run pytest\n- Build PyInstaller output and Inno Setup installer\n- Smoke-test dist EXE, **installer upgrade**, silent install, installed EXE launch, and uninstall\n- Compute SHA256 and render WinGet manifests and Chocolatey package\n- Create a GitHub Release with `Qube-<version>-Setup.exe`\n- Smoke-test Chocolatey install/uninstall (after release is published)\n- Optionally push the Chocolatey package to community.chocolatey.org\n\n[5] Set repository variable `WINGET_AUTO_SUBMIT=true` and secret `WINGET_SUBMIT_TOKEN` (PAT with fork/PR access to `microsoft/winget-pkgs`).\n\nAfter each tagged release, the workflow opens a WinGet Community PR automatically.\n\n[6] Users install or upgrade with:\n\n```powershell\nwinget install -e --id dagaza.Qube\nwinget install -e --id dagaza.Qube.Vulkan\nwinget install -",
+    "finish_reason": "length",
+    "prompt_tokens": 1462,
+    "completion_tokens": 400,
+    "ms": 26962.0,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "cognitive_router",
+   "sources": [
+    {
+     "id": 1,
+     "filename": "cognitive_router.md",
+     "content": "| Route | Meaning | Typical tools / data |\n|-------|---------|----------------------|\n| `none` | **Self-knowledge (CHAT)** — no retrieval tools; the model answers from its parameters (optionally with light preference injection). | None required |\n| `memory` | **Long-term memory** — LanceDB rows under `qube_memory::*`. | `mcp/memory_tool.py` |\n| `rag` | **Document library** — uploaded PDFs, notes, ingested files. | `mcp/rag_tool.py` |\n| `web` | **Live internet** — DuckDuckGo search via the internet MCP tool. | `search_internet` |\n| `hybrid` | **Memory + RAG** — both retrievers run; the LLM synthesizes across sources. | Memory + RAG |\n\n`INTERNET` is treated as an alias of `WEB` in execution paths.\n\n---\n\n## End-to-end turn flow"
+    },
+    {
+     "id": 2,
+     "filename": "cognitive_router.md",
+     "content": "```mermaid\nflowchart TD\n    A[User message] --> B[Discourse grounding]\n    B --> C{Pre-router overrides?}\n    C -->|explicit remember| D[NONE — write turn]\n    C -->|file search / @file| E[RAG only]\n    C -->|narrative recap| F[MEMORY + episodes]\n    C -->|@internet| G[WEB forced]\n    C -->|attachments| H[Attachment routing patch]\n    C -->|default| I[CognitiveRouterV4.route]\n    I --> J[Post-router overrides]\n    J --> K[Tool execution]\n    K --> L[Relevance gates]\n    L --> M{Any sources?}\n    M -->|no on retrieval route| N[Downgrade to NONE]\n    M -->|yes| O[Prompt build + LLM]\n    N --> O\n```\n\n### 1. Query preparation (before routing)\n\nWhen discourse grounding is enabled (`core/discourse_*`):"
+    },
+    {
+     "id": 3,
+     "filename": "cognitive_router.md",
+     "content": "- **Follow-up classification** detects pronouns / continuation turns.\n- **`resolve_routing_query`** and **`resolve_retrieval_query`** (`core/discourse_query.py`) may expand the query with the active topic or referent — e.g. `\"Regarding Paris: what about hotels?\"` — for embedding and search. This text is **not** shown to the user.\n- **Sidecar query rewrite** (`core/sidecar_query_rewrite.py`) may propose an additional expanded query for hybrid retrieval when confidence is high enough. The original user text is always preserved for display and telemetry.\n\n### 2. Pre-router overrides (beat the cognitive router)\n\nThese run **before** `CognitiveRouterV4.route()` and take absolute priority:\n\n| Detector | Module | Route | Why |\n|----------|--------|-------|-----|\n| Explicit remember | `core/memory_filters.detect_explicit_remember` | `none` | Write turn — store a fact, no retrieval |\n| File-search intent | `detect_file_search_intent` | `rag` | User scoped to documents only |\n| Narrative recap | `detect_narrative_intent` | `memory` (+ episodes) | Session recap, not doc lookup |\n| Composer `@file` / `@conversation` / `@internet` | attachment r"
+    },
+    {
+     "id": 4,
+     "filename": "cognitive_router.md",
+     "content": "### 3. Cognitive router decision\n\nIf no pre-router override applies and `USE_COGNITIVE_ROUTER` is true (default in `LLMWorker`):\n\n```python\nintent_vector = embedding_cache.get_embedding(routing_query)\ndecision = cognitive_router.route(\n    routing_query,\n    intent_vector=intent_vector,\n    weights=router_tuner.get_weights() if USE_ADAPTIVE_ROUTER else None,\n)\n```\n\nThe router returns a rich decision dict (route, per-lane scores, thresholds, tier telemetry, and a `trace` explaining *why*).\n\n### 4. Post-router overrides (LLMWorker)\n\nAfter `decision[\"route\"]` is mapped to `execution_route`:\n\n| Override | Condition | Effect |\n|----------|-----------|--------|\n| **Recall fusion** | `detect_recall_intent(prompt)` and route is `NONE`, `MEMORY`, or `RAG` | Force `HYBRID` so \"tell me about X\" searches memory **and** documents |\n| **Discourse downgrade** | High-confidence follow-up with active topic | `MEMORY` / `RAG` / `HYBRID` → `NONE` (answer from thread context) |\n| **Custom RAG triggers** | User-defined patterns in settings | Upgrade to RAG (or keep HYBRID) |\n| **Manual / auto web** | Explicit web phrases, `force_web`, or `USE_COGNITIVE_"
+    },
+    {
+     "id": 5,
+     "filename": "cognitive_router.md",
+     "content": "### 5. Tool execution\n\n| Route | What runs |\n|-------|-----------|\n| `MEMORY` / `HYBRID` | `memory_search` (hybrid vector + FTS fusion) |\n| `RAG` / `HYBRID` | `rag_search` (hybrid vector + FTS fusion) |\n| `WEB` / `HYBRID` | `search_internet` with discourse-resolved query |\n| `NONE` | Optional **core memory** pass — preferences-only, top 3 hits, MemGPT-style background injection |\n\nSidecar-assisted **dual-query retrieval**: when query expansion is accepted, `_memory_search_hybrid` / `_rag_search_hybrid` search both the primary and expanded queries, then merge via `core/dual_query_retrieval.py`.\n\n### 6. Relevance gates & post-retrieval downgrade\n\nRetrieval quality is enforced **after** routing:\n\n| Channel | Gate | Module |\n|---------|------|--------|\n| RAG | `MIN_RAG_SEMANTIC_SCORE` (0.30) on vector hits | `mcp/rag_tool.py` |\n| Memory | Semantic score + proper-noun / core-memory gates | `mcp/memory_tool.py` |\n| Web | Token overlap + optional embedding similarity | `core/retrieval_relevance.py` |"
+    }
+   ],
+   "sources_chars": 4880,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 1337,
+    "completion_tokens": 2,
+    "ms": 8568.6,
+    "final_prompt_tail": "e.py` |<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "[1] cognitive_router.md:\n- `none` - Self-knowledge (CHAT) - No retrieval tools required\n- `memory` - Long-term memory - `mcp/memory_tool.py`\n- `rag` - Document library - `mcp/rag_tool.py`\n- `web` - Live internet - `search_internet`\n- `hybrid` - Memory + RAG - Memory + RAG",
+     "finish_reason": "stop",
+     "prompt_tokens": 1341,
+     "completion_tokens": 85,
+     "ms": 12411.1,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "[1] cognitive_router.md:\n- `none` - Self-knowledge (CHAT) - No retrieval tools required\n- `memory` - Long-term memory - `mcp/memory_tool.py`\n- `rag` - Document library - `mcp/rag_tool.py`\n- `web` - Live internet - `search_internet`\n- `hybrid` - Memory + RAG - Memory + RAG",
+     "finish_reason": "stop",
+     "prompt_tokens": 1341,
+     "completion_tokens": 85,
+     "ms": 11565.5,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_no_blank_line_stop": {
+    "raw": "[1] cognitive_router.md:\n- `none` - Self-knowledge (CHAT) - No retrieval tools required\n- `memory` - Long-term memory - `mcp/memory_tool.py`\n- `rag` - Document library - `mcp/rag_tool.py`\n- `web` - Live internet - `search_internet`\n- `hybrid` - Memory + RAG - Memory + RAG\n\n[2] cognitive_router.md:\n- User message → Discourse grounding\n- Pre-router overrides? → Explicit remember, file search / @file, narrative recap, @internet\n- Route options: NONE, RAG, MEMORY, HYBRID\n\n[3] cognitive_router.md:\n- Follow-up classification detects pronouns / continuation turns\n- `resolve_routing_query` and `resolve_retrieval_query` expand query with active topic or referent\n- Sidecar query rewrite proposes expanded query for hybrid retrieval\n\n[4] cognitive_router.md:\n- If no pre-router override applies and `USE_COGNITIVE_ROUTER` is true\n- `intent_vector` is used in `cognitive_router.route()`\n- Returns rich decision dict with route, per-lane scores, thresholds, and trace\n\n[5] cognitive_router.md:\n- `MEMORY` / `HYBRID` - `memory_search` (hybrid vector + FTS fusion)\n- `RAG` / `HYBRID` - `rag_search` (hybrid vector + FTS fusion)\n- `WEB` / `HYBRID` - `search_internet` with discourse-resolved query\n- `NONE` - Optional core memory pass with preferences-only\n\n[6] cognitive_router.md:\n- Relevance gates after routing\n  - RAG: `MIN_RAG_SEMANTIC_SCORE` (0.30) on vector hits\n  - Memory: Semantic score + proper-noun / core-memory gates\n  - Web: Token overlap",
+    "finish_reason": "length",
+    "prompt_tokens": 1341,
+    "completion_tokens": 400,
+    "ms": 26085.4,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "library_chunking_retrieval_design",
+   "sources": [
+    {
+     "id": 1,
+     "filename": "library_chunking_retrieval_design.md",
+     "content": "Direct Library imports today use **character-bounded sliding-window chunking** (`rag/chunker.py`), while web fetch uses **structure-aware chunking** (`section_chunker.py`) and the help corpus uses **heading-first chunking plus contextual embed prefixes**. None of these paths use embedding- or LLM-driven semantic segmentation.\n\nThis plan evaluates external architectural feedback against Qube's codebase and defines a phased roadmap to:\n\n1. Converge Library, help, and web ingest onto a shared **`Document` / `DocumentSection` IR** and structural chunking pipeline.\n2. Adopt **contextual embed enrichment** (already proven in the help corpus) for Library imports.\n3. Fix **PDF page-boundary artifacts** in parsing.\n4. Add **MMR reranking** to Library RAG retrieval (pattern already exists for web and memory).\n5. Introduce **token-target chunk sizing** with character safety caps.\n6. Persist **chunk metadata** (`meta_json`) for richer retrieval context.\n7. **Ship embedding-breakpoint semantic chunking** as optional **Pro: precision ingest** (per-import mode; see §14)."
+    },
+    {
+     "id": 2,
+     "filename": "library_chunking_retrieval_design.md",
+     "content": "Chunking is **one component** of retrieval quality — not the primary bottleneck. Qube already has hybrid vector + FTS fusion, semantic relevance gating, and dual-query merge. The highest-ROI improvements are structural chunking, contextual enrichment, PDF continuity, and post-fusion MMR. Embedding-breakpoint semantic chunking is available as optional **Pro precision ingest** (§14), not the default path.\n\n---\n\n## 2. Feedback validation against Qube today\n\n| External feedback | Valid? | Qube reality |\n|---|---|---|\n| **Chunking is one component, not the whole retrieval story** | **Yes — high value** | Library retrieval already runs vector + FTS hybrid fusion, semantic floor (`MIN_RAG_SEMANTIC_SCORE = 0.30`), FTS token-overlap filtering, and dual-query merge (`core/dual_query_retrieval.py`). Web fetch adds MMR reranking (`section_ranker.mmr_select_chunks`). **Library RAG has no MMR/reranker.** |\n| **Avoid overselling \"semantic chunking\"** | **Yes** | Accurate taxonomy. No embedding/LLM breakpoint chunking anywhere. Web = structural; Library = character window. |\n| **markdown → structural → shared pipeline → optional embedding chunking*"
+    },
+    {
+     "id": 3,
+     "filename": "library_chunking_retrieval_design.md",
+     "content": "### Corrections to external feedback where Qube already differs\n\n- **Hybrid retrieval exists** — the external agent assumed it might not. Qube has it; the gap is **post-fusion reranking (MMR)** and **richer chunk metadata**, not basic hybrid search.\n- **\"Reranking\" partially exists** — web sections use MMR + relevance scoring; memory optionally uses `apply_mmr`. Library `rag_search` does rank fusion only.\n- **DOCX is not supported** — Library parsers handle `.pdf`, `.epub`, `.txt`, `.md` only (`rag/parsers.py`).\n\n---\n\n## 3. Current architecture (as-is)\n\n### 3.1 Library import path\n\n```\nLibraryView → IngestionWorker → parse_file() → chunk_text() → embedder.embed() → LanceDB\n```\n\n- **Chunker:** `rag/chunker.py` — 1500 char window, 200 char overlap at ingest.\n- **Break heuristics:** Prefer `\\n\\n` → `. ` → `\\n` within window; hard slice fallback.\n- **Parsers:** PDF returns one string per page; EPUB one per HTML item; `.md` rendered to plain text as one blob.\n\nKey code references:"
+    },
+    {
+     "id": 4,
+     "filename": "library_chunking_retrieval_design.md",
+     "content": "```python\n# workers/ingestion_worker.py\nraw_sections = parse_file(path)\nfor section in raw_sections:\n    chunks.extend(chunk_text(section, chunk_size=DEFAULT_CHUNK_SIZE, overlap=_INGEST_OVERLAP))\nchunks = [c[:MAX_EMBED_CHARS] for c in chunks]\n```\n\n```python\n# rag/chunker.py\nDEFAULT_CHUNK_SIZE = 1500\nDEFAULT_OVERLAP = 150\n# Hard cap — protects against pathological splits / huge single-line tables\n```\n\n### 3.2 Web fetch path\n\n```\nHTML → trafilatura_extractor → Document / DocumentSection → section_chunker → section_ranker + MMR → EvidenceObject (ephemeral)\n```\n\n- **Chunk cap:** 800 chars (`DEFAULT_MAX_SECTION_CHARS`).\n- **Strategy:** Heading-aware sections; paragraph → sentence packing; small-chunk merge; zero overlap.\n\n### 3.3 Help corpus path\n\n```\nMarkdown → help_markdown_chunker (H2/H3 split) → help_chunk_embed_text (prefix at embed) → LanceDB\n```\n\n- **Embed prefix:** Title + tags prepended to embedding input; raw chunk stored in `text`.\n- Closest existing pattern to the target Library design.\n\n### 3.4 Library retrieval path"
+    },
+    {
+     "id": 5,
+     "filename": "library_chunking_retrieval_design.md",
+     "content": "```\nquery → vector search + FTS → fuse_ranked_results → MIN_RAG_SEMANTIC_SCORE gate → llm_context + sources\n```\n\n- **No MMR** on fused RAG results.\n- **No heading/breadcrumb** in SOURCE blocks.\n- LanceDB rows: `{vector, text, source, chunk_id}` only.\n\n### 3.5 Architecture diagram (today)\n\n```mermaid\nflowchart TB\n    subgraph LibraryImport[\"Library import (today)\"]\n        LV[LibraryView] --> IW[IngestionWorker]\n        IW --> PF[parse_file]\n        PF --> CT[rag/chunker.chunk_text<br/>1500 chars + 200 overlap]\n        CT --> EM[embedder.embed]\n        EM --> LD[(LanceDB<br/>text, source, chunk_id, vector)]\n    end\n\nsubgraph WebFetch[\"Web fetch (today)\"]\n        HTML --> EX[trafilatura_extractor]\n        EX --> DOC[Document / DocumentSection]\n        DOC --> SC[section_chunker<br/>paragraph/sentence, 800 chars]\n        SC --> SR[section_ranker + MMR]\n        SR --> EV[EvidenceObject — ephemeral]\n    end\n\nsubgraph HelpCorpus[\"Help corpus (today)\"]\n        MD --> HM[help_markdown_chunker<br/>H2/H3 split]\n        HM --> CE[help_chunk_embed_text<br/>context prefix at embed time]\n        CE --> LD\n    end"
+    }
+   ],
+   "sources_chars": 5586,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 1462,
+    "completion_tokens": 2,
+    "ms": 8841.0,
+    "final_prompt_tail": "    end<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "[1] library_chunking_retrieval_design.md:\n- Library imports use **character-bounded sliding-window chunking** (`rag/chunker.py`).\n- Web fetch uses **structure-aware chunking** (`section_chunker.py`).\n- Help corpus uses **heading-first chunking plus contextual embed prefixes**.\n- No embedding/LLM-driven semantic segmentation.",
+     "finish_reason": "stop",
+     "prompt_tokens": 1466,
+     "completion_tokens": 74,
+     "ms": 11820.6,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "[1] Direct Library imports use **character-bounded sliding-window chunking** (`rag/chunker.py`), while web fetch uses **structure-aware chunking** (`section_chunker.py`) and the help corpus uses **heading-first chunking plus contextual embed prefixes**. None of these paths use embedding- or LLM-driven semantic segmentation.",
+     "finish_reason": "stop",
+     "prompt_tokens": 1466,
+     "completion_tokens": 69,
+     "ms": 11595.4,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_no_blank_line_stop": {
+    "raw": "[1] library_chunking_retrieval_design.md:\n- Direct Library imports use **character-bounded sliding-window chunking** (`rag/chunker.py`).\n- Web fetch uses **structure-aware chunking** (`section_chunker.py`).\n- Help corpus uses **heading-first chunking plus contextual embed prefixes**.\n- No embedding/LLM-driven semantic segmentation.\n\n[2] library_chunking_retrieval_design.md:\n- Chunking is **one component** of retrieval quality, not the primary bottleneck.\n- Qube already has hybrid vector + FTS fusion, semantic relevance gating, and dual-query merge.\n- Highest ROI improvements are structural chunking, contextual enrichment, PDF continuity, and post-fusion MMR.\n- Embedding-breakpoint semantic chunking is optional **Pro precision ingest** (§14), not the default path.\n\n[3] library_chunking_retrieval_design.md:\n- **Hybrid retrieval exists** — post-fusion reranking (MMR) and richer chunk metadata are gaps.\n- **\"Reranking\" partially exists** — web uses MMR + relevance scoring; memory optionally uses `apply_mmr`.\n- **DOCX is not supported** — Library parsers handle `.pdf`, `.epub`, `.txt`, `.md` only.\n\n[4] library_chunking_retrieval_design.md:\n- **Chunker:** `rag/chunker.py` — 1500 char window, 200 char overlap at ingest.\n- **Break heuristics:** Prefer `\\n\\n` → `. ` → `\\n` within window; hard slice fallback.\n- **Parsers:** PDF returns one string per page; EPUB one per HTML item; `.md` rendered to plain text as one blob.\n\n[5] library_chunking_retrieval_design.md:\n- **No MMR** on fused RAG results.\n- **No heading/breadcrumb** in SOURCE blocks.\n- LanceDB rows: `{",
+    "finish_reason": "length",
+    "prompt_tokens": 1466,
+    "completion_tokens": 400,
+    "ms": 27085.7,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "logging_and_diagnostics",
+   "sources": [
+    {
+     "id": 1,
+     "filename": "logging_and_diagnostics.md",
+     "content": "**Note:** The terminal still receives all loggers (including third-party DEBUG noise when `logging.basicConfig(level=DEBUG)`). The **application log file** records `Qube.*` at **INFO** by default so post-mortems stay readable without duplicating LLM/routing/skills debug files.\n\n**Important:** LLM and routing debug log files live under **`~/.qube/logs/`** (see `core/paths.logs_dir()`). They are **not** written to `<repo>/logs/` — a stale `~/.qube/logs/llm_debug.log` in the repo checkout is not updated by the running app. Other user data (SQLite, LanceDB, exports, model overrides) also uses `~/.qube`.\n\nRotating file sinks: **10 MB** per file, **5** backups (`core/app_log_sink.py`, `core/llm_debug_sink.py`, `core/routing_debug_sink.py`).\n\nFor the **canonical LLM trace debugging stack** (Truth Diff, golden traces, fingerprinting, trace diff UI), see **[canonical_llm_trace_debugging.md](canonical_llm_trace_debugging.md)**.\n\n---\n\n## Boot-time defaults in `main.py`\n\nThese are set in code today (no env var needed):\n\n```python\nos.environ[\"QUBE_LLM_DEBUG\"] = \"1\"\nos.environ[\"QUBE_LOG_RAW_COMPLETION\"] = \"1\"\n```\n\nAlso at startup:"
+    },
+    {
+     "id": 2,
+     "filename": "logging_and_diagnostics.md",
+     "content": "- `logging.basicConfig(level=logging.DEBUG, …)` — most `Qube.*` loggers print to the **terminal**\n- `init_app_logging()` — routes general `Qube.*` → `~/.qube/logs/qube.log` (INFO default; terminal unchanged)\n- `init_llm_debug_logging()` — routes `Qube.NativeLLM.Debug` → `~/.qube/logs/llm_debug.log` only\n- `init_routing_debug_logging()` — routes `Qube.RoutingDebug` → `~/.qube/logs/routing_debug.log` only\n- `init_skills_debug_logging()` — routes `Qube.SkillsDebug` → `~/.qube/logs/skills_debug.log` only\n\nTo **disable** hardcoded flags, remove or comment the `os.environ[…]` lines in `main.py`, or override in the shell **before** launch (later assignment in `main.py` wins if it runs first — edit `main.py` for a permanent off).\n\n---\n\n## CLI flags\n\nParsed by `core/boot_args.py`:"
+    },
+    {
+     "id": 3,
+     "filename": "logging_and_diagnostics.md",
+     "content": "| Flag | Example | Effect |\n|------|---------|--------|\n| `--routing-debug` | `python3 main.py --routing-debug` | Opens a **detached Routing Debug side window** at startup. Does **not** enable file logging by itself. |\n| `--winget-validation` | `Qube.exe --winget-validation` | CI / WinGet smoke only: defer CUDA loads, mock bootstrap, write `.winget-validation-boot-trace.jsonl`. |\n| `--bootstrap-trace` | `Qube.exe --bootstrap-trace` | Granular bootstrap/launch JSONL + stderr (see below). Also sets `QUBE_BOOTSTRAP_TRACE=1`. |\n\nNo other CLI logging flags exist today. All other diagnostics use environment variables or `main.py` edits.\n\n### Bootstrap trace (`--bootstrap-trace`)\n\nFor first-run / splash debugging on a test machine (especially Windows):\n\n**Terminal A — launch with trace:**\n\n```powershell\n& \"$env:LOCALAPPDATA\\Programs\\Qube\\Qube.exe\" --bootstrap-trace\n```\n\n**Terminal B — follow the trace file live:**\n\n```powershell\n.\\scripts\\diagnostics\\tail_bootstrap_trace.ps1\n# or manually:\nGet-Content \"$env:LOCALAPPDATA\\Qube\\logs\\bootstrap-trace.jsonl\" -Wait -Tail 30\n```"
+    },
+    {
+     "id": 4,
+     "filename": "logging_and_diagnostics.md",
+     "content": "Each line is JSON with `event`, `timestamp`, and step-specific fields (`pending_models`, `repo_file`, `phase`, errors, …). The latest event is also mirrored to `bootstrap-state.json`.\n\nEquivalent without CLI flag: `$env:QUBE_BOOTSTRAP_TRACE = \"1\"` before launch.\n\nAlso bumps `QUBE_APP_LOG_LEVEL` to `DEBUG` for richer `qube.log` capture. General app log path: `%LOCALAPPDATA%\\Qube\\logs\\qube.log`.\n\n---\n\n## Developer CLI tools\n\nRun from the repo root:\n\n### View application log\n\n```bash\ntail -f ~/.qube/logs/qube.log\ngrep -i \"voice capture\" ~/.qube/logs/qube.log\ngrep -i \"Manual voice\" ~/.qube/logs/qube.log\n```\n\nAlso available in **Settings → Diagnostics** (“Application log”) and **Settings → Privacy & data** (audit logs).\n\n### View LLM debug log\n\n```bash\npython3 tools/view_llm_logs.py --last 200\npython3 tools/view_llm_logs.py --follow\npython3 tools/view_llm_logs.py --filter llm_completion_output_trace --last 50\npython3 tools/view_llm_logs.py --filter token_trace --last 500\npython3 tools/view_llm_logs.py --filter llm_prompt_validation --last 100\n```\n\nDirect file access (equivalent):"
+    },
+    {
+     "id": 5,
+     "filename": "logging_and_diagnostics.md",
+     "content": "```bash\ntail -f ~/.qube/logs/llm_debug.log\ngrep llm_completion_output_trace ~/.qube/logs/llm_debug.log\n```\n\n### View routing debug log\n\nRequires `QUBE_ROUTING_DEBUG_LOG=1` (see below) for JSONL lines to appear.\n\n```bash\npython3 tools/view_routing_logs.py --last 200\npython3 tools/view_routing_logs.py --follow --filter HYBRID\n```\n\n### Prompt parity (LM Studio vs Qube)\n\n1. Enable `QUBE_LLM_DEBUG=1` and optionally set `QUBE_LLM_DEBUG_FILE=/path/to/prompts.log`\n2. Export LM Studio’s rendered prompt to a text file\n3. Diff:\n\n```bash\npython3 tools/llm_prompt_diff.py studio_prompt.txt qube_prompt.txt\n# Optional: DIFF_CONTEXT=5 python3 tools/llm_prompt_diff.py ...\n```\n\n### Load-time prompt ablation (diagnostic only)\n\nDoes **not** run inside normal chat; loads a GGUF and runs harness scenarios. May write `~/.qube/model_overrides.json`.\n\n```bash\npython3 -m tools.run_ablation --model /path/to/model.gguf --message \"Hello\" --json-out ablation_report.json\n```\n\n---\n\n## In-app UI surfaces"
+    }
+   ],
+   "sources_chars": 5240,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 1472,
+    "completion_tokens": 2,
+    "ms": 8873.8,
+    "final_prompt_tail": "urfaces<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "[1] logging_and_diagnostics.md:\n- Terminal receives all loggers (including third-party DEBUG noise when `logging.basicConfig(level=DEBUG)`).\n- Application log file records `Qube.*` at INFO by default, post-mortems stay readable without duplicating LLM/routing/skills debug files.\n- LLM and routing debug log files live under `~/.qube/logs/` (see `core/paths.logs_dir()`). They are **not** written to `<repo>/logs/`.\n- Stale `~/.qube/logs/llm_debug.log` in the repo checkout is not updated by the running app.\n- Other user data (SQLite, LanceDB, exports, model overrides) also uses `~/.qube`.",
+     "finish_reason": "stop",
+     "prompt_tokens": 1476,
+     "completion_tokens": 153,
+     "ms": 15189.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "[1] logging_and_diagnostics.md:\n- Terminal receives all loggers (including third-party DEBUG noise when `logging.basicConfig(level=DEBUG)`).\n- Application log file records `Qube.*` at INFO by default, post-mortems stay readable without duplicating LLM/routing/skills debug files.\n- LLM and routing debug log files live under `~/.qube/logs/` (see `core/paths.logs_dir()`). They are **not** written to `<repo>/logs/`.\n- Stale `~/.qube/logs/llm_debug.log` in the repo checkout is not updated by the running app.\n- Other user data (SQLite, LanceDB, exports, model overrides) also uses `~/.qube`.",
+     "finish_reason": "stop",
+     "prompt_tokens": 1476,
+     "completion_tokens": 153,
+     "ms": 15177.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_no_blank_line_stop": {
+    "raw": "[1] logging_and_diagnostics.md:\n- Terminal receives all loggers (including third-party DEBUG noise when `logging.basicConfig(level=DEBUG)`).\n- Application log file records `Qube.*` at INFO by default, post-mortems stay readable without duplicating LLM/routing/skills debug files.\n- LLM and routing debug log files live under `~/.qube/logs/` (see `core/paths.logs_dir()`). They are **not** written to `<repo>/logs/`.\n- Stale `~/.qube/logs/llm_debug.log` in the repo checkout is not updated by the running app.\n- Other user data (SQLite, LanceDB, exports, model overrides) also uses `~/.qube`.\n\n[2] logging_and_diagnostics.md:\n- `logging.basicConfig(level=logging.DEBUG, …)` — most `Qube.*` loggers print to the **terminal**\n- `init_app_logging()` — routes general `Qube.*` → `~/.qube/logs/qube.log` (INFO default; terminal unchanged)\n- `init_llm_debug_logging()` — routes `Qube.NativeLLM.Debug` → `~/.qube/logs/llm_debug.log` only\n- `init_routing_debug_logging()` — routes `Qube.RoutingDebug` → `~/.qube/logs/routing_debug.log` only\n- `init_skills_debug_logging()` — routes `Qube.SkillsDebug` → `~/.qube/logs/skills_debug.log` only\n\n[3] logging_and_diagnostics.md:\n- `--routing-debug` — opens a **detached Routing Debug side window** at startup. Does **not** enable file logging by itself.\n- `--winget-validation` — CI / WinGet smoke only: defer CUDA loads, mock bootstrap, write `.winget-validation-boot-trace.jsonl`.\n- `--bootstrap-trace` — granular bootstrap/launch JSONL +",
+    "finish_reason": "length",
+    "prompt_tokens": 1476,
+    "completion_tokens": 400,
+    "ms": 27264.5,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "theme_customization_design",
+   "sources": [
+    {
+     "id": 1,
+     "filename": "theme_customization_design.md",
+     "content": "A small set of **core primitive tokens** (~11) feeds a pluggable **derivation strategy** per color scheme. QSS is **rendered output** (ephemeral, never cached); Python helpers and widgets consume the same `ResolvedTheme`. User-facing customization is **color-scheme-first** with **3 primary pickers** (accent, background, text) and an optional **Advanced** section.\n\nThe application **owns one `ThemeManager` instance** (not a singleton) that **coordinates** dedicated components — it does not implement storage, rendering, or application itself.\n\nImplementation is split into **eight phases**, starting with **Phase 0** (fix known inconsistencies) through full customization, import/export, and gradual elimination of inline `setStyleSheet()` debt.\n\n---\n\n## 2. Current state (validated)\n\n### 2.1 Architecture today"
+    },
+    {
+     "id": 2,
+     "filename": "theme_customization_design.md",
+     "content": "| Aspect | Reality |\n|--------|---------|\n| Technology | PyQt6 **Qt Style Sheets (QSS)** + Python inline styles |\n| Theme files | `assets/styles/base.qss` (~1,052 lines, dark, default) · `assets/styles/light.qss` (~1,013 lines, light) |\n| Toggle | `MainWindow._toggle_theme()` — swaps entire QSS file |\n| State | `MainWindow._is_dark_theme` (default `True`), **session-only** |\n| Persistence | **None** — no key in `assets/config/settings.schema.json` |\n| Settings section | **None** — `ui/views/settings/registry.py` has General, Companion, etc., but no Themes |\n| Token registry | **None** — no CSS variables, no central Python module |\n| Formal CSS `--*` variables | **None** in the desktop app |\n\n### 2.2 Color inventory"
+    },
+    {
+     "id": 3,
+     "filename": "theme_customization_design.md",
+     "content": "| Layer | Dark | Light |\n|-------|------|-------|\n| Unique QSS literals (hex + rgba) | **63** | **45** |\n| Shared across both QSS files | **14** | (brand purple/green/red, disabled tones, etc.) |\n| Python theme helpers (13 key files) | **~101** unique literals, many absent from QSS |\n| `setStyleSheet()` in `ui/` | **~250+** calls across **~50** files |\n| `_is_dark_theme` branches | **~180+** across **~35** files |\n| `apply_theme(is_dark)` hooks | **~20** components |\n\nDocumented dark palette (header comment in `base.qss`):\n\n- Base background: `#1e1e2e`\n- Pane backgrounds: `rgba(0, 0, 0, 0.15)`\n- Accent/active: `rgba(255, 255, 255, 0.1)`\n- Text primary: `#cdd6f4`\n- Text muted: `rgba(205, 214, 244, 0.5)`\n\n### 2.3 Theme refresh contract (must preserve)\n\nOn toggle, `MainWindow._toggle_theme()` currently:"
+    },
+    {
+     "id": 4,
+     "filename": "theme_customization_design.md",
+     "content": "1. Resets app palette\n2. Loads and applies target QSS (`base.qss` or `light.qss`)\n3. Updates nav icon + `qube_tooltip_set_theme()`\n4. Calls `apply_app_link_palette(app)`\n5. Runs `_refresh_global_theme_chrome(is_dark)` — menus, notifications, modal backdrop, tray, companion, selector buttons\n6. Runs `_refresh_stage_theme(active_stage)` — Conversations, Library, Model Manager, Telemetry, Memory Manager, Settings\n7. Schedules deferred refresh for hidden built stages (`_schedule_deferred_theme_refreshes`)\n\nExisting tests to keep green:\n\n- `tests/test_ui_nav_sidebar.py` — toggle state\n- `tests/test_lazy_main_stages.py` — toggle does not eagerly build stages\n- `tests/test_theme_toggle_profile.py` — profiling infrastructure\n\n### 2.4 Existing customization precedent\n\n**Companion idle glow** (`core/companion_idle_color.py`) is the only persisted color preference today:\n\n- Enum presets (purple / blue), not free-form hex\n- Persisted via `KEY_COMPANION_IDLE_COLOR` in `core/app_settings.py`\n- UI in Settings → Desktop Companion"
+    },
+    {
+     "id": 5,
+     "filename": "theme_customization_design.md",
+     "content": "This pattern (preset enum + optional future extension) informs Themes design but **companion activity/status hues remain separate** from UI chrome theming.\n\n### 2.5 Known gaps & inconsistencies\n\n| Issue | Location | Impact |\n|-------|----------|--------|\n| Theme not persisted | `main.py` always loads `base.qss`; no settings key | Resets every launch |\n| No Settings → Themes | `registry.py` | Undiscoverable toggle |\n| QSS vs Python sidebar titles (dark) | `base.qss` unselected `#6c7086` vs `sidebar_list_qss.py` `#cdd6f4` | Python wins after refresh; QSS rule is dead |\n| Brand purple duplicated | `brand_buttons.py`, QSS Brand blocks, inline icons | Accent change requires 3+ edits |\n| `PrestigeToggle` fixed colors | `ui/components/toggle.py` | Ignores theme |\n| ~70 Python colors not in QSS | Various helpers | QSS-only migration is incomplete |\n| Light page titles `#89b4fa`; dark titles `#cdd6f4` | QSS `#ViewTitle` | Intentional asymmetry — preserve via derived semantic outputs |\n| Stale qt_material comment | `main.py` ~1628 | Misleading; app uses custom QSS only |\n| Multiple informal entry points | `_toggle_theme`, per-widget `apply_th"
+    }
+   ],
+   "sources_chars": 4712,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 1305,
+    "completion_tokens": 2,
+    "ms": 7882.3,
+    "final_prompt_tail": "pply_th<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "[1] theme_customization_design.md:\n- Core primitive tokens (~11) feed pluggable derivation strategies per color scheme\n- QSS is rendered output (ephemeral, never cached)\n- Python helpers and widgets consume same `ResolvedTheme`\n- User-facing customization is color-scheme first with 3 primary pickers (accent, background, text) and optional Advanced section",
+     "finish_reason": "stop",
+     "prompt_tokens": 1309,
+     "completion_tokens": 79,
+     "ms": 11112.7,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "[1] theme_customization_design.md:\n- Core primitive tokens (~11) feed pluggable derivation strategies per color scheme\n- QSS is rendered output (ephemeral, never cached)\n- Python helpers and widgets consume same `ResolvedTheme`\n- User-facing customization is color-scheme first with 3 primary pickers (accent, background, text) and optional Advanced section",
+     "finish_reason": "stop",
+     "prompt_tokens": 1309,
+     "completion_tokens": 79,
+     "ms": 11010.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_no_blank_line_stop": {
+    "raw": "[1] theme_customization_design.md:\n- Core primitive tokens (~11) feed pluggable derivation strategies per color scheme\n- QSS is rendered output (ephemeral, never cached)\n- Python helpers and widgets consume same `ResolvedTheme`\n- User-facing customization is color-scheme first with 3 primary pickers (accent, background, text) and optional Advanced section\n\n[2] theme_customization_design.md:\n- Technology: PyQt6 Qt Style Sheets (QSS) + Python inline styles\n- Theme files: `assets/styles/base.qss` (~1,052 lines, dark, default) · `assets/styles/light.qss` (~1,013 lines, light)\n- Toggle: `MainWindow._toggle_theme()` swaps entire QSS file\n- State: `MainWindow._is_dark_theme` (default `True`), session-only\n- Persistence: None - no key in `assets/config/settings.schema.json`\n- Settings section: None - `ui/views/settings/registry.py` has General, Companion, etc., but no Themes\n- Token registry: None - no CSS variables, no central Python module\n- Formal CSS `--*` variables: None in the desktop app\n\n[3] theme_customization_design.md:\n- Dark palette:\n  - Base background: `#1e1e2e`\n  - Pane backgrounds: `rgba(0, 0, 0, 0.15)`\n  - Accent/active: `rgba(255, 255, 255, 0.1)`\n  - Text primary: `#cdd6f4`\n  - Text muted: `rgba(205, 214, 244, 0.5)`\n- Light palette: 45 unique QSS literals\n- Python theme helpers: ~101 unique literals, many absent from QSS\n- `set",
+    "finish_reason": "length",
+    "prompt_tokens": 1309,
+    "completion_tokens": 400,
+    "ms": 25809.2,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  },
+  {
+   "id": "web_content_fetch_plan",
+   "sources": [
+    {
+     "id": 1,
+     "filename": "web_content_fetch_plan.md",
+     "content": "It is intended as a **review artifact**: sit on it, refine scope, then implement in slices.\n\n---\n\n## 0. Executive summary\n\n### Problem\n\nToday, Qube’s live web path (`@internet` / `general_web`) returns **DuckDuckGo SERP snippets only**. Result pages are not fetched. The audit trail explicitly notes: *“SERP snippets only; result pages are not fetched.”* For recipes, gaming walkthroughs, product reviews, and long-form articles, snippets are often insufficient or misleading.\n\nThe external knowledge platform plan already envisioned **selective fetch** after SERP discovery, but it was not implemented for general web. API adapters (PubMed, CourtListener, etc.) are mature; **non-API web content** is the remaining gap.\n\n### Proposed solution\n\nAdd a **fetch subsystem** inside the existing `general_web` knowledge service, gated by **retrieval profiles** and **composer pins** — not a separate `web_content` service (deferred until the implementation stabilizes).\n\n```\nComposer @-tool → general_web → Pipeline\n    Discovery → Fetch → Extract → Document → Chunk → Rank → [optional sidecar polish] → EvidenceBundle\n```\n\nKey design choices (v4):"
+    },
+    {
+     "id": 2,
+     "filename": "web_content_fetch_plan.md",
+     "content": "1. **Do not replace `EvidenceBundle`.** Internal types (`CandidateUrl`, `FetchResult`, `Document`) stay below the ADR 003 boundary.\n2. **Defer `web_content` as a separate KnowledgeService.** Extend `general_web` + `RetrievalProfileSpec` (`fetch_url_count`, `playwright_allowed`).\n3. **Hard-separate discovery from extraction.** `DiscoveryProvider` returns URLs; fetch/extract pipeline unchanged for DDG, RSS, bookmarks, or user site lists.\n4. **Canonical `Document` IR (central)** — mandatory layer between HTML and chunking:\n\n```\n   HTML → Extractor → Document → Chunker → EvidenceObject\n   ```\n\nAll page types converge on one `Document` before ranking.\n5. **Capability-based extractors only** — `supports(url, html) → confidence` + `priority` for tie-breaks. No routing table, no content-type ontology. Extractors advertise observable page signals (JSON-LD, ordered lists, code blocks).\n6. **Minimal built-in composer tools** — only `@internet`, `@fetch`, `@recipe`. Everything else (DIY, gaming, docs) → **source profiles** (`@[tool:user:…]`).\n7. **No discovery ontology in v1 MVP** — DDG scoped by `site_bias` (preset or `@recipe` default list) a"
+    },
+    {
+     "id": 3,
+     "filename": "web_content_fetch_plan.md",
+     "content": "### Delivery bands\n\n**v1 MVP (ship first)** — prove the deterministic pipeline on real pages:\n\n| Slice | Deliverable |\n|-------|-------------|\n| **M1** | `DiscoveryProvider` + DDG (`CandidateUrl`) |\n| **M2** | `FetchResult` + fetch engine + blocker detection |\n| **M3** | `Document` model + extractor plugin registry (`priority`, `supports()`) + Trafilatura |\n| **M4** | Section chunker + embedding ranker → `EvidenceObject`s |\n| **M5** | Profile-gated `general_web` integration + `@fetch` pin |\n| **M6** | `RecipeExtractor` + `@recipe` pin + default recipe `site_bias` |\n| **M7** | Fetch provenance trail + Inspector Explain (minimal) |\n| **M8** | Source profiles (minimal): `site_bias`, `fetch_url_count` on `general_web` presets |\n\n**v1.1+ (after MVP works on real usage)** — defer until justified by failures:"
+    },
+    {
+     "id": 4,
+     "filename": "web_content_fetch_plan.md",
+     "content": "| Slice | Deliverable |\n|-------|-------------|\n| **P1** | Pagination crawl policy |\n| **P2** | `ProceduralExtractor`, `DocumentationExtractor` (plugin additions) |\n| **P3** | Playwright worker |\n| **P4** | Rich source profiles (`preferred_extractors`, ranking weights) |\n| **P5** | Optional sidecar section polish |\n| **P6** | RSS / bookmark discovery providers |\n\n### Non-goals (v1 MVP)\n\n- LLM-driven browser agents as foreground chat fallback\n- Sidecar/LLM for intent classification or URL selection\n- Built-in composer tools beyond `@internet`, `@fetch`, `@recipe` (no `@howto`, `@guides`)\n- Content-type ontology for routing (`procedural`, `documentation`, `product_review`, …)\n- `ProceduralExtractor` / `DocumentationExtractor` (v1.1+ plugins)\n- Playwright (v1.1+)\n- A separate `web_content` KnowledgeService (deferred)\n- Paywalled full-text scraping or credential vaults for news sites\n- Scrapy-scale sitewide crawling\n- Replacing cognitive router domain logic\n- Per-site entries in `SEARCH_FUNCTIONS` for hundreds of hosts\n\n---\n\n## 1. Problem statement\n\n### 1.1 User scenarios poorly served today"
+    },
+    {
+     "id": 5,
+     "filename": "web_content_fetch_plan.md",
+     "content": "| Scenario | Why SERP snippets fail |\n|----------|------------------------|\n| **Recipes** | Snippet shows blog intro, not ingredients/steps |\n| **Procedural how-to** (gaming, DIY, assembly) | Multi-page step lists; snippet is one paragraph |\n| **DIY / furniture** | IKEA-style assembly steps not in snippet |\n| **Product comparisons** | Spec tables not in snippet |\n| **Software / API docs** | Code blocks and nav-stripped content need extract |\n| **How-to articles** | Steps truncated or absent |\n| **Local business hours** | Sometimes in snippet; often requires page extract |\n\n### 1.2 What works today (do not break)\n\n| Path | Mechanism | Fetch depth |\n|------|-----------|-------------|\n| `@evidence` / `@science` | 58 API adapters | Abstracts, metadata |\n| `@legal` | CourtListener REST | Opinion snippets |\n| `@trusted` | Wikipedia API | Full intro extract |\n| `@internet` | DDG SERP | `snippet_only` |\n| `bailii` adapter | Light HTML scrape (regex) | Precedent for non-API fetch |\n\n### 1.3 Platform gaps"
+    }
+   ],
+   "sources_chars": 5383,
+   "as_shipped": {
+    "raw": "<think>",
+    "finish_reason": "stop",
+    "prompt_tokens": 1410,
+    "completion_tokens": 2,
+    "ms": 8477.9,
+    "final_prompt_tail": "rm gaps<|im_end|>\n<|im_start|>assistant\n"
+   },
+   "prefill": [
+    {
+     "raw": "[1] web_content_fetch_plan.md:\n- Review artifact: refine scope, then implement in slices\n- Problem: Qube's live web path returns only DuckDuckGo SERP snippets, no result pages\n- Solution: Add fetch subsystem inside `general_web` knowledge service, gated by retrieval profiles and composer pins\n- Key design choices: do not replace `EvidenceBundle`, defer `web_content` as separate service, separate discovery from extraction, canonical `Document` IR, capability-based extractors, minimal built-in composer tools",
+     "finish_reason": "stop",
+     "prompt_tokens": 1414,
+     "completion_tokens": 109,
+     "ms": 12919.3,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "raw": "[1] web_content_fetch_plan.md:\n- Review artifact: refine scope, then implement in slices\n- Problem: Qube's live web path returns only DuckDuckGo SERP snippets, no result pages\n- Solution: Add fetch subsystem inside `general_web` knowledge service, gated by retrieval profiles and composer pins\n- Key design choices: Do not replace `EvidenceBundle`, defer `web_content` as separate service, separate discovery from extraction, canonical `Document` IR, capability-based extractors, minimal built-in composer tools",
+     "finish_reason": "stop",
+     "prompt_tokens": 1414,
+     "completion_tokens": 109,
+     "ms": 12926.9,
+     "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "prefill_no_blank_line_stop": {
+    "raw": "[1] web_content_fetch_plan.md:\n- Review artifact: refine scope, then implement in slices\n- Problem: Qube's live web path returns only DuckDuckGo SERP snippets, no result pages\n- Solution: Add fetch subsystem inside `general_web` knowledge service, gated by retrieval profiles and composer pins\n- Key design choices: do not replace `EvidenceBundle`, defer `web_content` as separate service, separate discovery from extraction, canonical `Document` IR, capability-based extractors, minimal built-in composer tools\n\n[2] web_content_fetch_plan.md:\n- Do not replace `EvidenceBundle`: internal types (`CandidateUrl`, `FetchResult`, `Document`) stay below ADR 003 boundary\n- Defer `web_content` as separate KnowledgeService: extend `general_web` + `RetrievalProfileSpec` (`fetch_url_count`, `playwright_allowed`)\n- Hard-separate discovery from extraction: `DiscoveryProvider` returns URLs; fetch/extract pipeline unchanged for DDG, RSS, bookmarks, or user site lists\n- Canonical `Document` IR (central): mandatory layer between HTML and chunking\n- Capability-based extractors only: `supports(url, html) → confidence` + `priority` for tie-breaks\n- Minimal built-in composer tools: only `@internet`, `@fetch`, `@recipe`. Everything else → source profiles (`@[tool:user:…]`)\n- No discovery ontology in v1 MVP: DDG scoped by `site_bias` (preset or `@recipe` default list)\n\n[3] web_content_fetch_plan.md:\n- Delivery bands: v1 MVP (ship first) with M1-M8 deliverables\n- v1.1+: defer until justified by failures\n- Delivery bands:\n  - M1: `DiscoveryProvider` + DDG (`CandidateUrl`)\n  - M2: `FetchResult` + fetch engine + blocker detection\n  - M3:",
+    "finish_reason": "length",
+    "prompt_tokens": 1414,
+    "completion_tokens": 400,
+    "ms": 26628.0,
+    "final_prompt_tail": "|im_start|>assistant\n<think>\n\n</think>\n\n"
+   }
+  }
+ ],
+ "shipped_turn_cost": {
+  "foreground_timeout_ms": 1500,
+  "runs": [
+   {
+    "case": "releasing",
+    "turn_blocked_ms": 1502,
+    "skip_reason": "timeout",
+    "applied": false,
+    "sidecar_busy_ms": 9242
+   },
+   {
+    "case": "cognitive_router",
+    "turn_blocked_ms": 1502,
+    "skip_reason": "timeout",
+    "applied": false,
+    "sidecar_busy_ms": 8476
+   },
+   {
+    "case": "library_chunking_retrieval_design",
+    "turn_blocked_ms": 1501,
+    "skip_reason": "timeout",
+    "applied": false,
+    "sidecar_busy_ms": 9239
+   },
+   {
+    "case": "logging_and_diagnostics",
+    "turn_blocked_ms": 1502,
+    "skip_reason": "timeout",
+    "applied": false,
+    "sidecar_busy_ms": 9385
+   },
+   {
+    "case": "theme_customization_design",
+    "turn_blocked_ms": 1501,
+    "skip_reason": "timeout",
+    "applied": false,
+    "sidecar_busy_ms": 8169
+   },
+   {
+    "case": "web_content_fetch_plan",
+    "turn_blocked_ms": 1501,
+    "skip_reason": "timeout",
+    "applied": false,
+    "sidecar_busy_ms": 8984
+   }
+  ]
+ }
+}

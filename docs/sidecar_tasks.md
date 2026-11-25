@@ -207,7 +207,7 @@ Both live in `core/source_digest.py`.
 
 **Inference:** max_tokens 400, temperature 0.2.
 
-**Settings:** `qube.sidecar.source_digest_enabled` (requires sidecar enabled).
+**Settings:** `qube.sidecar.source_digest_enabled` (requires sidecar enabled). **Off by default** since plan S19 (D30): on the CPU sidecar a digest of 4–5 KB of sources takes 11–15 s against the 1.5 s foreground timeout, so it was never applied, while each eligible turn waited the full timeout. See `docs/knowledge_retrieval_followups.md` (S19, V47–V48).
 
 ---
 

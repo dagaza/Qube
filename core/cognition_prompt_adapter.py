@@ -14,6 +14,11 @@ IM_END = "<|im_end|>"
 CHATML_SYSTEM_MARKER = "<|im_start|>system\n"
 QWEN3_NO_THINK_DIRECTIVE = "/no_think"
 SUPPORTED_FORMATS = ("chatml", "llama-3", "phi", "gemma")
+CHATML_ASSISTANT_START = "<|im_start|>assistant\n"
+# Qwen3 under /no_think opens its reply with an empty think block. Pre-filling it
+# (what the official template does for enable_thinking=False) keeps the
+# sidecar's "\n\n" stop from ending the completion at "<think>" (S9 audit, D9).
+QWEN3_EMPTY_THINK = "<think>\n\n</think>\n\n"
 
 
 def is_qwen3_cognition_model(model_path: str) -> bool:
@@ -47,6 +52,20 @@ def _patch_chatml_system_no_think(prompt: str) -> str:
         return prompt
     new_body = f"{body} {QWEN3_NO_THINK_DIRECTIVE}"
     return prompt[: idx + len(marker)] + new_body + rest[end:]
+
+
+def prefill_qwen3_empty_think(rendered: str, chat_format: str, model_path: str = "") -> str:
+    """Append Qwen3's empty think block to a ChatML prompt that ends at the assistant turn.
+
+    Unchanged for other formats, other models, prompts that already carry it, and
+    prompts that do not end with the assistant header (plan S19, D9).
+    """
+    text = rendered or ""
+    if (chat_format or "chatml").lower() != "chatml" or not is_qwen3_cognition_model(model_path):
+        return text
+    if not text.endswith(CHATML_ASSISTANT_START):
+        return text
+    return text + QWEN3_EMPTY_THINK
 
 
 def apply_qwen3_no_think_to_prompt(prompt: str, model_path: str = "") -> str:

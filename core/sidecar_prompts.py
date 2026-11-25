@@ -12,6 +12,7 @@ from core.cognition_prompt_adapter import (
     apply_qwen3_no_think_to_prompt,
     build_cognition_prompt,
     cognition_stop_tokens,
+    prefill_qwen3_empty_think,
 )
 from core.companion_verbal_prompts import (
     COMPANION_LINE_MAX_CHARS,
@@ -60,6 +61,13 @@ class TitleSelectionDetail:
         return asdict(self)
 
 
+# Plan S19 (D9): raw-path tasks whose ChatML prompt gets Qwen3's empty think block
+# pre-filled, so the completion is not cut at "<think>" by the "\n\n" stop. Opt-in
+# per task: each entry needs its own evaluation and an owner decision (D-row).
+# ``query_slots`` pre-fills in its own builder (S9); titles use the chat path.
+QWEN3_THINK_PREFILL_TASKS: frozenset[SidecarTask] = frozenset()
+
+
 def task_inference_params(task: SidecarTask) -> dict[str, Any]:
     defaults: dict[SidecarTask, dict[str, Any]] = {
         SidecarTask.title: {"max_tokens": 20, "temperature": 0.1},
@@ -84,9 +92,12 @@ def build_prompt_for_task(
     **kwargs: Any,
 ) -> str:
     def _prompt(system: str, user: str) -> str:
-        return build_cognition_prompt(
+        rendered = build_cognition_prompt(
             system, user, chat_format, model_path=model_path
         )
+        if task in QWEN3_THINK_PREFILL_TASKS:
+            rendered = prefill_qwen3_empty_think(rendered, chat_format, model_path)
+        return rendered
 
     def _finish(prebuilt: str) -> str:
         return apply_qwen3_no_think_to_prompt(prebuilt, model_path)

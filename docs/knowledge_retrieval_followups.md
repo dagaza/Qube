@@ -261,6 +261,36 @@ flowchart LR
 - **Risks:** turning on behaviour that has never run in production (why D9 chose a scoped fix).
 - **Tests:** recorded completions replayed offline, as `tests/fixtures/query_slots_recorded_s9.json` does; per-task parser tests.
 - **Acceptance:** per task: success rate, quality on its fixtures, p95 latency, and an owner decision to enable, keep off, or retire.
+- **As built (2026-11-25, D29, D30):**
+  - **Mechanism.** `core/cognition_prompt_adapter.prefill_qwen3_empty_think()` appends `QWEN3_EMPTY_THINK` to a ChatML prompt that ends at the assistant header, for Qwen3 models only. `core/sidecar_prompts.QWEN3_THINK_PREFILL_TASKS` is the per-task opt-in that `build_prompt_for_task` checks. **It ships empty** (D29, D30), so no task's prompt changes. `query_slots` now uses the same helper; its prompt is byte-identical (S9 tests unchanged).
+  - **Fixture.** `tests/fixtures/sidecar_tasks_recorded_s19.json` holds completions from the bundled Qwen3-1.7B-Q6_K, recorded through the real `SidecarLlmWorker._complete_prompt` (shipped params and stops, S18 threads 4 / 8):
+    - **judge:** 36 synthetic fact pairs, 12 per class (duplicate, contradiction, complement), each recorded:
+      - as shipped;
+      - pre-filled (3 runs);
+      - pre-filled with the definitions `EnrichmentWorker._judge_contradiction` builds but never sends (3 runs).
+    - **judge gate:** each pair's position relative to the pre-judge gate, computed with the "balanced" embedder and a LanceDB table exactly as `_find_duplicate` searches.
+    - **digest:** 6 cases of five chunks each from this repo's docs (4.7–5.6 KB, 1309–1476 prompt tokens), each recorded:
+      - as shipped;
+      - pre-filled (2 runs);
+      - pre-filled without the `"\n\n"` stop (1 run).
+    - **turn cost:** what the shipped digest costs a turn.
+
+    `tests/test_s19_sidecar_think_prefill.py` replays all of it through the real parsers and `_judge_contradiction`, and pins every number below.
+  - **contradiction_judge** (V44, V45, V46):
+    - As shipped, 36 of 36 completions are `<think>`. The production fallback then answers "duplicate" for 35 pairs; the one exception is a keyword-rule hit (likes / dislikes).
+    - Pre-filled, the outputs are clean single words, stable across repeats (36 of 36; with definitions 35 of 36), at p50 472 ms / p95 546 ms (with definitions 737 / 856 ms).
+    - Label accuracy over all 36 pairs: shipped 13, pre-filled 21, with definitions 22.
+    - Only 19 pairs reach the judge (11 of 12 duplicates, 6 of 12 contradictions, 2 of 12 complements), and both "duplicate" and "contradiction" replace the old row. Scored by storage action on those 19 pairs, **the shipped fallback is right 17 times, the pre-filled judge 11, and the definitions variant 8**. The working judge calls 7 of 11 paraphrases "complement", which keeps near-duplicate rows side by side.
+  - **source_digest** (V44, V47, V48):
+    - As shipped, 6 of 6 completions are `<think>`, and each run still spends 7.9–9.2 s evaluating the prompt.
+    - Pre-filled, all 12 runs stop after source [1]: the model writes a blank line between sources and the `"\n\n"` stop ends there. The parser rejects every run (`citation_ids_missing`). The text it did write is faithful to source [1].
+    - Pre-filled runs take 11.0–15.2 s (p50 11.8 s, p95 15.2 s) against a 1.5 s foreground timeout (the setting's maximum is 10 s).
+    - Without the `"\n\n"` stop, all 6 runs hit the 400-token limit (25.8–27.3 s). 3 still miss source ids, 2 cite a `[6]` when there are five sources, and the parser keeps only the first 1200 chars.
+    - **What it costs today:** `digest_rag_context` through the real client blocked the turn for 1501–1502 ms in 6 of 6 cases, and applied nothing (`timeout`). The sidecar then stayed busy for 8.2–9.4 s, overlapping the main model's answer (V42).
+  - **Default change (D30).** `qube.sidecar.source_digest_enabled` now defaults to off (`DEFAULT_SIDECAR_SOURCE_DIGEST_ENABLED`). It has no Settings toggle, and an explicit `true` in `settings.json` still turns it on. Output is unchanged, since the digest was never applied; eligible turns no longer wait 1.5 s. `docs/sidecar_tasks.md` §6 notes it.
+  - **Not measured:**
+    - how often turns are eligible (≥ 4096 chars of retrieved context): the logs record digest outcomes only at debug level;
+    - the real distribution of fact pairs reaching the judge: synthetic pairs, labelled by hand.
 
 #### S20 — Sidecar `<think>` fix: remaining tasks
 
@@ -425,7 +455,7 @@ What they lack is the cross-encoder gate, the sufficiency state and honest "not 
 
 A new session has no memory of earlier ones. Read this section, then §3–§6, then the open stage's entry and the progress log.
 
-**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 committed, not pushed: S14 `1b6fb88`, S15 `2fd25be`, S16 `3ad0a90`. Phase 1 is on `feat/kr-followups-phase1`, branched from Phase 0's head because the plan document exists only there; rebase it onto `main` once Phase 0 merges. S17 was done first, at the owner's request, and is committed (`5dc3c19`). S40 (test isolation, D25) is committed (`e8e0da3`). S18 (sidecar threads, D27) is committed (`git log`). Next: S19. D26: the salvage fix goes to Phase 6.
+**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 committed, not pushed: S14 `1b6fb88`, S15 `2fd25be`, S16 `3ad0a90`. Phase 1 is on `feat/kr-followups-phase1`, branched from Phase 0's head because the plan document exists only there; rebase it onto `main` once Phase 0 merges. S17 was done first, at the owner's request, and is committed (`5dc3c19`). S40 (test isolation, D25) is committed (`e8e0da3`). S18 (sidecar threads, D27) is committed (`b71ba2f`). S19 (pre-fill mechanism, judge and digest kept off, digest default off: D29, D30) is committed (`git log`). Next: S20. D26: the salvage fix goes to Phase 6.
 
 **Commands** (repo root, `.venv`):
 
@@ -433,7 +463,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 - Full suite: `QT_QPA_PLATFORM=offscreen HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings -m "not packaging" tests > <log> 2>&1`.
   - The process ends with the known Qt teardown abort (exit 134, no summary line), so count results from the log: `grep -o PASSED <log> | wc -l` and `grep -o FAILED <log> | wc -l`. Do **not** count ` PASSED` with a leading space: a test that prints output pushes its result to the start of the next line, and that count misses it (V34).
   - Cross-check against the collected count: `... -m "not packaging" --collect-only -q tests | tail -1` must equal passed + failed (+ skipped).
-  - Reference (S18): **4298 passed** of 4302 collected, the 4 known failures below; S40 4284 of 4288; S17 4277 of 4282 and S16 4251 of 4256 (5 failures then; S40 fixed the winget one, V41); S15 4244 of 4249; on `main` before S15, 4228 of 4233. Known-flaky (V38): `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` can fail, error at its teardown (an extra ERROR, pass count unchanged), or leave `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` with a setup ERROR (pass count one lower). Exactly these 4 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`) and `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`). Any other failure is new. (`test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut` failed only because the suite read the real home, V41.)
+  - Reference (S19): **4319 passed** of 4323 collected, the 4 known failures below (measured 4318: the V38 flake hit once); S18 4298 of 4302; S40 4284 of 4288; S17 4277 of 4282 and S16 4251 of 4256 (5 failures then; S40 fixed the winget one, V41); S15 4244 of 4249; on `main` before S15, 4228 of 4233. Known-flaky (V38): `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` can fail, error at its teardown (an extra ERROR, pass count unchanged), or leave `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` with a setup ERROR or a FAILED (pass count one lower; the FAILED form was seen at S19). Exactly these 4 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`) and `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`). Any other failure is new. (`test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut` failed only because the suite read the real home, V41.)
 - Offline eval (needs the reranker model at `~/.qube/models/search/reranker/`): `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_knowledge_quality.py --corpus eval/retrieval_corpus/v1_knowledge_quality.json --ranker <token|embed|ce> --query-mode <production|standalone> [--pool-mode widened] [--json] [--compare <baseline>]`.
   - Compare against `eval/retrieval_corpus/baselines/kq_s13_*`, using `--pool-mode widened` for `ce`. Always pass the relative `--corpus` path.
 - Heuristic A/B: `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_heuristic_ab.py` (S13).
@@ -459,7 +489,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 
 ## 8. Progress log
 
-> **Last reviewed:** 2026-11-25, S18 implemented (sidecar 4 / 8 threads, D27: prompt eval 56 → 164 tok/s, title p50 9.3 → 2.8 s; contention, V42; main engine batch threads recorded, V43, D28); S40 implemented (suite runs against a throwaway home: audit 0 records; winget failure was a home artifact, V41); S17 implemented (token-fitted history, counted by the loaded model on the native path, V39; salvage finding, V40, fix in Phase 6 per D26); S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
+> **Last reviewed:** 2026-11-25, S19 implemented (pre-fill mechanism with an empty opt-in set; contradiction_judge kept off, D29, because a working judge stores worse, V45; source_digest kept off and its default turned off, D30, because it cannot meet its 1.5 s budget yet cost every eligible turn 1.5 s, V47–V48); S18 implemented (sidecar 4 / 8 threads, D27: prompt eval 56 → 164 tok/s, title p50 9.3 → 2.8 s; contention, V42; main engine batch threads recorded, V43, D28); S40 implemented (suite runs against a throwaway home: audit 0 records; winget failure was a home artifact, V41); S17 implemented (token-fitted history, counted by the loaded model on the native path, V39; salvage finding, V40, fix in Phase 6 per D26); S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
 
 ### Deliverables
 
@@ -491,6 +521,11 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | 2026-11-25 | S18 | Main engine batch threads (V43) | Recorded | Stand-in CPU main model: 50 → 59 tok/s prompt eval at 8 batch threads | Decision deferred (D28) |
 | 2026-11-25 | S18 | Tests | Done | `tests/test_s18_sidecar_threads.py` (new, 14 tests): selection per CPU shape (mocked psutil), fallbacks, affinity cap, decode cap, snapshot and Settings row, `Llama` kwargs and snapshot on a real `_load_cognition_model` call. Full suite with the home audit: **4297 passed** of 4302 (4298 without the V38 setup ERROR; S40 4284, +14), the 4 known failures, 0 audit records. No existing test changed | — |
 | 2026-11-25 | S18 | Acceptance | Done | Prompt eval before / after on the dev machine ✓ and a second CPU shape (4 cores via affinity) ✓; title latency improved, not regressed ✓ | Contention measured with a CPU stand-in for the main model |
+| 2026-11-25 | S19 | Pre-fill mechanism (D9) | Done | `prefill_qwen3_empty_think()` in `core/cognition_prompt_adapter.py`; `QWEN3_THINK_PREFILL_TASKS` in `core/sidecar_prompts.py` (ships empty); `query_slots` uses the shared helper, prompt unchanged | — |
+| 2026-11-25 | S19 | Evaluation: contradiction_judge, source_digest | Done | Fixture `tests/fixtures/sidecar_tasks_recorded_s19.json` (36 judge pairs, 6 digest cases, gate, turn cost); V44–V48 | Synthetic judge pairs; eligible-turn frequency not measured |
+| 2026-11-25 | S19 | Owner decisions | Done | Judge stays off (D29); digest pre-fill stays off and its default is now off (D30, `core/app_settings.py`, `docs/sidecar_tasks.md` §6) | — |
+| 2026-11-25 | S19 | Tests | Done | `tests/test_s19_sidecar_think_prefill.py` (new, 21 tests): helper and opt-in per format and model, title never pre-filled, slot prompt unchanged, worker sends the pre-filled prompt; replay of the fixture pinning V44–V48; digest default and explicit setting (both fail with the old default). Full suite with the home audit: **4318 passed** of 4323 (S18 4298 of 4302, +21), the 4 known failures plus the V38 flake (`test_bundled_wallpaper_assets_exist` FAILED; the pair run reproduces "BackgroundBuildBridge has been deleted"), 0 audit records. No existing test changed | — |
+| 2026-11-25 | S19 | Acceptance | Done | Per task: success rate (shipped 0 of 36 / 0 of 6; pre-filled 36 of 36 parseable verdicts / 0 of 12 accepted digests), quality on fixtures (V45, V47), p95 latency (judge 546 ms; digest 15.2 s), owner decisions (D29, D30) ✓ | — |
 
 ### Validated findings (V33+)
 
@@ -507,6 +542,11 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | **V41** | The 5 known failures are code failures | **One is not.** `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut` asserts that the validation shortcut applies. On a machine whose real settings say `qube.bootstrap.completed`, the shortcut returns False (`already_completed`, the same reason the leaked `.winget-validation-boot-state.json` showed). Against S40's throwaway home it passes. | §7's known failures drop to 4 |
 | **V42** | The sidecar's thread defaults only cost the sidecar time (V18) | **No, they also slow the main model.** While the sidecar evaluates a prompt with llama-cpp's defaults (16 batch threads on 8 cores), a main model decoding on 6 CPU threads drops from 14.1 to 2.7 tok/s (−81%). With 4 / 8 it drops to 9.8 tok/s and the sidecar runs 2.4× faster (31 → 76 tok/s). | S18 ships 4 / 8 (D27) |
 | **V43** | The main engine's thread setting covers prompt evaluation | **No.** `NativeLlamaEngine` passes only the user's `n_threads` (6 here), so `n_threads_batch` stays at llama-cpp's default, every logical CPU (16). On a CPU-only build, a stand-in main model (Phi-4-mini) evaluated an 800-token prompt at 59 tok/s with 8 batch threads, against 50 with 16 and 49 with 6. GPU builds were not measured. | Recorded, not changed (D28) |
+| **V44** | The S9 finding (raw-path sidecar tasks return only `<think>`) still holds on today's code | **Yes**, re-measured for the two retrieval-related tasks: 36 of 36 judge and 6 of 6 digest completions are `<think>` and parse as `empty_output`. Pre-filling the empty think block gives real output for both. | S19 mechanism ships with an empty opt-in set |
+| **V45** | A working contradiction judge would improve memory dedup | **No, it makes it worse.** On the 19 synthetic pairs that pass the embedding gate, today's fallback (35 of 36 "duplicate", and duplicate also replaces the old row) gets the storage action right 17 times. The pre-filled judge gets it right 11 times (7 paraphrases kept as separate rows), and with the definitions `_judge_contradiction` builds but never sends, 8 times. Today's 2 errors delete an old fact whose new neighbour complements it. | Judge stays off (D29) |
+| **V46** | Contradicting facts reach the judge | **Only half do.** `_find_duplicate` (LanceDB distance < 0.22, balanced embedder) passes 11 of 12 paraphrases, 6 of 12 contradictions (median distance 0.216) and 2 of 12 complements (0.272). A contradiction beyond the gate is stored next to the fact it contradicts. | Memory gate, not the sidecar: a candidate for Phase 6 (owner) |
+| **V47** | The source digest can work on the CPU sidecar | **No.** It needs 11.0–15.2 s pre-filled (1309–1476 prompt tokens) against a 1.5 s foreground timeout (10 s at most). The `"\n\n"` stop cuts it after source [1] (12 of 12 runs rejected). Without that stop it takes 26–27 s, still misses ids in 3 of 6 and invents a `[6]` in 2 of 6. | Pre-fill stays off (D30) |
+| **V48** | The shipped digest is harmless because it always falls back | **No, it costs every eligible turn 1.5 s.** On by default with no Settings toggle, it blocked `digest_rag_context` for 1501–1502 ms in 6 of 6 cases (`timeout`, never applied). The sidecar kept evaluating for 8.2–9.4 s at S18 threads (about 3× longer before S18), overlapping the main model's answer. | Default off (D30) |
 
 ### Owner decisions (D23+)
 
@@ -518,6 +558,8 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | D26 | Memory v7 salvage never receives dropped messages (V40). Fix it, including the messages S17's token fit drops? | **Yes, in Phase 6** (Library and memory), collecting ids from both the message window and the token fit; the default (off) is unchanged. (Recorded 2026-11-25.) | Phase 6, V40 |
 | D27 | S18: the sidecar's default thread counts | **`n_threads = min(4, physical cores)`, `n_threads_batch = physical cores`**, capped at the usable CPUs. Chosen over "all physical cores" (the same prompt speed, slightly faster decode alone, the same under contention) and "half the cores" (most room for the main model, but sidecar prompts 1.6× slower under contention). (Recorded 2026-11-25.) | S18 |
 | D28 | The main engine's `n_threads_batch` also defaults to every logical CPU (V43). Change it? | **Record it and decide later**: it belongs to the inference-settings work, and GPU builds were not measured. (Recorded 2026-11-25.) | V43 |
+| D29 | S19: pre-fill `contradiction_judge`? | **Keep it off.** On pairs that reach it, a working judge stores worse than today's fallback (V45). Leave it out of `QWEN3_THINK_PREFILL_TASKS`; behaviour unchanged. Retiring the LLM call is a possible later change. (Recorded 2026-11-25.) | V45 |
+| D30 | S19: pre-fill `source_digest`, and its default? | **Keep the pre-fill off and make the digest's default off.** It cannot finish within its foreground budget (V47), and turned on it only cost turns 1.5 s (V48). An explicit setting still enables it. (Recorded 2026-11-25.) | V47, V48 |
 
 ### Track 0 checkpoints
 
