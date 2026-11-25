@@ -245,7 +245,14 @@ from core.app_settings import (
     get_enable_chat_personality_nudge,
     get_enable_memory_v7_salvage,
 )
-from core.retrieval_budget import estimate_tokens, retrieval_char_budget
+from core.retrieval_budget import (
+    HistoryWindow,
+    TokenCounter,
+    estimate_tokens,
+    fit_history_to_token_budget,
+    history_token_budget,
+    retrieval_char_budget,
+)
 from core.app_settings import (
     get_sidecar_query_rewrite_enabled,
     get_sidecar_query_slots_shadow_enabled,
@@ -320,6 +327,48 @@ def is_native_empty_visible_output_notice(text: str) -> bool:
         return False
     msg = NATIVE_EMPTY_VISIBLE_OUTPUT_MSG
     return t == msg or t == msg + msg
+
+
+def _turn_budget_inputs(worker: Any) -> tuple[int, int | None]:
+    """Skills prompt budget and completion budget shared by the S10 and S17 budgets."""
+    try:
+        skills_chars = int(get_skill_settings().total_prompt_char_budget)
+    except Exception:
+        skills_chars = 1200
+    try:
+        max_output = worker._max_tokens_completion(
+            native=getattr(worker, "engine_mode", DEFAULT_ENGINE_MODE) == "internal"
+        )
+    except Exception:
+        max_output = None
+    return skills_chars, max_output
+
+
+def _turn_token_counter(worker: Any) -> TokenCounter | None:
+    """Plan S17: the loaded native model's tokenizer, else None (the S10 estimate).
+
+    External engines have no tokenizer here. A failed count falls back to the
+    estimate for that text only.
+    """
+    if getattr(worker, "engine_mode", DEFAULT_ENGINE_MODE) != "internal":
+        return None
+    count = getattr(getattr(worker, "_native_engine", None), "count_tokens", None)
+    if not callable(count):
+        return None
+    try:
+        if count("probe") is None:
+            return None
+    except Exception:
+        return None
+
+    def _count(text: str) -> int:
+        try:
+            n = count(text)
+        except Exception:
+            n = None
+        return estimate_tokens(text) if n is None else int(n)
+
+    return _count
 
 
 class LLMWorker(QThread):
@@ -1046,22 +1095,64 @@ class LLMWorker(QThread):
             return None
         return value if value > 0 else None
 
-    def _retrieval_budget_for_turn(self, history: list, *, extra_context_chars: int = 0):
+    def _fit_history_for_turn(
+        self,
+        history: list,
+        *,
+        has_retrieval: bool,
+        extra_context_chars: int = 0,
+        count_tokens: TokenCounter | None = None,
+    ) -> HistoryWindow:
+        """Plan S17 (V20): drop the oldest messages until history fits its token budget.
+
+        Runs after the message-count window (``_bound_session_history``) and before
+        the S10 retrieval budget, which then sizes the block from the kept history.
+        ``count_tokens`` is the turn's counter (``_turn_token_counter``).
+        """
+        messages = [m for m in (history or []) if isinstance(m, dict)]
+        skills_chars, max_output = _turn_budget_inputs(self)
+        n_ctx = self._active_context_window()
+        window = fit_history_to_token_budget(
+            messages,
+            history_token_budget(
+                n_ctx=n_ctx,
+                extra_context_chars=extra_context_chars,
+                skills_chars=skills_chars,
+                max_output_tokens=max_output,
+                reserve_retrieval=has_retrieval,
+                cap_chars=self.MAX_TOTAL_RETRIEVAL_CHARS,
+            ),
+            count_tokens=count_tokens,
+        )
+        if window.dropped or window.truncated:
+            logger.info(
+                "[LLM] Chat history token-fitted: kept %d of %d messages "
+                "(%d of %s tokens, counter=%s, n_ctx=%s, retrieval=%s, truncated=%s, reason=%s)",
+                len(window.messages),
+                len(messages),
+                window.tokens,
+                window.budget_tokens,
+                "model" if count_tokens else "estimate",
+                n_ctx,
+                has_retrieval,
+                window.truncated,
+                window.reason,
+            )
+        return window
+
+    def _retrieval_budget_for_turn(
+        self,
+        history: list,
+        *,
+        extra_context_chars: int = 0,
+        count_tokens: TokenCounter | None = None,
+    ):
         """Plan S10 (R5): retrieval character budget from n_ctx, history and overhead."""
         messages = [m for m in (history or []) if isinstance(m, dict)]
         query = ""
         if not messages or str(messages[-1].get("role") or "") != "user":
             query = str(getattr(self, "prompt", "") or "")
-        try:
-            skills_chars = int(get_skill_settings().total_prompt_char_budget)
-        except Exception:
-            skills_chars = 1200
-        try:
-            max_output = self._max_tokens_completion(
-                native=getattr(self, "engine_mode", DEFAULT_ENGINE_MODE) == "internal"
-            )
-        except Exception:
-            max_output = None
+        skills_chars, max_output = _turn_budget_inputs(self)
         return retrieval_char_budget(
             n_ctx=self._active_context_window(),
             history=messages,
@@ -1070,6 +1161,7 @@ class LLMWorker(QThread):
             skills_chars=skills_chars,
             max_output_tokens=max_output,
             cap_chars=self.MAX_TOTAL_RETRIEVAL_CHARS,
+            count_tokens=count_tokens,
         )
 
     def _stamp_discourse_on_decision(
@@ -4440,11 +4532,24 @@ class LLMWorker(QThread):
                 and not all_ui_sources
             )
         )
-        # Plan S10 (R5): size the retrieval block from the active context window.
+        extra_context_chars = len(attachment_ctx) + (
+            len(tool_context.strip()) if inject_tool_context else 0
+        )
+        # Plan S17 (V20): fit history to a token budget first, keeping room for
+        # retrieval when this turn has sources; then (S10, R5) size the block
+        # from what is left.
+        turn_count_tokens = _turn_token_counter(self)
+        history_window = self._fit_history_for_turn(
+            history,
+            has_retrieval=bool(all_ui_sources),
+            extra_context_chars=extra_context_chars,
+            count_tokens=turn_count_tokens,
+        )
+        history = history_window.messages
         retrieval_budget = self._retrieval_budget_for_turn(
             history,
-            extra_context_chars=len(attachment_ctx)
-            + (len(tool_context.strip()) if inject_tool_context else 0),
+            extra_context_chars=extra_context_chars,
+            count_tokens=turn_count_tokens,
         )
         retrieval_format_mode = (
             "background"
@@ -4462,18 +4567,16 @@ class LLMWorker(QThread):
             format_mode=retrieval_format_mode,
             char_budget=retrieval_budget.chars,
         )
-        if (
-            retrieval_prompt_body
-            and retrieval_budget.tokens
-            and estimate_tokens(retrieval_prompt_body) > retrieval_budget.tokens
-        ):
+        block_tokens = (
+            (turn_count_tokens or estimate_tokens)(retrieval_prompt_body)
+            if retrieval_prompt_body and retrieval_budget.tokens
+            else 0
+        )
+        if block_tokens and block_tokens > retrieval_budget.tokens:
             # Non-ASCII sources cost more tokens per character than the estimate
-            # assumes; shrink the character budget in proportion.
-            scaled = int(
-                retrieval_budget.chars
-                * retrieval_budget.tokens
-                / max(1, estimate_tokens(retrieval_prompt_body))
-            )
+            # assumes, and so do dense ones (tables, code) by the model's own
+            # count (S17); shrink the character budget in proportion.
+            scaled = int(retrieval_budget.chars * retrieval_budget.tokens / max(1, block_tokens))
             retrieval_prompt_body = self._format_sources_for_llm_prompt(
                 all_ui_sources,
                 format_mode=retrieval_format_mode,
@@ -4483,6 +4586,10 @@ class LLMWorker(QThread):
             decision["retrieval_budget"] = {
                 **retrieval_budget.as_trace(),
                 "used_chars": len(retrieval_prompt_body or ""),
+            }
+            decision["history_window"] = {
+                **history_window.as_trace(),
+                "counter": "model" if turn_count_tokens else "estimate",
             }
         if retrieval_prompt_body:
             from core.memory_filters import prefix_evidence_notes, retrieval_coverage_note

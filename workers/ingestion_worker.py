@@ -9,6 +9,7 @@ from core.app_settings import get_sidecar_ingest_blurb_enabled
 from core.chunking.chunk_metadata import chunk_record_to_meta_json
 from core.chunking.embed_context import library_chunk_embed_text
 from core.chunking.ingest_pipeline import chunk_document_for_ingest
+from core.sidecar_prompts import build_ingest_blurb_sample
 from core.chunking.semantic_ingest import chunk_document_for_precision_ingest
 from core.knowledge.document.builders.library_builder import build_document_from_path
 from core.library_ingest_modes import is_precision_ingest_mode
@@ -144,7 +145,9 @@ class IngestionWorker(QThread):
                     and get_sidecar_ingest_blurb_enabled()
                     and chunks
                 ):
-                    sample = chunks[0][:2500]
+                    # Plan S20 (D31): several chunks, so a heading-only first chunk
+                    # does not leave the sidecar guessing.
+                    sample = build_ingest_blurb_sample(chunks)
                     self.sidecar_worker.enqueue_ingest_blurb(source, sample)
                 
                 total_chunks += len(records)

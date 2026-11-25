@@ -28,7 +28,11 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Any, Callable, Optional
 
-from core.cognition_prompt_adapter import build_cognition_prompt, is_qwen3_cognition_model
+from core.cognition_prompt_adapter import (  # QWEN3_EMPTY_THINK re-exported for S9 tests
+    QWEN3_EMPTY_THINK,
+    build_cognition_prompt,
+    prefill_qwen3_empty_think,
+)
 from core.discourse_subject import (
     RELATION_CONTINUATION,
     SubjectTrack,
@@ -41,10 +45,6 @@ from core.sidecar_types import SidecarTask
 logger = logging.getLogger("Qube.QuerySlots")
 
 SLOT_SUBJECT_PREFIX = "SUBJECT:"
-# Qwen3 under /no_think opens with an empty think block. Pre-filling it (what the
-# official template does for enable_thinking=False) keeps the sidecar's "\n\n"
-# stop from ending the completion at "<think>" (S9 audit, D9).
-QWEN3_EMPTY_THINK = "<think>\n\n</think>\n\n"
 
 SLOT_HISTORY_MESSAGES = 4
 SLOT_MESSAGE_CHARS = 400
@@ -140,9 +140,7 @@ def build_slot_prompt(
         + f"\nuser (last message): {clean_turn(prompt)[:SLOT_MESSAGE_CHARS]}"
     )
     rendered = build_cognition_prompt(SLOT_SYSTEM, user, chat_format, model_path=model_path)
-    if (chat_format or "chatml").lower() == "chatml" and is_qwen3_cognition_model(model_path):
-        rendered += QWEN3_EMPTY_THINK
-    return rendered + SLOT_SUBJECT_PREFIX
+    return prefill_qwen3_empty_think(rendered, chat_format, model_path) + SLOT_SUBJECT_PREFIX
 
 
 def _clean_slot(value: str) -> Optional[str]:

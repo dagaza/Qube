@@ -756,9 +756,15 @@ def get_sidecar_query_slots_timeout_ms() -> int:
     return max(1000, min(30000, v))
 
 
+# Plan S19 (V47, V48, D30): off by default. On the CPU sidecar the digest takes
+# 11-15 s against its 1.5 s foreground timeout, so it was never applied, while each
+# eligible turn waited the full timeout and the sidecar kept working during the answer.
+DEFAULT_SIDECAR_SOURCE_DIGEST_ENABLED = False
+
+
 def get_sidecar_source_digest_enabled() -> bool:
     return get_sidecar_enabled() and bool(
-        _store().get(KEY_SIDECAR_SOURCE_DIGEST, True)
+        _store().get(KEY_SIDECAR_SOURCE_DIGEST, DEFAULT_SIDECAR_SOURCE_DIGEST_ENABLED)
     )
 
 

@@ -7,11 +7,57 @@ playback, or GPU monitoring.  MagicMock auto-generates attributes and
 return values, so view constructors that call workers.get("llm").some_signal
 will get a mock signal object rather than crashing.
 """
+import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
 from unittest.mock import MagicMock
+
+
+def _isolate_user_home() -> tuple[str, str]:
+    """Run the whole session against a throwaway home directory (plan S40, V37, D25).
+
+    Without this, tests wrote into the developer's real ``~/.qube``: settings,
+    ``model_performance_store.json``, companion state, logs, bootstrap traces and
+    model markers. ``core.paths.user_data_root()`` and the many direct
+    ``Path.home()`` / ``expanduser("~")`` call sites all follow ``HOME``
+    (``USERPROFILE`` / ``LOCALAPPDATA`` on Windows), so this must run before any
+    app module is imported. Nothing is copied in except an installed relevance
+    reranker (88 MB, a copy rather than a link so no test can change the real
+    one), so the ``real_reranker`` tests still run on a developer machine.
+    """
+    real_home = os.path.expanduser("~")
+    if sys.platform == "win32":
+        real_data = Path(os.environ.get("LOCALAPPDATA") or Path(real_home) / "AppData" / "Local") / "Qube"
+    else:
+        real_data = Path(real_home) / ".qube"
+
+    root = tempfile.mkdtemp(prefix="qube-test-home-")
+    os.environ["HOME"] = root
+    if sys.platform == "win32":
+        os.environ["USERPROFILE"] = root
+        os.environ["LOCALAPPDATA"] = os.path.join(root, "AppData", "Local")
+        os.environ["APPDATA"] = os.path.join(root, "AppData", "Roaming")
+        test_data = Path(os.environ["LOCALAPPDATA"]) / "Qube"
+    else:
+        test_data = Path(root) / ".qube"
+    # XDG overrides would otherwise keep pointing at the real home.
+    for var, sub in (("XDG_CONFIG_HOME", ".config"), ("XDG_DATA_HOME", ".local/share"), ("XDG_STATE_HOME", ".local/state")):
+        os.environ[var] = os.path.join(root, sub)
+
+    real_reranker = real_data / "models" / "search" / "reranker"
+    if (real_reranker / "onnx" / "model.onnx").is_file():
+        try:
+            shutil.copytree(real_reranker, test_data / "models" / "search" / "reranker", symlinks=False)
+        except OSError:
+            pass  # the real_reranker tests then skip, as on CI
+    return real_home, root
+
+
+_REAL_HOME, _TEST_HOME = _isolate_user_home()
 
 # Ensure the repo root is importable regardless of how pytest is invoked.
 _REPO_ROOT = str(Path(__file__).resolve().parent.parent)
@@ -26,12 +72,43 @@ sys.setrecursionlimit(sys.getrecursionlimit() + 500)
 
 
 def pytest_sessionfinish(session, exitstatus):
+    # Plan S40: remove the throwaway home.
+    shutil.rmtree(_TEST_HOME, ignore_errors=True)
     # PyQt6 6.11 + Python 3.13 can crash the process during QApplication teardown
     # on Windows after all tests pass. Force a clean exit so CI sees success.
     if exitstatus == 0 and sys.platform == "win32":
-        import os
-
         os._exit(0)
+
+
+@pytest.fixture(autouse=True)
+def _restore_bootstrap_trace_switch():
+    """Plan S40 (V37): undo a test's ``configure_bootstrap_trace`` for the next test.
+
+    The switch is a module global, and ``configure_bootstrap_trace`` also sets
+    ``QUBE_BOOTSTRAP_TRACE`` and adds a console handler directly, so one test
+    enabling it made later tests (``test_knowledge_rerank``) write trace files.
+    """
+    mod = sys.modules.get("core.bootstrap_trace")
+    before = (
+        bool(getattr(mod, "_ENABLED", False)),
+        getattr(mod, "_CONSOLE_HANDLER", None),
+    ) if mod is not None else (False, None)
+    env_before = os.environ.get("QUBE_BOOTSTRAP_TRACE")
+    yield
+    mod = sys.modules.get("core.bootstrap_trace")
+    if mod is None:
+        return
+    handler = getattr(mod, "_CONSOLE_HANDLER", None)
+    if handler is not None and handler is not before[1]:
+        mod.logger.removeHandler(handler)
+        mod.logger.propagate = True
+        mod.logger.setLevel(0)  # NOTSET, as before configure_bootstrap_trace
+    mod._CONSOLE_HANDLER = before[1]
+    mod._ENABLED = before[0]
+    if env_before is None:
+        os.environ.pop("QUBE_BOOTSTRAP_TRACE", None)
+    else:
+        os.environ["QUBE_BOOTSTRAP_TRACE"] = env_before
 
 
 @pytest.fixture(autouse=True)

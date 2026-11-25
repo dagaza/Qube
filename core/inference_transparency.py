@@ -271,8 +271,13 @@ def snapshot_from_loaded_llama(
     n_ctx: int,
     n_threads: int,
     role: str = "native",
+    n_threads_batch: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Model characteristics available immediately after a successful ``Llama`` load."""
+    """Model characteristics available immediately after a successful ``Llama`` load.
+
+    ``n_threads_batch`` (prompt evaluation) is reported when the caller knows it
+    (plan S18: the sidecar passes the values its ``Llama`` actually uses).
+    """
     build = get_build_snapshot(refresh=True)
     supports = bool(build.get("supports_gpu_offload"))
 
@@ -296,7 +301,7 @@ def snapshot_from_loaded_llama(
     if supports and _norm_req > 0:
         compute_mode = str(build.get("backend_hint") or "gpu")
 
-    return {
+    snapshot = {
         "role": role,
         "loaded": True,
         "model_path": model_path,
@@ -318,6 +323,9 @@ def snapshot_from_loaded_llama(
             supports_gpu_offload=supports,
         ),
     }
+    if n_threads_batch is not None:
+        snapshot["n_threads_batch"] = int(n_threads_batch)
+    return snapshot
 
 
 def merge_native_telemetry_snapshot(
@@ -443,7 +451,10 @@ def format_transparency_rows(snapshot: Mapping[str, Any]) -> list[tuple[str, str
 
     if sidecar.get("loaded"):
         sc_name = sidecar.get("model_basename") or "sidecar"
-        rows.append(("Sidecar", f"{sc_name} on CPU (n_gpu_layers=0)"))
+        threads = ""
+        if sidecar.get("n_threads") and sidecar.get("n_threads_batch"):
+            threads = f", threads {sidecar['n_threads']} / {sidecar['n_threads_batch']} prompt"
+        rows.append(("Sidecar", f"{sc_name} on CPU (n_gpu_layers=0{threads})"))
     elif sidecar.get("degraded_reason"):
         rows.append(
             ("Sidecar", f"Unavailable ({sidecar.get('degraded_reason')})")
