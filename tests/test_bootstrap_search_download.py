@@ -110,9 +110,15 @@ def test_download_balanced_search_preset_uses_streaming_helper() -> None:
     rr.assert_not_called()
 
 
-def test_balanced_search_also_downloads_missing_reranker() -> None:
+def test_balanced_search_also_downloads_missing_reranker(tmp_path: Path) -> None:
     spec = BOOTSTRAP_MODELS[BootstrapModelId.SEARCH_PRESET_BALANCED]
+    # Plan S16: a successful download clears the back-off marker next to
+    # reranker_dir(); without this patch it deleted the developer's real one.
+    marker = tmp_path / "reranker.download_failed"
+    marker.write_text("0", encoding="utf-8")
     with patch(
+        "core.bootstrap_search_download.reranker_dir", return_value=tmp_path / "reranker"
+    ), patch(
         "core.bootstrap_search_models.balanced_search_preset_present", return_value=True
     ), patch("core.bootstrap_search_download.download_embedding_preset") as emb, patch(
         "core.bootstrap_search_download.reranker_complete", return_value=False
@@ -122,6 +128,7 @@ def test_balanced_search_also_downloads_missing_reranker() -> None:
         _download_balanced_search_preset(lambda *_: None, spec)
     emb.assert_not_called()
     rr.assert_called_once()
+    assert not marker.exists()
 
 
 def test_reranker_not_downloaded_when_disabled() -> None:
@@ -135,11 +142,15 @@ def test_reranker_not_downloaded_when_disabled() -> None:
     rr.assert_not_called()
 
 
-def test_reranker_failure_is_reported_not_fatal() -> None:
+def test_reranker_failure_is_reported_not_fatal(tmp_path: Path) -> None:
     """A reranker download failure becomes a bootstrap error string; startup continues."""
     from core.bootstrap_download import download_bootstrap_models
 
+    # Plan S16: the failure writes the 24 h back-off marker next to reranker_dir();
+    # without this patch it landed in the developer's real ~/.qube/models/search.
     with patch(
+        "core.bootstrap_search_download.reranker_dir", return_value=tmp_path / "reranker"
+    ), patch(
         "core.bootstrap_search_models.balanced_search_preset_present", return_value=True
     ), patch("core.bootstrap_search_download.reranker_complete", return_value=False), patch(
         "core.app_settings.get_knowledge_reranker_enabled", return_value=True
@@ -151,6 +162,7 @@ def test_reranker_failure_is_reported_not_fatal() -> None:
             {BootstrapModelId.SEARCH_PRESET_BALANCED}, lambda *_: None
         )
     assert len(errors) == 1 and "network down" in errors[0]
+    assert (tmp_path / "reranker.download_failed").is_file()
 
 
 def test_reranker_failure_marker_backs_off_then_clears(tmp_path: Path) -> None:

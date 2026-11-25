@@ -36,6 +36,19 @@ echo "Verifying code signature of the app ..."
 codesign --verify --deep --strict --verbose=2 "$APP"
 spctl -a -vvv -t exec "$APP"
 
+# Plan S15: modules and data whose absence only switches a feature off
+# (reranker, spelling word list); see core/bundle_self_check.py.
+echo "Running bundle self-check ..."
+SELF_CHECK_DIR="$(mktemp -d)"
+SELF_CHECK_JSON="$SELF_CHECK_DIR/bundle_self_check.json"
+if ! "$APP/Contents/MacOS/$(basename "$APP" .app)" --self-check-bundle "$SELF_CHECK_JSON"; then
+  cat "$SELF_CHECK_JSON" >&2 2>/dev/null || echo "(no self-check result written)" >&2
+  echo "Bundle self-check failed" >&2
+  exit 1
+fi
+cat "$SELF_CHECK_JSON"
+rm -rf "$SELF_CHECK_DIR"
+
 echo "Launching app for a brief liveness check ..."
 open -g "$APP"
 sleep 10

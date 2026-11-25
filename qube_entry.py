@@ -9,6 +9,14 @@ logger = logging.getLogger("Qube.Entry")
 
 
 def run() -> int:
+    from core.bundle_self_check import self_check_requested
+
+    if self_check_requested(sys.argv):
+        # Release smoke (plan S15): check bundled modules and data, then exit before Qt.
+        from core.bundle_self_check import main as bundle_self_check_main
+
+        return bundle_self_check_main(sys.argv)
+
     from core.winget_validation import record_validation_entry
 
     record_validation_entry()

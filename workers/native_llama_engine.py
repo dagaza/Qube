@@ -503,6 +503,56 @@ class NativeLlamaEngine(QThread):
             value = int(self._n_ctx or 0)
         return value if value > 0 else None
 
+    def _clamp_max_tokens_for_prompt(
+        self,
+        max_tokens: int,
+        *,
+        context_window: int,
+        limit_enabled: bool,
+    ) -> int:
+        """Clamp ``max_tokens`` to the room the formatted prompt leaves in the window.
+
+        Plan S16 (V21): this used ``int(getattr(self._llama, "n_ctx", 0))``. In
+        llama-cpp-python 0.3.x ``n_ctx`` is a method, so ``int()`` raised and every
+        clamp was skipped ("clamp skipped" in the debug log). ``loaded_n_ctx()``
+        calls it, falling back to the loaded and then the requested window.
+        """
+        from core.output_token_budget import (
+            clamp_max_tokens_to_context,
+            count_prompt_tokens_for_budget,
+        )
+
+        if not (self._last_formatted_prompt or "").strip():
+            return max_tokens
+        try:
+            prompt_tokens_for_budget = count_prompt_tokens_for_budget(
+                self._llama, self._last_formatted_prompt or ""
+            )
+            n_ctx = int(self.loaded_n_ctx() or context_window or 4096)
+            clamped_max = clamp_max_tokens_to_context(
+                n_ctx=n_ctx,
+                prompt_token_count=prompt_tokens_for_budget,
+                requested_max_tokens=max_tokens,
+                limit_enabled=limit_enabled,
+            )
+            if clamped_max != max_tokens:
+                _debug_logger.info(
+                    "[OutputTokenBudget] max_tokens %s -> %s (prompt=%s n_ctx=%s limit_enabled=%s)",
+                    max_tokens,
+                    clamped_max,
+                    prompt_tokens_for_budget,
+                    n_ctx,
+                    limit_enabled,
+                )
+            return clamped_max
+        except Exception as exc:
+            _debug_logger.warning(
+                "[OutputTokenBudget] clamp skipped: %s (using max_tokens=%s)",
+                exc,
+                max_tokens,
+            )
+            return max_tokens
+
     def get_template_output_profile(self) -> Optional[TemplateOutputProfile]:
         return self._template_output_profile
 
@@ -1754,41 +1804,11 @@ class NativeLlamaEngine(QThread):
                 debug_exchange_id=cmd.get("debug_exchange_id"),
                 debug_session_id=str(cmd.get("debug_session_id") or ""),
             )
-            from core.output_token_budget import (
-                clamp_max_tokens_to_context,
-                count_prompt_tokens_for_budget,
+            max_tokens = self._clamp_max_tokens_for_prompt(
+                max_tokens,
+                context_window=context_window,
+                limit_enabled=output_token_limit_enabled,
             )
-
-            if (self._last_formatted_prompt or "").strip():
-                try:
-                    prompt_tokens_for_budget = count_prompt_tokens_for_budget(
-                        self._llama, self._last_formatted_prompt or ""
-                    )
-                    n_ctx = int(
-                        getattr(self._llama, "n_ctx", 0) or context_window or 4096
-                    )
-                    clamped_max = clamp_max_tokens_to_context(
-                        n_ctx=n_ctx,
-                        prompt_token_count=prompt_tokens_for_budget,
-                        requested_max_tokens=max_tokens,
-                        limit_enabled=output_token_limit_enabled,
-                    )
-                    if clamped_max != max_tokens:
-                        _debug_logger.info(
-                            "[OutputTokenBudget] max_tokens %s -> %s (prompt=%s n_ctx=%s limit_enabled=%s)",
-                            max_tokens,
-                            clamped_max,
-                            prompt_tokens_for_budget,
-                            n_ctx,
-                            output_token_limit_enabled,
-                        )
-                        max_tokens = clamped_max
-                except Exception as exc:
-                    _debug_logger.warning(
-                        "[OutputTokenBudget] clamp skipped: %s (using max_tokens=%s)",
-                        exc,
-                        max_tokens,
-                    )
             effective_max_tokens = max_tokens
             cf = str(getattr(self._llama, "chat_format", "") or "")
             pre = self._last_trace_preflight or {}

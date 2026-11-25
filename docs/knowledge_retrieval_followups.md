@@ -1,0 +1,443 @@
+# Qube Knowledge Retrieval — Follow-up Plan (S14+)
+
+**Status:** Plan of record for the work after S1–S13 · created 2026-11-25 · Phase 0 in progress (S14 done, S15 implemented)
+**Predecessor:** `docs/knowledge_retrieval_quality_assessment.md` (the assessment, the S1–S13 plan in its §12, and its progress log). That document is now the closed record of S1–S13; this one carries everything after it.
+**Audience:** Engineering, and any new session resuming this work. Start with §7 "Resuming work in a new session".
+
+References such as "V24", "D21" or "§12.4 S8" point into the predecessor document. Numbering continues from it: stages **S14+**, owner decisions **D23+**, validated findings **V33+**.
+
+---
+
+## 1. Purpose and scope
+
+S1–S13 shipped the relevance gate, query resolution, wider recall, the evidence pack, grounding telemetry, robustness fixes and the S13 consolidation (main, PR #73). This plan covers everything they left open:
+
+| Source | Items |
+|---|---|
+| S13 follow-ups (predecessor §12.4 S13, progress log) | Crossref in the discipline packs; the institutional adapters that return 0 rows (V30); tighter trial-name matching (V31) |
+| Future iterations (predecessor §12.7) | Library and memory retrieval (D5); multilingual retrieval (D4); how-to questions sent to scholarly sources ("service mismatch") |
+| Carry-overs (predecessor progress log, "Carry-overs") | Sidecar `<think>` truncation (D9); sidecar thread counts (V18); history windowing by tokens (V20); the native engine's `max_tokens` clamp (V21); shadow slot logs and the steering decision (D11); `active_topic` → `subject`; citation enforcement (D13); citation stacking; DuckDuckGo burst budget (V27); reranker in the frozen build (S3); non-US `@trusted` fixtures (V28); chapter-numbered duplicate titles; pool-relative metrics; `test_v2_scientific_bundle` live requests |
+| Acceptance rows still **Partial** | S4 (irrelevant kept 8–9 % vs ≤ 5 %), S8 (scientific recall never measured), S9 (LLM resolves 50 % of residuals vs ≥ 70 %). S5 is superseded by S6 |
+| Documentation | Out-of-date status lines in the predecessor (closed in S14) |
+
+Out of scope unless the owner adds it: new knowledge services, UI redesign, and changes to the D1–D22 decisions without new evidence.
+
+## 2. Starting state (2026-11-25)
+
+- **Code.** `main` at `0e6944a` (Release 1.3.60) contains S1–S13 as the squash commit `c651eb2` (PR #73), after the phase 0/1 WIP in `f5949e2` (PR #72). The per-stage commits (S1 `2fda486` … S13 `f2492bc`, S8 live re-run `2800b62`) exist only on `feat/knowledge-retrieval-quality`; keep that branch, or its hashes stop resolving. Its merge base with `main` is still `2f4b180`, so a PR from it would show all of S1–S13 again: new work branches from `main`.
+- **Release.** 1.3.60 is the first release that ships the reranker (D1) and the spelling variant (D6).
+- **Offline eval** (re-run 2026-11-25 on this code; all six replays match `kq_s13_*`, 63 fixtures). Cells: P@k · nDCG@5 · irrelevant kept · relevant recall · abstain correct.
+
+  | Ranker | production queries | standalone queries |
+  |---|---|---|
+  | token (reranker-free fallback) | 0.72 · 0.75 · 0.28 · 0.81 · 0.86 | 0.77 · 0.74 · 0.23 · 0.80 · 0.92 |
+  | embed | 0.74 · 0.76 · 0.26 · 0.83 · 0.86 | 0.79 · 0.76 · 0.21 · 0.84 · 0.92 |
+  | ce (shipped, `--pool-mode widened`) | 0.92 · 0.71 · 0.08 · 0.78 · 1.00 | 0.94 · 0.71 · 0.06 · 0.83 · 1.00 |
+
+- **Tests.** The S1–S13 stage test files: 428 passed (2026-11-25). Full suite on `main` `0e6944a`: 4233 tests collected, so **4228 pass** plus the 5 known failures listed in §7. The S13 log's "4209 passed" undercounted; the true S13 figure is 4216 (V34).
+- **Field data: none yet.** `~/.qube/logs/qube.log` holds 0 `[QuerySlots] shadow` lines, `llm_debug.log` 0 `citation_grounding` events (last written 2026-11-24 16:48), `routing_debug.log` 1 `query_slots_gate`, and `web_search.log` is empty because the web-search audit log is off. Decisions that need real use start with Track 0 (§4).
+
+## 3. Rules
+
+- **The predecessor's §12.5 rules 1–7 and its working agreement apply unchanged:** one stage at a time; fallback-first; no assertion changed just to pass; telemetry before enforcement; every stage logs before / after metrics; a false assumption stops the stage; no category may regress by more than 1 fixture or 5 points.
+- **Branches and PRs.** One branch per phase, from `main` (`feat/kr-followups-phase<N>`), one PR per phase, one or more commits per stage. Ask before every commit and push.
+- **Commit messages:** a one-line summary ending in "(SN)", a bullet body, a short metrics paragraph, then `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- **Documentation.** Each stage adds an "As built (date)" block under its entry in §6, progress-log rows in §8 (deliverables, acceptance with ✓ / ✗ / **Partial**, tests with the full-suite count, baselines), and updates "Last reviewed". New findings become V-rows and owner decisions become D-rows (§8). The plan text in §5–§6 may be amended only by a recorded D-row or a stage's "As built" deviation.
+- **Predecessor document.** Closed. Only factual corrections go there, never into its §1–11.
+- **Privacy.** Real-use logs stay on the owner's machine. Only aggregate counts and metrics go into this document. Scripts that read real-use logs stay outside the repo. No real conversation text is committed: committed corpora use fixture-generated text, as S11 did, unless the owner decides otherwise. Adapters keep the generic contact `local@qube.app`.
+
+## 4. Track 0 — field data (runs throughout)
+
+Several decisions need data only real use produces. Collection starts now and runs in parallel with every phase. The owner uses the app normally (`@evidence`, `@internet`, `@trusted`, plain web turns, multi-turn follow-ups).
+
+| Signal | Where it lands | Needs | Used by |
+|---|---|---|---|
+| Shadow LLM slots: `[QuerySlots] shadow {json}` | `~/.qube/logs/qube.log` | Sidecar enabled and loaded (`qube.sidecar.query_slots_shadow_enabled`, default on) | S29 |
+| Slot gate per turn: `retrieval_outcome.query_slots_gate` | `~/.qube/logs/routing_debug.log` | Routing debug log on | S29 (invocation rate) |
+| Citation grounding: `"event": "citation_grounding"` | `~/.qube/logs/llm_debug.log` (default on) | Reranker on | S31, S32 |
+| Retrieval traces: rerank skip reasons (incl. `non_english`), sufficiency, `rerank_dropped`, discovery block cause | `~/.qube/logs/web_search.log` | **Settings → Privacy & data → Web search log** on (`qube.diagnostics.web_search_audit_log_enabled`, default off); query hashing optional | S26, S37, general |
+
+- **Read with** `core/knowledge/retrieval_trace_reader.read_retrieval_traces` (it joins grounding events to their traces), or the Retrieval Inspector.
+- **Checkpoint.** At the start of each phase, record the counts per signal in the progress log, so every data-dependent decision states how much data it rests on.
+
+## 5. Phases and execution order
+
+| Phase | Theme | Stages | Changes behaviour | Owner decisions expected | Size |
+|---|---|---|---|---|---|
+| 0 | Housekeeping and release safety | S14–S16 | Barely | Release CI change; the V21 fix | S |
+| 1 | Fixes under every turn | S40, S17–S20 | Yes | Sidecar thread defaults; each re-enabled sidecar task | M–L |
+| 2 | Scholarly routing and adapters | S21–S23 | Yes | Keep / gate / drop per adapter; Crossref in packs | M |
+| 3 | Measurements that need live runs | S24–S26 | Maybe | Quota days; trusted scope (D19); burst budget | S–M |
+| 4 | Follow-up understanding | S27–S30 | Yes | Slot steering; service routing | M |
+| 5 | Citation faithfulness | S31–S32 | Yes | Prompt change; human labelling; enforcement | M |
+| 6 | Library and memory retrieval | S33–S36 | Yes | Scope; "not found in your documents" wording | L |
+| 7 | Reranker study and multilingual | S37–S39 | Yes | Model choice and download size | L |
+
+**Execution order (agreed 2026-11-25):** Phase 0 → 1 → 2 → 6 → 4 → 5 → 7, with Phase 3's live sessions run whenever the API quotas allow (first run of a UTC day for OpenAlex; DuckDuckGo searches ≥ 5 min apart).
+
+- Phases 0 and 1 come first: release safety, and fixes that later phases depend on (the sidecar for S29, the history budget for Phase 6).
+- Phase 2 fixes live defects in scholarly routing (§6 S22).
+- Phase 6 comes before 4 and 5 for two reasons. Library has had the most recent product work (#67, #68, #71), and its relevance floors are the kind V4 found dead on the web path. Its long run also gives Track 0 time to collect the data that Phases 4 and 5 decide on.
+- Stage numbers follow phase numbers, not execution order. S40 was added after the plan was numbered (D25) and runs first in Phase 1.
+
+```mermaid
+flowchart LR
+  T0[Track 0 field data] -.-> S29
+  T0 -.-> S32
+  T0 -.-> S37
+  S14 --> S15 --> S16
+  S16 --> S40[S40 test isolation] --> S17[S17 history tokens]
+  S40 --> S18[S18 sidecar threads] --> S19[S19 think fix + retrieval tasks] --> S20[S20 other sidecar tasks]
+  S40 --> S21[S21 eval tooling] --> S22[S22 dead adapters] --> S23[S23 Crossref packs + trials]
+  S17 --> S33[S33 library fixtures] --> S34[S34 shadow] --> S35[S35 gate] --> S36[S36 query resolution]
+  S36 --> S27[S27 held-out set + residuals] --> S28[S28 subject routing]
+  S19 --> S29[S29 slot steering]
+  S27 --> S29
+  S27 --> S30[S30 service mismatch]
+  S31[S31 anti-stacking prompt] --> S32[S32 labels + enforcement]
+  S21 --> S24[S24 S8 recall]
+  S25[S25 non-US trusted]
+  S26[S26 burst budget]
+  S35 --> S37[S37 non-English fixtures] --> S38[S38 reranker study] --> S39[S39 multilingual gate]
+```
+
+## 6. Stage details
+
+### Phase 0 — Housekeeping and release safety
+
+#### S14 — Follow-up plan and predecessor close-out
+
+- **Why:** the predecessor's status lines are out of date, and the post-S13 work needs a plan of record.
+- **Changes:**
+  - this document;
+  - in the predecessor: a header pointer to this document; the "Resuming" heading and state (PR #73 → `c651eb2`, 1.3.60, branch kept); the full-suite reference updated to S13's 4209; the phase Summary table; the Git reference table; the "Last reviewed" line; a pointer from §12.7.
+- **Acceptance:** documentation only; the predecessor's §1–11 are unchanged (`git diff` shows no edit above §12).
+
+#### S15 — Reranker and spelling data in the packaged app
+
+- **Why:** both features fail silently by design, so a packaging gap would not show as an error.
+  - *Reranker:* 1.3.60 is the first release with the reranker. `qube.spec` adds the hidden import `fastembed.rerank.cross_encoder` (S3), but S3's frozen-build smoke test was never run, and no release smoke step loads the reranker. `rerank` never raises: a missing module puts every packaged user on the unscored legacy path, with no gate and no error.
+  - *Spelling (suspected, to verify):* `core/knowledge/spelling.py` loads `pyspellchecker`'s word list (`spellchecker/resources/en.json.gz`) at runtime. `qube.spec` does not collect `spellchecker` data files (its `collect_data_files` list has no such entry), and the installed PyInstaller hooks have none for it. If the data is missing, `SpellChecker(language="en")` fails, `_get_checker` switches the feature off, and the S8 spelling variant (D6) never runs in packaged builds.
+- **Changes:**
+  1. Verify the published 1.3.60 artifacts (Linux first; Windows and macOS where they can be opened here): is `fastembed/rerank` present, is `spellchecker/resources/en.json.gz` present, and does the frozen binary load both? Record the result as a V-row.
+  2. Fix `qube.spec` as needed (e.g. `collect_data_files("spellchecker")`, limited to `en.json.gz` if size matters).
+  3. Add a release smoke check that the frozen binary can import the reranker module and build an English `SpellChecker`. It needs no model download: the model itself arrives through bootstrap. Covers Linux dist, Windows dist and macOS DMG through the existing smoke scripts (`scripts/release/smoke_linux_dist.sh`, `smoke_dist.ps1`, `smoke_dmg.sh`).
+- **Risks:** release CI time; a smoke check that needs network. The check must be offline.
+- **Acceptance:** findings recorded; the smoke check fails on a build without the files and passes on a fixed build; a patch release if 1.3.60 is affected (owner decision).
+- **Decisions:** the release CI change; whether a patch release is needed.
+- **As built (2026-11-25):**
+  - **1.3.60 inspected (V33).** The Linux x86_64 CPU tarball and the macOS arm64 DMG were downloaded with `gh release download` and listed without running anything from them: `tar -t`, `7z l` for the DMG, and `pyi-archive_viewer -r -b` for the module archive inside the Linux executable. `SHA256SUMS.txt` covers only the three Windows installers, so these two could not be checksum-verified (carry-over in §7).
+    - *Reranker:* `fastembed.rerank.cross_encoder` and its five submodules are in the module archive, and `onnxruntime` ships too. The model is not in the bundle, by design (bootstrap download).
+    - *Spelling:* the `spellchecker` modules ship, but `spellchecker/resources/` is **absent** from both artifacts. Control: `language_tags/data`, which the same spec collects, is present in both (16 files each). pyspellchecker reads its word list with `pkgutil.get_data("spellchecker", "resources/en.json.gz")`; without the file that raises `FileNotFoundError`, re-raised as `ValueError: The provided dictionary language (en) does not exist!`. `spelling._get_checker` catches it, logs one INFO line and switches the feature off. **The D6 spelling variant has never run in a packaged build.**
+    - *Reproduced* with two minimal frozen builds (PyInstaller 6.22.2, local): without the data, that `ValueError`; with `collect_data_files("spellchecker", includes=["resources/en.json.gz"])`, "inteligence" → "intelligence".
+    - *Windows* was not opened: its Inno Setup installer cannot be listed here. It builds from the same spec with no platform-specific data entries, so it is taken to be the same.
+    - *Sweep for the same class of gap:* every module that S1–S13 added or changed is in the module archive except `core.knowledge.quality_eval` (eval only). Every third-party import resolves except PyQt6 (compiled extensions, stored outside the archive) and `brotli` (optional, absent in the dev venv too, unchanged since 1.3.54). S1–S13 code reads no runtime data files other than test fixtures.
+  - **Fix.** `qube.spec` collects only `resources/en.json.gz` (650 KB of the package's 7 MB; only English is used) and stops the build if the file is not found, rather than shipping without it.
+  - **Self-check.**
+    - `core/bundle_self_check.py` adds `Qube --self-check-bundle <result.json>`. `qube_entry.run()` dispatches it first, before validation bookkeeping, Qt, the single-instance guard or any model.
+    - Checks: the reranker import that `rerank._load_model` performs, and spelling end to end (`spelling.correct_word("Inteligence")` must give "Intelligence").
+    - It writes JSON and exits 0 or 1, and needs no network, model or settings. Normal launches pay about 2 ms for the import.
+  - **Smoke scripts.** `smoke_linux_dist.sh` and `smoke_dist.ps1` run the self-check after their CUDA branch (CUDA CI still runs only the bundle-layout check, as before); `smoke_dmg.sh` runs it on the mounted, signature-checked app. `release.yml` is unchanged. It runs only on `v*` tags, so CI first exercises these steps at the next release.
+  - **Verified on a full local build** (`pyinstaller qube.spec`, PyInstaller 6.22.2, Python 3.12, Linux CPU; 58 s; output outside the repo). The bundle holds only `spellchecker/resources/en.json.gz`. `Qube --self-check-bundle <file>` under a throwaway HOME: `frozen: true`, `reranker_module` ok, `spelling_en` ok ("Intelligence"), exit 0, 1.1 s, nothing written to `~/.qube`. **Negative control:** the same code built with the 1.3.60 spec has no `spellchecker/` data, and the self-check reports `spelling_en: spell checker unavailable` and exits 1, so the new smoke step would have failed the 1.3.60 release job.
+  - **Not run here:** the PowerShell script (no `pwsh` on this machine), the macOS script (no macOS), and the full Linux smoke script, whose stale-process cleanup kills any process named `Qube` on the machine. Its self-check command was run directly instead, as above.
+
+#### S16 — Test hygiene and the engine clamp
+
+- **Changes:**
+  - `tests/test_scientific_evidence.py::test_v2_scientific_bundle` runs `run_v2_web_retrieval` against live adapters from local preferences (Europe PMC and others are not mocked). Mock the adapters and keep its assertions (bundle service, PubMed call, ≥ 1 source with a DOI).
+  - V21: `workers/native_llama_engine.py` (~line 1768) does `int(getattr(self._llama, "n_ctx", 0) or …)`; in llama-cpp-python 0.3.35 `n_ctx` is a method, so `int()` raises and the `max_tokens` clamp is always skipped (`[OutputTokenBudget] clamp skipped`). Call it when callable, as `loaded_n_ctx()` already does (~line 501). llama-cpp itself cuts `max_tokens`, so this removes log noise and makes the clamp do what its code says.
+- **Tests:** a unit test for the clamp with a callable `n_ctx`; the mocked test runs offline.
+- **Acceptance:** the test makes no network calls; the clamp runs (no "clamp skipped" line in a smoke turn); the full suite matches the reference.
+- **Decisions:** the V21 fix (engine owner).
+- **As built (2026-11-25):**
+  - **Hermetic scientific test (V35).** A probe that records and refuses every DNS lookup and socket connect showed `test_v2_scientific_bundle` reaching six live hosts on every run: `tools.cdc.gov`, `data.cdc.gov`, `ghoapi.azureedge.net` (WHO), `clinicaltrials.gov`, `api.fda.gov` and `www.ebi.ac.uk` (Europe PMC). Discipline routing for a medical question picks them on top of the three mocked adapters, and the test still passed offline because adapters swallow their own errors.
+    - Now every adapter in `SEARCH_FUNCTIONS` (58) is replaced by an empty fake; PubMed and OpenAlex keep their fixture rows, and the original assertions are unchanged.
+    - The test also asserts that no DNS lookup or connect is attempted. The same guard around the old three-adapter mapping records the six hosts, so the assertion catches a regression.
+  - **Engine clamp (V21 → V36).** The clamp moved into `NativeLlamaEngine._clamp_max_tokens_for_prompt` and reads the window through `loaded_n_ctx()`, which calls `n_ctx()` and falls back to the loaded, then the requested window. The log lines are unchanged.
+    - *Before:* `int(<bound method>)` raised `TypeError`, so every clamp was skipped and `max_tokens` reached llama-cpp unclamped. llama-cpp cut it to `n_ctx − prompt` itself, so nothing overflowed. This machine's `llm_debug.log` holds 17 "clamp skipped" lines, all this `TypeError`, and no clamp line.
+    - *Behaviour change:* when the requested `max_tokens` does not fit, it becomes `n_ctx − prompt − 64` (at least 256), 64 tokens below llama-cpp's own cut. `effective_max_tokens`, which the truncation notice compares against, is now that real budget rather than the unclamped request, so a long prompt that leaves little room can now trigger the notice heuristic where it could not before.
+    - *Real model:* Qwen3-1.7B Q6_K on CPU, `n_ctx=2048`, a 1500-token prompt. `type(llm.n_ctx)` is `method`; the clamp gives 4096 → 484 with and without the user cap, logs one `[OutputTokenBudget] max_tokens 4096 -> 484` line, and no "clamp skipped". This calls the method on a real `Llama`; it is not a full app turn.
+  - **Tests write into the real `~/.qube` (V37).** Found because `~/.qube/models/search/reranker.download_failed` appeared during the S15 suite run. An audit hook on a full run recorded every write, remove and mkdir under `~/.qube`, per test.
+    - Fixed here, as it is this plan's code (S3's back-off marker): `test_reranker_failure_is_reported_not_fatal` wrote the marker into the real `models/search/`, and `test_balanced_search_also_downloads_missing_reranker` deleted it on its success path, so a real failure marker could vanish during a test run. Both now patch `reranker_dir` to `tmp_path` and assert the marker is written or cleared there. With the audit hook, the S16 test files make no write or remove under `~/.qube`.
+    - The rest is listed in V37 and is fixed suite-wide by the new stage S40 (D25).
+  - **Flaky Qt test (V38).** `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` leaves a background-build callback queued; when it fires after its widget is gone, Qt reports "wrapped C/C++ object of type BackgroundBuildBridge has been deleted". It hit that test itself (FAILED) in the audited run and the next test, `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` (setup ERROR), in the clean run. On a clean worktree of `1b6fb88` the phase-1 file fails this way in 3 of 6 runs. Pre-existing and untouched; §7 lists it as known-flaky.
+  - **Full suite** (`-m "not packaging"`, final run, after the marker-test fix): **4251 passed** of 4256 collected (S15: 4244 of 4249, +7 clamp tests) and the 5 known failures; the V38 test passed and then errored at its own teardown. Qt teardown abort as before. The two earlier runs (audited, and clean before the marker fix) gave 4250, because V38 cost one result in each.
+
+### Phase 1 — Fixes under every turn
+
+#### S40 — Keep the test suite out of the real `~/.qube` (V37, D25)
+
+- **Why:** a full run writes into the developer's own data directory (V37): `settings.json`, `model_performance_store.json` (a fake model entry accumulates there), companion state, `logs/`, bootstrap trace files and model markers. Later phases measure from those logs (Track 0) and from local stats, so the suite must not touch them.
+- **Changes:**
+  - In `tests/conftest.py`, before any app module is imported: point `HOME` (and `LOCALAPPDATA` on Windows) at a per-session temp directory, so `core.paths.user_data_root()` and the 37 direct `Path.home()` / `expanduser("~")` lines in `core/`, `workers/` and `ui/` resolve there. Copy nothing in.
+  - Reset module-level switches that leak between tests, starting with `core.bootstrap_trace._ENABLED` (it made `test_knowledge_rerank` write trace files, V37).
+  - Fix any test that relied on the real home directory, without weakening its assertions.
+- **Tests:** re-run the S16 audit hook over the full suite; it must record **zero** writes, removes or mkdirs under the real `~/.qube`.
+- **Risks:** tests that read real models or settings by accident (the S4 reranker fixture already hides the installed model); Windows CI, where `user_data_root()` reads `LOCALAPPDATA`; paths computed at import time before the fixture runs.
+- **Acceptance:** zero real-home writes in the audit; the full suite matches the reference; Windows and macOS CI unchanged.
+- **Decisions:** none beyond D25.
+
+#### S17 — Token-aware history windowing (V20)
+
+- **Why:** `LLMWorker._bound_session_history` (`workers/llm_worker.py` ~line 1429) keeps the last `max_history_messages` messages (default 10, 2–100), each capped at `CHAT_HISTORY_SINGLE_MESSAGE_MAX_CHARS`. Ten 1500-char turns already reach 4226–4292 real tokens: a 4k window overflows before any retrieval, and the S10 budget then sits at its 1000-char floor. Phase 6 adds library context to the same window.
+- **Changes:** after the message-count window, trim the oldest messages until the history fits a token budget derived from the loaded `n_ctx`. Reuse the S10 estimate (`core/retrieval_budget.py`: 4.0 ASCII chars per token, one token per non-ASCII character), and keep the existing first-message-must-be-user rule and the memory v7 salvage hook. Split the window between history and retrieval explicitly, so neither starves the other.
+- **Risks:** losing context the user expects on long threads; models with large windows must behave exactly as today.
+- **Tests:** the S10 4k / 8k / 32k matrix with real tokenizers (Gemma 4 E4B, Qwen3.5-9B, Phi-4-mini) and history sizes up to the overflow case; unchanged output when everything fits.
+- **Acceptance:** no prompt over `n_ctx` minus the answer reserve on the matrix; ≥ 8k windows unchanged on every existing test.
+
+#### S18 — Sidecar thread counts (V18)
+
+- **Why:** the sidecar's `Llama(...)` (`workers/sidecar_llm_worker.py` ~line 289) passes no thread counts, so llama-cpp-python uses `n_threads = cpu_count // 2` and `n_threads_batch = cpu_count` (SMT included). Measured on the dev laptop: prompt evaluation 63 tok/s at 16 batch threads vs 177 at 8, total p50 5.1 s → 2.3 s. The `inference_transparency` snapshot reports `os.cpu_count()` as `n_threads`, not the model's values.
+- **Changes:** pass `n_threads_batch` (and `n_threads`) from the physical core count (`psutil.cpu_count(logical=False)`, already used by `rerank.reranker_threads`; `core/cpu_threads.py` currently detects logical cores only), with a cap that leaves headroom for the main model. Report the real values in the snapshot.
+- **Risks:** CPUs without SMT, Apple P / E cores, low-core machines, and contention with the main model during a turn.
+- **Tests:** thread selection per CPU shape (mocked psutil); snapshot values.
+- **Acceptance:** sidecar prompt evaluation measured before and after on the dev machine, plus at least one other CPU shape if available; no regression in title latency.
+- **Decisions:** the default (inference-settings owner).
+
+#### S19 — Sidecar `<think>` fix: mechanism and retrieval-related tasks (D9 follow-through)
+
+- **Why:** on Qwen3, every sidecar task on the raw path (`SidecarLlmWorker._complete_prompt`, ~line 513) returns only `<think>`. Under `/no_think` the model opens an empty think block, and the `"\n\n"` stop from `cognition_stop_tokens` ends generation there. Only titles (chat path) and the S9 `query_slots` task (pre-filled) work. Affected tasks: `source_digest`, `contradiction_judge`, `reflection_label`, `episode_summary`, `ingest_blurb`, `companion_line` and raw prompts (`query_rewrite` is off, D10).
+- **Changes:**
+  - one mechanism: a per-task opt-in that pre-fills the empty think block on the raw path for Qwen3 formats, exactly as S9 does for `query_slots`;
+  - then evaluate and enable the retrieval-related tasks first: `source_digest` and `contradiction_judge`. Each gets fixtures, an output-quality check and latency at S18's thread settings, and is enabled only with an owner D-row. The S9 spot check of `source_digest` without the stop produced an off-topic summary, so working output is not assumed.
+- **Risks:** turning on behaviour that has never run in production (why D9 chose a scoped fix).
+- **Tests:** recorded completions replayed offline, as `tests/fixtures/query_slots_recorded_s9.json` does; per-task parser tests.
+- **Acceptance:** per task: success rate, quality on its fixtures, p95 latency, and an owner decision to enable, keep off, or retire.
+
+#### S20 — Sidecar `<think>` fix: remaining tasks
+
+- Same method as S19 for `reflection_label`, `episode_summary`, `ingest_blurb`, `companion_line` and raw prompts. These are outside retrieval quality. They are here because they share S19's mechanism and are broken in production today, and they can be reordered or handed off by owner decision.
+
+### Phase 2 — Scholarly routing and adapters
+
+#### S21 — Eval tooling: shared-pool metrics and duplicate titles
+
+- **Changes:**
+  - `relevant_recall` and nDCG are scored against each run's own pool, so `--compare` across pool sizes or routing arms flags false regressions (predecessor S8 results). Add a shared-pool mode that scores every arm against the union of labelled rows, and use it in `tools/evaluate_heuristic_ab.py` and `--compare`.
+  - Title dedupe in `core/knowledge/adapter_collection._normalize_title` misses chapter-numbered duplicates ("2 EVIDENCE FOR DARK MATTER…" vs "Evidence for Dark Matter…"). Strip a leading section number before comparing. This changes which rows survive a merge, so it is measured on the corpus like a behaviour change.
+- **Acceptance:** existing baselines unchanged in the default mode; the shared-pool mode reproduces the S8 like-for-like table; the dedupe change passes rule 7.
+
+#### S22 — Institutional adapters that return 0 rows (V30)
+
+- **Why:** on the S13 cases NICE, WHO, NIST, IETF RFC, IEEE Xplore, USPTO PatentsView, EPO Espacenet, BLS and Eurostat returned 0 rows, and US Census failed on the 1 MB fetch limit. They stay in the discipline packs (`core/knowledge/scientific_discipline_packs.py`). **The engineering pack's *primary* adapters are IEEE Xplore, NIST and IETF RFC**, so keyless engineering turns rely on the arXiv / OpenAlex fallbacks. Chemistry lists PatentsView and Espacenet; economics lists Eurostat and BLS; medicine lists NICE and WHO.
+- **Found while planning (2026-11-25, to confirm):** IEEE Xplore, NIST, NICE, PatentsView, EPO OPS, BLS and US Census look up credentials through `credential_resolver.authorization_token`. BLS skips its live search without a key ("API key required"). Several are therefore likely key-gated, as Semantic Scholar was (V8). IETF RFC and Eurostat have no key path, so their 0 rows have another cause.
+- **Changes:**
+  - per adapter, a live diagnosis (no OpenAlex quota needed): key-gated, broken query or endpoint, or genuinely empty for these questions;
+  - then per adapter: fix it; skip it when no key is configured, so it costs no deadline time and the trace names the skip; or drop it from its pack.
+  - The 1 MB limit: US Census uses the API path (`knowledge_get`), not the page fetch that S12 truncates. Decide whether that endpoint needs a larger limit or a narrower query.
+- **Risks:** removing a source that works with a key some users have. Prefer "skip without key" to removal.
+- **Acceptance:** each adapter has a recorded status (V-row); no pack's primary adapters are all dead for keyless users without a recorded decision; per-category replay passes rule 7.
+- **Decisions:** keep / gate / drop per adapter.
+
+#### S23 — Crossref in the discipline packs, and trial-name matching
+
+- **Crossref (S13 follow-up):** all 5 losses from discipline routing in the S13 A/B are Crossref rows that the general route reaches but the discipline packs leave out (DAPA-HF and Bell-test commentaries, a QE retrospective, a euro-area unemployment report). The A/B already replays them offline. Re-run it with Crossref added to the packs as S22 leaves them, measured with S21's shared-pool scoring, then check live latency and Crossref's concurrency limit (S8 saw 429s on a second request).
+- **Trial-name matching (V31):** the plain word "consensus" fires the CONSENSUS signal, and "dapa" inside "dapagliflozin" counts as a DAPA-HF title hit (`core/knowledge/ranking/trial_grounding.py`, `core/knowledge/entities/trials.py`). It affects only the reranker-free fallback (0 changes with the reranker in S13). Tighten it to case and word-boundary rules, and measure on the token ranker.
+- **Acceptance:** rule 7 on both rankers; one commit per change with before / after metrics (S13 practice).
+
+### Phase 3 — Measurements that need live runs
+
+Run on quota days, alongside other phases. Each session is planned in advance with its search count.
+
+#### S24 — S8 scientific recall (closes S8 Partial)
+
+- Re-capture the `sufficient` scientific cases with the shipped union (query variants, spelling variant, Crossref), label the new rows blind (D3), and measure relevant-in-pool recall against the S2 captures: target ≥ 15 % relative.
+- Cost: about 20–35 OpenAlex searches, one UTC day's first run.
+- Needs S21 (shared-pool scoring).
+
+#### S25 — Non-US `@trusted` fixtures (V28, D19)
+
+- About 5 cases with non-US official sources (NHS, gov.uk, europa.eu, a non-US statistics office), captured with and without the S12 `site:` scope.
+- Up to about 10 DuckDuckGo searches, ≥ 5 min apart, stopping at the first block (V27).
+- May reopen D19 (the 4-site scope).
+
+#### S26 — DuckDuckGo burst budget (V27)
+
+- Qube's budget allows 6 searches per 10 minutes, and the S12 live check was challenged inside it.
+- Decide from Track 0 traces (block causes per day of real use) plus the S25 session, not from a dedicated stress run.
+- **Decision:** keep, lower, or make adaptive.
+
+### Phase 4 — Follow-up understanding
+
+#### S27 — Held-out follow-up set v2 and the deterministic residuals
+
+- **Why:** the corpus said 100 %, and unseen phrasings got 5 of 13 (V19).
+- **Changes:**
+  - first, write a new held-out set (≥ 20 cases) before any code, frozen in the repo with its creation date;
+  - then target the S9 residuals: list references ("And the second point?"), facet nouns read as new subjects ("Is the garbage collector a problem for latency?" after Go), a facet question about something else (sourdough → kitchen temperature), a multi-hop "there" (Canberra), and statement openers without an -ing verb ("My daughter was just diagnosed with asthma.").
+- **Acceptance:** improvement on both the old and the new held-out sets; 0 false anchors on topic switches; `routing_text` unchanged on the router corpus unless S28 changes it.
+
+#### S28 — Routing on `subject` instead of `active_topic`
+
+- **Why:** `active_topic` still holds the legacy value (the S6 deviation). On the ANT turn it reads "Artificial Inteligence", and it feeds routing and the prompt salience hints.
+- **Changes:** move these consumers to `subject`, measured on the 125-route router corpus (`tools/evaluate_router.py`) and the query-resolution cases.
+- **Acceptance:** route changes listed case by case and owner-approved; no regression.
+
+#### S29 — LLM slot steering decision (D11 follow-through)
+
+- **Inputs:**
+  - Track 0 shadow logs (how often the gate schedules, how often slots are valid, how often they beat the deterministic subject);
+  - S18 / S19 sidecar latency;
+  - the S27 held-out results. S9 resolved 50 % of residuals against a ≥ 70 % target.
+- **Outcomes:** keep shadow, steer only when validated and the deterministic path left the turn unresolved, or retire.
+- **Decision:** owner.
+
+#### S30 — How-to questions sent to scholarly sources (predecessor §12.7)
+
+- **Why:** the gate cannot detect "on topic but the wrong kind of source" (V1: an OAuth how-to sent to scholarly indexes).
+- **Changes:** fixtures first (how-to and practical questions on `@evidence` and on the default service). Then measure a signal: an `answer_type` from the slots, or a deterministic one with corpus evidence (rule 7 forbids an untested keyword list).
+- **Decision:** whether an explicit `@evidence` may fall back to web or trusted sources, as `@research` sub-questions already do (D14).
+
+### Phase 5 — Citation faithfulness
+
+#### S31 — Citation stacking prompt change
+
+- **Why:** in S11, 19 % of cited pairs were unsupported, mostly stacks of citations after one sentence.
+- **Changes:** a prompt change in `CITATION_DISCIPLINE_SUFFIX` (`core/memory_filters.py`) and the persona rules ("cite only the sources that state the sentence"), measured with `tools/evaluate_citation_grounding.py` on newly generated answers. Phi-4-mini is fast; Qwen3.5-9B takes about 43 s per answer on CPU, so it gets a subset.
+- **Acceptance:** fewer unsupported cited pairs, no fall in supported citations per answer, Phase 1 contract flags ok.
+- **Decision:** the prompt change.
+
+#### S32 — Human labels and the enforcement decision (D13 follow-through)
+
+- **Changes:**
+  - The owner labels real-use cited pairs from Track 0 grounding events collected after S31 (the mix enforcement would face), locally. Target: a few hundred pairs, with at least 40 unsupported.
+  - Calibrate the grounding score against these labels, then propose strip / caution / stay off for `get_citation_integrity_enforce()`.
+  - Revisit the 8000-char cap (D12) only if the labels show harm from truncated sources.
+- **Decision:** enforcement (owner).
+
+### Phase 6 — Library and memory retrieval (predecessor §12.7, D5)
+
+Correction to the planning summary given in chat: Library and memory search **do** have relevance floors. These are cosine floors on embedding scores:
+
+- `mcp/rag_tool.MIN_RAG_SEMANTIC_SCORE = 0.30` (T4.1);
+- `mcp/memory_tool.MIN_SEMANTIC_SCORE = 0.35` (v6.1).
+
+What they lack is the cross-encoder gate, the sufficiency state and honest "not found" wording. V4 found the same kind of floor dead on the web path (jina-v2 cosine 0.62–0.91 for every row), so the first job is to measure whether these floors filter anything with the shipped embedders.
+
+#### S33 — Library and memory fixtures, and a baseline
+
+- **Fixtures:** library chunks (long, local) and memory entries (short stubs), built from a synthetic or owner-approved document set, never private documents, including:
+  - abstain cases (the question is not in the library, e.g. T4.1's "Why is the sky blue?" against an unrelated library);
+  - multi-turn cases.
+- **Baseline:** what the current floors keep and drop. The existing `tests/test_rag_relevance_gate.py` behaviour stays pinned.
+- **Paths:** `core/knowledge/pipeline_internal_corpus.py` (`@library`, `@help`), `mcp/rag_tool.rag_search` and `mcp/memory_tool.memory_search` (plain-chat RAG and memory, wired from `workers/llm_worker.py`).
+
+#### S34 — Reranker in shadow on library and memory
+
+- Score candidates with the S3 cross-encoder in shadow, record score distributions per corpus type, and calibrate thresholds separately for chunks and stubs. They score differently from web snippets and abstracts.
+
+#### S35 — Library and memory gate, and "not found in your documents"
+
+- Gate on the calibrated thresholds; set the sufficiency state; the insufficient wording for documents ("Your documents don't cover this…"), distinct from the web wording; dropped chunks only in the inspector (D2).
+- Fallback-first: without the reranker, today's floors are unchanged.
+- **Decision:** the wording.
+
+#### S36 — Query resolution for library and memory
+
+- S5 / S6 changed only `web_text`; `retrieval_text` (memory and RAG) and `routing_text` were left alone on purpose.
+- Apply the S5 frame stripping, acronym expansion and S6 subject anchoring to library and memory retrieval, measured on S33's multi-turn cases.
+
+### Phase 7 — Reranker study and multilingual (predecessor §12.7, D4)
+
+#### S37 — Non-English fixtures and the size of the gap
+
+- Count `non_english` reranker skips from Track 0 traces to size the gap.
+- Add non-English fixtures (a few languages the owner chooses) across paths, labelled like S2.
+
+#### S38 — Reranker model study
+
+- **One study serves two needs:**
+  - multilingual coverage;
+  - the right-subject, wrong-facet rows that keep scientific irrelevant-kept at 8–9 % against S4's ≤ 5 %, plus the 3 web cases where a partial page beats a relevant one (predecessor carry-overs).
+- **Candidates must be permissively licensed.** `jina-reranker-v2-base-multilingual` is ruled out (CC-BY-NC). `bge-reranker-base` / `-v2-m3`-class models need size and latency checks.
+- **Criteria:** separation on the S2 corpus and S37's fixtures, latency for 40 × 800-char rows at 2 and 4 threads (S3's bar: p95 ≤ 1.0 s), download size and RSS.
+- **Decision:** the model and its download (a D1-type decision).
+
+#### S39 — Multilingual gate and cleanup
+
+- If S38 picks a model:
+  - language detection at the gate;
+  - the multilingual model for non-English turns (or for all turns, if it wins on English too);
+  - language-aware frame stripping and acronym rules (S5 is English-only).
+- `UNSCORED` stays the fallback.
+
+## 7. Resuming work in a new session
+
+A new session has no memory of earlier ones. Read this section, then §3–§6, then the open stage's entry and the progress log.
+
+**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 implemented, not pushed: S14 `1b6fb88`, S15 `2fd25be`, S16 the commit after it (`git log`). Next is pushing Phase 0 and opening its PR (owner's call), then S40 (test isolation, D25), then S17: Phase 1, on a new branch and PR from `main` per D23.
+
+**Commands** (repo root, `.venv`):
+
+- Targeted tests: `.venv/bin/python -m pytest -q -p no:cacheprovider tests/<files>`.
+- Full suite: `QT_QPA_PLATFORM=offscreen HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings -m "not packaging" tests > <log> 2>&1`.
+  - The process ends with the known Qt teardown abort (exit 134, no summary line), so count results from the log: `grep -o PASSED <log> | wc -l` and `grep -o FAILED <log> | wc -l`. Do **not** count ` PASSED` with a leading space: a test that prints output pushes its result to the start of the next line, and that count misses it (V34).
+  - Cross-check against the collected count: `... -m "not packaging" --collect-only -q tests | tail -1` must equal passed + failed (+ skipped).
+  - Reference (S16): **4251 passed** of 4256 collected; S15 4244 of 4249; on `main` before S15, 4228 of 4233. Known-flaky (V38): `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` can fail, error at its teardown (an extra ERROR, pass count unchanged), or leave `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` with a setup ERROR (pass count one lower). Exactly these 5 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
+- Offline eval (needs the reranker model at `~/.qube/models/search/reranker/`): `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_knowledge_quality.py --corpus eval/retrieval_corpus/v1_knowledge_quality.json --ranker <token|embed|ce> --query-mode <production|standalone> [--pool-mode widened] [--json] [--compare <baseline>]`.
+  - Compare against `eval/retrieval_corpus/baselines/kq_s13_*`, using `--pool-mode widened` for `ce`. Always pass the relative `--corpus` path.
+- Heuristic A/B: `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_heuristic_ab.py` (S13).
+- Citation grounding: `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_citation_grounding.py [--json] [--compare eval/citation_grounding/baselines/s11.json]`.
+- Follow-up subjects: `eval/router_corpus/followup_subjects_v1.json` (S9 held-out set); router: `tools/evaluate_router.py`.
+- Scratch scripts and benchmark outputs stay outside the repo; only baselines and fixtures are committed.
+
+**Live checks.**
+
+- OpenAlex runs keyless: 1000 credits a day at 10 per search, so about 100 searches, reset at 00:00 UTC. Check the budget with one search (`https://api.openalex.org/works?search=test&per_page=1`, User-Agent `Qube/1.0 (mailto:local@qube.app)`) and read `x-ratelimit-remaining`.
+- DuckDuckGo: ≥ 5 min between searches; stop at the first block and wait out the 30-min backoff (V27).
+- Before trusting an OpenAlex-dependent result, check `api.openalex.org` in `http_summary` shows no 429.
+- The S8 live ANT check snippet is in the predecessor's "Resuming" section.
+
+**Decisions in force:** D1–D22 (predecessor §12.6), plus any D23+ below.
+
+**Carry-overs not planned as stages** (recorded so they are not lost):
+
+- Wikipedia rows are always `undated`, so a "newest iPhone" question can keep old models as `sufficient` + `undated_sources` (predecessor S7 known limits).
+- `@trusted` via Brave: a user with Brave configured gets Brave as the primary `@trusted` provider through `site_bias`, unmeasured (S12).
+- Release checksums: `SHA256SUMS.txt` lists only the three Windows installers. The Linux tarballs, AppImages, `.deb` / `.rpm` and macOS DMGs have no published checksum (found in S15; release tooling, outside this plan).
+
+## 8. Progress log
+
+> **Last reviewed:** 2026-11-25, S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
+
+### Deliverables
+
+| Date | Stage | Item | Status | Evidence | Gaps / follow-ups |
+|---|---|---|---|---|---|
+| 2026-11-25 | S14 | Follow-up plan | Done | `docs/knowledge_retrieval_followups.md` | — |
+| 2026-11-25 | S14 | Predecessor close-out | Done | `docs/knowledge_retrieval_quality_assessment.md`: header pointer, Resuming state, full-suite reference, Summary, Git reference, Last reviewed, §12.7 pointer | — |
+| 2026-11-25 | S15 | 1.3.60 inspection (V33) | Done | Linux x86_64 CPU tarball and macOS arm64 DMG listed (`tar -t`, `7z l`, `pyi-archive_viewer`): reranker module present; `spellchecker/resources/` absent on both (control `language_tags/data` present); reproduced with a minimal frozen build | Windows installer not opened (same spec) |
+| 2026-11-25 | S15 | Spec fix | Done | `qube.spec`: `collect_data_files("spellchecker", includes=["resources/en.json.gz"])`, build stops if not found | — |
+| 2026-11-25 | S15 | Release self-check | Done | `core/bundle_self_check.py`, `qube_entry.py` (`--self-check-bundle <file>`); `scripts/release/smoke_linux_dist.sh`, `smoke_dist.ps1`, `smoke_dmg.sh`. Full local build: exit 0, both checks ok, 1.1 s; 1.3.60-spec control: `spelling_en` fails, exit 1 | PowerShell and macOS scripts not run here; CI runs them at the next `v*` tag |
+| 2026-11-25 | S15 | Tests | Done | `tests/test_bundle_self_check.py` (new, 16 tests): dev checks pass, failure reported not raised, missing word list and wrong correction fail, flag forms, JSON + exit code, no stdout (windowed build), entry dispatch before validation and Qt, spec text, smoke scripts call the flag. Full suite (`-m "not packaging"`): **4244 passed** of 4249 collected (main before S15: 4228 of 4233, +16), the same 5 known failures, Qt teardown abort as before. No existing test changed | — |
+| 2026-11-25 | S15 | Acceptance | Done | Findings recorded ✓ (V33); the self-check fails on a build without the files and passes on the fixed build ✓ (local full build and control); patch release decided: none, the fix ships with the next release (D24) | CI first runs the new smoke steps at the next `v*` tag; packaged builds keep the spelling variant off until then |
+| 2026-11-25 | S16 | Hermetic scientific test (V35) | Done | `tests/test_scientific_evidence.py`: all 58 `SEARCH_FUNCTIONS` faked, zero DNS/connect asserted; the same guard on the old mapping records 6 live hosts | — |
+| 2026-11-25 | S16 | Engine clamp (V21, V36) | Done | `workers/native_llama_engine.py`: `_clamp_max_tokens_for_prompt` reads the window via `loaded_n_ctx()`. Real `Llama` (Qwen3-1.7B, CPU, `n_ctx` 2048): 4096 → 484, clamp line logged, no "clamp skipped" | Not checked in a full app turn |
+| 2026-11-25 | S16 | `~/.qube` writes (V37) | Partly | Audit hook over a full run; `tests/test_bootstrap_search_download.py`: the two marker tests use `tmp_path`; fake model entry removed from the owner's `model_performance_store.json` (backup kept) | Suite-wide isolation: S40 (D25) |
+| 2026-11-25 | S16 | Tests | Done | `tests/test_output_token_budget.py` +7 (old expression raises on a method; clamp to the loaded window; cap kept when it fits; uncapped; no prompt; tokenizer failure; unexpected error logs "clamp skipped"). Full suite: **4251 passed** of 4256 (S15 4244, +7), the 5 known failures; the V38 test errored at teardown after passing. No assertion weakened | — |
+| 2026-11-25 | S16 | Acceptance | Done | No network calls ✓ (V35); the clamp runs ✓ (real `Llama`, no "clamp skipped"); full suite matches the reference ✓ (+7, known failures only, apart from V38) | A smoke turn in the app was not run |
+
+### Validated findings (V33+)
+
+| # | Assumption | Finding | Consequence |
+|---|---|---|---|
+| **V33** | The packaged app ships every S1–S13 feature (S3's frozen-build smoke test was never run) | **No: the spelling variant is off in every 1.3.60 build.** The reranker module ships. pyspellchecker's `resources/en.json.gz` does not (Linux tarball and macOS arm64 DMG inspected; Windows builds from the same spec), so `SpellChecker(language="en")` raises and the D6 variant switches itself off with one INFO line. Reproduced with a minimal frozen build, and fixed by collecting the file. No other S1–S13 module or data file is missing. | S15 fixes `qube.spec` and adds a release self-check (§6 S15) |
+| **V34** | Counting ` PASSED` lines gives the full-suite pass count (the predecessor's method) | **No, it undercounts.** A test that prints output pushes its result to the start of the next line, without the leading space. The S15 run had 8 such results (` PASSED` 4236, `PASSED` 4244, 4249 collected = 4244 + 5 failures). `--collect-only` on `2800b62` gives 4221 tests, so the S13 figure was **4216**, not the recorded 4209. Earlier stage counts (S1–S12) used the same method and may be low by a few. | §7 counts every `PASSED` token and cross-checks against `--collect-only`; the predecessor's reference line is corrected |
+| **V35** | `test_v2_scientific_bundle` runs offline (it mocks PubMed, OpenAlex and arXiv) | **No.** Discipline routing also picks CDC (two hosts), WHO, ClinicalTrials.gov, openFDA and Europe PMC, so every run made six live DNS lookups and calls. It passed offline only because adapters swallow their errors. | S16 fakes all 58 registered adapters and asserts zero network attempts |
+| **V36** | V21: the native engine's `max_tokens` clamp never runs | **Confirmed in the field.** This machine's `llm_debug.log`: 17 "clamp skipped" lines, all `int() argument must be … not 'method'`, and 0 clamp lines. llama-cpp's own cut kept replies inside the window. | S16 reads the window via `loaded_n_ctx()`; verified on a real `Llama` (4096 → 484 at `n_ctx` 2048) |
+| **V37** | The test suite leaves the developer's `~/.qube` alone | **No.** A full run writes, per the audit hook: `settings.json` (`test_settings_collapsible_cards`, `test_ui_nav_sidebar`, `test_theme_system`, `test_themes_action_buttons`, `test_lazy_main_stages`, `test_extensible_knowledge_platform`; its content was unchanged after the run); `model_performance_store.json` (`test_native_prompt_contract_runtime`, which has accumulated a fake `registry-model.gguf` entry with 32 requests next to the real models' stats); `companion/mood_state.json` and `motif_state.json`; `.winget-validation-boot-*` and five files in `logs/` (`test_winget_validation`); `logs/bootstrap-trace.jsonl` and `bootstrap-state.json` (from `test_knowledge_rerank`, only because an earlier test leaves the module-level trace switch on); `models/search/reranker.download_failed`, written by one `test_bootstrap_search_download` test and deleted by another. Many more create empty directories. `core.paths.user_data_root()` has no override, and 37 other lines in `core/`, `workers/` and `ui/` use `Path.home()` or `expanduser("~")` directly. | S16 fixes both marker tests. The rest needs a suite-wide isolation of the user data root: S40 (D25) |
+| **V38** | The 5 known failures are the only non-passing tests | **Not always.** `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` leaves a callback queued that can fire after its widget is deleted ("BackgroundBuildBridge has been deleted"). It fails that test, errors it at teardown, or errors the next one at setup (`test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist`); 3 of 6 runs of the phase-1 file fail on a clean `1b6fb88`. | §7 lists it as known-flaky; one non-pass there alone is not a regression |
+
+### Owner decisions (D23+)
+
+| # | Question | Decision | Where it applies |
+|---|---|---|---|
+| D23 | How should the post-S13 work be structured? | **A new plan document** (this one) with S14+ / D23+ / V33+ numbering; the predecessor is closed. **One branch and PR per phase, from `main`.** **Order:** Phase 0 → 1 → 2 → 6 → 4 → 5 → 7, with Phase 3's live sessions run when quotas allow. (Recorded 2026-11-25.) | All |
+| D24 | 1.3.60 ships without the spelling word list (V33). Cut a 1.3.61 patch release for the S15 fix? | **No.** The fix ships with the next regular release, bundled with more work; until then the spelling variant stays off in packaged builds. (Recorded 2026-11-25, after S15.) | S15 |
+| D25 | The suite writes into the developer's real `~/.qube` (V37). Fix it in this plan, and when? | **Yes, as a new stage S40, first in Phase 1** (before S17, on the Phase 1 branch). The fake `registry-model.gguf` entry in the owner's `model_performance_store.json` was removed after S16, with a backup; the test-written reranker marker was already gone (deleted by the other marker test). (Recorded 2026-11-25.) | S40 |
+
+### Track 0 checkpoints
+
+| Date | Shadow slot lines | Slot gate records | Grounding events | Audit traces | Notes |
+|---|---|---|---|---|---|
+| 2026-11-25 | 0 | 1 | 0 | 0 (log off) | Baseline before collection |

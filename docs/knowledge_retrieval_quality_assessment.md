@@ -4,6 +4,7 @@
 **Context:** Independent assessment following the Actor–Network Theory `@evidence` session (2026-11-21) and prior agent recommendations  
 **Audience:** Engineering — use as the strategy baseline for retrieval quality work  
 **Plan of record:** §12 (pre-implementation review, 2026-11-23) supersedes §5 and §7 wherever they conflict. §1–11 are kept unchanged as the original assessment.  
+**Closed (2026-11-25):** S1–S13 are merged to `main` (PR #73, `c651eb2`; Release 1.3.60). This document is the record of that work. Follow-up work (S14+, D23+, V33+) is planned and logged in `docs/knowledge_retrieval_followups.md`.  
 
 ---
 
@@ -1281,6 +1282,8 @@ flowchart LR
 
 ### 12.7 Future iterations (out of scope for S1–S13)
 
+> These iterations are now planned in `docs/knowledge_retrieval_followups.md`: Library and memory as Phase 6 (S33–S36), multilingual as Phase 7 (S37–S39), service mismatch as S30.
+
 - **Library and memory retrieval (from D5), to start after S13.** Apply the proven pieces to users' own documents and memories: the `internal_corpus` pipeline (`@library`, `@help`; `core/knowledge/pipeline_internal_corpus.py`) and plain-chat RAG/memory search (`mcp/rag_tool.rag_search`, `mcp/memory_tool.memory_search`, wired from `workers/llm_worker.py`). The pieces to carry over are the S3 reranker, the S4 sufficiency state with honest "not found in your documents" wording, and the S5/S6 query resolution. Before any change it needs:
   - its own fixtures: library chunks are long and local, and memory entries are short stubs, so they score differently from web snippets and abstracts
   - a check against the existing RAG relevance gate (`tests/test_rag_relevance_gate.py`) and memory-tier behaviour
@@ -1332,11 +1335,15 @@ The ANT turn is the **diagnostic case**, not the target. It exposed failures in 
 ## Implementation progress log
 
 > **Do not edit sections 1–11 above.** Record shipped work here only.  
-> **Last reviewed:** 2026-11-25, S8 live ANT re-run passed under D22 (bar at the shipped depth: 3 of 9 with CE > 0, correction ✓, all kept on topic); S13 complete, committed as `7dd70c4` / `586a4bc` / `f2492bc` (§12.4 S13: corpus extended with 15 trigger cases, A/B per heuristic; discipline slots and query-type routing removed, discipline routing and the trial boost kept; V29–V32, D20–D21); 2026-11-24, S12 complete (§12.4 S12: §3.7 audit verified, DuckDuckGo blocks by cause, bounded `Retry-After`, adapter failures in the rationale, `@research` budget / trusted fallback / merged cross-encoder gate, `@trusted` `site:` scoping, fetch blocker fix and Balanced 2-page fetch; D14–D19); S11 complete (§12.4 S11: post-stream citation grounding telemetry, sentence / window CE scores, trace-reader fix; model labels accepted, D13); S10 complete (§12.4 S10: service personas, n_ctx-aware retrieval budget, coverage note, Semantic Scholar review status, attribution labels; D12); S9 complete, acceptance Partial (§12.4 S9: V7 audit, rewrite off by default, statement-style subjects, shadow LLM slots; D9–D11); S8 complete except the live ANT check (open to-do, §12.4 S8 "To do"; §12.4 S8, deadlines + multi-query union + spelling variant + web pool 8 + trusted allowlist); S7 complete (§12.4 S7, web / trusted / finance gate + recency); S6 complete (§12.4 S6, subject/facet + follow-ups); S5 complete (§12.4 S5, acronyms + request frames); S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
+> **Last reviewed:** 2026-11-25, closed: S1–S13 merged to `main` as `c651eb2` (PR #73) and released in 1.3.60; follow-up work continues in `docs/knowledge_retrieval_followups.md`. 2026-11-25, S8 live ANT re-run passed under D22 (bar at the shipped depth: 3 of 9 with CE > 0, correction ✓, all kept on topic); S13 complete, committed as `7dd70c4` / `586a4bc` / `f2492bc` (§12.4 S13: corpus extended with 15 trigger cases, A/B per heuristic; discipline slots and query-type routing removed, discipline routing and the trial boost kept; V29–V32, D20–D21); 2026-11-24, S12 complete (§12.4 S12: §3.7 audit verified, DuckDuckGo blocks by cause, bounded `Retry-After`, adapter failures in the rationale, `@research` budget / trusted fallback / merged cross-encoder gate, `@trusted` `site:` scoping, fetch blocker fix and Balanced 2-page fetch; D14–D19); S11 complete (§12.4 S11: post-stream citation grounding telemetry, sentence / window CE scores, trace-reader fix; model labels accepted, D13); S10 complete (§12.4 S10: service personas, n_ctx-aware retrieval budget, coverage note, Semantic Scholar review status, attribution labels; D12); S9 complete, acceptance Partial (§12.4 S9: V7 audit, rewrite off by default, statement-style subjects, shadow LLM slots; D9–D11); S8 complete except the live ANT check (open to-do, §12.4 S8 "To do"; §12.4 S8, deadlines + multi-query union + spelling variant + web pool 8 + trusted allowlist); S7 complete (§12.4 S7, web / trusted / finance gate + recency); S6 complete (§12.4 S6, subject/facet + follow-ups); S5 complete (§12.4 S5, acronyms + request frames); S4 complete (§12.4 S4, scientific gate on); S3 complete (§12.4 S3); S1 complete (§12.4 S1); pre-implementation review (§12), branch `feat/knowledge-retrieval-quality`, commit `3ac2449` + doc edits. Remaining work is tracked as stages **S1–S13** (§12.3).
 
-### Resuming work in a new session (handoff, updated 2026-11-24 during S13)
+### Resuming work in a new session (handoff, updated 2026-11-25; closed)
+
+> **This handoff is closed.** S1–S13 are on `main`. New work starts from `docs/knowledge_retrieval_followups.md` §7, on a branch from `main`. The rest of this section is kept as the S1–S13 record; its commands and live-check notes are carried over there.
 
 A new session has no memory of earlier conversations. Read this section, then §12.3–§12.6, then the S8–S12 "As built" notes (§12.4), before starting a stage.
+
+**Merged (2026-11-25).** PR #73 squash-merged the branch into `main` as `c651eb2` (09:27 +0100), after the phase 0/1 WIP in PR #72 (`f5949e2`). Release 1.3.60 (`0e6944a`) is the first release with S1–S13. The per-stage commits below exist only on `feat/knowledge-retrieval-quality` (kept on `origin` so they resolve). That branch's merge base with `main` is still `2f4b180`, so new work branches from `main`, not from it.
 
 **State.** Branch `feat/knowledge-retrieval-quality`, based on `main` (`2f4b180`). S1–S9 are committed, one commit per stage: S1 `2fda486`, S2 `355e661`, S3 `9f9a0ea` (+ `0db97bb` HF repo casing), S4 `4a07449` (+ `182ba04` MMR fix), S5 `b789420`, S6 `35a0ea3`, S7 `3e993e5`, S8 `2e278ad`, S9 `a646cda`, S10 `8ab77eb`, S11 `87f00ae`, then S12 `aee121a`. S13 is committed as `7dd70c4`, `586a4bc`, `f2492bc`. All 13 stages are done; the S8 live ANT check passed on 2026-11-25 under D22. The S8 live ANT re-run, blocked on 2026-11-24 by the OpenAlex keyless quota, ran on 2026-11-25 and passes under D22 (§12.4 S8, "Live ANT re-run").
 
@@ -1369,7 +1376,7 @@ Mark partial acceptance as **Partial** and say why.
 - Targeted tests: `.venv/bin/python -m pytest -q -p no:cacheprovider tests/<files>`.
 - Full suite: `QT_QPA_PLATFORM=offscreen HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings -m "not packaging" tests > <log> 2>&1`.
   - The process ends with the known Qt teardown abort (exit 134, no summary line), so count ` PASSED` / ` FAILED` lines in the log.
-  - S12 reference: **4206 passed**, and exactly these 5 pre-existing failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), and `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
+  - S13 reference: **4209 passed** as counted (S12: 4206; S13 removed 14 tests and added 17), and exactly these 5 pre-existing failures. *Correction (2026-11-25, follow-up V34):* counting ` PASSED` lines misses results that a test's output pushes to the start of a line. `--collect-only` on `2800b62` gives 4221 tests, so the true S13 figure is 4216 passed. The current method and reference are in `docs/knowledge_retrieval_followups.md` §7. Failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), and `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
 - Offline eval, which needs the reranker model locally: `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_knowledge_quality.py --corpus eval/retrieval_corpus/v1_knowledge_quality.json --ranker <token|embed|ce> --query-mode <production|standalone> [--pool-mode widened] [--json] [--compare <baseline>]`.
   - Stage baselines are `eval/retrieval_corpus/baselines/kq_sN_{token,embed}_{production,standalone}.json` (default pool mode) and `kq_sN_ce_{production,standalone}.json` (with `--pool-mode widened`, the shipped depth since S8). Always pass the relative `--corpus` path above.
   - Compare new work against `kq_s10_*`, using the same flags as the baseline (S11 and S12 left all six identical to `kq_s10_*` and added no files).
@@ -1451,11 +1458,13 @@ The scientific `keep` threshold is 0, so `survivors` is the number of candidates
 
 ### Summary
 
-| Phase (roadmap §7) | Status as of 2026-11-23 | Notes |
+| Phase (roadmap §7) | Status as of 2026-11-25 | Notes |
 |--------------------|---------------------------|-------|
-| **Phase 0** — eval harness + fixtures + baseline | **Partial / in progress** | Offline ANT replay fixture + eval CLI + tests. Corpus lists 6 cases, but only **1** has an offline fixture, and that fixture's only `relevant` candidate is **synthetic** (§12.1 V9). Completed by **S1 + S2** |
-| **Phase 1** — prompt contract, evidence pack, score bugs | **Partial / in progress** | Most R5–R7 items landed; no sufficiency gate, no code-level source drop, citation enforce still default-off |
-| **Phase 2+** | **Not started** | No cross-encoder reranker, no QueryPlan, no wide-recall change. Re-planned as S3–S13 (§12) |
+| **Phase 0** — eval harness + fixtures + baseline | **Done** (S1, S2; extended in S13) | Generic eval harness with graded metrics; 63 labelled fixtures (48 from S2, 15 from S13); per-stage baselines `kq_s2_*` … `kq_s13_*` |
+| **Phase 1** — prompt contract, evidence pack, score bugs | **Done** (WIP `f5949e2`, S4, S10) | Code-level source drop and "found but not relevant" (S4, S7); service personas, n_ctx-aware budget, coverage note, honest labels (S10). Citation enforcement stays off by decision (D13) |
+| **Phase 2+** | **Done as S3–S13**, with **Partial** acceptance on S4, S5, S8 and S9 | Remaining items, the §12.7 iterations and the carry-overs are planned in `docs/knowledge_retrieval_followups.md` |
+
+*Status as of 2026-11-23, before §12:* Phase 0 partial (1 offline fixture, synthetic positive, V9); Phase 1 partial (no sufficiency gate, no code-level source drop); Phase 2+ not started.
 
 ### Deliverables table
 
@@ -1958,7 +1967,9 @@ After the removals (`kq_s13_*`, six replays vs the pre-removal run on the same 6
 
 | Field | Value |
 |-------|--------|
-| Branch | `feat/knowledge-retrieval-quality` |
-| Commit | `3ac2449690f71bb47984250d017481a62ae2eb30` |
-| Author date | 2026-11-23 12:06 +0100 |
-| Message | WIP: knowledge retrieval quality phase 0/1 (in progress) — *not ready for review yet* |
+| Branch | `feat/knowledge-retrieval-quality` (kept on `origin`; per-stage commits live only here) |
+| First commit (WIP) | `3ac2449690f71bb47984250d017481a62ae2eb30`, 2026-11-23 12:06 +0100, "WIP: knowledge retrieval quality phase 0/1 (in progress)" |
+| Merged to `main` | PR #72 → `f5949e2` (2026-11-23, phase 0/1 WIP); PR #73 → `c651eb2` (2026-11-25, S1–S13, squash) |
+| Stage commits | S1 `2fda486`, S2 `355e661`, S3 `9f9a0ea` (+ `0db97bb`), S4 `4a07449` (+ `182ba04`), S5 `b789420`, S6 `35a0ea3`, S7 `3e993e5`, S8 `2e278ad` (+ live re-run `2800b62`), S9 `a646cda`, S10 `8ab77eb`, S11 `87f00ae`, S12 `aee121a`, S13 `7dd70c4` / `586a4bc` / `f2492bc` |
+| First release | 1.3.60 (`0e6944a`) |
+| Follow-up work | `docs/knowledge_retrieval_followups.md` |

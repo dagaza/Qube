@@ -12,6 +12,20 @@ if ($variant -eq "cuda") {
     exit 0
 }
 
+# Plan S15: modules and data whose absence only switches a feature off
+# (reranker, spelling word list); see core/bundle_self_check.py.
+$selfCheckJson = Join-Path ([System.IO.Path]::GetTempPath()) "qube_bundle_self_check.json"
+Remove-Item -LiteralPath $selfCheckJson -ErrorAction SilentlyContinue
+Write-Host "Running bundle self-check ..."
+$check = Start-Process -FilePath $exe -ArgumentList @("--self-check-bundle", "`"$selfCheckJson`"") -PassThru -Wait
+if (-not (Test-Path -LiteralPath $selfCheckJson)) {
+    throw "Bundle self-check wrote no result (exit code: $($check.ExitCode))"
+}
+Get-Content -LiteralPath $selfCheckJson | Write-Host
+if ($check.ExitCode -ne 0) {
+    throw "Bundle self-check failed (exit code: $($check.ExitCode))"
+}
+
 . "$PSScriptRoot/smoke_launch_env.ps1"
 
 $launchArgs = Get-QubeSmokeLaunchArgumentList

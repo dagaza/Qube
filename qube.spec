@@ -42,6 +42,16 @@ for _pkg in (
     except Exception:
         pass
 
+# Plan S15: the S8 spelling variant (core/knowledge/spelling.py) builds an English
+# pyspellchecker, which reads resources/en.json.gz through pkgutil.get_data. 1.3.60
+# shipped without it, so the feature switched itself off in every packaged build.
+# Only English is used (650 KB of the package's 7 MB). Fail the build rather than
+# ship without it.
+_spelling_datas = collect_data_files("spellchecker", includes=["resources/en.json.gz"])
+if not _spelling_datas:
+    raise SystemExit("qube.spec: pyspellchecker resources/en.json.gz not found (plan S15)")
+datas += _spelling_datas
+
 binaries = []
 for package in ("PyAudio", "onnxruntime", "ctranslate2", "llama_cpp", "espeakng_loader"):
     try:
