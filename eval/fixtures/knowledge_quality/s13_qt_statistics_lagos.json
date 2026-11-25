@@ -39,26 +39,11 @@
   "routes": {
     "production": {
       "production": [
-        "bls",
-        "world_bank",
-        "eurostat",
-        "oecd",
-        "us_census",
         "openalex",
         "crossref",
         "arxiv"
       ],
       "no_discipline_routing": [
-        "bls",
-        "world_bank",
-        "eurostat",
-        "oecd",
-        "us_census",
-        "openalex",
-        "crossref",
-        "arxiv"
-      ],
-      "no_query_type_routing": [
         "openalex",
         "crossref",
         "arxiv"
@@ -84,7 +69,8 @@
         {
           "query": "production",
           "adapter": "world_bank",
-          "rank": 0
+          "rank": 0,
+          "route_added": true
         }
       ],
       "label": "irrelevant",
@@ -108,7 +94,8 @@
         {
           "query": "production",
           "adapter": "world_bank",
-          "rank": 1
+          "rank": 1,
+          "route_added": true
         }
       ],
       "label": "irrelevant",
@@ -132,7 +119,8 @@
         {
           "query": "production",
           "adapter": "world_bank",
-          "rank": 2
+          "rank": 2,
+          "route_added": true
         }
       ],
       "label": "irrelevant",
@@ -156,7 +144,8 @@
         {
           "query": "production",
           "adapter": "oecd",
-          "rank": 0
+          "rank": 0,
+          "route_added": true
         }
       ],
       "label": "irrelevant",
@@ -180,7 +169,8 @@
         {
           "query": "production",
           "adapter": "oecd",
-          "rank": 1
+          "rank": 1,
+          "route_added": true
         }
       ],
       "label": "irrelevant",
@@ -204,7 +194,8 @@
         {
           "query": "production",
           "adapter": "oecd",
-          "rank": 2
+          "rank": 2,
+          "route_added": true
         }
       ],
       "label": "irrelevant",

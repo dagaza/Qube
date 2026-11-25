@@ -22,20 +22,15 @@ from core.app_settings import get_knowledge_source_preferences
 from core.knowledge.bundle_builder import build_empty_bundle, build_scientific_evidence_bundle
 from core.knowledge.conflicts.detect import detect_conflicts
 from core.knowledge.scientific_adapters import is_medical_query
-from core.knowledge.scientific_adapters import discipline_ordered_adapters
 from core.knowledge.scientific_discipline import detect_scientific_discipline
 from core.knowledge.scientific_query_planner import adapter_query_for, plan_scientific_query
-from core.knowledge.source_preferences import (
-    get_effective_enabled_adapters,
-    resolve_service_adapters,
-)
+from core.knowledge.source_preferences import resolve_service_adapters
 from core.knowledge.tiered_scientific_retrieval import (
     split_adapter_tiers,
     tiered_fallback_threshold,
     tiered_retrieval_diag,
     tiered_scientific_retrieval_enabled,
 )
-from core.knowledge.scientific_query_type import query_type_routing_diag
 from core.knowledge.evidence_cache import get_cached_rows, make_cache_key, set_cached_rows
 from core.knowledge.http_metrics import begin_turn_http_metrics, snapshot_turn_http_summary
 from core.knowledge.ranking.diversity import mmr_select_rows
@@ -424,18 +419,6 @@ class ScientificEvidencePipeline:
             order_adapter_ids(tuple(adapter_ids), profile=profile)
         )
         discipline_match = detect_scientific_discipline(ctx.query)
-        discipline_adapter_order = discipline_ordered_adapters(
-            get_effective_enabled_adapters(
-                SERVICE_SCIENTIFIC_EVIDENCE,
-                stored_preferences=get_knowledge_source_preferences(),
-            ),
-            query=ctx.query,
-        )
-        query_type_diag = query_type_routing_diag(
-            query=ctx.query,
-            adapter_ids_before=discipline_adapter_order,
-            adapter_ids_after=adapter_ids,
-        )
         adapter_calls: list[str] = []
         raw_audit: list[dict[str, Any]] = []
         candidates: list[dict[str, Any]] = []
@@ -611,7 +594,6 @@ class ScientificEvidencePipeline:
                 "scientific_adapters_selected": list(adapter_ids),
                 "scientific_discipline": discipline_match.discipline,
                 "scientific_discipline_ui_group": discipline_match.ui_group,
-                "scientific_query_type_routing": query_type_diag,
                 "scientific_tiered_retrieval": tiered_retrieval_diag(
                     enabled=tiered_enabled,
                     primary=tier_primary,
@@ -680,7 +662,6 @@ class ScientificEvidencePipeline:
             "scientific_discipline": discipline_match.discipline,
             "scientific_discipline_ui_group": discipline_match.ui_group,
             "scientific_discipline_scores": discipline_match.scores,
-            "scientific_query_type_routing": query_type_diag,
             "scientific_tiered_retrieval": tiered_retrieval_diag(
                 enabled=tiered_enabled,
                 primary=tier_primary,

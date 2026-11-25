@@ -33,20 +33,11 @@
   "routes": {
     "production": {
       "production": [
-        "uspto_patentsview",
-        "epo_espacenet",
         "openalex",
         "crossref",
         "arxiv"
       ],
       "no_discipline_routing": [
-        "uspto_patentsview",
-        "epo_espacenet",
-        "openalex",
-        "crossref",
-        "arxiv"
-      ],
-      "no_query_type_routing": [
         "openalex",
         "crossref",
         "arxiv"

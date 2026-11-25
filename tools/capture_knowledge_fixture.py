@@ -27,13 +27,16 @@ Usage::
     .venv/bin/python tools/capture_knowledge_fixture.py --from-evidence-cache \\
         ~/.qube/evidence_cache/<key>.json --case kq_ant_resolved
     .venv/bin/python tools/capture_knowledge_fixture.py --add-routes --case sci_sts_scot
+    .venv/bin/python tools/capture_knowledge_fixture.py --refresh-routes --path scientific_evidence
 
 Scientific captures (plan S13) query the union of the adapter routes each A/B
 arm would use (``scientific_adapters.scientific_adapter_routes``) and record
 them as ``routes[variant][arm]``. ``--add-routes`` extends an existing fixture
 with only the adapters it is missing: existing rows and labels are untouched,
 and every new hit is marked ``route_added`` so the first-captured pool stays
-the default replay.
+the default replay. ``--refresh-routes`` (offline) re-derives the routes after
+an adapter-policy change: hits of adapters production stopped querying leave
+the default pool (``route_added``); rows and labels are kept.
 """
 
 from __future__ import annotations
@@ -313,6 +316,54 @@ def add_routes(fixture: dict[str, Any], *, depth: int) -> int:
     return added
 
 
+def refresh_routes(fixture: dict[str, Any]) -> dict[str, int]:
+    """Re-derive a scientific fixture's S13 routes with today's policy (in place, offline).
+
+    The default replay pool is the pool first captured. After a routing change
+    (S13 removed query-type routing) only the adapters whose production
+    membership changed move: a hit of an adapter production no longer queries
+    becomes ``route_added``, a hit of an adapter it newly queries rejoins the
+    pool. Adapters on both routes keep their hits as captured, so a fixture the
+    change does not touch replays exactly as before. Refuses when a new route
+    needs an adapter the fixture never captured (run ``--add-routes``) or when a
+    capture is still deferred. Returns hit counts.
+    """
+    if fixture.get("path") != "scientific_evidence" or not fixture.get("routes"):
+        return {"left_pool": 0, "joined_pool": 0}
+    if fixture.get("deferred_adapters"):
+        raise SystemExit(f"{fixture.get('id')}: deferred capture; run --add-routes first")
+    queries = {
+        "production": str(fixture.get("retrieval_query") or fixture.get("query_clean") or ""),
+        "standalone": str(fixture.get("standalone_question") or "").strip(),
+    }
+    captured = fixture.get("adapter_queries") or {}
+    failed = fixture.get("route_failed_adapters") or {}
+    new_routes: dict[str, dict[str, list[str]]] = {}
+    moved: dict[str, tuple[set[str], set[str]]] = {}
+    for variant, old in fixture["routes"].items():
+        routes = _scientific_routes(queries[variant])
+        have = set(captured.get(variant) or ()) | set(failed.get(variant) or ())
+        missing = sorted({a for ids in routes.values() for a in ids} - have)
+        if missing:
+            raise SystemExit(f"{fixture.get('id')} [{variant}]: {missing} never captured; run --add-routes")
+        old_prod, new_prod = set(old.get("production") or ()), set(routes["production"])
+        moved[variant] = (old_prod - new_prod, new_prod - old_prod)
+        new_routes[variant] = routes
+    counts = {"left_pool": 0, "joined_pool": 0}
+    for cand in fixture.get("candidates") or []:
+        for hit in cand.get("retrieved") or []:
+            dropped, added = moved.get(str(hit.get("query")), (set(), set()))
+            adapter = hit.get("adapter")
+            if adapter in dropped and not hit.get("route_added"):
+                hit["route_added"] = True
+                counts["left_pool"] += 1
+            elif adapter in added and hit.get("route_added"):
+                hit.pop("route_added")
+                counts["joined_pool"] += 1
+    fixture["routes"] = new_routes
+    return counts
+
+
 def _discovery_rows(discovery) -> list[dict[str, Any]]:
     rows = [
         {"title": c.title or "", "snippet": c.snippet or "", "url": c.url}
@@ -566,6 +617,10 @@ def main() -> int:
         help="Extend existing scientific fixtures with the adapters their S13 A/B arms need",
     )
     parser.add_argument(
+        "--refresh-routes", action="store_true",
+        help="Offline: re-derive scientific fixtures' routes after an adapter-policy change",
+    )
+    parser.add_argument(
         "--redo-degraded", action="store_true",
         help="Select web/trusted cases whose fixture is missing, degraded, or predates provider tracking",
     )
@@ -605,6 +660,21 @@ def main() -> int:
     if not selected:
         print("nothing to capture", file=sys.stderr)
         return 2
+
+    if args.refresh_routes:
+        for entry in selected:
+            out = ROOT / str(entry.get("fixture") or "")
+            if entry.get("path") != "scientific_evidence" or not out.is_file():
+                continue
+            fixture = json.loads(out.read_text(encoding="utf-8"))
+            before = json.dumps(fixture, sort_keys=True)
+            counts = refresh_routes(fixture)
+            if json.dumps(fixture, sort_keys=True) == before:
+                continue
+            out.write_text(json.dumps(fixture, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            print(f"refreshed {entry['id']}: {counts['left_pool']} hits left the default pool, "
+                  f"{counts['joined_pool']} joined")
+        return 0
 
     if args.add_routes:
         for entry in selected:

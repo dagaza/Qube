@@ -35,22 +35,11 @@
   "routes": {
     "production": {
       "production": [
-        "ietf_rfc",
-        "nist",
-        "ieee_xplore",
         "openalex",
         "crossref",
         "arxiv"
       ],
       "no_discipline_routing": [
-        "ietf_rfc",
-        "nist",
-        "ieee_xplore",
-        "openalex",
-        "crossref",
-        "arxiv"
-      ],
-      "no_query_type_routing": [
         "openalex",
         "crossref",
         "arxiv"

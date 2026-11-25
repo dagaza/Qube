@@ -39,26 +39,11 @@
   "routes": {
     "production": {
       "production": [
-        "nice",
-        "cdc",
-        "who",
-        "openfda",
-        "clinicaltrials_gov",
         "openalex",
         "crossref",
         "arxiv"
       ],
       "no_discipline_routing": [
-        "nice",
-        "cdc",
-        "who",
-        "openfda",
-        "clinicaltrials_gov",
-        "openalex",
-        "crossref",
-        "arxiv"
-      ],
-      "no_query_type_routing": [
         "openalex",
         "crossref",
         "arxiv"
@@ -84,7 +69,8 @@
         {
           "query": "production",
           "adapter": "cdc",
-          "rank": 0
+          "rank": 0,
+          "route_added": true
         }
       ],
       "label": "irrelevant",
@@ -108,7 +94,8 @@
         {
           "query": "production",
           "adapter": "cdc",
-          "rank": 1
+          "rank": 1,
+          "route_added": true
         }
       ],
       "label": "irrelevant",
@@ -132,7 +119,8 @@
         {
           "query": "production",
           "adapter": "cdc",
-          "rank": 2
+          "rank": 2,
+          "route_added": true
         }
       ],
       "label": "irrelevant",
@@ -158,7 +146,8 @@
         {
           "query": "production",
           "adapter": "clinicaltrials_gov",
-          "rank": 0
+          "rank": 0,
+          "route_added": true
         }
       ],
       "label": "partial",
@@ -184,7 +173,8 @@
         {
           "query": "production",
           "adapter": "clinicaltrials_gov",
-          "rank": 1
+          "rank": 1,
+          "route_added": true
         }
       ],
       "label": "partial",

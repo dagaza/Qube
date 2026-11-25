@@ -833,13 +833,6 @@
         "openalex",
         "crossref",
         "arxiv"
-      ],
-      "no_query_type_routing": [
-        "arxiv",
-        "dblp",
-        "openreview",
-        "acl_anthology",
-        "openalex"
       ]
     }
   },

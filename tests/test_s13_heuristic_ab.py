@@ -16,7 +16,6 @@ from core.knowledge import quality_eval as qe  # noqa: E402
 from core.knowledge.scientific_adapters import (  # noqa: E402
     ROUTE_ARMS,
     ROUTE_NO_DISCIPLINE,
-    ROUTE_NO_QUERY_TYPE,
     ROUTE_PRODUCTION,
     apply_scientific_adapter_policy,
     scientific_adapter_routes,
@@ -59,18 +58,21 @@ class RouteArmTests(unittest.TestCase):
         self.assertEqual(routes[ROUTE_PRODUCTION][0], "repec")
         self.assertEqual(routes[ROUTE_NO_DISCIPLINE], general)
 
-    def test_no_query_type_arm_drops_added_institutional_adapters(self) -> None:
-        routes = scientific_adapter_routes(ENABLED, query="What is the standard of care for plantar fasciitis?")
-        self.assertIn("nice", routes[ROUTE_PRODUCTION])
-        self.assertNotIn("nice", routes[ROUTE_NO_QUERY_TYPE])
+    def test_guideline_wording_no_longer_adds_institutional_adapters(self) -> None:
+        # S13 removed query-type routing (A/B: no change with the reranker,
+        # one loss on the fallback); guideline wording routes by discipline.
+        q = "What is the standard of care for plantar fasciitis?"
+        routes = scientific_adapter_routes(ENABLED, query=q)
+        self.assertEqual(set(routes), {ROUTE_PRODUCTION, ROUTE_NO_DISCIPLINE})
+        self.assertNotIn("nice", routes[ROUTE_PRODUCTION])
+        self.assertEqual(routes[ROUTE_PRODUCTION], apply_scientific_adapter_policy(ENABLED, query="plantar fasciitis"))
 
 
 class FixturePoolArmTests(unittest.TestCase):
     def _fixture(self) -> dict:
         return {
             "id": "fx", "query_clean": "q", "production_depth": {"a": 2, "b": 2, "c": 2},
-            "routes": {"production": {ROUTE_PRODUCTION: ["a", "b"], ROUTE_NO_DISCIPLINE: ["c", "a"],
-                                      ROUTE_NO_QUERY_TYPE: ["b", "a"]}},
+            "routes": {"production": {ROUTE_PRODUCTION: ["b", "a"], ROUTE_NO_DISCIPLINE: ["c", "a"]}},
             "candidates": [
                 _row("a0", "a", 0), _row("b0", "b", 0), _row("c0", "c", 0, added=True),
                 _row("a2", "a", 2),  # beyond production depth
@@ -86,7 +88,7 @@ class FixturePoolArmTests(unittest.TestCase):
             [r["title"] for r in qe.fixture_pool(fx, route_arm=ROUTE_NO_DISCIPLINE)], ["c0", "a0"]
         )
         self.assertEqual(
-            [r["title"] for r in qe.fixture_pool(fx, route_arm=ROUTE_NO_QUERY_TYPE)], ["b0", "a0"]
+            [r["title"] for r in qe.fixture_pool(fx, route_arm=ROUTE_PRODUCTION)], ["b0", "a0"]
         )
         self.assertTrue(qe.fixture_has_routes(fx))
 
@@ -155,7 +157,7 @@ class CorpusArmLabelTests(unittest.TestCase):
                         pool = qe.fixture_pool(fx, query_mode=mode, route_arm=arm)
                         self.assertEqual([r["title"] for r in pool if qe.candidate_gain(r) is None], [])
                         checked += 1
-        self.assertGreaterEqual(checked, 3 * 22)  # 15 S13 cases + 7 extended fixtures
+        self.assertGreaterEqual(checked, 2 * 22)  # 15 S13 cases + 7 extended fixtures
 
 
 class CaptureAddRoutesTests(unittest.TestCase):
@@ -168,8 +170,7 @@ class CaptureAddRoutesTests(unittest.TestCase):
             "production_depth": {"pubmed": 3},
             "adapter_queries": {"production": {"pubmed": "q"}},
             "routes": {"production": {ROUTE_PRODUCTION: ["pubmed", "openalex"],
-                                      ROUTE_NO_DISCIPLINE: ["openalex", "crossref"],
-                                      ROUTE_NO_QUERY_TYPE: ["pubmed", "openalex"]}},
+                                      ROUTE_NO_DISCIPLINE: ["openalex", "crossref"]}},
             "deferred_adapters": {"production": ["openalex"]},
             "candidates": [_row("kept", "pubmed", 0, label="partial")],
         }
@@ -205,6 +206,56 @@ class CaptureAddRoutesTests(unittest.TestCase):
             self.tool.add_routes(fx, depth=3)
         self.assertEqual(fx["deferred_adapters"], {"production": ["openalex"]})
         self.assertNotIn("openalex", fx["adapter_queries"]["production"])
+
+
+class CaptureRefreshRoutesTests(unittest.TestCase):
+    """``--refresh-routes`` moves only adapters whose production membership changed."""
+
+    def setUp(self) -> None:
+        self.tool = _load_capture_tool()
+
+    def _fixture(self) -> dict:
+        return {
+            "id": "fx", "path": "scientific_evidence", "retrieval_query": "q",
+            "adapter_queries": {"production": {"pubmed": "q", "nice": "q", "openalex": "q", "crossref": "q"}},
+            "routes": {"production": {ROUTE_PRODUCTION: ["nice", "pubmed", "openalex"],
+                                      ROUTE_NO_DISCIPLINE: ["openalex", "crossref"],
+                                      "no_query_type_routing": ["pubmed", "openalex"]}},
+            "candidates": [
+                _row("nice0", "nice", 0), _row("pm0", "pubmed", 0),
+                _row("cr0", "crossref", 0, added=True),
+                # First-captured pool differs from the stored route: kept as is.
+                _row("oa0", "openalex", 0, added=True),
+            ],
+        }
+
+    def _refresh(self, fx: dict, production: list[str]) -> dict:
+        routes = {ROUTE_PRODUCTION: production, ROUTE_NO_DISCIPLINE: ["openalex", "crossref"]}
+        with patch.object(self.tool, "_scientific_routes", lambda _q: {k: list(v) for k, v in routes.items()}):
+            return self.tool.refresh_routes(fx)
+
+    def test_dropped_adapter_leaves_the_pool_and_others_stay_as_captured(self) -> None:
+        fx = self._fixture()
+        counts = self._refresh(fx, ["pubmed", "openalex"])
+        self.assertEqual(counts, {"left_pool": 1, "joined_pool": 0})
+        self.assertEqual([r["title"] for r in qe.fixture_pool(fx)], ["pm0"])
+        self.assertEqual(set(fx["routes"]["production"]), {ROUTE_PRODUCTION, ROUTE_NO_DISCIPLINE})
+        self.assertEqual({c["title"]: c["label"] for c in fx["candidates"]}["nice0"], "relevant")
+
+    def test_newly_routed_adapter_joins_the_pool(self) -> None:
+        fx = self._fixture()
+        counts = self._refresh(fx, ["nice", "pubmed", "openalex", "crossref"])
+        self.assertEqual(counts, {"left_pool": 0, "joined_pool": 1})
+        self.assertIn("cr0", [r["title"] for r in qe.fixture_pool(fx)])
+
+    def test_uncaptured_adapter_or_deferred_capture_is_refused(self) -> None:
+        fx = self._fixture()
+        with self.assertRaises(SystemExit):
+            self._refresh(fx, ["pubmed", "openalex", "europe_pmc"])
+        fx = self._fixture()
+        fx["deferred_adapters"] = {"production": ["openalex"]}
+        with self.assertRaises(SystemExit):
+            self._refresh(fx, ["pubmed", "openalex"])
 
 
 def _load_ab_tool():

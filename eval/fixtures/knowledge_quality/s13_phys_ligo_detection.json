@@ -39,11 +39,6 @@
         "openalex",
         "crossref",
         "arxiv"
-      ],
-      "no_query_type_routing": [
-        "arxiv",
-        "inspire_hep",
-        "openalex"
       ]
     }
   },

@@ -50,14 +50,6 @@
         "openalex",
         "crossref",
         "arxiv"
-      ],
-      "no_query_type_routing": [
-        "repec",
-        "world_bank",
-        "eurostat",
-        "oecd",
-        "bls",
-        "openalex"
       ]
     }
   },

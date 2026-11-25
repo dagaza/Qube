@@ -646,11 +646,6 @@
         "openalex",
         "crossref",
         "arxiv"
-      ],
-      "no_query_type_routing": [
-        "openalex",
-        "crossref",
-        "arxiv"
       ]
     },
     "standalone": {
@@ -663,11 +658,6 @@
         "openalex",
         "crossref",
         "arxiv"
-      ],
-      "no_query_type_routing": [
-        "openalex",
-        "crossref",
-        "socarxiv"
       ]
     }
   },

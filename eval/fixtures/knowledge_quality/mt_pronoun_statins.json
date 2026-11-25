@@ -1348,11 +1348,6 @@
         "openalex",
         "crossref",
         "arxiv"
-      ],
-      "no_query_type_routing": [
-        "openalex",
-        "crossref",
-        "arxiv"
       ]
     },
     "standalone": {
@@ -1370,16 +1365,6 @@
         "openalex",
         "crossref",
         "arxiv"
-      ],
-      "no_query_type_routing": [
-        "pubmed",
-        "nice",
-        "cdc",
-        "who",
-        "clinicaltrials_gov",
-        "openfda",
-        "openalex",
-        "europe_pmc"
       ]
     }
   },

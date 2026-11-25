@@ -53,15 +53,6 @@
         "openalex",
         "crossref",
         "arxiv"
-      ],
-      "no_query_type_routing": [
-        "pubchem",
-        "chembl",
-        "chemrxiv",
-        "uspto_patentsview",
-        "epo_espacenet",
-        "openalex",
-        "pubmed"
       ]
     }
   },

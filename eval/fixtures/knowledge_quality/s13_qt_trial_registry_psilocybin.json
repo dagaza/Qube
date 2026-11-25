@@ -43,31 +43,19 @@
   "routes": {
     "production": {
       "production": [
-        "clinicaltrials_gov",
-        "openfda",
         "pubmed",
         "nice",
         "cdc",
         "who",
+        "clinicaltrials_gov",
+        "openfda",
         "openalex",
         "europe_pmc"
       ],
       "no_discipline_routing": [
-        "clinicaltrials_gov",
-        "openfda",
         "openalex",
         "crossref",
         "arxiv"
-      ],
-      "no_query_type_routing": [
-        "pubmed",
-        "nice",
-        "cdc",
-        "who",
-        "clinicaltrials_gov",
-        "openfda",
-        "openalex",
-        "europe_pmc"
       ]
     }
   },

@@ -5,8 +5,7 @@ For every scientific fixture and query mode, the production replay is compared
 with one arm per heuristic switched off:
 
 * ``trial_grounding``  — no trial-acronym boost (ranking side);
-* ``discipline_routing`` — every query routed as ``general_science`` (pool side);
-* ``query_type_routing`` — discipline order only (pool side).
+* ``discipline_routing`` — every query routed as ``general_science`` (pool side).
 
 Routing arms rank a different pool, so the comparison uses absolute kept
 counts (relevant / partial / irrelevant) and the sufficiency state, not
@@ -36,14 +35,12 @@ if str(ROOT) not in sys.path:
 from core.knowledge import quality_eval as qe  # noqa: E402
 from core.knowledge.scientific_adapters import (  # noqa: E402
     ROUTE_NO_DISCIPLINE,
-    ROUTE_NO_QUERY_TYPE,
     ROUTE_PRODUCTION,
 )
 
 ARMS: dict[str, dict[str, Any]] = {
     "trial_grounding": {"ablate": (qe.ABLATE_TRIAL_GROUNDING,)},
     "discipline_routing": {"route_arm": ROUTE_NO_DISCIPLINE},
-    "query_type_routing": {"route_arm": ROUTE_NO_QUERY_TYPE},
 }
 
 

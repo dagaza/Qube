@@ -424,11 +424,6 @@
         "openalex",
         "crossref",
         "arxiv"
-      ],
-      "no_query_type_routing": [
-        "openalex",
-        "crossref",
-        "socarxiv"
       ]
     }
   },

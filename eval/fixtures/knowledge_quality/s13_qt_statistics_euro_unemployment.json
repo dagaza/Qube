@@ -41,31 +41,17 @@
   "routes": {
     "production": {
       "production": [
-        "bls",
+        "repec",
         "world_bank",
         "eurostat",
         "oecd",
-        "us_census",
-        "repec",
+        "bls",
         "openalex"
       ],
       "no_discipline_routing": [
-        "bls",
-        "world_bank",
-        "eurostat",
-        "oecd",
-        "us_census",
         "openalex",
         "crossref",
         "arxiv"
-      ],
-      "no_query_type_routing": [
-        "repec",
-        "world_bank",
-        "eurostat",
-        "oecd",
-        "bls",
-        "openalex"
       ]
     }
   },
