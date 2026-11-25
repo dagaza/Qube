@@ -105,7 +105,7 @@ class FixturePoolArmTests(unittest.TestCase):
 
 
 class RankingAblationTests(unittest.TestCase):
-    """The replay mirrors ``pipeline_scientific.run``: trial boost + discipline slots."""
+    """The replay mirrors ``pipeline_scientific.run``: trial boost, no discipline slots."""
 
     def _rank(self, query: str, rows: list[dict], ablate: tuple[str, ...] = ()) -> list[str]:
         token = qe._EVAL_ABLATE.set(frozenset(ablate))
@@ -127,17 +127,16 @@ class RankingAblationTests(unittest.TestCase):
             ["Real-world dapagliflozin in heart failure"],
         )
 
-    def test_chemistry_slot_is_applied_and_can_be_ablated(self) -> None:
+    def test_no_discipline_slot_displaces_a_better_row(self) -> None:
+        # S13 removed the PubChem / RePEc / arXiv slot reservations (A/B: no
+        # change with the reranker, net -8 on the reranker-free fallback).
         q = "Which catalysts work best for the hydrogen evolution reaction in water splitting?"
         rows = [
             {"title": "Catalysts for the hydrogen evolution reaction in water splitting", "snippet": "hydrogen evolution reaction catalysts water splitting", "_adapter": "openalex"},
             {"title": "Water (CID 962)", "snippet": "Molecular formula: H2O", "_adapter": "pubchem"},
         ]
-        self.assertEqual(self._rank(q, rows), ["Water (CID 962)"])
-        self.assertEqual(
-            self._rank(q, rows, ablate=(qe.ABLATE_DISCIPLINE_SLOTS,)),
-            ["Catalysts for the hydrogen evolution reaction in water splitting"],
-        )
+        self.assertEqual(self._rank(q, rows), ["Catalysts for the hydrogen evolution reaction in water splitting"])
+        self.assertNotIn("discipline_slots", qe.RANKING_ABLATIONS)
 
 
 class CorpusArmLabelTests(unittest.TestCase):

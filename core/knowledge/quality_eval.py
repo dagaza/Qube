@@ -410,28 +410,23 @@ _EVAL_TODAY: contextvars.ContextVar[date | None] = contextvars.ContextVar("kq_ev
 # Plan S13: ranking-side heuristics the scientific replay can switch off, one
 # A/B arm each. Routing heuristics are pool-side (``fixture_pool(route_arm=…)``).
 ABLATE_TRIAL_GROUNDING = "trial_grounding"
-ABLATE_DISCIPLINE_SLOTS = "discipline_slots"
-RANKING_ABLATIONS: tuple[str, ...] = (ABLATE_TRIAL_GROUNDING, ABLATE_DISCIPLINE_SLOTS)
+RANKING_ABLATIONS: tuple[str, ...] = (ABLATE_TRIAL_GROUNDING,)
 _EVAL_ABLATE: contextvars.ContextVar[frozenset[str]] = contextvars.ContextVar(
     "kq_eval_ablate", default=frozenset()
 )
 
 
-def _scientific_heuristics(query: str) -> tuple[frozenset[str], str | None]:
-    """Trial signals and slot discipline ``pipeline_scientific.run`` derives from the turn.
+def _scientific_trial_signals(query: str) -> frozenset[str]:
+    """Trial signals ``pipeline_scientific.run`` derives from the turn.
 
-    Production detects both on the user's turn (``ctx.query``); the replay uses
+    Production detects them on the user's turn (``ctx.query``); the replay uses
     the ranking query, which is the same text for single-turn cases.
     """
     from core.knowledge.ranking.trial_grounding import extract_trial_signal
-    from core.knowledge.scientific_discipline import detect_scientific_discipline
 
-    ablate = _EVAL_ABLATE.get()
-    trial = frozenset() if ABLATE_TRIAL_GROUNDING in ablate else extract_trial_signal(query)
-    discipline = (
-        None if ABLATE_DISCIPLINE_SLOTS in ablate else detect_scientific_discipline(query).discipline
-    )
-    return trial, discipline
+    if ABLATE_TRIAL_GROUNDING in _EVAL_ABLATE.get():
+        return frozenset()
+    return extract_trial_signal(query)
 
 
 def fixture_today(fixture: dict[str, Any], *, shift_days: int = 0) -> date | None:
@@ -476,8 +471,8 @@ def _rest(rows: list[dict[str, Any]], kept: list[dict[str, Any]]) -> list[dict[s
 
 def _rank_scientific(query, rows, budget, *, query_vector, embed_fn) -> RankerOutput:
     # pipeline_scientific (UNSCORED path): score_rows with the trial boost → MMR
-    # → reliability, then the discipline slots over the whole pool.
-    from core.knowledge.pipeline_scientific import _rank_candidates, apply_discipline_slots
+    # → reliability.
+    from core.knowledge.pipeline_scientific import _rank_candidates
     from core.knowledge.types import RetrievalBudget, RetrievalContext
 
     ctx = RetrievalContext(
@@ -488,12 +483,8 @@ def _rank_scientific(query, rows, budget, *, query_vector, embed_fn) -> RankerOu
         embed_fn=embed_fn,
         budget=RetrievalBudget(max_results=budget),
     )
-    trial, discipline = _scientific_heuristics(query)
+    trial = _scientific_trial_signals(query)
     kept, rejected = _rank_candidates(rows, ctx=ctx, max_results=budget, trial_signals=trial)
-    if discipline is not None:
-        kept = apply_discipline_slots(
-            kept, list(rows), discipline=discipline, query=query, max_results=budget
-        )
     return RankerOutput(kept=list(kept), rejected=list(rejected))
 
 
@@ -730,7 +721,6 @@ def _build_ce_ranker() -> RankerFn:
                 SCIENTIFIC_THRESHOLDS,
                 _final_sufficiency,
                 _rank_candidates_gated,
-                apply_discipline_slots,
             )
             from core.knowledge.types import RetrievalBudget, RetrievalContext
 
@@ -741,16 +731,12 @@ def _build_ce_ranker() -> RankerFn:
                 budget=RetrievalBudget(max_results=budget),
             )
             # Mirrors ``pipeline_scientific.run``: trial boost in the pre-order,
-            # discipline slots over the gate's survivors, state recomputed.
-            trial, discipline = _scientific_heuristics(query)
+            # state recomputed on what is kept.
+            trial = _scientific_trial_signals(query)
             ranking = _rank_candidates_gated(
                 rows, ctx=ctx, max_results=budget, trial_signals=trial, question=query
             )
             kept = list(ranking.kept)
-            if discipline is not None:
-                kept = apply_discipline_slots(
-                    kept, ranking.slot_pool, discipline=discipline, query=query, max_results=budget
-                )
             sufficiency = ranking.sufficiency
             if ranking.scored:
                 sufficiency = _final_sufficiency(kept, ranking.sufficiency, SCIENTIFIC_THRESHOLDS)

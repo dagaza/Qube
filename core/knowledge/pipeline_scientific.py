@@ -23,12 +23,7 @@ from core.knowledge.bundle_builder import build_empty_bundle, build_scientific_e
 from core.knowledge.conflicts.detect import detect_conflicts
 from core.knowledge.scientific_adapters import is_medical_query
 from core.knowledge.scientific_adapters import discipline_ordered_adapters
-from core.knowledge.scientific_discipline import (
-    SCIENTIFIC_DISCIPLINE_CHEMISTRY,
-    SCIENTIFIC_DISCIPLINE_ECONOMICS,
-    SCIENTIFIC_DISCIPLINE_PHYSICS,
-    detect_scientific_discipline,
-)
+from core.knowledge.scientific_discipline import detect_scientific_discipline
 from core.knowledge.scientific_query_planner import adapter_query_for, plan_scientific_query
 from core.knowledge.source_preferences import (
     get_effective_enabled_adapters,
@@ -122,9 +117,6 @@ class ScientificRanking:
     kept: list[dict[str, Any]]
     rejected: list[dict[str, Any]]
     sufficiency: SufficiencyResult
-    # Rows a discipline slot may reserve: the whole pool when UNSCORED, only rows
-    # that passed ``keep`` when scored.
-    slot_pool: list[dict[str, Any]]
     # Rows the gate dropped (copies carrying ``_rerank_score``), best first.
     dropped: list[dict[str, Any]]
     rerank_diag: dict[str, Any]
@@ -177,7 +169,6 @@ def _rank_candidates_gated(
             kept=kept,
             rejected=rejected,
             sufficiency=assess_sufficiency(None, thresholds),
-            slot_pool=list(rows),
             dropped=[],
             rerank_diag=diag,
         )
@@ -211,7 +202,7 @@ def _rank_candidates_gated(
         row["_rerank_score"] = round(float(score), 4)
         # Plan S10: the coverage note counts rows that directly address the question.
         row["_rerank_strong"] = float(score) >= thresholds.strong
-        # One meaning everywhere (MMR, bundle, slots, UI): p(relevant).
+        # One meaning everywhere (MMR, bundle, UI): p(relevant).
         row["_scientific_relevance"] = relevance_probability(score)
 
     pool_result = assess_sufficiency(result.scores, thresholds)
@@ -247,7 +238,6 @@ def _rank_candidates_gated(
         kept=selected,
         rejected=[*dropped, *unscored],
         sufficiency=final,
-        slot_pool=survivors,
         dropped=dropped,
         rerank_diag=diag,
     )
@@ -258,7 +248,7 @@ def _final_sufficiency(
     pool_result: SufficiencyResult,
     thresholds: SufficiencyThresholds,
 ) -> SufficiencyResult:
-    """Sufficiency of what is actually kept (after MMR / budget / slot reservation)."""
+    """Sufficiency of what is actually kept (after MMR / budget)."""
     if not kept:
         return pool_result
     scores = [r.get("_rerank_score") for r in kept]
@@ -280,122 +270,6 @@ def _dropped_for_diag(dropped: list[dict[str, Any]]) -> list[dict[str, Any]]:
             }
         )
     return out
-
-
-def _ensure_chemistry_pubchem_slot(
-    kept: list[dict[str, Any]],
-    candidates: list[dict[str, Any]],
-    *,
-    discipline: str,
-    query: str,
-    max_results: int,
-) -> list[dict[str, Any]]:
-    """Reserve at least one PubChem hit for chemistry discipline queries."""
-    if discipline != SCIENTIFIC_DISCIPLINE_CHEMISTRY:
-        return kept
-    if any(str(r.get("_adapter") or "") == "pubchem" for r in kept):
-        return kept
-    pubchem_rows = [r for r in candidates if str(r.get("_adapter") or "") == "pubchem"]
-    if not pubchem_rows:
-        return kept
-    best = max(
-        pubchem_rows,
-        key=lambda row: float(row.get("_scientific_relevance") or 0.0),
-    )
-    if best.get("_scientific_relevance") is None:
-        from core.knowledge.ranking.relevance import score_evidence_row
-
-        best = dict(best)
-        best["_scientific_relevance"] = score_evidence_row(best, query=query)
-    trimmed = kept[: max(0, max_results - 1)]
-    return [best, *trimmed]
-
-
-def _ensure_economics_repec_slot(
-    kept: list[dict[str, Any]],
-    candidates: list[dict[str, Any]],
-    *,
-    discipline: str,
-    query: str,
-    max_results: int,
-) -> list[dict[str, Any]]:
-    """Reserve at least one RePEc hit for economics discipline queries."""
-    if discipline != SCIENTIFIC_DISCIPLINE_ECONOMICS:
-        return kept
-    if any(str(r.get("_adapter") or "") == "repec" for r in kept):
-        return kept
-    repec_rows = [r for r in candidates if str(r.get("_adapter") or "") == "repec"]
-    if not repec_rows:
-        return kept
-    best = max(
-        repec_rows,
-        key=lambda row: float(row.get("_scientific_relevance") or 0.0),
-    )
-    if best.get("_scientific_relevance") is None:
-        from core.knowledge.ranking.relevance import score_evidence_row
-
-        best = dict(best)
-        best["_scientific_relevance"] = score_evidence_row(best, query=query)
-    trimmed = kept[: max(0, max_results - 1)]
-    return [best, *trimmed]
-
-
-def _ensure_physics_arxiv_slot(
-    kept: list[dict[str, Any]],
-    candidates: list[dict[str, Any]],
-    *,
-    discipline: str,
-    query: str,
-    max_results: int,
-) -> list[dict[str, Any]]:
-    """Reserve at least one arXiv hit for physics discipline queries."""
-    if discipline != SCIENTIFIC_DISCIPLINE_PHYSICS:
-        return kept
-    if any(str(r.get("_adapter") or "") == "arxiv" for r in kept):
-        return kept
-    arxiv_rows = [r for r in candidates if str(r.get("_adapter") or "") == "arxiv"]
-    if not arxiv_rows:
-        return kept
-    best = max(
-        arxiv_rows,
-        key=lambda row: float(row.get("_scientific_relevance") or 0.0),
-    )
-    if best.get("_scientific_relevance") is None:
-        from core.knowledge.ranking.relevance import score_evidence_row
-
-        best = dict(best)
-        best["_scientific_relevance"] = score_evidence_row(best, query=query)
-    trimmed = kept[: max(0, max_results - 1)]
-    return [best, *trimmed]
-
-
-def apply_discipline_slots(
-    kept: list[dict[str, Any]],
-    slot_pool: list[dict[str, Any]],
-    *,
-    discipline: str,
-    query: str,
-    max_results: int,
-) -> list[dict[str, Any]]:
-    """Run every discipline slot reservation (chemistry, economics, physics).
-
-    Slots may only reserve a row from ``slot_pool``: rows that passed the
-    relevance gate, or the whole pool when UNSCORED (as before S4). Shared by
-    ``run`` and the offline eval (S13).
-    """
-    for ensure in (
-        _ensure_chemistry_pubchem_slot,
-        _ensure_economics_repec_slot,
-        _ensure_physics_arxiv_slot,
-    ):
-        kept = ensure(
-            kept,
-            slot_pool,
-            discipline=discipline,
-            query=query,
-            max_results=max_results,
-        )
-    return kept
 
 
 WARNING_ADAPTER_TIMEOUT = "adapter_timeout"
@@ -702,13 +576,6 @@ class ScientificEvidencePipeline:
             question=semantic or query,
         )
         kept, rejected = ranking.kept, ranking.rejected
-        kept = apply_discipline_slots(
-            kept,
-            ranking.slot_pool,
-            discipline=discipline_match.discipline,
-            query=query,
-            max_results=budget,
-        )
         sufficiency = ranking.sufficiency
         if ranking.scored:
             sufficiency = _final_sufficiency(kept, ranking.sufficiency, SCIENTIFIC_THRESHOLDS)

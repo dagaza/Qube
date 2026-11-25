@@ -5,7 +5,6 @@ For every scientific fixture and query mode, the production replay is compared
 with one arm per heuristic switched off:
 
 * ``trial_grounding``  — no trial-acronym boost (ranking side);
-* ``discipline_slots`` — no PubChem / RePEc / arXiv slot reservation (ranking side);
 * ``discipline_routing`` — every query routed as ``general_science`` (pool side);
 * ``query_type_routing`` — discipline order only (pool side).
 
@@ -43,7 +42,6 @@ from core.knowledge.scientific_adapters import (  # noqa: E402
 
 ARMS: dict[str, dict[str, Any]] = {
     "trial_grounding": {"ablate": (qe.ABLATE_TRIAL_GROUNDING,)},
-    "discipline_slots": {"ablate": (qe.ABLATE_DISCIPLINE_SLOTS,)},
     "discipline_routing": {"route_arm": ROUTE_NO_DISCIPLINE},
     "query_type_routing": {"route_arm": ROUTE_NO_QUERY_TYPE},
 }

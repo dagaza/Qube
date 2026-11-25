@@ -233,50 +233,6 @@ class ScientificPipelineGateTests(_PipelineHarness):
         json.dumps(payload)
 
 
-class SlotReservationGateTests(unittest.TestCase):
-    """Discipline slots may only reserve rows that passed the gate."""
-
-    def tearDown(self) -> None:
-        set_reranker_scorer_for_tests(None)
-
-    def _gated(self, scorer, max_results=2):
-        from core.knowledge.pipeline_scientific import _rank_candidates_gated
-        from core.knowledge.types import RetrievalContext
-
-        set_reranker_scorer_for_tests(scorer)
-        ctx = RetrievalContext(query="semaglutide outcomes", semantic_query="semaglutide outcomes")
-        return _rank_candidates_gated(
-            [dict(r) for r in (_SEMA_1, _SEMA_2, _ANT_COLONY)], ctx=ctx, max_results=max_results
-        )
-
-    def test_irrelevant_arxiv_row_not_reserved(self) -> None:
-        from core.knowledge.pipeline_scientific import _ensure_physics_arxiv_slot
-        from core.knowledge.scientific_discipline import SCIENTIFIC_DISCIPLINE_PHYSICS
-
-        ranking = self._gated(_topic_scorer)
-        self.assertNotIn("arxiv", [r["_adapter"] for r in ranking.slot_pool])
-        kept = _ensure_physics_arxiv_slot(
-            ranking.kept, ranking.slot_pool, discipline=SCIENTIFIC_DISCIPLINE_PHYSICS,
-            query="q", max_results=2,
-        )
-        self.assertNotIn("arxiv", [r["_adapter"] for r in kept])
-
-    def test_relevant_arxiv_row_is_reserved(self) -> None:
-        from core.knowledge.pipeline_scientific import _ensure_physics_arxiv_slot
-        from core.knowledge.scientific_discipline import SCIENTIFIC_DISCIPLINE_PHYSICS
-
-        ranking = self._gated(
-            lambda _q, docs: [9.0 if "emaglutide" in d else 0.5 for d in docs], max_results=1
-        )
-        self.assertNotIn("arxiv", [r["_adapter"] for r in ranking.kept])  # budget 1, lower score
-        self.assertIn("arxiv", [r["_adapter"] for r in ranking.slot_pool])  # passed keep
-        kept = _ensure_physics_arxiv_slot(
-            ranking.kept, ranking.slot_pool, discipline=SCIENTIFIC_DISCIPLINE_PHYSICS,
-            query="q", max_results=1,
-        )
-        self.assertEqual([r["_adapter"] for r in kept], ["arxiv"])
-
-
 class InsufficientPromptTests(unittest.TestCase):
     def _sys(self, **kw):
         from core.prompt_blocks import build_prompt_blocks, compose_system_prompt
