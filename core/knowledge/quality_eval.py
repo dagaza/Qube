@@ -117,7 +117,7 @@ POOL_MODES: tuple[str, ...] = ("production", "widened", "full")
 # ``{"refresh": <stage>, "moved": "out" | "in"}`` in ``pool_moves``. Reports
 # record the latest refresh as ``pool_refresh``, so a stored run's pool can be
 # rebuilt as it was: ``as_of=None`` is before every stamped refresh.
-POOL_REFRESHES: tuple[str, ...] = ("S22",)
+POOL_REFRESHES: tuple[str, ...] = ("S22", "S23")
 CURRENT_POOL_REFRESH: str = POOL_REFRESHES[-1]
 
 

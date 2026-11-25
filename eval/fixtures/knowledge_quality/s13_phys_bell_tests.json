@@ -33,7 +33,8 @@
       "production": [
         "arxiv",
         "inspire_hep",
-        "openalex"
+        "openalex",
+        "crossref"
       ],
       "no_discipline_routing": [
         "openalex",
@@ -151,7 +152,12 @@
           "query": "production",
           "adapter": "crossref",
           "rank": 0,
-          "route_added": true
+          "pool_moves": [
+            {
+              "refresh": "S23",
+              "moved": "in"
+            }
+          ]
         }
       ],
       "label": "relevant",
@@ -181,7 +187,12 @@
           "query": "production",
           "adapter": "crossref",
           "rank": 1,
-          "route_added": true
+          "pool_moves": [
+            {
+              "refresh": "S23",
+              "moved": "in"
+            }
+          ]
         }
       ],
       "label": "partial",
@@ -208,7 +219,12 @@
           "query": "production",
           "adapter": "crossref",
           "rank": 2,
-          "route_added": true
+          "pool_moves": [
+            {
+              "refresh": "S23",
+              "moved": "in"
+            }
+          ]
         }
       ],
       "label": "relevant",

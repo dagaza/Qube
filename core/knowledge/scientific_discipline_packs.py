@@ -103,9 +103,13 @@ SCIENTIFIC_DISCIPLINE_PACKS: tuple[ScientificDisciplinePack, ...] = (
         label="Physics",
         ui_group="Science",
         primary_adapters=("arxiv", "inspire_hep"),
-        fallback_adapters=("openalex", "nasa_ads"),
+        fallback_adapters=("openalex", "nasa_ads", "crossref"),
         status="active",
-        notes="6c-5 + 7a: arXiv + INSPIRE-HEP; NASA ADS live with API token.",
+        notes=(
+            "6c-5 + 7a: arXiv + INSPIRE-HEP; NASA ADS live with API token. S23 (D40): "
+            "Crossref fallback, which the general route used to reach alone (the S13 "
+            "Bell-test loss)."
+        ),
     ),
     ScientificDisciplinePack(
         id=SCIENTIFIC_DISCIPLINE_COMPUTER_SCIENCE,

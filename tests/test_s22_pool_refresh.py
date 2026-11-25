@@ -115,7 +115,7 @@ class RefreshStampTests(unittest.TestCase):
         self.assertNotIn("pool_moves", hits["pm0"])
         self.assertEqual([r["title"] for r in qe.fixture_pool(fx)], ["pm0", "cr0"])
         self.assertEqual([r["title"] for r in qe.fixture_pool(fx, as_of=None)], ["who0", "pm0"])
-        rep = qe.evaluate_fixture(fx, ranker="token")
+        rep = qe.evaluate_fixture(fx, ranker="token", as_of="S22")
         self.assertEqual((rep["pool_refresh"], rep["pool_size"]), ("S22", 2))
 
     def test_unstamped_refresh_records_nothing(self) -> None:
@@ -148,6 +148,8 @@ class CorpusTests(unittest.TestCase):
             for cand in fx.get("candidates") or []:
                 for hit in cand.get("retrieved") or []:
                     for move in hit.get("pool_moves") or ():
+                        if move.get("refresh") != "S22":
+                            continue  # later refreshes (S23) are tested with their stage
                         self.assertEqual((hit["adapter"], move), ("who", {"refresh": "S22", "moved": "out"}))
                         moved[fid] = moved.get(fid, 0) + 1
         self.assertEqual(
@@ -168,13 +170,17 @@ class CorpusTests(unittest.TestCase):
                     for metric in qe.POOL_RELATIVE_METRICS:
                         self.assertTrue(qe._same_metric(rep[metric], stored[rep["id"]][metric]), (rep["id"], metric))
 
-    def test_s22_token_baselines_are_todays_replay(self) -> None:
+    def test_s22_token_baselines_are_the_replay_as_of_s22(self) -> None:
+        # S23's refresh (D40) changed today's pools; ``as_of="S22"`` replays them
+        # as S22 left them.
         for mode in ("production", "standalone"):
             with self.subTest(mode=mode):
                 base = json.loads((BASELINES / f"kq_s22_token_{mode}.json").read_text(encoding="utf-8"))
                 stored = {r["id"]: r for r in base["results"]}
                 for entry in self.entries:
-                    rep = qe.evaluate_fixture(self.fixtures[entry["id"]], ranker="token", query_mode=mode)
+                    rep = qe.evaluate_fixture(
+                        self.fixtures[entry["id"]], ranker="token", query_mode=mode, as_of="S22"
+                    )
                     want = stored[entry["id"]]
                     self.assertEqual(rep["kept_titles"], want["kept_titles"], entry["id"])
                     self.assertEqual(rep["pool_size"], want["pool_size"], entry["id"])
