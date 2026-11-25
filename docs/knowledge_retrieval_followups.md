@@ -65,7 +65,7 @@ Several decisions need data only real use produces. Collection starts now and ru
 | Phase | Theme | Stages | Changes behaviour | Owner decisions expected | Size |
 |---|---|---|---|---|---|
 | 0 | Housekeeping and release safety | S14–S16 | Barely | Release CI change; the V21 fix | S |
-| 1 | Fixes under every turn | S17–S20 | Yes | Sidecar thread defaults; each re-enabled sidecar task | M–L |
+| 1 | Fixes under every turn | S40, S17–S20 | Yes | Sidecar thread defaults; each re-enabled sidecar task | M–L |
 | 2 | Scholarly routing and adapters | S21–S23 | Yes | Keep / gate / drop per adapter; Crossref in packs | M |
 | 3 | Measurements that need live runs | S24–S26 | Maybe | Quota days; trusted scope (D19); burst budget | S–M |
 | 4 | Follow-up understanding | S27–S30 | Yes | Slot steering; service routing | M |
@@ -78,7 +78,7 @@ Several decisions need data only real use produces. Collection starts now and ru
 - Phases 0 and 1 come first: release safety, and fixes that later phases depend on (the sidecar for S29, the history budget for Phase 6).
 - Phase 2 fixes live defects in scholarly routing (§6 S22).
 - Phase 6 comes before 4 and 5 for two reasons. Library has had the most recent product work (#67, #68, #71), and its relevance floors are the kind V4 found dead on the web path. Its long run also gives Track 0 time to collect the data that Phases 4 and 5 decide on.
-- Stage numbers follow phase numbers, not execution order.
+- Stage numbers follow phase numbers, not execution order. S40 was added after the plan was numbered (D25) and runs first in Phase 1.
 
 ```mermaid
 flowchart LR
@@ -86,9 +86,9 @@ flowchart LR
   T0 -.-> S32
   T0 -.-> S37
   S14 --> S15 --> S16
-  S16 --> S17[S17 history tokens]
-  S16 --> S18[S18 sidecar threads] --> S19[S19 think fix + retrieval tasks] --> S20[S20 other sidecar tasks]
-  S16 --> S21[S21 eval tooling] --> S22[S22 dead adapters] --> S23[S23 Crossref packs + trials]
+  S16 --> S40[S40 test isolation] --> S17[S17 history tokens]
+  S40 --> S18[S18 sidecar threads] --> S19[S19 think fix + retrieval tasks] --> S20[S20 other sidecar tasks]
+  S40 --> S21[S21 eval tooling] --> S22[S22 dead adapters] --> S23[S23 Crossref packs + trials]
   S17 --> S33[S33 library fixtures] --> S34[S34 shadow] --> S35[S35 gate] --> S36[S36 query resolution]
   S36 --> S27[S27 held-out set + residuals] --> S28[S28 subject routing]
   S19 --> S29[S29 slot steering]
@@ -149,8 +149,33 @@ flowchart LR
 - **Tests:** a unit test for the clamp with a callable `n_ctx`; the mocked test runs offline.
 - **Acceptance:** the test makes no network calls; the clamp runs (no "clamp skipped" line in a smoke turn); the full suite matches the reference.
 - **Decisions:** the V21 fix (engine owner).
+- **As built (2026-11-25):**
+  - **Hermetic scientific test (V35).** A probe that records and refuses every DNS lookup and socket connect showed `test_v2_scientific_bundle` reaching six live hosts on every run: `tools.cdc.gov`, `data.cdc.gov`, `ghoapi.azureedge.net` (WHO), `clinicaltrials.gov`, `api.fda.gov` and `www.ebi.ac.uk` (Europe PMC). Discipline routing for a medical question picks them on top of the three mocked adapters, and the test still passed offline because adapters swallow their own errors.
+    - Now every adapter in `SEARCH_FUNCTIONS` (58) is replaced by an empty fake; PubMed and OpenAlex keep their fixture rows, and the original assertions are unchanged.
+    - The test also asserts that no DNS lookup or connect is attempted. The same guard around the old three-adapter mapping records the six hosts, so the assertion catches a regression.
+  - **Engine clamp (V21 → V36).** The clamp moved into `NativeLlamaEngine._clamp_max_tokens_for_prompt` and reads the window through `loaded_n_ctx()`, which calls `n_ctx()` and falls back to the loaded, then the requested window. The log lines are unchanged.
+    - *Before:* `int(<bound method>)` raised `TypeError`, so every clamp was skipped and `max_tokens` reached llama-cpp unclamped. llama-cpp cut it to `n_ctx − prompt` itself, so nothing overflowed. This machine's `llm_debug.log` holds 17 "clamp skipped" lines, all this `TypeError`, and no clamp line.
+    - *Behaviour change:* when the requested `max_tokens` does not fit, it becomes `n_ctx − prompt − 64` (at least 256), 64 tokens below llama-cpp's own cut. `effective_max_tokens`, which the truncation notice compares against, is now that real budget rather than the unclamped request, so a long prompt that leaves little room can now trigger the notice heuristic where it could not before.
+    - *Real model:* Qwen3-1.7B Q6_K on CPU, `n_ctx=2048`, a 1500-token prompt. `type(llm.n_ctx)` is `method`; the clamp gives 4096 → 484 with and without the user cap, logs one `[OutputTokenBudget] max_tokens 4096 -> 484` line, and no "clamp skipped". This calls the method on a real `Llama`; it is not a full app turn.
+  - **Tests write into the real `~/.qube` (V37).** Found because `~/.qube/models/search/reranker.download_failed` appeared during the S15 suite run. An audit hook on a full run recorded every write, remove and mkdir under `~/.qube`, per test.
+    - Fixed here, as it is this plan's code (S3's back-off marker): `test_reranker_failure_is_reported_not_fatal` wrote the marker into the real `models/search/`, and `test_balanced_search_also_downloads_missing_reranker` deleted it on its success path, so a real failure marker could vanish during a test run. Both now patch `reranker_dir` to `tmp_path` and assert the marker is written or cleared there. With the audit hook, the S16 test files make no write or remove under `~/.qube`.
+    - The rest is listed in V37 and is fixed suite-wide by the new stage S40 (D25).
+  - **Flaky Qt test (V38).** `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` leaves a background-build callback queued; when it fires after its widget is gone, Qt reports "wrapped C/C++ object of type BackgroundBuildBridge has been deleted". It hit that test itself (FAILED) in the audited run and the next test, `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` (setup ERROR), in the clean run. On a clean worktree of `1b6fb88` the phase-1 file fails this way in 3 of 6 runs. Pre-existing and untouched; §7 lists it as known-flaky.
+  - **Full suite** (`-m "not packaging"`, final run, after the marker-test fix): **4251 passed** of 4256 collected (S15: 4244 of 4249, +7 clamp tests) and the 5 known failures; the V38 test passed and then errored at its own teardown. Qt teardown abort as before. The two earlier runs (audited, and clean before the marker fix) gave 4250, because V38 cost one result in each.
 
 ### Phase 1 — Fixes under every turn
+
+#### S40 — Keep the test suite out of the real `~/.qube` (V37, D25)
+
+- **Why:** a full run writes into the developer's own data directory (V37): `settings.json`, `model_performance_store.json` (a fake model entry accumulates there), companion state, `logs/`, bootstrap trace files and model markers. Later phases measure from those logs (Track 0) and from local stats, so the suite must not touch them.
+- **Changes:**
+  - In `tests/conftest.py`, before any app module is imported: point `HOME` (and `LOCALAPPDATA` on Windows) at a per-session temp directory, so `core.paths.user_data_root()` and the 37 direct `Path.home()` / `expanduser("~")` lines in `core/`, `workers/` and `ui/` resolve there. Copy nothing in.
+  - Reset module-level switches that leak between tests, starting with `core.bootstrap_trace._ENABLED` (it made `test_knowledge_rerank` write trace files, V37).
+  - Fix any test that relied on the real home directory, without weakening its assertions.
+- **Tests:** re-run the S16 audit hook over the full suite; it must record **zero** writes, removes or mkdirs under the real `~/.qube`.
+- **Risks:** tests that read real models or settings by accident (the S4 reranker fixture already hides the installed model); Windows CI, where `user_data_root()` reads `LOCALAPPDATA`; paths computed at import time before the fixture runs.
+- **Acceptance:** zero real-home writes in the audit; the full suite matches the reference; Windows and macOS CI unchanged.
+- **Decisions:** none beyond D25.
 
 #### S17 — Token-aware history windowing (V20)
 
@@ -340,7 +365,7 @@ What they lack is the cross-encoder gate, the sufficiency state and honest "not 
 
 A new session has no memory of earlier ones. Read this section, then §3–§6, then the open stage's entry and the progress log.
 
-**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 in progress: S14 committed (`1b6fb88`); S15 implemented and verified locally, not committed; next is S16.
+**State.** Branch `feat/kr-followups-phase0` from `main` `0e6944a`. Phase 0 implemented, not pushed: S14 `1b6fb88`, S15 `2fd25be`, S16 the commit after it (`git log`). Next is pushing Phase 0 and opening its PR (owner's call), then S40 (test isolation, D25), then S17: Phase 1, on a new branch and PR from `main` per D23.
 
 **Commands** (repo root, `.venv`):
 
@@ -348,7 +373,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 - Full suite: `QT_QPA_PLATFORM=offscreen HF_HUB_OFFLINE=1 .venv/bin/python -m pytest -v -p no:cacheprovider -p no:warnings -m "not packaging" tests > <log> 2>&1`.
   - The process ends with the known Qt teardown abort (exit 134, no summary line), so count results from the log: `grep -o PASSED <log> | wc -l` and `grep -o FAILED <log> | wc -l`. Do **not** count ` PASSED` with a leading space: a test that prints output pushes its result to the start of the next line, and that count misses it (V34).
   - Cross-check against the collected count: `... -m "not packaging" --collect-only -q tests | tail -1` must equal passed + failed (+ skipped).
-  - Reference (S15): **4244 passed** of 4249 collected; on `main` before S15, 4228 of 4233. Exactly these 5 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
+  - Reference (S16): **4251 passed** of 4256 collected; S15 4244 of 4249; on `main` before S15, 4228 of 4233. Known-flaky (V38): `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` can fail, error at its teardown (an extra ERROR, pass count unchanged), or leave `test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist` with a setup ERROR (pass count one lower). Exactly these 5 failures: `test_linux_ggml_release_verify.py` ×2 (`test_broken_deb_lib_fails_avx_vnni_stub`, `test_broken_deb_q8_uses_vex_vnni`), `test_type_to_search.py` ×2 (`test_skips_when_history_search_focused`, `test_skips_when_other_text_field_focused`), `test_winget_validation.py::test_explicit_smoke_validation_skips_consent_and_applies_shortcut`. Any other failure is new.
 - Offline eval (needs the reranker model at `~/.qube/models/search/reranker/`): `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_knowledge_quality.py --corpus eval/retrieval_corpus/v1_knowledge_quality.json --ranker <token|embed|ce> --query-mode <production|standalone> [--pool-mode widened] [--json] [--compare <baseline>]`.
   - Compare against `eval/retrieval_corpus/baselines/kq_s13_*`, using `--pool-mode widened` for `ce`. Always pass the relative `--corpus` path.
 - Heuristic A/B: `HF_HUB_OFFLINE=1 .venv/bin/python tools/evaluate_heuristic_ab.py` (S13).
@@ -373,7 +398,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 
 ## 8. Progress log
 
-> **Last reviewed:** 2026-11-25, S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
+> **Last reviewed:** 2026-11-25, S16 implemented (hermetic scientific test, V35; engine clamp fixed, V36; suite writes into `~/.qube`, V37, new stage S40 per D25; flaky Qt test, V38); S15 implemented (1.3.60 spelling data missing, V33; release self-check; count method fixed, V34); plan created (S14, `1b6fb88`).
 
 ### Deliverables
 
@@ -386,6 +411,11 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 | 2026-11-25 | S15 | Release self-check | Done | `core/bundle_self_check.py`, `qube_entry.py` (`--self-check-bundle <file>`); `scripts/release/smoke_linux_dist.sh`, `smoke_dist.ps1`, `smoke_dmg.sh`. Full local build: exit 0, both checks ok, 1.1 s; 1.3.60-spec control: `spelling_en` fails, exit 1 | PowerShell and macOS scripts not run here; CI runs them at the next `v*` tag |
 | 2026-11-25 | S15 | Tests | Done | `tests/test_bundle_self_check.py` (new, 16 tests): dev checks pass, failure reported not raised, missing word list and wrong correction fail, flag forms, JSON + exit code, no stdout (windowed build), entry dispatch before validation and Qt, spec text, smoke scripts call the flag. Full suite (`-m "not packaging"`): **4244 passed** of 4249 collected (main before S15: 4228 of 4233, +16), the same 5 known failures, Qt teardown abort as before. No existing test changed | — |
 | 2026-11-25 | S15 | Acceptance | Done | Findings recorded ✓ (V33); the self-check fails on a build without the files and passes on the fixed build ✓ (local full build and control); patch release decided: none, the fix ships with the next release (D24) | CI first runs the new smoke steps at the next `v*` tag; packaged builds keep the spelling variant off until then |
+| 2026-11-25 | S16 | Hermetic scientific test (V35) | Done | `tests/test_scientific_evidence.py`: all 58 `SEARCH_FUNCTIONS` faked, zero DNS/connect asserted; the same guard on the old mapping records 6 live hosts | — |
+| 2026-11-25 | S16 | Engine clamp (V21, V36) | Done | `workers/native_llama_engine.py`: `_clamp_max_tokens_for_prompt` reads the window via `loaded_n_ctx()`. Real `Llama` (Qwen3-1.7B, CPU, `n_ctx` 2048): 4096 → 484, clamp line logged, no "clamp skipped" | Not checked in a full app turn |
+| 2026-11-25 | S16 | `~/.qube` writes (V37) | Partly | Audit hook over a full run; `tests/test_bootstrap_search_download.py`: the two marker tests use `tmp_path`; fake model entry removed from the owner's `model_performance_store.json` (backup kept) | Suite-wide isolation: S40 (D25) |
+| 2026-11-25 | S16 | Tests | Done | `tests/test_output_token_budget.py` +7 (old expression raises on a method; clamp to the loaded window; cap kept when it fits; uncapped; no prompt; tokenizer failure; unexpected error logs "clamp skipped"). Full suite: **4251 passed** of 4256 (S15 4244, +7), the 5 known failures; the V38 test errored at teardown after passing. No assertion weakened | — |
+| 2026-11-25 | S16 | Acceptance | Done | No network calls ✓ (V35); the clamp runs ✓ (real `Llama`, no "clamp skipped"); full suite matches the reference ✓ (+7, known failures only, apart from V38) | A smoke turn in the app was not run |
 
 ### Validated findings (V33+)
 
@@ -393,6 +423,10 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 |---|---|---|---|
 | **V33** | The packaged app ships every S1–S13 feature (S3's frozen-build smoke test was never run) | **No: the spelling variant is off in every 1.3.60 build.** The reranker module ships. pyspellchecker's `resources/en.json.gz` does not (Linux tarball and macOS arm64 DMG inspected; Windows builds from the same spec), so `SpellChecker(language="en")` raises and the D6 variant switches itself off with one INFO line. Reproduced with a minimal frozen build, and fixed by collecting the file. No other S1–S13 module or data file is missing. | S15 fixes `qube.spec` and adds a release self-check (§6 S15) |
 | **V34** | Counting ` PASSED` lines gives the full-suite pass count (the predecessor's method) | **No, it undercounts.** A test that prints output pushes its result to the start of the next line, without the leading space. The S15 run had 8 such results (` PASSED` 4236, `PASSED` 4244, 4249 collected = 4244 + 5 failures). `--collect-only` on `2800b62` gives 4221 tests, so the S13 figure was **4216**, not the recorded 4209. Earlier stage counts (S1–S12) used the same method and may be low by a few. | §7 counts every `PASSED` token and cross-checks against `--collect-only`; the predecessor's reference line is corrected |
+| **V35** | `test_v2_scientific_bundle` runs offline (it mocks PubMed, OpenAlex and arXiv) | **No.** Discipline routing also picks CDC (two hosts), WHO, ClinicalTrials.gov, openFDA and Europe PMC, so every run made six live DNS lookups and calls. It passed offline only because adapters swallow their errors. | S16 fakes all 58 registered adapters and asserts zero network attempts |
+| **V36** | V21: the native engine's `max_tokens` clamp never runs | **Confirmed in the field.** This machine's `llm_debug.log`: 17 "clamp skipped" lines, all `int() argument must be … not 'method'`, and 0 clamp lines. llama-cpp's own cut kept replies inside the window. | S16 reads the window via `loaded_n_ctx()`; verified on a real `Llama` (4096 → 484 at `n_ctx` 2048) |
+| **V37** | The test suite leaves the developer's `~/.qube` alone | **No.** A full run writes, per the audit hook: `settings.json` (`test_settings_collapsible_cards`, `test_ui_nav_sidebar`, `test_theme_system`, `test_themes_action_buttons`, `test_lazy_main_stages`, `test_extensible_knowledge_platform`; its content was unchanged after the run); `model_performance_store.json` (`test_native_prompt_contract_runtime`, which has accumulated a fake `registry-model.gguf` entry with 32 requests next to the real models' stats); `companion/mood_state.json` and `motif_state.json`; `.winget-validation-boot-*` and five files in `logs/` (`test_winget_validation`); `logs/bootstrap-trace.jsonl` and `bootstrap-state.json` (from `test_knowledge_rerank`, only because an earlier test leaves the module-level trace switch on); `models/search/reranker.download_failed`, written by one `test_bootstrap_search_download` test and deleted by another. Many more create empty directories. `core.paths.user_data_root()` has no override, and 37 other lines in `core/`, `workers/` and `ui/` use `Path.home()` or `expanduser("~")` directly. | S16 fixes both marker tests. The rest needs a suite-wide isolation of the user data root: S40 (D25) |
+| **V38** | The 5 known failures are the only non-passing tests | **Not always.** `test_surface_fill_phase1.py::test_transcript_wallpaper_host_refresh_callback` leaves a callback queued that can fire after its widget is deleted ("BackgroundBuildBridge has been deleted"). It fails that test, errors it at teardown, or errors the next one at setup (`test_surface_fill_phase2.py::test_bundled_wallpaper_assets_exist`); 3 of 6 runs of the phase-1 file fail on a clean `1b6fb88`. | §7 lists it as known-flaky; one non-pass there alone is not a regression |
 
 ### Owner decisions (D23+)
 
@@ -400,6 +434,7 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 |---|---|---|---|
 | D23 | How should the post-S13 work be structured? | **A new plan document** (this one) with S14+ / D23+ / V33+ numbering; the predecessor is closed. **One branch and PR per phase, from `main`.** **Order:** Phase 0 → 1 → 2 → 6 → 4 → 5 → 7, with Phase 3's live sessions run when quotas allow. (Recorded 2026-11-25.) | All |
 | D24 | 1.3.60 ships without the spelling word list (V33). Cut a 1.3.61 patch release for the S15 fix? | **No.** The fix ships with the next regular release, bundled with more work; until then the spelling variant stays off in packaged builds. (Recorded 2026-11-25, after S15.) | S15 |
+| D25 | The suite writes into the developer's real `~/.qube` (V37). Fix it in this plan, and when? | **Yes, as a new stage S40, first in Phase 1** (before S17, on the Phase 1 branch). The fake `registry-model.gguf` entry in the owner's `model_performance_store.json` was removed after S16, with a backup; the test-written reranker marker was already gone (deleted by the other marker test). (Recorded 2026-11-25.) | S40 |
 
 ### Track 0 checkpoints
 

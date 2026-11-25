@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+import socket
 import sys
 import unittest
+from contextlib import contextmanager
 from unittest.mock import patch
 
 _WS_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -16,6 +18,7 @@ from core.composer_attachments import (  # noqa: E402
     resolve_attachment_routing,
 )
 from core.knowledge.registry import resolve_turn_knowledge_service  # noqa: E402
+from core.knowledge.adapters.registry import SEARCH_FUNCTIONS  # noqa: E402
 from core.knowledge.conflicts.detect import detect_conflicts  # noqa: E402
 from core.knowledge.types import (  # noqa: E402
     EvidenceObject,
@@ -55,6 +58,42 @@ _OPENALEX_ROW = {
 }
 
 
+def _no_rows(*_args, **_kwargs) -> list:
+    return []
+
+
+# Plan S16: replace every registered adapter, not only the three with fixture
+# rows. Discipline routing for a medical question also picks CDC, WHO,
+# ClinicalTrials.gov, openFDA and Europe PMC (and the user's source preferences
+# can add more), which made this test call live APIs on every run.
+_OFFLINE_SEARCH_FUNCTIONS = {
+    **{adapter_id: _no_rows for adapter_id in SEARCH_FUNCTIONS},
+    "pubmed": lambda q, max_results=3: [_PUBMED_ROW],
+    "openalex": lambda q, max_results=3: [_OPENALEX_ROW],
+    "arxiv": lambda q, max_results=3: [],
+}
+
+
+@contextmanager
+def _network_attempts_blocked():
+    """Record and refuse every DNS lookup and socket connect inside the block."""
+    attempts: list[str] = []
+
+    def _getaddrinfo(host, *_a, **_k):
+        attempts.append(f"dns:{host}")
+        raise socket.gaierror("network blocked in test")
+
+    def _connect(_sock, address):
+        attempts.append(f"connect:{address}")
+        raise OSError("network blocked in test")
+
+    with (
+        patch.object(socket, "getaddrinfo", _getaddrinfo),
+        patch.object(socket.socket, "connect", _connect),
+    ):
+        yield attempts
+
+
 class TestScientificEvidence(unittest.TestCase):
     def test_composer_evidence_routing(self) -> None:
         patch = resolve_attachment_routing(
@@ -88,19 +127,19 @@ class TestScientificEvidence(unittest.TestCase):
     @patch("core.knowledge.pipeline_scientific.set_cached_rows")
     @patch.dict(
         "core.knowledge.adapters.registry.SEARCH_FUNCTIONS",
-        {
-            "pubmed": lambda q, max_results=3: [_PUBMED_ROW],
-            "openalex": lambda q, max_results=3: [_OPENALEX_ROW],
-            "arxiv": lambda q, max_results=3: [],
-        },
+        _OFFLINE_SEARCH_FUNCTIONS,
         clear=False,
     )
     def test_v2_scientific_bundle(self, _set_cache, _get_cache) -> None:
-        outcome = run_v2_web_retrieval(
-            query="semaglutide cardiovascular outcomes",
-            semantic_query="semaglutide cardiovascular outcomes",
-            knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
-        )
+        with _network_attempts_blocked() as attempts:
+            outcome = run_v2_web_retrieval(
+                query="semaglutide cardiovascular outcomes",
+                semantic_query="semaglutide cardiovascular outcomes",
+                knowledge_service=SERVICE_SCIENTIFIC_EVIDENCE,
+            )
+        # Plan S16: adapters swallow their own errors, so a live call would not
+        # fail the test by itself; pin that none is attempted.
+        self.assertEqual(attempts, [])
 
         self.assertFalse(outcome.skip_enrichment)
         assert outcome.bundle is not None
