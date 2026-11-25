@@ -278,9 +278,9 @@ class CliTests(unittest.TestCase):
         self.assertIn("needs --compare", proc.stderr)
 
     def test_compare_on_shared_pools(self) -> None:
-        # The S13 token baseline is today's token run, so shared scoring finds no
+        # The S21 token baseline is today's token run, so shared scoring finds no
         # regression and scores every fixture.
-        proc = self._run("--json", "--compare", str(BASELINES / "kq_s13_token_production.json"),
+        proc = self._run("--json", "--compare", str(BASELINES / "kq_s21_token_production.json"),
                          "--pool-scoring", "shared")
         self.assertEqual(proc.returncode, 0, proc.stdout[-2000:] + proc.stderr)
         summary = json.loads(proc.stdout)

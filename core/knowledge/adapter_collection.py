@@ -193,7 +193,8 @@ def _normalize_title(title: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", (title or "").lower()).strip()
 
 
-def _row_keys(row: dict[str, Any]) -> list[str]:
+def merge_keys(row: dict[str, Any]) -> list[str]:
+    """Identity keys ``rrf_merge`` fuses on: the DOI, then the normalised title."""
     keys: list[str] = []
     doi = str(row.get("doi") or "").strip().lower()
     if doi:
@@ -222,7 +223,7 @@ def rrf_merge(
     variants: list[list[str]] = []
     for ranked in ranked_lists:
         for rank, row in enumerate(ranked):
-            keys = _row_keys(row)
+            keys = merge_keys(row)
             slot = next((canonical[key] for key in keys if key in canonical), None)
             if slot is None:
                 slot = len(rows)
@@ -245,6 +246,23 @@ def rrf_merge(
     return merged[:limit] if limit else merged
 
 
+def first_seen_unique(rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    """``rows`` without those ``rrf_merge`` fuses into an earlier one, in order.
+
+    A row is a duplicate when one of its ``merge_keys`` belongs to an earlier
+    row, kept or dropped, which is how ``rrf_merge`` assigns slots. The offline
+    replay uses this to rank the pool production ranks (plan S21, D34).
+    """
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        keys = merge_keys(row)
+        if not any(key in seen for key in keys):
+            out.append(row)
+        seen.update(keys)
+    return out
+
+
 __all__ = [
     "AdapterTask",
     "CollectionResult",
@@ -254,5 +272,7 @@ __all__ = [
     "VARIANT_RAW",
     "VARIANT_SPELLING",
     "collect_adapter_rows",
+    "first_seen_unique",
+    "merge_keys",
     "rrf_merge",
 ]

@@ -175,6 +175,7 @@ def fixture_pool(
     query_mode: str = "production",
     pool_mode: str = "production",
     route_arm: str | None = None,
+    merge: bool = True,
 ) -> list[dict[str, Any]]:
     """Candidate rows to rank (copies), in the order the adapters returned them.
 
@@ -189,6 +190,11 @@ def fixture_pool(
     ``route_arm`` (S13) selects the adapters one A/B arm would query, from the
     fixture's ``routes``. Without it, hits captured only for an arm
     (``route_added``) are left out, so the pool is the one first captured.
+
+    ``merge`` (S21, D34): on the scientific path, rows production's
+    ``rrf_merge`` fuses into an earlier one (same DOI or normalised title, but
+    captured as separate candidates) are left out, as the pipeline would.
+    ``False`` rebuilds the pool runs stored before S21 ranked.
     """
     candidates = fixture.get("candidates") or []
     return [
@@ -199,6 +205,7 @@ def fixture_pool(
             query_mode=query_mode,
             pool_mode=pool_mode,
             route_arm=route_arm,
+            merge=merge,
         )
     ]
 
@@ -210,6 +217,7 @@ def _pool_indices(
     query_mode: str,
     pool_mode: str,
     route_arm: str | None,
+    merge: bool = True,
 ) -> list[int]:
     """Indices into ``fixture["candidates"]`` of ``fixture_pool``'s rows, in pool order."""
     if pool_mode not in POOL_MODES:
@@ -252,7 +260,23 @@ def _pool_indices(
         if best is not None:
             picked.append(best)
     picked.sort()
-    return [idx for _, _, idx in picked]
+    order = [idx for _, _, idx in picked]
+    return _merged_indices(fixture, order) if merge else order
+
+
+def _merged_indices(fixture: dict[str, Any], order: list[int]) -> list[int]:
+    """``order`` without the rows the scientific merge fuses into an earlier one.
+
+    The pool order is the pipeline's task order (adapter, then rank), so the
+    first-seen copy is the one ``rrf_merge`` keeps. Other paths do not merge.
+    """
+    if _normalize_path(fixture.get("path")) != PATH_SCIENTIFIC:
+        return order
+    from core.knowledge.adapter_collection import first_seen_unique
+
+    candidates = fixture.get("candidates") or []
+    keep = {id(row) for row in first_seen_unique([candidates[i] for i in order])}
+    return [i for i in order if id(candidates[i]) in keep]
 
 
 def pool_expect(fixture: dict[str, Any], pool: Sequence[dict[str, Any]]) -> tuple[str | None, str]:
@@ -939,6 +963,8 @@ def evaluate_fixture(
         # S21: labels of the kept rows, so a stored run can be re-scored on
         # another pool without matching titles (two rows can share one).
         "kept_labels": [r.get("label") for r in kept],
+        # S21 (D34): the pool went through the scientific merge step.
+        "replay_merge": True,
         "state": output.state,
         "abstained": did_abstain,
         "precision_at_k": precision_at_k(kept, k),
@@ -1096,16 +1122,22 @@ def _pool_args(spec: dict[str, Any]) -> dict[str, Any]:
         "query_mode": spec.get("query_mode") or "production",
         "pool_mode": spec.get("pool_mode") or "production",
         "route_arm": spec.get("route_arm"),
+        "merge": bool(spec.get("merge", True)),
     }
 
 
 def run_pool_spec(run: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
-    """``fixture_pool`` arguments of one stored result (run settings + its route arm)."""
+    """``fixture_pool`` arguments of one stored result (run settings + its route arm).
+
+    Results stored before S21 carry no ``replay_merge``: their pools were not
+    merged (D34).
+    """
     return {
         "include_synthetic": bool(run.get("include_synthetic", False)),
         "query_mode": result.get("query_mode") or run.get("query_mode") or "production",
         "pool_mode": result.get("pool_mode") or run.get("pool_mode") or "production",
         "route_arm": result.get("route_arm"),
+        "merge": bool(result.get("replay_merge", False)),
     }
 
 
@@ -1113,14 +1145,22 @@ def shared_pool(fixture: dict[str, Any], specs: Iterable[dict[str, Any]]) -> lis
     """Union of the pools ``specs`` describe: every candidate one of the runs ranked.
 
     Each spec holds ``fixture_pool`` keyword arguments (``query_mode``,
-    ``pool_mode``, ``route_arm``, ``include_synthetic``). Rows are copies, in
-    fixture order (the pool-relative metrics do not depend on it).
+    ``pool_mode``, ``route_arm``, ``include_synthetic``, ``merge``). Rows are
+    copies, in fixture order (the pool-relative metrics do not depend on it).
+    When a spec merges, so does the union: two arms can each see a different
+    copy of one paper.
     """
     picked: set[int] = set()
+    merge = False
     for spec in specs:
-        picked.update(_pool_indices(fixture, **_pool_args(spec)))
+        args = _pool_args(spec)
+        merge = merge or args["merge"]
+        picked.update(_pool_indices(fixture, **args))
+    order = sorted(picked)
+    if merge:
+        order = _merged_indices(fixture, order)
     candidates = fixture.get("candidates") or []
-    return [dict(candidates[i]) for i in sorted(picked)]
+    return [dict(candidates[i]) for i in order]
 
 
 def _same_metric(a: Any, b: Any) -> bool:
