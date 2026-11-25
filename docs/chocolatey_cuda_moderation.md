@@ -61,7 +61,7 @@ Request: verification bypass or re-run when network allows — installer is sile
 ## Package metadata fixes (in repo)
 
 - **Icon:** `package.nuspec` uses PNG (`qube_logo_256.png`) per packaging guidelines (not `.ico`).
-- **Push script:** `push_chocolatey_packages.ps1` fails the job if any `choco push` returns non-zero (1.3.53 CUDA 403 was previously masked as success).
+- **Push script:** `push_chocolatey_packages.ps1` fails the job if any `choco push` returns non-zero (1.3.53 CUDA 403 was previously masked as success). It attempts every package first and fails at the end, so a stuck `qube-cuda` no longer blocks `qube` / `qube-vulkan` (1.3.57–1.3.59 CPU/Vulkan were never pushed because the CUDA 403 aborted the loop).
 
 ## If 1.3.53 verification fails again
 

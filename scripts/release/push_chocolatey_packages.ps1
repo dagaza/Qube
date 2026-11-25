@@ -38,14 +38,23 @@ if ($PackageIds.Count -gt 0) {
     }
 }
 
+# Push every package before failing: a stuck qube-cuda moderation (HTTP 403,
+# see docs/chocolatey_cuda_moderation.md) must not block qube / qube-vulkan.
 $pushed = 0
+$failed = @()
 foreach ($nupkg in $nupkgs) {
     Write-Host "Pushing $($nupkg.FullName)..."
     & choco push $nupkg.FullName --source https://push.chocolatey.org/ --api-key $env:CHOCOLATEY_API_KEY
     if ($LASTEXITCODE -ne 0) {
-        throw "choco push failed for $($nupkg.Name) (exit code $LASTEXITCODE)"
+        Write-Warning "choco push failed for $($nupkg.Name) (exit code $LASTEXITCODE)"
+        $failed += $nupkg.Name
+        continue
     }
     $pushed++
 }
 
-Write-Host "Pushed $pushed Chocolatey package(s) for version $Version."
+Write-Host "Pushed $pushed of $($nupkgs.Count) Chocolatey package(s) for version $Version."
+if ($failed.Count -gt 0) {
+    throw ("choco push failed for: " + ($failed -join ", ") +
+        ". A 403 usually means an older version is stuck in moderation; see docs/chocolatey_cuda_moderation.md.")
+}
