@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Fixed
+- **Release / Chocolatey:** The push script attempts every package before failing, so a `qube-cuda` push rejected while an older version is stuck in moderation (HTTP 403) no longer blocks the `qube` and `qube-vulkan` pushes.
+- **CI / knowledge eval:** `tools/evaluate_knowledge_quality.py` no longer crashes on Windows cp1252 consoles when printing the recency summary.
+
 ## [1.3.59] - 2026-11-23
 
 ### Added
