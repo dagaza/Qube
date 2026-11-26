@@ -23,9 +23,15 @@ HYBRID_CANDIDATE_MULTIPLIER = 4
 
 MMR_LAMBDA = 0.7
 
+# None = evergreen. Tiers come from ``derive_memory_tier``. Knowledge-tier
+# facts (about other people, explicitly remembered, or taken from a document)
+# do not go stale with time: a cat's name stored months ago is still right,
+# and decay let any recent note outrank it in recall (plan V67, D45). What the
+# user states about themselves is preference tier and was already evergreen.
+# Context notes (system-derived) and episodes are time-bound and still decay.
 TEMPORAL_HALF_LIFE_DAYS: dict[str, float | None] = {
     "preference": None,
-    "knowledge": 30.0,
+    "knowledge": None,
     "context": 30.0,
     "episode": 14.0,
     "legacy": 30.0,

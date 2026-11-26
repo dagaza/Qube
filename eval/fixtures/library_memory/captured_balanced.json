@@ -2308,7 +2308,7 @@
        "limit": 6,
        "rows": [
         {
-         "_score": 8.677136421203613,
+         "_score": 8.677135467529297,
          "cols": [
           "_score",
           "chunk_id",
@@ -3628,7 +3628,7 @@
           "source",
           "text"
          ],
-         "ref": "lisbon_trip_itinerary.md::4"
+         "ref": "kestrel_staff_handbook.md::9"
         },
         {
          "_score": 2.4506192207336426,
@@ -3639,7 +3639,7 @@
           "source",
           "text"
          ],
-         "ref": "kestrel_staff_handbook.md::9"
+         "ref": "lisbon_trip_itinerary.md::4"
         },
         {
          "_score": 2.4299755096435547,
@@ -3831,7 +3831,7 @@
           "source",
           "text"
          ],
-         "ref": "kestrel_staff_handbook.md::9"
+         "ref": "lisbon_trip_itinerary.md::4"
         }
        ],
        "text": "Explain how photosynthesis works."
@@ -8316,7 +8316,7 @@
           "source",
           "text"
          ],
-         "ref": "kestrel_staff_handbook.md::6"
+         "ref": "linear_algebra_notes.md::6"
         },
         {
          "_score": 3.45475435256958,
@@ -8327,7 +8327,7 @@
           "source",
           "text"
          ],
-         "ref": "linear_algebra_notes.md::6"
+         "ref": "kestrel_staff_handbook.md::6"
         },
         {
          "_score": 3.436737537384033,
@@ -14797,7 +14797,7 @@
          "ref": "lease_harbour_street.md::8"
         },
         {
-         "_score": 6.2203521728515625,
+         "_score": 6.220351696014404,
          "cols": [
           "_score",
           "chunk_id",
@@ -15000,7 +15000,7 @@
          "ref": "lease_harbour_street.md::8"
         },
         {
-         "_score": 6.2203521728515625,
+         "_score": 6.220351696014404,
          "cols": [
           "_score",
           "chunk_id",
@@ -17668,7 +17668,7 @@
           "source",
           "text"
          ],
-         "ref": "contents_insurance_policy.md::6"
+         "ref": "lease_harbour_street.md::9"
         }
        ],
        "text": "How do I compute a least-squares solution?"
@@ -21670,7 +21670,7 @@
           "source",
           "text"
          ],
-         "ref": "contents_insurance_policy.md::1"
+         "ref": "ledger_api_design.md::2"
         },
         {
          "_score": 3.906771659851074,
@@ -21681,7 +21681,7 @@
           "source",
           "text"
          ],
-         "ref": "ledger_api_design.md::2"
+         "ref": "contents_insurance_policy.md::1"
         }
        ],
        "text": "What's the rate limit on the Ledger API?"
@@ -23981,7 +23981,7 @@
           "source",
           "text"
          ],
-         "ref": "sourdough_notebook.md::2"
+         "ref": "osprey_meeting_notes.md::1"
         }
        ],
        "text": "What about sick days?"
@@ -35200,11 +35200,11 @@
       }
      ],
      "kept": [
-      "mem:mem_spelling",
-      "mem:mem_exam",
+      "mem:mem_mother",
+      "mem:mem_sister",
       "mem:mem_tomasz",
-      "mem:mem_sourdough",
-      "mem:mem_kofi"
+      "mem:mem_cat",
+      "mem:mem_supervisor"
      ],
      "search_text": "What is my brother's name?",
      "top_k": 5,
@@ -36992,11 +36992,11 @@
       }
      ],
      "kept": [
+      "mem:mem_cat",
+      "mem:mem_mother",
+      "mem:mem_sister",
       "mem:mem_quiet_hours",
-      "mem:mem_vegetarian",
-      "mem:mem_hybrid",
-      "mem:mem_portuguese",
-      "mem:mem_coffee"
+      "mem:mem_hybrid"
      ],
      "search_text": "How old is What?",
      "top_k": 5,
@@ -37339,9 +37339,9 @@
       }
      ],
      "kept": [
+      "mem:mem_sister",
       "mem:mem_quiet_hours",
-      "mem:mem_installer",
-      "mem:mem_sister"
+      "mem:mem_installer"
      ],
      "search_text": "Where does Hana work?",
      "top_k": 5,
@@ -37623,11 +37623,11 @@
       }
      ],
      "kept": [
+      "mem:mem_supervisor",
+      "mem:mem_manager",
+      "mem:mem_tomasz",
       "mem:mem_hybrid",
-      "mem:mem_bullets",
-      "mem:mem_metric",
-      "mem:mem_bike_commute",
-      "mem:mem_portuguese"
+      "mem:mem_cat"
      ],
      "search_text": "What field was that in?",
      "top_k": 5,
@@ -38681,7 +38681,7 @@
       "mem:ep_svd",
       "mem:ep_lisbon",
       "mem:ep_lease",
-      "mem:mem_vegetarian"
+      "mem:ep_sourdough"
      ],
      "search_text": "Remind me what we concluded about my bread last time.",
      "top_k": 5,
@@ -40038,14 +40038,31 @@
        ],
        "text": "Who services my heat pump?",
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
+      },
+      {
+       "kind": "scan",
+       "limit": 1,
+       "rows": [
+        {
+         "cols": [
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::6"
+        }
+       ],
+       "where": "source = 'lease_harbour_street.md' AND chunk_id = 6"
       }
      ],
      "kept": [
+      "mem:mem_installer",
       "mem:mem_metric",
-      "mem:mem_hybrid",
-      "mem:mem_rust",
-      "mem:mem_bike_commute",
-      "mem:mem_coffee"
+      "mem:mem_landlord",
+      "mem:mem_sister",
+      "mem:mem_cat",
+      "lease_harbour_street.md::6"
      ],
      "search_text": "Who services my heat pump?",
      "top_k": 5,
@@ -40349,14 +40366,31 @@
        ],
        "text": "What do you know about my landlord?",
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
+      },
+      {
+       "kind": "scan",
+       "limit": 1,
+       "rows": [
+        {
+         "cols": [
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::6"
+        }
+       ],
+       "where": "source = 'lease_harbour_street.md' AND chunk_id = 6"
       }
      ],
      "kept": [
+      "mem:mem_landlord",
       "mem:mem_hybrid",
+      "mem:mem_manager",
+      "mem:mem_supervisor",
       "mem:mem_metric",
-      "mem:mem_quiet_hours",
-      "mem:mem_portuguese",
-      "mem:mem_repaint"
+      "lease_harbour_street.md::6"
      ],
      "search_text": "What do you know about my landlord?",
      "top_k": 5,
@@ -41022,11 +41056,11 @@
       }
      ],
      "kept": [
-      "mem:mem_vegetarian",
-      "mem:mem_hybrid",
-      "mem:mem_metric",
-      "mem:mem_quiet_hours",
-      "mem:mem_portuguese"
+      "mem:mem_manager",
+      "mem:mem_supervisor",
+      "mem:mem_cat",
+      "mem:mem_sister",
+      "mem:mem_vegetarian"
      ],
      "search_text": "Who is my manager?",
      "top_k": 5,
@@ -41417,11 +41451,11 @@
       }
      ],
      "kept": [
+      "mem:mem_mother",
+      "mem:mem_sister",
+      "mem:mem_cat",
       "mem:mem_hybrid",
-      "mem:mem_vegetarian",
-      "mem:mem_portuguese",
-      "mem:mem_bullets",
-      "mem:mem_penicillin"
+      "mem:mem_manager"
      ],
      "search_text": "When is my mum's birthday?",
      "top_k": 5,
@@ -41718,9 +41752,9 @@
      "kept": [
       "mem:mem_bullets",
       "mem:mem_quiet_hours",
-      "mem:mem_exam",
-      "mem:mem_hybrid",
-      "mem:mem_repaint"
+      "mem:mem_kofi",
+      "mem:mem_vegetarian",
+      "mem:mem_manager"
      ],
      "search_text": "What am I saving up for?",
      "top_k": 5,
@@ -42051,11 +42085,11 @@
       }
      ],
      "kept": [
+      "mem:mem_sister",
+      "mem:mem_mother",
       "mem:mem_hybrid",
-      "mem:mem_vegetarian",
-      "mem:mem_coffee",
-      "mem:mem_exam",
-      "mem:mem_repaint"
+      "mem:mem_manager",
+      "mem:mem_vegetarian"
      ],
      "search_text": "What does my sister do for a living?",
      "top_k": 5,
@@ -42446,11 +42480,11 @@
       }
      ],
      "kept": [
-      "mem:mem_vegetarian",
-      "mem:mem_quiet_hours",
-      "mem:mem_portuguese",
-      "mem:mem_penicillin",
-      "mem:mem_bike_commute"
+      "mem:mem_supervisor",
+      "mem:mem_manager",
+      "mem:mem_cat",
+      "mem:mem_sister",
+      "mem:mem_vegetarian"
      ],
      "search_text": "Remind me who my master's supervisor was.",
      "top_k": 5,

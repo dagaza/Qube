@@ -332,10 +332,10 @@
   "memory_recall": {
    "aggregate": {
     "fixtures": 18,
-    "precision_at_k": 0.0524,
-    "ndcg_at_5": 0.1236,
-    "irrelevant_kept_rate": 0.9476,
-    "relevant_recall": 0.1538,
+    "precision_at_k": 0.1524,
+    "ndcg_at_5": 0.7425,
+    "irrelevant_kept_rate": 0.8476,
+    "relevant_recall": 0.7692,
     "abstain_correct": 0.7222,
     "subject_in_query": null,
     "abstain_precision": 0.5,
@@ -348,10 +348,10 @@
    "by_category": {
     "multi_turn": {
      "fixtures": 3,
-     "precision_at_k": 0.1111,
-     "ndcg_at_5": 0.1667,
-     "irrelevant_kept_rate": 0.8889,
-     "relevant_recall": 0.3333,
+     "precision_at_k": 0.2444,
+     "ndcg_at_5": 1.0,
+     "irrelevant_kept_rate": 0.7556,
+     "relevant_recall": 1.0,
      "abstain_correct": 1.0,
      "subject_in_query": null,
      "abstain_precision": null,
@@ -363,10 +363,10 @@
     },
     "recall": {
      "fixtures": 10,
-     "precision_at_k": 0.05,
-     "ndcg_at_5": 0.1107,
-     "irrelevant_kept_rate": 0.95,
-     "relevant_recall": 0.1,
+     "precision_at_k": 0.175,
+     "ndcg_at_5": 0.6652,
+     "irrelevant_kept_rate": 0.825,
+     "relevant_recall": 0.7,
      "abstain_correct": 0.8,
      "subject_in_query": null,
      "abstain_precision": 0.0,
@@ -439,17 +439,17 @@
     "auc_useful_vs_irrelevant": 0.9983
    },
    "abstain_cases": 5,
-   "kept_rows": 60,
+   "kept_rows": 62,
    "memory_rows_kept": null,
    "useful_missed_by_channels": 0
   },
   "memory_narrative": {
    "aggregate": {
     "fixtures": 4,
-    "precision_at_k": 0.35,
-    "ndcg_at_5": 0.6631,
-    "irrelevant_kept_rate": 0.65,
-    "relevant_recall": 0.75,
+    "precision_at_k": 0.4,
+    "ndcg_at_5": 0.743,
+    "irrelevant_kept_rate": 0.6,
+    "relevant_recall": 1.0,
     "abstain_correct": 1.0,
     "subject_in_query": null,
     "abstain_precision": null,
@@ -477,10 +477,10 @@
     },
     "narrative": {
      "fixtures": 3,
-     "precision_at_k": 0.4,
-     "ndcg_at_5": 0.6087,
-     "irrelevant_kept_rate": 0.6,
-     "relevant_recall": 0.6667,
+     "precision_at_k": 0.4667,
+     "ndcg_at_5": 0.7153,
+     "irrelevant_kept_rate": 0.5333,
+     "relevant_recall": 1.0,
      "abstain_correct": 1.0,
      "subject_in_query": null,
      "abstain_precision": null,
@@ -8910,14 +8910,14 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
-    "mem:mem_vegetarian",
-    "mem:mem_quiet_hours",
-    "mem:mem_portuguese",
-    "mem:mem_penicillin",
-    "mem:mem_bike_commute"
+    "mem:mem_supervisor",
+    "mem:mem_manager",
+    "mem:mem_cat",
+    "mem:mem_sister",
+    "mem:mem_vegetarian"
    ],
    "kept_labels": [
-    "irrelevant",
+    "relevant",
     "irrelevant",
     "irrelevant",
     "irrelevant",
@@ -8925,10 +8925,10 @@
    ],
    "linked_chunks": [],
    "abstained": false,
-   "precision_at_k": 0.0,
-   "ndcg_at_5": 0.0,
-   "irrelevant_kept_rate": 1.0,
-   "relevant_recall": 0.0,
+   "precision_at_k": 0.2,
+   "ndcg_at_5": 1.0,
+   "irrelevant_kept_rate": 0.8,
+   "relevant_recall": 1.0,
    "abstain_correct": true,
    "memory_rows_kept": null,
    "pool_size": 21,
@@ -8962,14 +8962,14 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
+    "mem:mem_sister",
+    "mem:mem_mother",
     "mem:mem_hybrid",
-    "mem:mem_vegetarian",
-    "mem:mem_coffee",
-    "mem:mem_exam",
-    "mem:mem_repaint"
+    "mem:mem_manager",
+    "mem:mem_vegetarian"
    ],
    "kept_labels": [
-    "irrelevant",
+    "relevant",
     "irrelevant",
     "irrelevant",
     "irrelevant",
@@ -8977,10 +8977,10 @@
    ],
    "linked_chunks": [],
    "abstained": false,
-   "precision_at_k": 0.0,
-   "ndcg_at_5": 0.0,
-   "irrelevant_kept_rate": 1.0,
-   "relevant_recall": 0.0,
+   "precision_at_k": 0.2,
+   "ndcg_at_5": 1.0,
+   "irrelevant_kept_rate": 0.8,
+   "relevant_recall": 1.0,
    "abstain_correct": true,
    "memory_rows_kept": null,
    "pool_size": 20,
@@ -9014,14 +9014,14 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
+    "mem:mem_mother",
+    "mem:mem_sister",
+    "mem:mem_cat",
     "mem:mem_hybrid",
-    "mem:mem_vegetarian",
-    "mem:mem_portuguese",
-    "mem:mem_bullets",
-    "mem:mem_penicillin"
+    "mem:mem_manager"
    ],
    "kept_labels": [
-    "irrelevant",
+    "relevant",
     "irrelevant",
     "irrelevant",
     "irrelevant",
@@ -9029,10 +9029,10 @@
    ],
    "linked_chunks": [],
    "abstained": false,
-   "precision_at_k": 0.0,
-   "ndcg_at_5": 0.0,
-   "irrelevant_kept_rate": 1.0,
-   "relevant_recall": 0.0,
+   "precision_at_k": 0.2,
+   "ndcg_at_5": 1.0,
+   "irrelevant_kept_rate": 0.8,
+   "relevant_recall": 1.0,
    "abstain_correct": true,
    "memory_rows_kept": null,
    "pool_size": 22,
@@ -9066,14 +9066,14 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
-    "mem:mem_vegetarian",
-    "mem:mem_hybrid",
-    "mem:mem_metric",
-    "mem:mem_quiet_hours",
-    "mem:mem_portuguese"
+    "mem:mem_manager",
+    "mem:mem_supervisor",
+    "mem:mem_cat",
+    "mem:mem_sister",
+    "mem:mem_vegetarian"
    ],
    "kept_labels": [
-    "irrelevant",
+    "relevant",
     "irrelevant",
     "irrelevant",
     "irrelevant",
@@ -9081,10 +9081,10 @@
    ],
    "linked_chunks": [],
    "abstained": false,
-   "precision_at_k": 0.0,
-   "ndcg_at_5": 0.0,
-   "irrelevant_kept_rate": 1.0,
-   "relevant_recall": 0.0,
+   "precision_at_k": 0.2,
+   "ndcg_at_5": 1.0,
+   "irrelevant_kept_rate": 0.8,
+   "relevant_recall": 1.0,
    "abstain_correct": true,
    "memory_rows_kept": null,
    "pool_size": 20,
@@ -9210,25 +9210,28 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
+    "mem:mem_landlord",
     "mem:mem_hybrid",
+    "mem:mem_manager",
+    "mem:mem_supervisor",
     "mem:mem_metric",
-    "mem:mem_quiet_hours",
-    "mem:mem_portuguese",
-    "mem:mem_repaint"
+    "lease_harbour_street.md::6"
    ],
    "kept_labels": [
+    "relevant",
     "irrelevant",
     "irrelevant",
     "irrelevant",
-    "irrelevant",
-    "partial"
+    "irrelevant"
    ],
-   "linked_chunks": [],
+   "linked_chunks": [
+    "lease_harbour_street.md::6"
+   ],
    "abstained": false,
    "precision_at_k": 0.2,
-   "ndcg_at_5": 0.1065,
+   "ndcg_at_5": 0.8262,
    "irrelevant_kept_rate": 0.8,
-   "relevant_recall": 0.0,
+   "relevant_recall": 1.0,
    "abstain_correct": true,
    "memory_rows_kept": null,
    "pool_size": 20,
@@ -9262,25 +9265,28 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
+    "mem:mem_installer",
     "mem:mem_metric",
-    "mem:mem_hybrid",
-    "mem:mem_rust",
-    "mem:mem_bike_commute",
-    "mem:mem_coffee"
+    "mem:mem_landlord",
+    "mem:mem_sister",
+    "mem:mem_cat",
+    "lease_harbour_street.md::6"
    ],
    "kept_labels": [
-    "irrelevant",
+    "relevant",
     "irrelevant",
     "irrelevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [],
+   "linked_chunks": [
+    "lease_harbour_street.md::6"
+   ],
    "abstained": false,
-   "precision_at_k": 0.0,
-   "ndcg_at_5": 0.0,
-   "irrelevant_kept_rate": 1.0,
-   "relevant_recall": 0.0,
+   "precision_at_k": 0.2,
+   "ndcg_at_5": 0.8262,
+   "irrelevant_kept_rate": 0.8,
+   "relevant_recall": 1.0,
    "abstain_correct": true,
    "memory_rows_kept": null,
    "pool_size": 20,
@@ -9316,9 +9322,9 @@
    "kept": [
     "mem:mem_bullets",
     "mem:mem_quiet_hours",
-    "mem:mem_exam",
-    "mem:mem_hybrid",
-    "mem:mem_repaint"
+    "mem:mem_kofi",
+    "mem:mem_vegetarian",
+    "mem:mem_manager"
    ],
    "kept_labels": [
     "irrelevant",
@@ -9366,11 +9372,11 @@
    "top_k": 5,
    "expect": "insufficient",
    "kept": [
-    "mem:mem_spelling",
-    "mem:mem_exam",
+    "mem:mem_mother",
+    "mem:mem_sister",
     "mem:mem_tomasz",
-    "mem:mem_sourdough",
-    "mem:mem_kofi"
+    "mem:mem_cat",
+    "mem:mem_supervisor"
    ],
    "kept_labels": [
     "irrelevant",
@@ -9694,21 +9700,21 @@
     "mem:ep_svd",
     "mem:ep_lisbon",
     "mem:ep_lease",
-    "mem:mem_vegetarian"
+    "mem:ep_sourdough"
    ],
    "kept_labels": [
     "irrelevant",
     "irrelevant",
     "irrelevant",
     "irrelevant",
-    "irrelevant"
+    "relevant"
    ],
    "linked_chunks": [],
    "abstained": false,
-   "precision_at_k": 0.0,
-   "ndcg_at_5": 0.0,
-   "irrelevant_kept_rate": 1.0,
-   "relevant_recall": 0.0,
+   "precision_at_k": 0.2,
+   "ndcg_at_5": 0.3196,
+   "irrelevant_kept_rate": 0.8,
+   "relevant_recall": 1.0,
    "abstain_correct": true,
    "memory_rows_kept": null,
    "pool_size": 28,
@@ -10142,14 +10148,14 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
+    "mem:mem_cat",
+    "mem:mem_mother",
+    "mem:mem_sister",
     "mem:mem_quiet_hours",
-    "mem:mem_vegetarian",
-    "mem:mem_hybrid",
-    "mem:mem_portuguese",
-    "mem:mem_coffee"
+    "mem:mem_hybrid"
    ],
    "kept_labels": [
-    "irrelevant",
+    "relevant",
     "irrelevant",
     "irrelevant",
     "irrelevant",
@@ -10157,10 +10163,10 @@
    ],
    "linked_chunks": [],
    "abstained": false,
-   "precision_at_k": 0.0,
-   "ndcg_at_5": 0.0,
-   "irrelevant_kept_rate": 1.0,
-   "relevant_recall": 0.0,
+   "precision_at_k": 0.2,
+   "ndcg_at_5": 1.0,
+   "irrelevant_kept_rate": 0.8,
+   "relevant_recall": 1.0,
    "abstain_correct": true,
    "memory_rows_kept": null,
    "pool_size": 20,
@@ -10194,14 +10200,14 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
+    "mem:mem_supervisor",
+    "mem:mem_manager",
+    "mem:mem_tomasz",
     "mem:mem_hybrid",
-    "mem:mem_bullets",
-    "mem:mem_metric",
-    "mem:mem_bike_commute",
-    "mem:mem_portuguese"
+    "mem:mem_cat"
    ],
    "kept_labels": [
-    "irrelevant",
+    "relevant",
     "irrelevant",
     "irrelevant",
     "irrelevant",
@@ -10209,10 +10215,10 @@
    ],
    "linked_chunks": [],
    "abstained": false,
-   "precision_at_k": 0.0,
-   "ndcg_at_5": 0.0,
-   "irrelevant_kept_rate": 1.0,
-   "relevant_recall": 0.0,
+   "precision_at_k": 0.2,
+   "ndcg_at_5": 1.0,
+   "irrelevant_kept_rate": 0.8,
+   "relevant_recall": 1.0,
    "abstain_correct": true,
    "memory_rows_kept": null,
    "pool_size": 20,
@@ -10246,19 +10252,19 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
+    "mem:mem_sister",
     "mem:mem_quiet_hours",
-    "mem:mem_installer",
-    "mem:mem_sister"
+    "mem:mem_installer"
    ],
    "kept_labels": [
+    "relevant",
     "irrelevant",
-    "irrelevant",
-    "relevant"
+    "irrelevant"
    ],
    "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
-   "ndcg_at_5": 0.5,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,

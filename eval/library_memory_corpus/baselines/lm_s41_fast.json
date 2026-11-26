@@ -333,7 +333,7 @@
    "aggregate": {
     "fixtures": 18,
     "precision_at_k": 0.875,
-    "ndcg_at_5": 0.6814,
+    "ndcg_at_5": 0.7692,
     "irrelevant_kept_rate": 0.125,
     "relevant_recall": 0.7692,
     "abstain_correct": 0.8333,
@@ -349,7 +349,7 @@
     "multi_turn": {
      "fixtures": 3,
      "precision_at_k": 0.625,
-     "ndcg_at_5": 0.4769,
+     "ndcg_at_5": 0.6667,
      "irrelevant_kept_rate": 0.375,
      "relevant_recall": 0.6667,
      "abstain_correct": 0.6667,
@@ -364,7 +364,7 @@
     "recall": {
      "fixtures": 10,
      "precision_at_k": 0.9375,
-     "ndcg_at_5": 0.7428,
+     "ndcg_at_5": 0.8,
      "irrelevant_kept_rate": 0.0625,
      "relevant_recall": 0.8,
      "abstain_correct": 0.8,
@@ -8561,17 +8561,17 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
-    "mem:mem_mother",
-    "mem:mem_cat"
+    "mem:mem_cat",
+    "mem:mem_mother"
    ],
    "kept_labels": [
-    "irrelevant",
-    "relevant"
+    "relevant",
+    "irrelevant"
    ],
    "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.5,
-   "ndcg_at_5": 0.6309,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.5,
    "relevant_recall": 1.0,
    "abstain_correct": true,
@@ -8907,17 +8907,17 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
-    "mem:mem_e3_error",
-    "mem:mem_installer"
+    "mem:mem_installer",
+    "mem:mem_e3_error"
    ],
    "kept_labels": [
-    "partial",
-    "relevant"
+    "relevant",
+    "partial"
    ],
    "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 1.0,
-   "ndcg_at_5": 0.7967,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.0,
    "relevant_recall": 1.0,
    "abstain_correct": true,
@@ -9819,21 +9819,21 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
+    "mem:mem_sister",
     "mem:mem_quiet_hours",
-    "mem:mem_bike_commute",
     "mem:mem_installer",
-    "mem:mem_sister"
+    "mem:mem_bike_commute"
    ],
    "kept_labels": [
+    "relevant",
     "irrelevant",
     "irrelevant",
-    "irrelevant",
-    "relevant"
+    "irrelevant"
    ],
    "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.25,
-   "ndcg_at_5": 0.4307,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.75,
    "relevant_recall": 1.0,
    "abstain_correct": true,

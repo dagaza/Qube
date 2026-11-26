@@ -8260,7 +8260,7 @@
           "source",
           "text"
          ],
-         "ref": "kestrel_staff_handbook.md::6"
+         "ref": "linear_algebra_notes.md::6"
         },
         {
          "_score": 3.45475435256958,
@@ -8271,7 +8271,7 @@
           "source",
           "text"
          ],
-         "ref": "linear_algebra_notes.md::6"
+         "ref": "kestrel_staff_handbook.md::6"
         },
         {
          "_score": 3.436737537384033,
@@ -17602,7 +17602,7 @@
           "source",
           "text"
          ],
-         "ref": "contents_insurance_policy.md::6"
+         "ref": "lease_harbour_street.md::9"
         }
        ],
        "text": "How do I compute a least-squares solution?"
@@ -37175,10 +37175,10 @@
       }
      ],
      "kept": [
+      "mem:mem_sister",
       "mem:mem_quiet_hours",
-      "mem:mem_bike_commute",
       "mem:mem_installer",
-      "mem:mem_sister"
+      "mem:mem_bike_commute"
      ],
      "search_text": "Where does Hana work?",
      "top_k": 5,
@@ -39556,8 +39556,8 @@
       }
      ],
      "kept": [
-      "mem:mem_mother",
-      "mem:mem_cat"
+      "mem:mem_cat",
+      "mem:mem_mother"
      ],
      "search_text": "What's my cat called?",
      "top_k": 5,
@@ -39864,8 +39864,8 @@
       }
      ],
      "kept": [
-      "mem:mem_e3_error",
-      "mem:mem_installer"
+      "mem:mem_installer",
+      "mem:mem_e3_error"
      ],
      "search_text": "Who services my heat pump?",
      "top_k": 5,

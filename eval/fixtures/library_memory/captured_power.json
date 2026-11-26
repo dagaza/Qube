@@ -3789,7 +3789,7 @@
           "source",
           "text"
          ],
-         "ref": "kestrel_staff_handbook.md::9"
+         "ref": "lisbon_trip_itinerary.md::4"
         }
        ],
        "text": "Explain how photosynthesis works."
@@ -14681,7 +14681,7 @@
          "ref": "lease_harbour_street.md::8"
         },
         {
-         "_score": 6.220351696014404,
+         "_score": 6.2203521728515625,
          "cols": [
           "_score",
           "chunk_id",
@@ -17542,7 +17542,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::9"
+         "ref": "contents_insurance_policy.md::6"
         }
        ],
        "text": "How do I compute a least-squares solution?"
@@ -18099,7 +18099,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::5"
+         "ref": "lease_harbour_street.md::4"
         },
         {
          "_score": 5.0638322830200195,
@@ -18110,7 +18110,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::4"
+         "ref": "lease_harbour_street.md::5"
         }
        ],
        "text": "Can the landlord come into the flat without telling me?"
@@ -19887,7 +19887,7 @@
          "ref": "lease_harbour_street.md::5"
         },
         {
-         "_score": 5.8055009841918945,
+         "_score": 5.805500507354736,
          "cols": [
           "_score",
           "chunk_id",
@@ -23833,7 +23833,7 @@
           "source",
           "text"
          ],
-         "ref": "sourdough_notebook.md::2"
+         "ref": "osprey_meeting_notes.md::1"
         }
        ],
        "text": "What about sick days?"
@@ -37083,10 +37083,10 @@
       }
      ],
      "kept": [
+      "mem:mem_sister",
       "mem:mem_quiet_hours",
-      "mem:mem_bike_commute",
       "mem:mem_installer",
-      "mem:mem_sister"
+      "mem:mem_bike_commute"
      ],
      "search_text": "Where does Hana work?",
      "top_k": 5,
@@ -39464,8 +39464,8 @@
       }
      ],
      "kept": [
-      "mem:mem_mother",
-      "mem:mem_cat"
+      "mem:mem_cat",
+      "mem:mem_mother"
      ],
      "search_text": "What's my cat called?",
      "top_k": 5,
@@ -39772,8 +39772,8 @@
       }
      ],
      "kept": [
-      "mem:mem_e3_error",
-      "mem:mem_installer"
+      "mem:mem_installer",
+      "mem:mem_e3_error"
      ],
      "search_text": "Who services my heat pump?",
      "top_k": 5,
