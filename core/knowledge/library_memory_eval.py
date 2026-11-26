@@ -1140,3 +1140,182 @@ def compare_reports(current: dict[str, Any], baseline: dict[str, Any]) -> list[d
         for reg in compare_to_baseline(groups_cur, groups_base):
             regressions.append({"run": run, **reg})
     return regressions
+
+
+# ---------------------------------------------------------------------------
+# Cross-encoder scores (plan S34)
+# ---------------------------------------------------------------------------
+
+RERANK_SCHEMA = "qube.library_memory_rerank.v1"
+DEFAULT_RERANK_SCORES = ROOT / "eval" / "fixtures" / "library_memory" / "rerank_scores.json"
+RERANK_THRESHOLDS = (-6.0, -4.0, 0.0)
+
+
+def rerank_pool(capture: dict[str, Any], case: dict[str, Any], run: str) -> list[str]:
+    """The run's candidates as the S34 shadow pass sees them.
+
+    Every row the vector and FTS calls returned, before the floors: document
+    chunks for library runs (``rag_search`` drops memory rows, V65) and
+    memories for memory runs.
+    """
+    st = capture["stores"][case_store(case)]
+    table = st["memories"] if case["path"] == "memory" else st["chunks"]
+    refs: list[str] = []
+    for call in capture["cases"][str(case["id"])]["runs"][run]["calls"]:
+        if call.get("kind") not in ("vector", "fts"):
+            continue
+        for row in call.get("rows") or []:
+            ref = row["ref"]
+            if ref in table and ref not in refs:
+                refs.append(ref)
+    return refs
+
+
+def rerank_passage(capture: dict[str, Any], case: dict[str, Any], ref: str) -> str:
+    """The passage text the shadow pass scores for ``ref`` (one definition: the shadow module)."""
+    from core.knowledge.ranking.library_memory_shadow import library_passage, memory_passage
+
+    st = capture["stores"][case_store(case)]
+    if ref.startswith(MEMORY_KEY_PREFIX):
+        return memory_passage(json.loads(st["memories"][ref]["text"]).get("content") or "")
+    row = st["chunks"][ref]
+    return library_passage(str(row.get("source") or ""), str(row.get("text") or ""))
+
+
+def _passage_hash(passage: str) -> str:
+    return hashlib.sha256(passage.encode("utf-8")).hexdigest()[:16]
+
+
+def _rerank_pairs(captures: Sequence[dict[str, Any]], corpus: dict[str, Any]) -> Iterator[tuple[str, str, str]]:
+    """Every (question, ref, passage) of every run of every capture."""
+    for cap in captures:
+        for case in corpus.get("cases") or []:
+            for run in case_runs(case):
+                question = cap["cases"][str(case["id"])]["runs"][run]["search_text"]
+                for ref in rerank_pool(cap, case, run):
+                    yield question, ref, rerank_passage(cap, case, ref)
+
+
+def record_rerank_scores(
+    captures: Sequence[dict[str, Any]],
+    corpus: dict[str, Any],
+    score_fn: Callable[[str, list[str]], Sequence[float] | None],
+    *,
+    model: str,
+    text_chars: int,
+) -> dict[str, Any]:
+    """Score every pool pair once (``score_fn`` per question) for a committed fixture."""
+    by_question: dict[str, dict[str, str]] = {}
+    for question, ref, passage in _rerank_pairs(captures, corpus):
+        seen = by_question.setdefault(question, {})
+        if ref in seen and seen[ref] != passage:
+            raise ValueError(f"{ref}: two passages for one question")
+        seen[ref] = passage
+    scores: dict[str, dict[str, float]] = {}
+    passages: dict[str, str] = {}
+    for question in sorted(by_question):
+        refs = sorted(by_question[question])
+        out = score_fn(question, [by_question[question][r] for r in refs])
+        if out is None:
+            raise RuntimeError(f"no scores for {question!r} (reranker unavailable or question skipped)")
+        scores[question] = {r: round(float(s), 4) for r, s in zip(refs, out)}
+        for r in refs:
+            passages.setdefault(r, _passage_hash(by_question[question][r]))
+    return {
+        "schema": RERANK_SCHEMA,
+        "model": model,
+        "text_chars": int(text_chars),
+        "corpus_fingerprint": corpus_fingerprint(),
+        "passages": dict(sorted(passages.items())),
+        "scores": scores,
+    }
+
+
+def recorded_rerank_scorer(
+    captures: Sequence[dict[str, Any]],
+    corpus: dict[str, Any],
+    recorded: dict[str, Any],
+) -> Callable[[str, list[str]], list[float]]:
+    """A scorer for ``rerank.set_reranker_scorer_for_tests`` that replays the recorded scores.
+
+    Raises ``ReplayMismatch`` for a (question, passage) the recording does not hold.
+    """
+    table: dict[tuple[str, str], float] = {}
+    for question, ref, passage in _rerank_pairs(captures, corpus):
+        score = (recorded["scores"].get(question) or {}).get(ref)
+        if score is not None:
+            table[(question, passage)] = float(score)
+
+    def score(question: str, docs: list[str]) -> list[float]:
+        try:
+            return [table[(question, d)] for d in docs]
+        except KeyError as exc:
+            raise ReplayMismatch(f"no recorded cross-encoder score for {question!r}") from exc
+
+    return score
+
+
+def rerank_report(capture: dict[str, Any], corpus: dict[str, Any], recorded: dict[str, Any]) -> dict[str, Any]:
+    """Cross-encoder score distributions per run and label, next to the embedding score (S34)."""
+    out: dict[str, Any] = {}
+    for run in RUNS:
+        ce: dict[str, list[float]] = {lab: [] for lab in LABELS}
+        sem: dict[str, list[float]] = {lab: [] for lab in LABELS}
+        best_abstain: list[float] = []
+        best_answerable: list[float] = []
+        missing = 0
+        for case in corpus.get("cases") or []:
+            if run not in case_runs(case):
+                continue
+            rec = capture["cases"][str(case["id"])]["runs"][run]
+            st = capture["stores"][case_store(case)]
+            labels = resolve_label_keys(case, st["chunks"])
+            expect = derive_expect(_store_label_rows(capture, case, labels))
+            distance: dict[str, float] = {}
+            for call in rec["calls"]:
+                if call.get("kind") == "vector":
+                    for row in call.get("rows") or []:
+                        if row.get("_distance") is not None:
+                            d = float(row["_distance"])
+                            distance[row["ref"]] = min(d, distance.get(row["ref"], d))
+            scores = recorded["scores"].get(rec["search_text"]) or {}
+            case_scores: list[tuple[str, float]] = []
+            for ref in rerank_pool(capture, case, run):
+                if ref not in scores:
+                    missing += 1
+                    continue
+                lab = _label_of(ref, labels)
+                ce[lab].append(float(scores[ref]))
+                case_scores.append((lab, float(scores[ref])))
+                if ref in distance:
+                    sem[lab].append(max(0.0, 1.0 - distance[ref]))
+            if expect == "insufficient":
+                if case_scores:
+                    best_abstain.append(max(s for _l, s in case_scores))
+            else:
+                useful = [s for lab, s in case_scores if lab != "irrelevant"]
+                if useful:
+                    best_answerable.append(max(useful))
+        useful_ce = ce["relevant"] + ce["partial"]
+        out[run] = {
+            "pairs": sum(len(v) for v in ce.values()),
+            "missing": missing,
+            "ce": {lab: _percentiles(v) for lab, v in ce.items()},
+            "auc_ce_relevant_vs_irrelevant": _auc(ce["relevant"], ce["irrelevant"]),
+            "auc_ce_useful_vs_irrelevant": _auc(useful_ce, ce["irrelevant"]),
+            "auc_semantic_relevant_vs_irrelevant": _auc(sem["relevant"], sem["irrelevant"]),
+            "at_or_above": {
+                f"{t:g}": {lab: sum(1 for s in v if s >= t) for lab, v in ce.items()} for t in RERANK_THRESHOLDS
+            },
+            "best_ce_abstain_cases": _percentiles(best_abstain),
+            "best_useful_ce_answerable_cases": _percentiles(best_answerable),
+        }
+    return _round_metrics(
+        {
+            "schema": REPORT_SCHEMA + "+rerank",
+            "embedding_mode": capture.get("embedding_mode"),
+            "model": recorded.get("model"),
+            "corpus_fingerprint": capture.get("corpus_fingerprint"),
+            "runs": out,
+        }
+    )

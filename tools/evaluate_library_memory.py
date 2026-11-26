@@ -8,6 +8,10 @@ and category, plus what the relevance floors keep and drop.
   .venv/bin/python tools/evaluate_library_memory.py \
       --capture eval/fixtures/library_memory/captured_balanced.json \
       [--json] [--out <report.json>] [--compare <baseline.json>]
+
+With ``--rerank-scores eval/fixtures/library_memory/rerank_scores.json`` it
+reports the recorded cross-encoder scores of each run's candidates instead,
+per label, next to the embedding score (plan S34).
 """
 
 from __future__ import annotations
@@ -70,6 +74,30 @@ def format_text(report: dict) -> str:
     return "\n".join(lines)
 
 
+def format_rerank_text(report: dict) -> str:
+    lines = [f"embedding: {report.get('embedding_mode')}  cross-encoder: {report.get('model')}"]
+    for run, s in report["runs"].items():
+        lines.append("")
+        lines.append(
+            f"[{run}] pairs={s['pairs']} missing={s['missing']} AUC relevant>irrelevant: "
+            f"cross-encoder {s['auc_ce_relevant_vs_irrelevant']} embedding {s['auc_semantic_relevant_vs_irrelevant']}; "
+            f"useful>irrelevant: cross-encoder {s['auc_ce_useful_vs_irrelevant']}"
+        )
+        for lab in ("relevant", "partial", "irrelevant"):
+            p = s["ce"].get(lab)
+            if p:
+                lines.append(
+                    f"  ce {lab:10s} n={p['n']:4d} min={p['min']:7.2f} p10={p['p10']:7.2f} "
+                    f"p50={p['p50']:7.2f} p90={p['p90']:7.2f} max={p['max']:7.2f}"
+                )
+        lines.append(f"  rows at or above: {s['at_or_above']}")
+        for key in ("best_ce_abstain_cases", "best_useful_ce_answerable_cases"):
+            p = s.get(key)
+            if p:
+                lines.append(f"  {key}: n={p['n']} min={p['min']} p10={p['p10']} p50={p['p50']} p90={p['p90']} max={p['max']}")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     from core.knowledge import library_memory_eval as lme
 
@@ -80,6 +108,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true", help="print the full report as JSON")
     parser.add_argument("--out", default=None, help="write the report to this file")
     parser.add_argument("--compare", default=None, help="baseline report: list rule-7 regressions")
+    parser.add_argument(
+        "--rerank-scores", default=None, help="recorded cross-encoder scores: report their distributions (S34)"
+    )
     args = parser.parse_args(argv)
 
     corpus = lme.load_corpus(args.corpus)
@@ -88,6 +119,12 @@ def main(argv: list[str] | None = None) -> int:
     if capture.get("corpus_fingerprint") != fp:
         print(f"capture fingerprint {capture.get('corpus_fingerprint')} != corpus {fp}; re-capture", file=sys.stderr)
         return 2
+    if args.rerank_scores:
+        report = lme.rerank_report(capture, corpus, lme.load_json(args.rerank_scores))
+        if args.out:
+            Path(args.out).write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(json.dumps(report, indent=1, ensure_ascii=False) if args.json else format_rerank_text(report))
+        return 0
     report = lme.build_report(capture, corpus, stage=args.stage)
 
     if args.out:

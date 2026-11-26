@@ -1,0 +1,331 @@
+{
+ "schema": "qube.library_memory_report.v1+rerank",
+ "embedding_mode": "power",
+ "model": "Xenova/ms-marco-MiniLM-L-6-v2",
+ "corpus_fingerprint": "87e31bb260f66b8c",
+ "runs": {
+  "library_chat": {
+   "pairs": 1132,
+   "missing": 0,
+   "ce": {
+    "relevant": {
+     "n": 80,
+     "min": -10.6069,
+     "p10": -2.7943,
+     "p50": 3.6274,
+     "p90": 7.2999,
+     "max": 8.8745
+    },
+    "partial": {
+     "n": 19,
+     "min": -11.2568,
+     "p10": -9.6127,
+     "p50": -1.7575,
+     "p90": 5.8038,
+     "max": 6.234
+    },
+    "irrelevant": {
+     "n": 1033,
+     "min": -11.508,
+     "p10": -11.4091,
+     "p50": -11.1441,
+     "p90": -3.5001,
+     "max": 6.2874
+    }
+   },
+   "auc_ce_relevant_vs_irrelevant": 0.9615,
+   "auc_ce_useful_vs_irrelevant": 0.944,
+   "auc_semantic_relevant_vs_irrelevant": 0.9051,
+   "at_or_above": {
+    "-6": {
+     "relevant": 76,
+     "partial": 13,
+     "irrelevant": 152
+    },
+    "-4": {
+     "relevant": 74,
+     "partial": 12,
+     "irrelevant": 116
+    },
+    "0": {
+     "relevant": 61,
+     "partial": 9,
+     "irrelevant": 47
+    }
+   },
+   "best_ce_abstain_cases": {
+    "n": 13,
+    "min": -11.1574,
+    "p10": -11.1043,
+    "p50": -8.2106,
+    "p90": -1.7633,
+    "max": 4.5336
+   },
+   "best_useful_ce_answerable_cases": {
+    "n": 69,
+    "min": -10.5534,
+    "p10": -2.354,
+    "p50": 4.1162,
+    "p90": 7.3273,
+    "max": 8.8745
+   }
+  },
+  "library_tool": {
+   "pairs": 667,
+   "missing": 0,
+   "ce": {
+    "relevant": {
+     "n": 79,
+     "min": -9.7164,
+     "p10": -2.354,
+     "p50": 3.6514,
+     "p90": 7.3028,
+     "max": 8.8745
+    },
+    "partial": {
+     "n": 19,
+     "min": -11.2568,
+     "p10": -9.2743,
+     "p50": -1.7575,
+     "p90": 5.8038,
+     "max": 6.234
+    },
+    "irrelevant": {
+     "n": 569,
+     "min": -11.508,
+     "p10": -11.3843,
+     "p50": -10.8122,
+     "p90": -1.1989,
+     "max": 6.2874
+    }
+   },
+   "auc_ce_relevant_vs_irrelevant": 0.9561,
+   "auc_ce_useful_vs_irrelevant": 0.9325,
+   "auc_semantic_relevant_vs_irrelevant": 0.8936,
+   "at_or_above": {
+    "-6": {
+     "relevant": 77,
+     "partial": 13,
+     "irrelevant": 113
+    },
+    "-4": {
+     "relevant": 75,
+     "partial": 12,
+     "irrelevant": 92
+    },
+    "0": {
+     "relevant": 63,
+     "partial": 9,
+     "irrelevant": 41
+    }
+   },
+   "best_ce_abstain_cases": {
+    "n": 13,
+    "min": -11.1574,
+    "p10": -11.1086,
+    "p50": -8.2106,
+    "p90": -1.7633,
+    "max": 4.5336
+   },
+   "best_useful_ce_answerable_cases": {
+    "n": 68,
+    "min": -7.2158,
+    "p10": -2.0162,
+    "p50": 4.2097,
+    "p90": 7.3283,
+    "max": 8.8745
+   }
+  },
+  "memory_recall": {
+   "pairs": 384,
+   "missing": 0,
+   "ce": {
+    "relevant": {
+     "n": 13,
+     "min": -8.2374,
+     "p10": -6.9785,
+     "p50": -0.4969,
+     "p90": 4.7148,
+     "max": 8.6717
+    },
+    "partial": {
+     "n": 2,
+     "min": -6.7006,
+     "p10": -6.5463,
+     "p50": -5.929,
+     "p90": -5.3117,
+     "max": -5.1574
+    },
+    "irrelevant": {
+     "n": 369,
+     "min": -11.4765,
+     "p10": -11.4156,
+     "p50": -11.3086,
+     "p90": -10.9743,
+     "max": -6.0
+    }
+   },
+   "auc_ce_relevant_vs_irrelevant": 0.9987,
+   "auc_ce_useful_vs_irrelevant": 0.9987,
+   "auc_semantic_relevant_vs_irrelevant": 0.9204,
+   "at_or_above": {
+    "-6": {
+     "relevant": 11,
+     "partial": 1,
+     "irrelevant": 1
+    },
+    "-4": {
+     "relevant": 11,
+     "partial": 0,
+     "irrelevant": 0
+    },
+    "0": {
+     "relevant": 5,
+     "partial": 0,
+     "irrelevant": 0
+    }
+   },
+   "best_ce_abstain_cases": {
+    "n": 5,
+    "min": -11.2584,
+    "p10": -11.181,
+    "p50": -10.997,
+    "p90": -9.5131,
+    "max": -9.4953
+   },
+   "best_useful_ce_answerable_cases": {
+    "n": 13,
+    "min": -8.2374,
+    "p10": -6.9785,
+    "p50": -0.4969,
+    "p90": 4.7148,
+    "max": 8.6717
+   }
+  },
+  "memory_narrative": {
+   "pairs": 102,
+   "missing": 0,
+   "ce": {
+    "relevant": {
+     "n": 8,
+     "min": -11.1675,
+     "p10": -11.1069,
+     "p50": -10.4443,
+     "p90": -5.851,
+     "max": 2.0333
+    },
+    "partial": {
+     "n": 5,
+     "min": -11.4436,
+     "p10": -11.4044,
+     "p50": -11.3254,
+     "p90": -11.1064,
+     "max": -11.078
+    },
+    "irrelevant": {
+     "n": 89,
+     "min": -11.5091,
+     "p10": -11.4863,
+     "p50": -11.4088,
+     "p90": -11.1075,
+     "max": -10.0307
+    }
+   },
+   "auc_ce_relevant_vs_irrelevant": 0.9607,
+   "auc_ce_useful_vs_irrelevant": 0.8721,
+   "auc_semantic_relevant_vs_irrelevant": 0.6138,
+   "at_or_above": {
+    "-6": {
+     "relevant": 1,
+     "partial": 0,
+     "irrelevant": 0
+    },
+    "-4": {
+     "relevant": 1,
+     "partial": 0,
+     "irrelevant": 0
+    },
+    "0": {
+     "relevant": 1,
+     "partial": 0,
+     "irrelevant": 0
+    }
+   },
+   "best_ce_abstain_cases": null,
+   "best_useful_ce_answerable_cases": {
+    "n": 4,
+    "min": -9.9974,
+    "p10": -9.9573,
+    "p50": -9.5469,
+    "p90": -1.3457,
+    "max": 2.0333
+   }
+  },
+  "memory_core": {
+   "pairs": 124,
+   "missing": 0,
+   "ce": {
+    "relevant": {
+     "n": 5,
+     "min": -11.278,
+     "p10": -11.2553,
+     "p50": -11.174,
+     "p90": -1.998,
+     "max": 4.0988
+    },
+    "partial": {
+     "n": 5,
+     "min": -11.3821,
+     "p10": -11.3755,
+     "p50": -11.3306,
+     "p90": -11.2729,
+     "max": -11.2487
+    },
+    "irrelevant": {
+     "n": 114,
+     "min": -11.4342,
+     "p10": -11.3964,
+     "p50": -11.3054,
+     "p90": -11.1584,
+     "max": -10.0285
+    }
+   },
+   "auc_ce_relevant_vs_irrelevant": 0.8526,
+   "auc_ce_useful_vs_irrelevant": 0.6289,
+   "auc_semantic_relevant_vs_irrelevant": 0.6855,
+   "at_or_above": {
+    "-6": {
+     "relevant": 1,
+     "partial": 0,
+     "irrelevant": 0
+    },
+    "-4": {
+     "relevant": 1,
+     "partial": 0,
+     "irrelevant": 0
+    },
+    "0": {
+     "relevant": 1,
+     "partial": 0,
+     "irrelevant": 0
+    }
+   },
+   "best_ce_abstain_cases": {
+    "n": 3,
+    "min": -11.2536,
+    "p10": -11.2317,
+    "p50": -11.1441,
+    "p90": -11.1395,
+    "max": -11.1383
+   },
+   "best_useful_ce_answerable_cases": {
+    "n": 7,
+    "min": -11.3821,
+    "p10": -11.3384,
+    "p50": -11.2212,
+    "p90": -5.0465,
+    "max": 4.0988
+   }
+  }
+ }
+}
