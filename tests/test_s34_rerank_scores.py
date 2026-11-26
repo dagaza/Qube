@@ -5,6 +5,8 @@ cross-encoder's score for every candidate of every run of the three captures
 (the pool the S34 shadow pass sees). ``lm_s34_rerank_*`` are the distribution
 reports. These tests check the recording covers the captures, replays through
 the production shadow path, and the S34 findings (V71, V73) as recorded.
+Today's captures report to ``CURRENT_RERANK`` (re-recorded after S36 changed
+the follow-up search texts); ``lm_s34_rerank_*`` stay S34's record.
 """
 
 from __future__ import annotations
@@ -25,10 +27,11 @@ from core.knowledge.ranking import rerank  # noqa: E402
 MODES = ("balanced", "fast", "power")
 FIXTURE_DIR = ROOT / "eval" / "fixtures" / "library_memory"
 BASELINE_DIR = ROOT / "eval" / "library_memory_corpus" / "baselines"
+CURRENT_RERANK = "lm_s36_rerank"  # what today's captures and recording report (S36)
 
 
-def _report(mode: str) -> dict:
-    return lme.load_json(BASELINE_DIR / f"lm_s34_rerank_{mode}.json")
+def _report(mode: str, stage: str = "lm_s34_rerank") -> dict:
+    return lme.load_json(BASELINE_DIR / f"{stage}_{mode}.json")
 
 
 class TestRecordedScores(unittest.TestCase):
@@ -63,7 +66,7 @@ class TestRecordedScores(unittest.TestCase):
         for mode, cap in self.captures.items():
             with self.subTest(mode=mode):
                 report = json.loads(json.dumps(lme.rerank_report(cap, self.corpus, self.recorded)))
-                self.assertEqual(report, _report(mode))
+                self.assertEqual(report, _report(mode, CURRENT_RERANK))
 
     def test_replay_scorer_refuses_an_unrecorded_passage(self):
         scorer = lme.recorded_rerank_scorer(list(self.captures.values()), self.corpus, self.recorded)

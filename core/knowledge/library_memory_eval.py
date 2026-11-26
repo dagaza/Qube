@@ -77,7 +77,7 @@ MEMORY_MODES = ("memory_recall", "memory_narrative", "memory_core")
 
 # Runs: one production call per case. Library cases run both library calls.
 RUN_LIBRARY_CHAT = "library_chat"  # plain-chat RAG route: rag_search(retrieval_text), top_k 5
-RUN_LIBRARY_TOOL = "library_tool"  # @library: rag_search(web_text), top_k = profile budget
+RUN_LIBRARY_TOOL = "library_tool"  # @library: rag_search(retrieval_text, S36), top_k = profile budget
 LIBRARY_RUNS = (RUN_LIBRARY_CHAT, RUN_LIBRARY_TOOL)
 RUNS = (*LIBRARY_RUNS, *MEMORY_MODES)
 
@@ -258,9 +258,10 @@ def case_query(case: dict[str, Any], run: str) -> CaseQuery:
     """The texts production would search for this case and run.
 
     Mirrors ``LLMWorker``: the turn's ``ResolvedRetrievalQuery`` gives
-    ``retrieval_text`` (plain-chat RAG and memory; the query vector is always
-    its embedding) and ``web_text`` (``@library``, which goes through the
-    knowledge-service pipeline). Narrative recap turns search the raw prompt
+    ``retrieval_text`` for plain-chat RAG, memory and, since plan S36,
+    ``@library`` (the knowledge-service pipeline searches it in place of
+    ``web_text`` on the internal corpus); the query vector is always its
+    embedding. Narrative recap turns search the raw prompt
     (``memory_query = self.prompt``) with the ``retrieval_text`` vector.
     """
     from core.query_resolution_evaluation import build_discourse_resolution
@@ -269,8 +270,7 @@ def case_query(case: dict[str, Any], run: str) -> CaseQuery:
     _fu, _state, resolved = build_discourse_resolution(turn, list(case.get("history") or []))
     retrieval = (resolved.retrieval_text or turn).strip()
     if run == RUN_LIBRARY_TOOL:
-        web = (resolved.web_text or turn).strip()
-        return CaseQuery(search_text=web, vector_text=web)
+        return CaseQuery(search_text=retrieval, vector_text=retrieval)
     if run == "memory_narrative":
         return CaseQuery(search_text=turn, vector_text=retrieval)
     return CaseQuery(search_text=retrieval, vector_text=retrieval)

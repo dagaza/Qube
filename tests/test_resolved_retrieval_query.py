@@ -19,6 +19,7 @@ from core.discourse_intent import (  # noqa: E402
 from core.discourse_query import (  # noqa: E402
     SearchTargetResult,
     build_resolved_retrieval_query,
+    resolve_routing_query,
     resolve_search_target,
 )
 from core.query_resolution_evaluation import build_discourse_resolution  # noqa: E402
@@ -75,6 +76,8 @@ class TestResolvedRetrievalQuery(unittest.TestCase):
         self.assertNotIn(" its ", f" {canonical.web_text.lower()} ")
 
     def test_routing_and_retrieval_share_inference_base(self) -> None:
+        # Plan S36 (D53): both start from the inference text; routing keeps the
+        # legacy expansion, library and memory search their own resolution.
         state = self._kathmandu_state()
         raw = "What about its music?"
         follow_up = classify_follow_up(raw, [], state)
@@ -86,8 +89,9 @@ class TestResolvedRetrievalQuery(unittest.TestCase):
             discourse=state,
             history=[],
         )
-        self.assertEqual(canonical.routing_text, canonical.retrieval_text)
+        self.assertEqual(canonical.routing_text, resolve_routing_query(inference, follow_up, state))
         self.assertIn("Kathmandu", canonical.routing_text)
+        self.assertIn("Kathmandu", canonical.retrieval_text)
 
     def test_meta_web_prior_turn_uses_history(self) -> None:
         history = [
@@ -187,11 +191,23 @@ class TestAcronymExpansion(unittest.TestCase):
         self.assertEqual(telemetry["web_query_subject"], "actor-network theory")
         self.assertEqual(telemetry["web_query_subject_relation"], "continuation")
 
-    def test_only_web_text_is_expanded(self) -> None:
+    def test_web_and_retrieval_text_are_expanded_routing_is_not(self) -> None:
+        # Plan S36 (D53): library and memory search get S5's acronym expansion
+        # and S6's subject like the web; routing keeps the legacy text.
         _fu, _state, canonical = build_discourse_resolution(_ANT_TURN, _ANT_HISTORY)
         self.assertEqual(canonical.raw_text, _ANT_TURN)
-        self.assertNotIn("Actor-network", canonical.retrieval_text)
+        self.assertEqual(canonical.retrieval_text, canonical.web_text)
+        self.assertEqual(canonical.retrieval_rewrite_reason, "subject")
         self.assertNotIn("Actor-network", canonical.routing_text)
+        plain = build_resolved_retrieval_query(
+            raw_text=_ANT_TURN,
+            inference_text=_ANT_TURN,
+            follow_up=FollowUpClassification(FollowUpKind.NONE, 0.0),
+            discourse=None,
+            history=_ANT_HISTORY,
+        )
+        self.assertIn("Actor-network theory (ANT)", plain.retrieval_text)
+        self.assertNotIn("Actor-network", plain.routing_text)
 
     def test_topic_switch_is_untouched(self) -> None:
         q = "What is the boiling point of ethanol?"

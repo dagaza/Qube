@@ -3708,6 +3708,28 @@ class LLMWorker(QThread):
             preset_overrides = resolve_preset_retrieval_overrides(
                 getattr(self, "_composer_knowledge_tool", None)
             )
+            if (
+                turn_knowledge_service == SERVICE_INTERNAL_CORPUS
+                and resolved_retrieval.retrieval_text
+                and resolved_retrieval.retrieval_text != web_semantic
+            ):
+                # S36 (D51): a library search resolves follow-ups like plain-chat
+                # library search, not like a web search.
+                web_semantic = resolved_retrieval.retrieval_text
+                web_query = apply_tool_policy(
+                    web_semantic,
+                    preference_policy,
+                    tool="internet",
+                )
+                try:
+                    web_query_vector = self.embedding_cache.get_embedding(web_semantic)
+                except Exception:
+                    web_query_vector = None
+                if isinstance(decision, dict):
+                    decision["library_query_resolved"] = web_query
+                    decision["library_query_rewrite_reason"] = (
+                        resolved_retrieval.retrieval_rewrite_reason
+                    )
             library_store = (
                 self.store
                 if turn_knowledge_service == SERVICE_INTERNAL_CORPUS

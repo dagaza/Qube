@@ -14683,7 +14683,7 @@
          "ref": "lease_harbour_street.md::8"
         },
         {
-         "_score": 6.2203521728515625,
+         "_score": 6.220351696014404,
          "cols": [
           "_score",
           "chunk_id",
@@ -14886,7 +14886,7 @@
          "ref": "lease_harbour_street.md::8"
         },
         {
-         "_score": 6.2203521728515625,
+         "_score": 6.220351696014404,
          "cols": [
           "_score",
           "chunk_id",
@@ -17898,7 +17898,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::4"
+         "ref": "lease_harbour_street.md::5"
         },
         {
          "_score": 5.0638322830200195,
@@ -17909,7 +17909,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::5"
+         "ref": "lease_harbour_street.md::4"
         },
         {
          "_score": 4.174102306365967,
@@ -17964,7 +17964,7 @@
       "kestrel_staff_handbook.md::2",
       "kestrel_staff_handbook.md::3",
       "contents_insurance_policy.md::3",
-      "lease_harbour_street.md::4"
+      "lease_harbour_street.md::5"
      ],
      "search_text": "Can the landlord come into the flat without telling me?",
      "top_k": 5,
@@ -19889,7 +19889,7 @@
          "ref": "lease_harbour_street.md::5"
         },
         {
-         "_score": 5.8055009841918945,
+         "_score": 5.805500507354736,
          "cols": [
           "_score",
           "chunk_id",
@@ -23367,7 +23367,7 @@
        "limit": 10,
        "rows": [
         {
-         "_distance": 0.9214420914649963,
+         "_distance": 0.726493775844574,
          "cols": [
           "_distance",
           "chunk_id",
@@ -23375,10 +23375,10 @@
           "source",
           "text"
          ],
-         "ref": "lisbon_trip_itinerary.md::0"
+         "ref": "bike_service_log.md::0"
         },
         {
-         "_distance": 0.9411526918411255,
+         "_distance": 0.9600740671157837,
          "cols": [
           "_distance",
           "chunk_id",
@@ -23386,65 +23386,10 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_lisbon"
+         "ref": "aerotherm_hx9_manual.md::1"
         },
         {
-         "_distance": 0.9737544059753418,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_exam"
-        },
-        {
-         "_distance": 0.9756451845169067,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "kestrel_staff_handbook.md::5"
-        },
-        {
-         "_distance": 0.9811125993728638,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "aerotherm_hx9_manual.md::0"
-        },
-        {
-         "_distance": 0.9831324219703674,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "osprey_meeting_notes.md::3"
-        },
-        {
-         "_distance": 0.9878692030906677,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "project_omega_bluejay.md::1"
-        },
-        {
-         "_distance": 0.9977349638938904,
+         "_distance": 0.9854240417480469,
          "cols": [
           "_distance",
           "chunk_id",
@@ -23455,7 +23400,7 @@
          "ref": "osprey_meeting_notes.md::2"
         },
         {
-         "_distance": 0.9986394643783569,
+         "_distance": 0.9900665879249573,
          "cols": [
           "_distance",
           "chunk_id",
@@ -23463,97 +23408,10 @@
           "source",
           "text"
          ],
-         "ref": "bike_service_log.md::2"
+         "ref": "mem:mem_bike_commute"
         },
         {
-         "_distance": 0.9996037483215332,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "heron_meeting_notes.md::5"
-        }
-       ]
-      },
-      {
-       "kind": "fts",
-       "limit": 10,
-       "rows": [
-        {
-         "_score": 3.44506573677063,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "bike_service_log.md::0"
-        }
-       ],
-       "text": "And on tarmac?"
-      }
-     ],
-     "kept": [],
-     "search_text": "And on tarmac?",
-     "top_k": 5,
-     "vector_text": "And on tarmac?"
-    },
-    "library_tool": {
-     "calls": [
-      {
-       "kind": "vector",
-       "limit": 6,
-       "rows": [
-        {
-         "_distance": 0.9214420914649963,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "lisbon_trip_itinerary.md::0"
-        },
-        {
-         "_distance": 0.9411526918411255,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_lisbon"
-        },
-        {
-         "_distance": 0.9737544059753418,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_exam"
-        },
-        {
-         "_distance": 0.9756451845169067,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "kestrel_staff_handbook.md::5"
-        },
-        {
-         "_distance": 0.9811125993728638,
+         "_distance": 0.9919742345809937,
          "cols": [
           "_distance",
           "chunk_id",
@@ -23564,7 +23422,7 @@
          "ref": "aerotherm_hx9_manual.md::0"
         },
         {
-         "_distance": 0.9831324219703674,
+         "_distance": 1.008932113647461,
          "cols": [
           "_distance",
           "chunk_id",
@@ -23572,16 +23430,60 @@
           "source",
           "text"
          ],
-         "ref": "osprey_meeting_notes.md::3"
+         "ref": "aerotherm_hx9_manual.md::3"
+        },
+        {
+         "_distance": 1.0143020153045654,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::7"
+        },
+        {
+         "_distance": 1.0388031005859375,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "bike_service_log.md::2"
+        },
+        {
+         "_distance": 1.051985740661621,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "heron_meeting_notes.md::5"
+        },
+        {
+         "_distance": 1.0547951459884644,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "kestrel_staff_handbook.md::5"
         }
        ]
       },
       {
        "kind": "fts",
-       "limit": 6,
+       "limit": 10,
        "rows": [
         {
-         "_score": 3.44506573677063,
+         "_score": 13.702829360961914,
          "cols": [
           "_score",
           "chunk_id",
@@ -23590,15 +23492,267 @@
           "text"
          ],
          "ref": "bike_service_log.md::0"
+        },
+        {
+         "_score": 8.179129600524902,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::6"
+        },
+        {
+         "_score": 4.84991455078125,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "linear_algebra_notes.md::5"
+        },
+        {
+         "_score": 4.597325801849365,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::7"
+        },
+        {
+         "_score": 4.4826130867004395,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "ledger_api_design.md::8"
+        },
+        {
+         "_score": 3.906771659851074,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::1"
+        },
+        {
+         "_score": 3.701049327850342,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "cover_crop_soil_study.md::13"
+        },
+        {
+         "_score": 3.3771936893463135,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "ledger_api_design.md::5"
+        },
+        {
+         "_score": 3.3429741859436035,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_bike_commute"
+        },
+        {
+         "_score": 3.2321064472198486,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "bike_service_log.md::2"
         }
        ],
-       "text": "And on tarmac?"
+       "text": "What tyre pressure should I run on gravel? And on tarmac?"
       }
      ],
      "kept": [],
-     "search_text": "And on tarmac?",
+     "search_text": "What tyre pressure should I run on gravel? And on tarmac?",
+     "top_k": 5,
+     "vector_text": "What tyre pressure should I run on gravel? And on tarmac?"
+    },
+    "library_tool": {
+     "calls": [
+      {
+       "kind": "vector",
+       "limit": 6,
+       "rows": [
+        {
+         "_distance": 0.726493775844574,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "bike_service_log.md::0"
+        },
+        {
+         "_distance": 0.9600740671157837,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::1"
+        },
+        {
+         "_distance": 0.9854240417480469,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "osprey_meeting_notes.md::2"
+        },
+        {
+         "_distance": 0.9900665879249573,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_bike_commute"
+        },
+        {
+         "_distance": 0.9919742345809937,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::0"
+        },
+        {
+         "_distance": 1.008932113647461,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::3"
+        }
+       ]
+      },
+      {
+       "kind": "fts",
+       "limit": 6,
+       "rows": [
+        {
+         "_score": 13.702829360961914,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "bike_service_log.md::0"
+        },
+        {
+         "_score": 8.179129600524902,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::6"
+        },
+        {
+         "_score": 4.84991455078125,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "linear_algebra_notes.md::5"
+        },
+        {
+         "_score": 4.597325801849365,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::7"
+        },
+        {
+         "_score": 4.4826130867004395,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "ledger_api_design.md::8"
+        },
+        {
+         "_score": 3.906771659851074,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::1"
+        }
+       ],
+       "text": "What tyre pressure should I run on gravel? And on tarmac?"
+      }
+     ],
+     "kept": [],
+     "search_text": "What tyre pressure should I run on gravel? And on tarmac?",
      "top_k": 3,
-     "vector_text": "And on tarmac?"
+     "vector_text": "What tyre pressure should I run on gravel? And on tarmac?"
     }
    },
    "store": "full"
@@ -23835,7 +23989,7 @@
           "source",
           "text"
          ],
-         "ref": "sourdough_notebook.md::2"
+         "ref": "osprey_meeting_notes.md::1"
         }
        ],
        "text": "What about sick days?"
@@ -24021,7 +24175,7 @@
        "limit": 10,
        "rows": [
         {
-         "_distance": 1.1099928617477417,
+         "_distance": 0.5089324712753296,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24029,65 +24183,10 @@
           "source",
           "text"
          ],
-         "ref": "osprey_meeting_notes.md::2"
+         "ref": "heron_meeting_notes.md::0"
         },
         {
-         "_distance": 1.1148754358291626,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "household_budget_2026.md::0"
-        },
-        {
-         "_distance": 1.1180741786956787,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "millbrook_tramways_history.txt::5"
-        },
-        {
-         "_distance": 1.1253793239593506,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "ledger_api_design.md::8"
-        },
-        {
-         "_distance": 1.1330863237380981,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_spelling"
-        },
-        {
-         "_distance": 1.1377787590026855,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "linear_algebra_notes.md::5"
-        },
-        {
-         "_distance": 1.1388237476348877,
+         "_distance": 0.5356000661849976,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24098,7 +24197,7 @@
          "ref": "heron_meeting_notes.md::2"
         },
         {
-         "_distance": 1.1402479410171509,
+         "_distance": 0.593078076839447,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24106,10 +24205,21 @@
           "source",
           "text"
          ],
-         "ref": "millbrook_tramways_history.txt::2"
+         "ref": "heron_meeting_notes.md::4"
         },
         {
-         "_distance": 1.1455402374267578,
+         "_distance": 0.6123846173286438,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_kofi"
+        },
+        {
+         "_distance": 0.6155126690864563,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24120,7 +24230,18 @@
          "ref": "heron_meeting_notes.md::5"
         },
         {
-         "_distance": 1.1507686376571655,
+         "_distance": 0.6548587679862976,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "heron_meeting_notes.md::1"
+        },
+        {
+         "_distance": 0.7364826202392578,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24129,6 +24250,39 @@
           "text"
          ],
          "ref": "heron_meeting_notes.md::3"
+        },
+        {
+         "_distance": 0.816287100315094,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_tomasz"
+        },
+        {
+         "_distance": 0.905955970287323,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "osprey_meeting_notes.md::0"
+        },
+        {
+         "_distance": 0.9158422350883484,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "project_omega_bluejay.md::0"
         }
        ]
       },
@@ -24137,6 +24291,50 @@
        "limit": 10,
        "rows": [
         {
+         "_score": 6.033449649810791,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_kofi"
+        },
+        {
+         "_score": 5.975006103515625,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "heron_meeting_notes.md::0"
+        },
+        {
+         "_score": 4.691507816314697,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "heron_meeting_notes.md::4"
+        },
+        {
+         "_score": 4.0785346031188965,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "millbrook_tramways_history.txt::2"
+        },
+        {
          "_score": 3.606722116470337,
          "cols": [
           "_score",
@@ -24146,6 +24344,39 @@
           "text"
          ],
          "ref": "kestrel_staff_handbook.md::9"
+        },
+        {
+         "_score": 3.5864241123199463,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "heron_meeting_notes.md::2"
+        },
+        {
+         "_score": 3.45975923538208,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "kestrel_staff_handbook.md::5"
+        },
+        {
+         "_score": 3.4317924976348877,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "heron_meeting_notes.md::5"
         },
         {
          "_score": 3.414182186126709,
@@ -24159,7 +24390,7 @@
          "ref": "mem:ep_ledger"
         },
         {
-         "_score": 2.858550548553467,
+         "_score": 3.3604962825775146,
          "cols": [
           "_score",
           "chunk_id",
@@ -24167,49 +24398,22 @@
           "source",
           "text"
          ],
-         "ref": "millbrook_tramways_history.txt::2"
-        },
-        {
-         "_score": 2.2378668785095215,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "millbrook_tramways_history.txt::3"
-        },
-        {
-         "_score": 1.9772967100143433,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "millbrook_tramways_history.txt::4"
-        },
-        {
-         "_score": 1.6933709383010864,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "millbrook_tramways_history.txt::0"
+         "ref": "mem:mem_tomasz"
         }
        ],
-       "text": "Who decided that?"
+       "text": "When is the Heron app launching? Who decided that?"
       }
      ],
-     "kept": [],
-     "search_text": "Who decided that?",
+     "kept": [
+      "heron_meeting_notes.md::0",
+      "heron_meeting_notes.md::4",
+      "heron_meeting_notes.md::2",
+      "heron_meeting_notes.md::5",
+      "millbrook_tramways_history.txt::2"
+     ],
+     "search_text": "When is the Heron app launching? Who decided that?",
      "top_k": 5,
-     "vector_text": "Who decided that?"
+     "vector_text": "When is the Heron app launching? Who decided that?"
     },
     "library_tool": {
      "calls": [
@@ -24218,7 +24422,7 @@
        "limit": 6,
        "rows": [
         {
-         "_distance": 1.1099928617477417,
+         "_distance": 0.5089324712753296,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24226,10 +24430,10 @@
           "source",
           "text"
          ],
-         "ref": "osprey_meeting_notes.md::2"
+         "ref": "heron_meeting_notes.md::0"
         },
         {
-         "_distance": 1.1148754358291626,
+         "_distance": 0.5356000661849976,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24237,10 +24441,10 @@
           "source",
           "text"
          ],
-         "ref": "household_budget_2026.md::0"
+         "ref": "heron_meeting_notes.md::2"
         },
         {
-         "_distance": 1.1180741786956787,
+         "_distance": 0.593078076839447,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24248,10 +24452,10 @@
           "source",
           "text"
          ],
-         "ref": "millbrook_tramways_history.txt::5"
+         "ref": "heron_meeting_notes.md::4"
         },
         {
-         "_distance": 1.1253793239593506,
+         "_distance": 0.6123846173286438,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24259,10 +24463,10 @@
           "source",
           "text"
          ],
-         "ref": "ledger_api_design.md::8"
+         "ref": "mem:mem_kofi"
         },
         {
-         "_distance": 1.1330863237380981,
+         "_distance": 0.6155126690864563,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24270,10 +24474,10 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_spelling"
+         "ref": "heron_meeting_notes.md::5"
         },
         {
-         "_distance": 1.1377787590026855,
+         "_distance": 0.6548587679862976,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24281,7 +24485,7 @@
           "source",
           "text"
          ],
-         "ref": "linear_algebra_notes.md::5"
+         "ref": "heron_meeting_notes.md::1"
         }
        ]
       },
@@ -24289,6 +24493,50 @@
        "kind": "fts",
        "limit": 6,
        "rows": [
+        {
+         "_score": 6.033449649810791,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_kofi"
+        },
+        {
+         "_score": 5.975006103515625,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "heron_meeting_notes.md::0"
+        },
+        {
+         "_score": 4.691507816314697,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "heron_meeting_notes.md::4"
+        },
+        {
+         "_score": 4.0785346031188965,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "millbrook_tramways_history.txt::2"
+        },
         {
          "_score": 3.606722116470337,
          "cols": [
@@ -24301,7 +24549,7 @@
          "ref": "kestrel_staff_handbook.md::9"
         },
         {
-         "_score": 3.414182186126709,
+         "_score": 3.5864241123199463,
          "cols": [
           "_score",
           "chunk_id",
@@ -24309,60 +24557,20 @@
           "source",
           "text"
          ],
-         "ref": "mem:ep_ledger"
-        },
-        {
-         "_score": 2.858550548553467,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "millbrook_tramways_history.txt::2"
-        },
-        {
-         "_score": 2.2378668785095215,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "millbrook_tramways_history.txt::3"
-        },
-        {
-         "_score": 1.9772967100143433,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "millbrook_tramways_history.txt::4"
-        },
-        {
-         "_score": 1.6933709383010864,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "millbrook_tramways_history.txt::0"
+         "ref": "heron_meeting_notes.md::2"
         }
        ],
-       "text": "Who decided that?"
+       "text": "When is the Heron app launching? Who decided that?"
       }
      ],
-     "kept": [],
-     "search_text": "Who decided that?",
+     "kept": [
+      "heron_meeting_notes.md::0",
+      "heron_meeting_notes.md::4",
+      "heron_meeting_notes.md::2"
+     ],
+     "search_text": "When is the Heron app launching? Who decided that?",
      "top_k": 3,
-     "vector_text": "Who decided that?"
+     "vector_text": "When is the Heron app launching? Who decided that?"
     }
    },
    "store": "full"
@@ -24376,7 +24584,7 @@
        "limit": 10,
        "rows": [
         {
-         "_distance": 0.8702518939971924,
+         "_distance": 0.6658361554145813,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24387,84 +24595,7 @@
          "ref": "aerotherm_hx9_manual.md::6"
         },
         {
-         "_distance": 0.9261116981506348,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "aerotherm_hx9_manual.md::2"
-        },
-        {
-         "_distance": 0.9442507028579712,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "sourdough_notebook.md::3"
-        },
-        {
-         "_distance": 0.9686561226844788,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "aerotherm_hx9_manual.md::7"
-        },
-        {
-         "_distance": 1.0061613321304321,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "household_budget_2026.md::0"
-        },
-        {
-         "_distance": 1.0106598138809204,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "bike_service_log.md::2"
-        },
-        {
-         "_distance": 1.0159488916397095,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "kestrel_staff_handbook.md::7"
-        },
-        {
-         "_distance": 1.0247626304626465,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "bike_service_log.md::1"
-        },
-        {
-         "_distance": 1.043044090270996,
+         "_distance": 0.674637496471405,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24475,7 +24606,7 @@
          "ref": "mem:mem_e3_error"
         },
         {
-         "_distance": 1.0478776693344116,
+         "_distance": 0.8108536005020142,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24483,7 +24614,84 @@
           "source",
           "text"
          ],
-         "ref": "contents_insurance_policy.md::5"
+         "ref": "aerotherm_hx9_manual.md::7"
+        },
+        {
+         "_distance": 0.8443752527236938,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::5"
+        },
+        {
+         "_distance": 0.8506585359573364,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::3"
+        },
+        {
+         "_distance": 0.8656622171401978,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::2"
+        },
+        {
+         "_distance": 0.9035285115242004,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::4"
+        },
+        {
+         "_distance": 0.9069398641586304,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::0"
+        },
+        {
+         "_distance": 0.9211635589599609,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::8"
+        },
+        {
+         "_distance": 0.9654620885848999,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_installer"
         }
        ]
       },
@@ -24501,6 +24709,28 @@
           "text"
          ],
          "ref": "aerotherm_hx9_manual.md::6"
+        },
+        {
+         "_score": 6.610660552978516,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_installer"
+        },
+        {
+         "_score": 5.585820198059082,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_e3_error"
         },
         {
          "_score": 4.84991455078125,
@@ -24523,6 +24753,17 @@
           "text"
          ],
          "ref": "ledger_api_design.md::5"
+        },
+        {
+         "_score": 3.76621150970459,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::6"
         },
         {
          "_score": 3.7629828453063965,
@@ -24558,7 +24799,7 @@
          "ref": "contents_insurance_policy.md::4"
         },
         {
-         "_score": 2.554857015609741,
+         "_score": 3.323178291320801,
          "cols": [
           "_score",
           "chunk_id",
@@ -24566,27 +24807,22 @@
           "source",
           "text"
          ],
-         "ref": "aerotherm_hx9_manual.md::0"
-        },
-        {
-         "_score": 1.879060983657837,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "lisbon_trip_itinerary.md::2"
+         "ref": "aerotherm_hx9_manual.md::5"
         }
        ],
-       "text": "And how do I reset it?"
+       "text": "my heat pump how do I reset it?"
       }
      ],
-     "kept": [],
-     "search_text": "And how do I reset it?",
+     "kept": [
+      "aerotherm_hx9_manual.md::6",
+      "linear_algebra_notes.md::5",
+      "ledger_api_design.md::5",
+      "lease_harbour_street.md::6",
+      "linear_algebra_notes.md::1"
+     ],
+     "search_text": "my heat pump how do I reset it?",
      "top_k": 5,
-     "vector_text": "And how do I reset it?"
+     "vector_text": "my heat pump how do I reset it?"
     },
     "library_tool": {
      "calls": [
@@ -24757,7 +24993,7 @@
        "limit": 10,
        "rows": [
         {
-         "_distance": 0.39642298221588135,
+         "_distance": 0.3396822512149811,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24768,7 +25004,7 @@
          "ref": "contents_insurance_policy.md::2"
         },
         {
-         "_distance": 0.6430655717849731,
+         "_distance": 0.5770740509033203,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24779,7 +25015,7 @@
          "ref": "contents_insurance_policy.md::3"
         },
         {
-         "_distance": 0.775333046913147,
+         "_distance": 0.6296436786651611,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24790,18 +25026,7 @@
          "ref": "contents_insurance_policy.md::1"
         },
         {
-         "_distance": 0.7920151948928833,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::4"
-        },
-        {
-         "_distance": 0.8721643686294556,
+         "_distance": 0.6599723696708679,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24812,7 +25037,51 @@
          "ref": "contents_insurance_policy.md::0"
         },
         {
-         "_distance": 0.9426142573356628,
+         "_distance": 0.7107493281364441,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::4"
+        },
+        {
+         "_distance": 0.8182805776596069,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::5"
+        },
+        {
+         "_distance": 0.8428155183792114,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_insurance_quotes"
+        },
+        {
+         "_distance": 0.880813717842102,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::6"
+        },
+        {
+         "_distance": 0.9056212902069092,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24823,18 +25092,7 @@
          "ref": "kestrel_staff_handbook.md::7"
         },
         {
-         "_distance": 0.958220899105072,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "lease_harbour_street.md::2"
-        },
-        {
-         "_distance": 0.9636369943618774,
+         "_distance": 0.9870851635932922,
          "cols": [
           "_distance",
           "chunk_id",
@@ -24843,28 +25101,6 @@
           "text"
          ],
          "ref": "bike_service_log.md::1"
-        },
-        {
-         "_distance": 0.9703594446182251,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "kestrel_staff_handbook.md::6"
-        },
-        {
-         "_distance": 0.974696695804596,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::5"
         }
        ]
       },
@@ -24884,18 +25120,7 @@
          "ref": "contents_insurance_policy.md::2"
         },
         {
-         "_score": 15.065668106079102,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::1"
-        },
-        {
-         "_score": 6.9412007331848145,
+         "_score": 15.22326946258545,
          "cols": [
           "_score",
           "chunk_id",
@@ -24904,198 +25129,6 @@
           "text"
          ],
          "ref": "contents_insurance_policy.md::0"
-        },
-        {
-         "_score": 6.707102298736572,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "aerotherm_hx9_manual.md::9"
-        },
-        {
-         "_score": 4.9118266105651855,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "lease_harbour_street.md::8"
-        },
-        {
-         "_score": 4.024829864501953,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "cover_crop_soil_study.md::10"
-        },
-        {
-         "_score": 3.924450635910034,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "household_budget_2026.md::3"
-        },
-        {
-         "_score": 3.910104751586914,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_bike_commute"
-        },
-        {
-         "_score": 3.606722116470337,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "kestrel_staff_handbook.md::9"
-        },
-        {
-         "_score": 3.5825791358947754,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "aerotherm_hx9_manual.md::6"
-        }
-       ],
-       "text": "Regarding What: Does it cover theft from the bike store?"
-      }
-     ],
-     "kept": [
-      "contents_insurance_policy.md::2",
-      "contents_insurance_policy.md::3",
-      "contents_insurance_policy.md::1",
-      "contents_insurance_policy.md::0",
-      "aerotherm_hx9_manual.md::9"
-     ],
-     "search_text": "Regarding What: Does it cover theft from the bike store?",
-     "top_k": 5,
-     "vector_text": "Regarding What: Does it cover theft from the bike store?"
-    },
-    "library_tool": {
-     "calls": [
-      {
-       "kind": "vector",
-       "limit": 6,
-       "rows": [
-        {
-         "_distance": 0.3467186689376831,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::2"
-        },
-        {
-         "_distance": 0.5713189244270325,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::3"
-        },
-        {
-         "_distance": 0.6142719984054565,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::0"
-        },
-        {
-         "_distance": 0.6450321674346924,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::1"
-        },
-        {
-         "_distance": 0.6713805794715881,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::4"
-        },
-        {
-         "_distance": 0.7929399013519287,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::5"
-        }
-       ]
-      },
-      {
-       "kind": "fts",
-       "limit": 6,
-       "rows": [
-        {
-         "_score": 20.347606658935547,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::0"
-        },
-        {
-         "_score": 17.40340805053711,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::2"
         },
         {
          "_score": 14.71745491027832,
@@ -25107,17 +25140,6 @@
           "text"
          ],
          "ref": "contents_insurance_policy.md::1"
-        },
-        {
-         "_score": 6.92712926864624,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::3"
         },
         {
          "_score": 6.707102298736572,
@@ -25140,19 +25162,233 @@
           "text"
          ],
          "ref": "household_budget_2026.md::0"
+        },
+        {
+         "_score": 5.634655475616455,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::3"
+        },
+        {
+         "_score": 5.246500015258789,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "kestrel_staff_handbook.md::4"
+        },
+        {
+         "_score": 5.080718517303467,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_insurance_quotes"
+        },
+        {
+         "_score": 5.011994361877441,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_bike_commute"
+        },
+        {
+         "_score": 4.9118266105651855,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::8"
         }
        ],
-       "text": "excess on my contents insurance Does it cover theft from the bike store?"
+       "text": "my contents insurance Does it cover theft from the bike store?"
       }
      ],
      "kept": [
       "contents_insurance_policy.md::2",
       "contents_insurance_policy.md::0",
-      "contents_insurance_policy.md::3"
+      "contents_insurance_policy.md::1",
+      "contents_insurance_policy.md::3",
+      "aerotherm_hx9_manual.md::9"
      ],
-     "search_text": "excess on my contents insurance Does it cover theft from the bike store?",
+     "search_text": "my contents insurance Does it cover theft from the bike store?",
+     "top_k": 5,
+     "vector_text": "my contents insurance Does it cover theft from the bike store?"
+    },
+    "library_tool": {
+     "calls": [
+      {
+       "kind": "vector",
+       "limit": 6,
+       "rows": [
+        {
+         "_distance": 0.3396822512149811,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::2"
+        },
+        {
+         "_distance": 0.5770740509033203,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::3"
+        },
+        {
+         "_distance": 0.6296436786651611,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::1"
+        },
+        {
+         "_distance": 0.6599723696708679,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::0"
+        },
+        {
+         "_distance": 0.7107493281364441,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::4"
+        },
+        {
+         "_distance": 0.8182805776596069,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::5"
+        }
+       ]
+      },
+      {
+       "kind": "fts",
+       "limit": 6,
+       "rows": [
+        {
+         "_score": 17.40340805053711,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::2"
+        },
+        {
+         "_score": 15.22326946258545,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::0"
+        },
+        {
+         "_score": 14.71745491027832,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "contents_insurance_policy.md::1"
+        },
+        {
+         "_score": 6.707102298736572,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::9"
+        },
+        {
+         "_score": 6.448945045471191,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "household_budget_2026.md::0"
+        },
+        {
+         "_score": 5.634655475616455,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::3"
+        }
+       ],
+       "text": "my contents insurance Does it cover theft from the bike store?"
+      }
+     ],
+     "kept": [
+      "contents_insurance_policy.md::2",
+      "contents_insurance_policy.md::0",
+      "contents_insurance_policy.md::1"
+     ],
+     "search_text": "my contents insurance Does it cover theft from the bike store?",
      "top_k": 3,
-     "vector_text": "excess on my contents insurance Does it cover theft from the bike store?"
+     "vector_text": "my contents insurance Does it cover theft from the bike store?"
     }
    },
    "store": "full"
@@ -26363,73 +26599,7 @@
        "limit": 10,
        "rows": [
         {
-         "_distance": 0.7073631286621094,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "lease_harbour_street.md::2"
-        },
-        {
-         "_distance": 0.7869008183479309,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "household_budget_2026.md::0"
-        },
-        {
-         "_distance": 0.8047086000442505,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "household_budget_2026.md::2"
-        },
-        {
-         "_distance": 0.8191186189651489,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "lease_harbour_street.md::1"
-        },
-        {
-         "_distance": 0.8548866510391235,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "ledger_api_design.md::8"
-        },
-        {
-         "_distance": 0.8553754091262817,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "household_budget_2026.md::1"
-        },
-        {
-         "_distance": 0.8568815588951111,
+         "_distance": 0.5035381317138672,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26440,7 +26610,95 @@
          "ref": "lease_harbour_street.md::5"
         },
         {
-         "_distance": 0.8780665397644043,
+         "_distance": 0.6834522485733032,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:ep_lease"
+        },
+        {
+         "_distance": 0.7299846410751343,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::2"
+        },
+        {
+         "_distance": 0.7879656553268433,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::1"
+        },
+        {
+         "_distance": 0.7957346439361572,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_house_deposit"
+        },
+        {
+         "_distance": 0.8233463764190674,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::8"
+        },
+        {
+         "_distance": 0.8254013061523438,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "household_budget_2026.md::0"
+        },
+        {
+         "_distance": 0.8608748912811279,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::4"
+        },
+        {
+         "_distance": 0.8676176071166992,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "household_budget_2026.md::2"
+        },
+        {
+         "_distance": 0.898614764213562,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26449,28 +26707,6 @@
           "text"
          ],
          "ref": "lease_harbour_street.md::9"
-        },
-        {
-         "_distance": 0.8879489302635193,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "ledger_api_design.md::2"
-        },
-        {
-         "_distance": 0.8982449173927307,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:ep_lease"
         }
        ]
       },
@@ -26478,6 +26714,28 @@
        "kind": "fts",
        "limit": 10,
        "rows": [
+        {
+         "_score": 11.199860572814941,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::5"
+        },
+        {
+         "_score": 7.8785858154296875,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "linear_algebra_notes.md::5"
+        },
         {
          "_score": 5.472468852996826,
          "cols": [
@@ -26488,6 +26746,39 @@
           "text"
          ],
          "ref": "lease_harbour_street.md::2"
+        },
+        {
+         "_score": 5.1040520668029785,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:ep_lease"
+        },
+        {
+         "_score": 4.37686014175415,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::0"
+        },
+        {
+         "_score": 4.1202311515808105,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_cat"
         },
         {
          "_score": 3.9373629093170166,
@@ -26512,17 +26803,6 @@
          "ref": "household_budget_2026.md::4"
         },
         {
-         "_score": 3.5170834064483643,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "lease_harbour_street.md::5"
-        },
-        {
          "_score": 3.510476589202881,
          "cols": [
           "_score",
@@ -26534,7 +26814,7 @@
          "ref": "mem:mem_house_deposit"
         },
         {
-         "_score": 3.4317924976348877,
+         "_score": 3.4659817218780518,
          "cols": [
           "_score",
           "chunk_id",
@@ -26542,38 +26822,22 @@
           "source",
           "text"
          ],
-         "ref": "household_budget_2026.md::2"
-        },
-        {
-         "_score": 2.4928805828094482,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "millbrook_tramways_history.txt::1"
-        },
-        {
-         "_score": 2.3480987548828125,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:ep_lease"
+         "ref": "sourdough_notebook.md::3"
         }
        ],
-       "text": "Regarding Yes: Is there an extra deposit for it?"
+       "text": "Can I keep a cat in my flat? Is there an extra deposit for it?"
       }
      ],
-     "kept": [],
-     "search_text": "Regarding Yes: Is there an extra deposit for it?",
+     "kept": [
+      "lease_harbour_street.md::5",
+      "linear_algebra_notes.md::5",
+      "lease_harbour_street.md::2",
+      "aerotherm_hx9_manual.md::0",
+      "heron_meeting_notes.md::2"
+     ],
+     "search_text": "Can I keep a cat in my flat? Is there an extra deposit for it?",
      "top_k": 5,
-     "vector_text": "Regarding Yes: Is there an extra deposit for it?"
+     "vector_text": "Can I keep a cat in my flat? Is there an extra deposit for it?"
     },
     "library_tool": {
      "calls": [
@@ -26582,7 +26846,29 @@
        "limit": 6,
        "rows": [
         {
-         "_distance": 0.7064964175224304,
+         "_distance": 0.5035381317138672,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::5"
+        },
+        {
+         "_distance": 0.6834522485733032,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:ep_lease"
+        },
+        {
+         "_distance": 0.7299846410751343,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26593,18 +26879,7 @@
          "ref": "lease_harbour_street.md::2"
         },
         {
-         "_distance": 0.8022287487983704,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_house_deposit"
-        },
-        {
-         "_distance": 0.8222705125808716,
+         "_distance": 0.7879656553268433,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26615,7 +26890,7 @@
          "ref": "lease_harbour_street.md::1"
         },
         {
-         "_distance": 0.8262155055999756,
+         "_distance": 0.7957346439361572,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26623,12 +26898,29 @@
           "source",
           "text"
          ],
-         "ref": "household_budget_2026.md::0"
+         "ref": "mem:mem_house_deposit"
         },
         {
-         "_distance": 0.8562310338020325,
+         "_distance": 0.8233463764190674,
          "cols": [
           "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::8"
+        }
+       ]
+      },
+      {
+       "kind": "fts",
+       "limit": 6,
+       "rows": [
+        {
+         "_score": 11.199860572814941,
+         "cols": [
+          "_score",
           "chunk_id",
           "meta_json",
           "source",
@@ -26637,22 +26929,16 @@
          "ref": "lease_harbour_street.md::5"
         },
         {
-         "_distance": 0.8654423952102661,
+         "_score": 7.8785858154296875,
          "cols": [
-          "_distance",
+          "_score",
           "chunk_id",
           "meta_json",
           "source",
           "text"
          ],
-         "ref": "household_budget_2026.md::2"
-        }
-       ]
-      },
-      {
-       "kind": "fts",
-       "limit": 6,
-       "rows": [
+         "ref": "linear_algebra_notes.md::5"
+        },
         {
          "_score": 5.472468852996826,
          "cols": [
@@ -26665,7 +26951,7 @@
          "ref": "lease_harbour_street.md::2"
         },
         {
-         "_score": 3.9373629093170166,
+         "_score": 5.1040520668029785,
          "cols": [
           "_score",
           "chunk_id",
@@ -26673,10 +26959,10 @@
           "source",
           "text"
          ],
-         "ref": "heron_meeting_notes.md::2"
+         "ref": "mem:ep_lease"
         },
         {
-         "_score": 3.869725465774536,
+         "_score": 4.37686014175415,
          "cols": [
           "_score",
           "chunk_id",
@@ -26684,10 +26970,10 @@
           "source",
           "text"
          ],
-         "ref": "household_budget_2026.md::4"
+         "ref": "aerotherm_hx9_manual.md::0"
         },
         {
-         "_score": 3.5170834064483643,
+         "_score": 4.1202311515808105,
          "cols": [
           "_score",
           "chunk_id",
@@ -26695,38 +26981,20 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::5"
-        },
-        {
-         "_score": 3.510476589202881,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_house_deposit"
-        },
-        {
-         "_score": 3.4317924976348877,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "household_budget_2026.md::2"
+         "ref": "mem:mem_cat"
         }
        ],
-       "text": "Yes Is there an extra deposit for it?"
+       "text": "Can I keep a cat in my flat? Is there an extra deposit for it?"
       }
      ],
-     "kept": [],
-     "search_text": "Yes Is there an extra deposit for it?",
+     "kept": [
+      "lease_harbour_street.md::5",
+      "linear_algebra_notes.md::5",
+      "lease_harbour_street.md::2"
+     ],
+     "search_text": "Can I keep a cat in my flat? Is there an extra deposit for it?",
      "top_k": 3,
-     "vector_text": "Yes Is there an extra deposit for it?"
+     "vector_text": "Can I keep a cat in my flat? Is there an extra deposit for it?"
     }
    },
    "store": "full"
@@ -26740,7 +27008,7 @@
        "limit": 10,
        "rows": [
         {
-         "_distance": 0.6428509950637817,
+         "_distance": 0.47079771757125854,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26751,7 +27019,7 @@
          "ref": "cover_crop_soil_study.md::11"
         },
         {
-         "_distance": 0.7781350612640381,
+         "_distance": 0.5681209564208984,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26762,40 +27030,7 @@
          "ref": "cover_crop_soil_study.md::9"
         },
         {
-         "_distance": 0.7820137739181519,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "cover_crop_soil_study.md::0"
-        },
-        {
-         "_distance": 0.789486289024353,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "cover_crop_soil_study.md::1"
-        },
-        {
-         "_distance": 0.8121272921562195,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "cover_crop_soil_study.md::13"
-        },
-        {
-         "_distance": 0.831386387348175,
+         "_distance": 0.6004151701927185,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26806,18 +27041,7 @@
          "ref": "cover_crop_soil_study.md::12"
         },
         {
-         "_distance": 0.8417938947677612,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "cover_crop_soil_study.md::10"
-        },
-        {
-         "_distance": 0.8597619533538818,
+         "_distance": 0.6058533787727356,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26828,7 +27052,7 @@
          "ref": "cover_crop_soil_study.md::5"
         },
         {
-         "_distance": 0.8826802968978882,
+         "_distance": 0.6339206099510193,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26836,10 +27060,54 @@
           "source",
           "text"
          ],
-         "ref": "cover_crop_soil_study.md::4"
+         "ref": "cover_crop_soil_study.md::13"
         },
         {
-         "_distance": 0.8838528394699097,
+         "_distance": 0.6377655267715454,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "cover_crop_soil_study.md::0"
+        },
+        {
+         "_distance": 0.6548029780387878,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "cover_crop_soil_study.md::1"
+        },
+        {
+         "_distance": 0.6660168170928955,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "cover_crop_soil_study.md::3"
+        },
+        {
+         "_distance": 0.7413415312767029,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "cover_crop_soil_study.md::8"
+        },
+        {
+         "_distance": 0.7480593919754028,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26856,7 +27124,7 @@
        "limit": 10,
        "rows": [
         {
-         "_score": 7.261667728424072,
+         "_score": 15.82916259765625,
          "cols": [
           "_score",
           "chunk_id",
@@ -26867,7 +27135,7 @@
          "ref": "cover_crop_soil_study.md::11"
         },
         {
-         "_score": 4.383585453033447,
+         "_score": 10.45400619506836,
          "cols": [
           "_score",
           "chunk_id",
@@ -26878,7 +27146,7 @@
          "ref": "cover_crop_soil_study.md::13"
         },
         {
-         "_score": 4.224618434906006,
+         "_score": 8.803287506103516,
          "cols": [
           "_score",
           "chunk_id",
@@ -26886,10 +27154,10 @@
           "source",
           "text"
          ],
-         "ref": "aerotherm_hx9_manual.md::3"
+         "ref": "cover_crop_soil_study.md::0"
         },
         {
-         "_score": 3.5634727478027344,
+         "_score": 7.080336093902588,
          "cols": [
           "_score",
           "chunk_id",
@@ -26897,54 +27165,10 @@
           "source",
           "text"
          ],
-         "ref": "millbrook_tramways_history.txt::3"
+         "ref": "cover_crop_soil_study.md::9"
         },
         {
-         "_score": 3.513200283050537,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "millbrook_tramways_history.txt::4"
-        },
-        {
-         "_score": 3.4989917278289795,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "cover_crop_soil_study.md::4"
-        },
-        {
-         "_score": 3.438059091567993,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "sourdough_notebook.md::2"
-        },
-        {
-         "_score": 3.4042744636535645,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "sourdough_notebook.md::4"
-        },
-        {
-         "_score": 3.139589786529541,
+         "_score": 6.279179573059082,
          "cols": [
           "_score",
           "chunk_id",
@@ -26955,7 +27179,7 @@
          "ref": "cover_crop_soil_study.md::10"
         },
         {
-         "_score": 3.115006446838379,
+         "_score": 6.123807430267334,
          "cols": [
           "_score",
           "chunk_id",
@@ -26963,22 +27187,66 @@
           "source",
           "text"
          ],
-         "ref": "contents_insurance_policy.md::5"
+         "ref": "cover_crop_soil_study.md::12"
+        },
+        {
+         "_score": 5.998730659484863,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "cover_crop_soil_study.md::8"
+        },
+        {
+         "_score": 5.842442512512207,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "sourdough_notebook.md::2"
+        },
+        {
+         "_score": 5.432412147521973,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "cover_crop_soil_study.md::1"
+        },
+        {
+         "_score": 4.984158039093018,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "cover_crop_soil_study.md::5"
         }
        ],
-       "text": "Could farmers use less fertiliser then?"
+       "text": "What did the soil study find about nitrogen? Could farmers use less fertiliser then?"
       }
      ],
      "kept": [
       "cover_crop_soil_study.md::11",
+      "cover_crop_soil_study.md::9",
       "cover_crop_soil_study.md::13",
-      "aerotherm_hx9_manual.md::3",
-      "millbrook_tramways_history.txt::3",
-      "millbrook_tramways_history.txt::4"
+      "cover_crop_soil_study.md::12",
+      "cover_crop_soil_study.md::0"
      ],
-     "search_text": "Could farmers use less fertiliser then?",
+     "search_text": "What did the soil study find about nitrogen? Could farmers use less fertiliser then?",
      "top_k": 5,
-     "vector_text": "Could farmers use less fertiliser then?"
+     "vector_text": "What did the soil study find about nitrogen? Could farmers use less fertiliser then?"
     },
     "library_tool": {
      "calls": [
@@ -26987,7 +27255,7 @@
        "limit": 6,
        "rows": [
         {
-         "_distance": 0.6428509950637817,
+         "_distance": 0.47079771757125854,
          "cols": [
           "_distance",
           "chunk_id",
@@ -26998,7 +27266,7 @@
          "ref": "cover_crop_soil_study.md::11"
         },
         {
-         "_distance": 0.7781350612640381,
+         "_distance": 0.5681209564208984,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27009,7 +27277,7 @@
          "ref": "cover_crop_soil_study.md::9"
         },
         {
-         "_distance": 0.7820137739181519,
+         "_distance": 0.6004151701927185,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27017,10 +27285,10 @@
           "source",
           "text"
          ],
-         "ref": "cover_crop_soil_study.md::0"
+         "ref": "cover_crop_soil_study.md::12"
         },
         {
-         "_distance": 0.789486289024353,
+         "_distance": 0.6058533787727356,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27028,10 +27296,10 @@
           "source",
           "text"
          ],
-         "ref": "cover_crop_soil_study.md::1"
+         "ref": "cover_crop_soil_study.md::5"
         },
         {
-         "_distance": 0.8121272921562195,
+         "_distance": 0.6339206099510193,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27042,7 +27310,7 @@
          "ref": "cover_crop_soil_study.md::13"
         },
         {
-         "_distance": 0.831386387348175,
+         "_distance": 0.6377655267715454,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27050,7 +27318,7 @@
           "source",
           "text"
          ],
-         "ref": "cover_crop_soil_study.md::12"
+         "ref": "cover_crop_soil_study.md::0"
         }
        ]
       },
@@ -27059,7 +27327,7 @@
        "limit": 6,
        "rows": [
         {
-         "_score": 7.261667728424072,
+         "_score": 15.82916259765625,
          "cols": [
           "_score",
           "chunk_id",
@@ -27070,7 +27338,7 @@
          "ref": "cover_crop_soil_study.md::11"
         },
         {
-         "_score": 4.383585453033447,
+         "_score": 10.45400619506836,
          "cols": [
           "_score",
           "chunk_id",
@@ -27081,7 +27349,7 @@
          "ref": "cover_crop_soil_study.md::13"
         },
         {
-         "_score": 4.224618434906006,
+         "_score": 8.803287506103516,
          "cols": [
           "_score",
           "chunk_id",
@@ -27089,10 +27357,10 @@
           "source",
           "text"
          ],
-         "ref": "aerotherm_hx9_manual.md::3"
+         "ref": "cover_crop_soil_study.md::0"
         },
         {
-         "_score": 3.5634727478027344,
+         "_score": 7.080336093902588,
          "cols": [
           "_score",
           "chunk_id",
@@ -27100,10 +27368,10 @@
           "source",
           "text"
          ],
-         "ref": "millbrook_tramways_history.txt::3"
+         "ref": "cover_crop_soil_study.md::9"
         },
         {
-         "_score": 3.513200283050537,
+         "_score": 6.279179573059082,
          "cols": [
           "_score",
           "chunk_id",
@@ -27111,10 +27379,10 @@
           "source",
           "text"
          ],
-         "ref": "millbrook_tramways_history.txt::4"
+         "ref": "cover_crop_soil_study.md::10"
         },
         {
-         "_score": 3.4989917278289795,
+         "_score": 6.123807430267334,
          "cols": [
           "_score",
           "chunk_id",
@@ -27122,20 +27390,20 @@
           "source",
           "text"
          ],
-         "ref": "cover_crop_soil_study.md::4"
+         "ref": "cover_crop_soil_study.md::12"
         }
        ],
-       "text": "Could farmers use less fertiliser then?"
+       "text": "What did the soil study find about nitrogen? Could farmers use less fertiliser then?"
       }
      ],
      "kept": [
       "cover_crop_soil_study.md::11",
-      "cover_crop_soil_study.md::13",
-      "aerotherm_hx9_manual.md::3"
+      "cover_crop_soil_study.md::9",
+      "cover_crop_soil_study.md::13"
      ],
-     "search_text": "Could farmers use less fertiliser then?",
+     "search_text": "What did the soil study find about nitrogen? Could farmers use less fertiliser then?",
      "top_k": 3,
-     "vector_text": "Could farmers use less fertiliser then?"
+     "vector_text": "What did the soil study find about nitrogen? Could farmers use less fertiliser then?"
     }
    },
    "store": "full"
@@ -27149,18 +27417,7 @@
        "limit": 10,
        "rows": [
         {
-         "_distance": 0.6113749146461487,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "linear_algebra_notes.md::5"
-        },
-        {
-         "_distance": 0.695960283279419,
+         "_distance": 0.44086337089538574,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27171,7 +27428,18 @@
          "ref": "linear_algebra_notes.md::3"
         },
         {
-         "_distance": 0.8481909036636353,
+         "_distance": 0.5420286059379578,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "linear_algebra_notes.md::5"
+        },
+        {
+         "_distance": 0.6281705498695374,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27182,7 +27450,7 @@
          "ref": "mem:ep_svd"
         },
         {
-         "_distance": 0.8547351956367493,
+         "_distance": 0.7527419328689575,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27193,7 +27461,7 @@
          "ref": "linear_algebra_notes.md::0"
         },
         {
-         "_distance": 0.8684489130973816,
+         "_distance": 0.7543649077415466,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27204,18 +27472,7 @@
          "ref": "linear_algebra_notes.md::4"
         },
         {
-         "_distance": 0.8859643340110779,
-         "cols": [
-          "_distance",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "linear_algebra_notes.md::1"
-        },
-        {
-         "_distance": 0.9199720025062561,
+         "_distance": 0.8435591459274292,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27226,7 +27483,18 @@
          "ref": "linear_algebra_notes.md::2"
         },
         {
-         "_distance": 0.960875391960144,
+         "_distance": 0.8569619655609131,
+         "cols": [
+          "_distance",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "linear_algebra_notes.md::1"
+        },
+        {
+         "_distance": 0.987318754196167,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27237,7 +27505,7 @@
          "ref": "mem:mem_exam"
         },
         {
-         "_distance": 0.9723469018936157,
+         "_distance": 1.0068551301956177,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27248,7 +27516,7 @@
          "ref": "cover_crop_soil_study.md::6"
         },
         {
-         "_distance": 1.0256489515304565,
+         "_distance": 1.0355098247528076,
          "cols": [
           "_distance",
           "chunk_id",
@@ -27264,6 +27532,39 @@
        "kind": "fts",
        "limit": 10,
        "rows": [
+        {
+         "_score": 17.182165145874023,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "linear_algebra_notes.md::3"
+        },
+        {
+         "_score": 9.593750953674316,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "mem:ep_svd"
+        },
+        {
+         "_score": 4.271862983703613,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "linear_algebra_notes.md::5"
+        },
         {
          "_score": 4.064672946929932,
          "cols": [
@@ -27285,6 +27586,17 @@
           "text"
          ],
          "ref": "linear_algebra_notes.md::1"
+        },
+        {
+         "_score": 3.6781532764434814,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "linear_algebra_notes.md::4"
         },
         {
          "_score": 3.6251187324523926,
@@ -27309,6 +27621,17 @@
          "ref": "kestrel_staff_handbook.md::9"
         },
         {
+         "_score": 3.573592185974121,
+         "cols": [
+          "_score",
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "aerotherm_hx9_manual.md::1"
+        },
+        {
          "_score": 3.2984766960144043,
          "cols": [
           "_score",
@@ -27318,76 +27641,21 @@
           "text"
          ],
          "ref": "contents_insurance_policy.md::1"
-        },
-        {
-         "_score": 3.1283376216888428,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "contents_insurance_policy.md::0"
-        },
-        {
-         "_score": 2.995882987976074,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "aerotherm_hx9_manual.md::9"
-        },
-        {
-         "_score": 2.3840785026550293,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_installer"
-        },
-        {
-         "_score": 2.359971046447754,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_quiet_hours"
-        },
-        {
-         "_score": 2.3480987548828125,
-         "cols": [
-          "_score",
-          "chunk_id",
-          "meta_json",
-          "source",
-          "text"
-         ],
-         "ref": "mem:ep_lease"
         }
        ],
-       "text": "How does it relate to PCA?"
+       "text": "singular value decomposition How does it relate to PCA?"
       }
      ],
      "kept": [
+      "linear_algebra_notes.md::3",
       "linear_algebra_notes.md::5",
       "osprey_meeting_notes.md::2",
-      "linear_algebra_notes.md::3",
       "linear_algebra_notes.md::1",
-      "cover_crop_soil_study.md::8"
+      "linear_algebra_notes.md::4"
      ],
-     "search_text": "How does it relate to PCA?",
+     "search_text": "singular value decomposition How does it relate to PCA?",
      "top_k": 5,
-     "vector_text": "How does it relate to PCA?"
+     "vector_text": "singular value decomposition How does it relate to PCA?"
     },
     "library_tool": {
      "calls": [
@@ -36465,43 +36733,7 @@
        "limit": 20,
        "rows": [
         {
-         "_distance": 0.9812118411064148,
-         "_rowid": 64424509442,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_bullets"
-        },
-        {
-         "_distance": 0.9816210865974426,
-         "_rowid": 64424509456,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_mother"
-        },
-        {
-         "_distance": 1.1052957773208618,
-         "_rowid": 64424509443,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_vegetarian"
-        },
-        {
-         "_distance": 1.1099047660827637,
+         "_distance": 0.6593596935272217,
          "_rowid": 64424509454,
          "cols": [
           "_distance",
@@ -36513,8 +36745,8 @@
          "ref": "mem:mem_cat"
         },
         {
-         "_distance": 1.1366629600524902,
-         "_rowid": 64424509460,
+         "_distance": 0.9781864285469055,
+         "_rowid": 64424509456,
          "cols": [
           "_distance",
           "_rowid",
@@ -36522,11 +36754,11 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_insurance_quotes"
+         "ref": "mem:mem_mother"
         },
         {
-         "_distance": 1.1665347814559937,
-         "_rowid": 64424509447,
+         "_distance": 1.1438199281692505,
+         "_rowid": 64424509443,
          "cols": [
           "_distance",
           "_rowid",
@@ -36534,11 +36766,11 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_penicillin"
+         "ref": "mem:mem_vegetarian"
         },
         {
-         "_distance": 1.167519211769104,
-         "_rowid": 64424509464,
+         "_distance": 1.1641011238098145,
+         "_rowid": 64424509442,
          "cols": [
           "_distance",
           "_rowid",
@@ -36546,94 +36778,10 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_lisbon"
+         "ref": "mem:mem_bullets"
         },
         {
-         "_distance": 1.1783193349838257,
-         "_rowid": 64424509461,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_exam"
-        },
-        {
-         "_distance": 1.1866284608840942,
-         "_rowid": 64424509445,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_portuguese"
-        },
-        {
-         "_distance": 1.2023030519485474,
-         "_rowid": 64424509440,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_metric"
-        },
-        {
-         "_distance": 1.2177587747573853,
-         "_rowid": 64424509462,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_house_deposit"
-        },
-        {
-         "_distance": 1.225075602531433,
-         "_rowid": 64424509458,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_kofi"
-        },
-        {
-         "_distance": 1.2316386699676514,
-         "_rowid": 64424509449,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_spelling"
-        },
-        {
-         "_distance": 1.2403218746185303,
-         "_rowid": 64424509441,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_coffee"
-        },
-        {
-         "_distance": 1.243929386138916,
+         "_distance": 1.2049851417541504,
          "_rowid": 64424509451,
          "cols": [
           "_distance",
@@ -36645,8 +36793,8 @@
          "ref": "mem:mem_sister"
         },
         {
-         "_distance": 1.2563562393188477,
-         "_rowid": 64424509444,
+         "_distance": 1.2511916160583496,
+         "_rowid": 64424509462,
          "cols": [
           "_distance",
           "_rowid",
@@ -36654,11 +36802,11 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_rust"
+         "ref": "mem:mem_house_deposit"
         },
         {
-         "_distance": 1.258327841758728,
-         "_rowid": 64424509465,
+         "_distance": 1.2717654705047607,
+         "_rowid": 64424509466,
          "cols": [
           "_distance",
           "_rowid",
@@ -36666,10 +36814,118 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_ledger_draft"
+         "ref": "mem:mem_repaint"
         },
         {
-         "_distance": 1.2623732089996338,
+         "_distance": 1.2724456787109375,
+         "_rowid": 64424509449,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_spelling"
+        },
+        {
+         "_distance": 1.2770509719848633,
+         "_rowid": 64424509447,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_penicillin"
+        },
+        {
+         "_distance": 1.2851364612579346,
+         "_rowid": 64424509445,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_portuguese"
+        },
+        {
+         "_distance": 1.2867522239685059,
+         "_rowid": 64424509440,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_metric"
+        },
+        {
+         "_distance": 1.2876248359680176,
+         "_rowid": 64424509464,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_lisbon"
+        },
+        {
+         "_distance": 1.2878978252410889,
+         "_rowid": 64424509457,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_manager"
+        },
+        {
+         "_distance": 1.290684700012207,
+         "_rowid": 64424509458,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_kofi"
+        },
+        {
+         "_distance": 1.2918572425842285,
+         "_rowid": 64424509452,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_landlord"
+        },
+        {
+         "_distance": 1.3081793785095215,
+         "_rowid": 64424509460,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_insurance_quotes"
+        },
+        {
+         "_distance": 1.3093461990356445,
          "_rowid": 64424509450,
          "cols": [
           "_distance",
@@ -36681,8 +36937,8 @@
          "ref": "mem:mem_quiet_hours"
         },
         {
-         "_distance": 1.2660905122756958,
-         "_rowid": 64424509463,
+         "_distance": 1.3171485662460327,
+         "_rowid": 64424509446,
          "cols": [
           "_distance",
           "_rowid",
@@ -36690,11 +36946,11 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_sourdough"
+         "ref": "mem:mem_hybrid"
         },
         {
-         "_distance": 1.3037059307098389,
-         "_rowid": 64424509452,
+         "_distance": 1.3300637006759644,
+         "_rowid": 64424509461,
          "cols": [
           "_distance",
           "_rowid",
@@ -36702,7 +36958,19 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_landlord"
+         "ref": "mem:mem_exam"
+        },
+        {
+         "_distance": 1.3409454822540283,
+         "_rowid": 64424509455,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_tomasz"
         }
        ],
        "select": [
@@ -36720,7 +36988,7 @@
        "rows": [
         {
          "_rowid": 64424509454,
-         "_score": 2.772916793823242,
+         "_score": 11.006570816040039,
          "cols": [
           "_rowid",
           "_score",
@@ -36729,6 +36997,102 @@
           "text"
          ],
          "ref": "mem:mem_cat"
+        },
+        {
+         "_rowid": 64424509456,
+         "_score": 3.864447593688965,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_mother"
+        },
+        {
+         "_rowid": 64424509453,
+         "_score": 1.8479689359664917,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_supervisor"
+        },
+        {
+         "_rowid": 64424509451,
+         "_score": 1.2812025547027588,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_sister"
+        },
+        {
+         "_rowid": 64424509457,
+         "_score": 1.2812025547027588,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_manager"
+        },
+        {
+         "_rowid": 64424509444,
+         "_score": 1.2745360136032104,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_rust"
+        },
+        {
+         "_rowid": 64424509467,
+         "_score": 1.2679387331008911,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_e3_error"
+        },
+        {
+         "_rowid": 64424509466,
+         "_score": 1.2679387331008911,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_repaint"
+        },
+        {
+         "_rowid": 64424509452,
+         "_score": 1.229745864868164,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_landlord"
         }
        ],
        "select": [
@@ -36737,16 +37101,17 @@
         "source",
         "chunk_id"
        ],
-       "text": "How old is What?",
+       "text": "What's my cat called? How old is she?",
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
      "kept": [
-      "mem:mem_cat"
+      "mem:mem_cat",
+      "mem:mem_mother"
      ],
-     "search_text": "How old is What?",
+     "search_text": "What's my cat called? How old is she?",
      "top_k": 5,
-     "vector_text": "How old is What?"
+     "vector_text": "What's my cat called? How old is she?"
     }
    },
    "store": "full"
@@ -37106,19 +37471,7 @@
        "limit": 20,
        "rows": [
         {
-         "_distance": 1.0621297359466553,
-         "_rowid": 64424509442,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_bullets"
-        },
-        {
-         "_distance": 1.0881893634796143,
+         "_distance": 0.8352082371711731,
          "_rowid": 64424509453,
          "cols": [
           "_distance",
@@ -37130,8 +37483,8 @@
          "ref": "mem:mem_supervisor"
         },
         {
-         "_distance": 1.1300150156021118,
-         "_rowid": 64424509449,
+         "_distance": 1.12844979763031,
+         "_rowid": 64424509442,
          "cols": [
           "_distance",
           "_rowid",
@@ -37139,154 +37492,10 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_spelling"
+         "ref": "mem:mem_bullets"
         },
         {
-         "_distance": 1.141579508781433,
-         "_rowid": 64424509461,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_exam"
-        },
-        {
-         "_distance": 1.1498615741729736,
-         "_rowid": 64424509447,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_penicillin"
-        },
-        {
-         "_distance": 1.177007794380188,
-         "_rowid": 64424509465,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_ledger_draft"
-        },
-        {
-         "_distance": 1.186772108078003,
-         "_rowid": 64424509460,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_insurance_quotes"
-        },
-        {
-         "_distance": 1.1925179958343506,
-         "_rowid": 64424509443,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_vegetarian"
-        },
-        {
-         "_distance": 1.1986720561981201,
-         "_rowid": 64424509458,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_kofi"
-        },
-        {
-         "_distance": 1.2091681957244873,
-         "_rowid": 64424509455,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_tomasz"
-        },
-        {
-         "_distance": 1.2154223918914795,
-         "_rowid": 64424509440,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_metric"
-        },
-        {
-         "_distance": 1.22380530834198,
-         "_rowid": 64424509446,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_hybrid"
-        },
-        {
-         "_distance": 1.2276499271392822,
-         "_rowid": 64424509444,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_rust"
-        },
-        {
-         "_distance": 1.2325923442840576,
-         "_rowid": 64424509467,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_e3_error"
-        },
-        {
-         "_distance": 1.240340232849121,
-         "_rowid": 64424509456,
-         "cols": [
-          "_distance",
-          "_rowid",
-          "chunk_id",
-          "source",
-          "text"
-         ],
-         "ref": "mem:mem_mother"
-        },
-        {
-         "_distance": 1.2687772512435913,
+         "_distance": 1.1576220989227295,
          "_rowid": 64424509457,
          "cols": [
           "_distance",
@@ -37298,8 +37507,8 @@
          "ref": "mem:mem_manager"
         },
         {
-         "_distance": 1.2696764469146729,
-         "_rowid": 64424509454,
+         "_distance": 1.2056422233581543,
+         "_rowid": 64424509449,
          "cols": [
           "_distance",
           "_rowid",
@@ -37307,11 +37516,11 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_cat"
+         "ref": "mem:mem_spelling"
         },
         {
-         "_distance": 1.2706838846206665,
-         "_rowid": 64424509452,
+         "_distance": 1.213749647140503,
+         "_rowid": 64424509456,
          "cols": [
           "_distance",
           "_rowid",
@@ -37319,10 +37528,106 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_landlord"
+         "ref": "mem:mem_mother"
         },
         {
-         "_distance": 1.2780553102493286,
+         "_distance": 1.2197874784469604,
+         "_rowid": 64424509461,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_exam"
+        },
+        {
+         "_distance": 1.2211461067199707,
+         "_rowid": 64424509460,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_insurance_quotes"
+        },
+        {
+         "_distance": 1.2564804553985596,
+         "_rowid": 64424509455,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_tomasz"
+        },
+        {
+         "_distance": 1.2628822326660156,
+         "_rowid": 64424509466,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_repaint"
+        },
+        {
+         "_distance": 1.289595603942871,
+         "_rowid": 64424509465,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_ledger_draft"
+        },
+        {
+         "_distance": 1.2987403869628906,
+         "_rowid": 64424509467,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_e3_error"
+        },
+        {
+         "_distance": 1.2998230457305908,
+         "_rowid": 64424509446,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_hybrid"
+        },
+        {
+         "_distance": 1.315077304840088,
+         "_rowid": 64424509447,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_penicillin"
+        },
+        {
+         "_distance": 1.321113109588623,
          "_rowid": 64424509445,
          "cols": [
           "_distance",
@@ -37334,8 +37639,8 @@
          "ref": "mem:mem_portuguese"
         },
         {
-         "_distance": 1.2892765998840332,
-         "_rowid": 64424509463,
+         "_distance": 1.3217787742614746,
+         "_rowid": 64424509458,
          "cols": [
           "_distance",
           "_rowid",
@@ -37343,7 +37648,67 @@
           "source",
           "text"
          ],
-         "ref": "mem:mem_sourdough"
+         "ref": "mem:mem_kofi"
+        },
+        {
+         "_distance": 1.343363642692566,
+         "_rowid": 64424509452,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_landlord"
+        },
+        {
+         "_distance": 1.343565821647644,
+         "_rowid": 64424509440,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_metric"
+        },
+        {
+         "_distance": 1.3517816066741943,
+         "_rowid": 64424509443,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_vegetarian"
+        },
+        {
+         "_distance": 1.3585691452026367,
+         "_rowid": 64424509451,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_sister"
+        },
+        {
+         "_distance": 1.3815174102783203,
+         "_rowid": 64424509464,
+         "cols": [
+          "_distance",
+          "_rowid",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_lisbon"
         }
        ],
        "select": [
@@ -37358,21 +37723,132 @@
       {
        "kind": "fts",
        "limit": 20,
-       "rows": [],
+       "rows": [
+        {
+         "_rowid": 64424509453,
+         "_score": 10.187273025512695,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_supervisor"
+        },
+        {
+         "_rowid": 64424509457,
+         "_score": 1.2812025547027588,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_manager"
+        },
+        {
+         "_rowid": 64424509451,
+         "_score": 1.2812025547027588,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_sister"
+        },
+        {
+         "_rowid": 64424509454,
+         "_score": 1.2745360136032104,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_cat"
+        },
+        {
+         "_rowid": 64424509444,
+         "_score": 1.2745360136032104,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_rust"
+        },
+        {
+         "_rowid": 64424509467,
+         "_score": 1.2679387331008911,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_e3_error"
+        },
+        {
+         "_rowid": 64424509466,
+         "_score": 1.2679387331008911,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_repaint"
+        },
+        {
+         "_rowid": 64424509456,
+         "_score": 1.2679387331008911,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_mother"
+        },
+        {
+         "_rowid": 64424509452,
+         "_score": 1.229745864868164,
+         "cols": [
+          "_rowid",
+          "_score",
+          "chunk_id",
+          "source",
+          "text"
+         ],
+         "ref": "mem:mem_landlord"
+        }
+       ],
        "select": [
         "_rowid",
         "text",
         "source",
         "chunk_id"
        ],
-       "text": "What field was that in?",
+       "text": "Who was my master's supervisor? What field was that in?",
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
-     "search_text": "What field was that in?",
+     "kept": [
+      "mem:mem_supervisor"
+     ],
+     "search_text": "Who was my master's supervisor? What field was that in?",
      "top_k": 5,
-     "vector_text": "What field was that in?"
+     "vector_text": "Who was my master's supervisor? What field was that in?"
     }
    },
    "store": "full"

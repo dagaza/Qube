@@ -414,6 +414,78 @@ def relate_turn(
     return RELATION_NONE, None, None, ("unrelated",)
 
 
+# ---------------------------------------------------------------------------
+# Library and memory follow-ups (plan S36, D51)
+# ---------------------------------------------------------------------------
+
+# References S6 leaves out on purpose for the web ("you", "we" and clause
+# "that" are not back-references there): people pronouns, and a final "that"
+# ("Who decided that?", "What field was that in?").
+_PEOPLE_REF = re.compile(r"\b(?:he|she|him|her|his|hers)\b", re.I)
+_FINAL_THAT = re.compile(r"\bthat\s*(?:in|on|for|about|from|with)?\s*[?.!]*\s*$", re.I)
+_LEADING_AND = re.compile(r"^(?:and|so|but)\b", re.I)
+_FINAL_THEN = re.compile(r"\bthen\s*[?.!]*\s*$", re.I)
+_CLAUSE_BOUNDARY = re.compile(r"\s(?:and|or|but|if|when|because|so|while|once)\s", re.I)
+_CONTENT_WORD = re.compile(
+    r"\b(?!(?:is|are|was|were|do|does|did|how|what|why|when|where|who|which|much|many|there|"
+    r"my|the|a|an|i|we|you|can|could|should|would|will)\b)[a-z]{3,}\b",
+    re.I,
+)
+_LEANING_MAX_WORDS = 6
+
+
+def _refers_back(text: str) -> bool:
+    t = text or ""
+    return _is_back_reference(t) or bool(_PEOPLE_REF.search(t) or _FINAL_THAT.search(t))
+
+
+def refers_inside_turn(text: str) -> bool:
+    """A reference after a clause boundary points at a noun phrase of the same turn.
+
+    "How much is the deposit and how is it protected?", "Is my bike covered if
+    it's stolen?", "When is the day trip and how do we get there?".
+    """
+    t = text or ""
+    for m in _CLAUSE_BOUNDARY.finditer(t):
+        head, tail = t[: m.start()], t[m.end():]
+        if _CONTENT_WORD.search(head) and _refers_back(tail) and not _refers_back(head):
+            return True
+    return False
+
+
+def context_signals(turn: str) -> tuple[str, ...]:
+    """Why a turn with no subject of its own leans on the conversation (plan S36).
+
+    ``back_reference`` (a pronoun or "that" pointing out of the turn),
+    ``leading_connective`` ("And on tarmac?": a short bare ellipsis) and
+    ``final_then`` ("Could farmers use less fertiliser then?"). Empty for a
+    topic change. Definite noun phrases ("the palace entry") are not a
+    signal: they also start most new questions (V77).
+    """
+    raw = _COMPOSER_TOKEN.sub("", turn or "").strip()
+    if _TOPIC_CHANGE.search(raw):
+        return ()
+    t = clean_turn(raw)
+    signals: list[str] = []
+    if _refers_back(t) and not refers_inside_turn(t):
+        signals.append("back_reference")
+    if _LEADING_AND.match(t) and len(t.split()) <= _LEANING_MAX_WORDS and _BARE_ELLIPSIS.match(t):
+        signals.append("leading_connective")
+    if _FINAL_THEN.search(t):
+        signals.append("final_then")
+    return tuple(signals)
+
+
+def prior_user_turn(history: list[dict[str, Any]] | None, current_prompt: str) -> Optional[str]:
+    """The previous user turn in the subject window, cleaned; ``None`` if there is none."""
+    for message in reversed(_window(history or [], current_prompt)):
+        if _role(message) == "user":
+            text = clean_turn(_content(message))
+            if text:
+                return text
+    return None
+
+
 def _answer_referent(user_text: str, assistant_text: str) -> Optional[str]:
     """Entity an assistant answer names for an entity question ("capital of Nepal" → Kathmandu)."""
     from core.discourse_answer_patterns import extract_referent_from_assistant_answer
@@ -530,11 +602,14 @@ __all__ = [
     "SubjectTrack",
     "clean_turn",
     "compose_retrieval_text",
+    "context_signals",
     "extract_turn_subject",
     "has_back_reference",
     "is_subject_like",
     "mentions_subject",
     "normalize_subject",
+    "prior_user_turn",
+    "refers_inside_turn",
     "relate_turn",
     "track_subject",
 ]

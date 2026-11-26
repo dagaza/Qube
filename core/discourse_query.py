@@ -14,7 +14,10 @@ from core.discourse_subject import (
     RELATION_CONTINUATION,
     RELATION_NO_PRIOR,
     compose_retrieval_text,
+    context_signals,
     has_back_reference,
+    prior_user_turn,
+    refers_inside_turn,
     track_subject,
 )
 from core.discourse_intent import FOLLOW_UP_SUPPRESS_THRESHOLD, FollowUpClassification
@@ -100,6 +103,10 @@ class ResolvedRetrievalQuery:
     web_subject: str | None = None
     web_facet: str | None = None
     web_subject_relation: str = "no_prior"
+    # Plan S36: how ``retrieval_text`` (library and memory search) was
+    # resolved: ``subject`` (S6's subject + facet), ``prior_question`` (the
+    # previous user question in front of the turn), or ``none``.
+    retrieval_rewrite_reason: str = "none"
 
     @property
     def web_rewritten(self) -> bool:
@@ -123,6 +130,8 @@ class ResolvedRetrievalQuery:
             out["web_query_subject"] = self.web_subject
             out["web_query_facet"] = self.web_facet
             out["web_query_subject_relation"] = self.web_subject_relation
+        if self.retrieval_rewrite_reason != "none":
+            out["retrieval_query_rewrite_reason"] = self.retrieval_rewrite_reason
         if self.acronym_expansions:
             out["web_query_acronym_expansions"] = [
                 f"{acronym}={long_form}" for acronym, long_form in self.acronym_expansions
@@ -150,6 +159,9 @@ def build_resolved_retrieval_query(
     Web search uses the same base plus ``history`` for meta-web prior-turn
     fallback (``meta_prior_turn``), detected on ``raw_text``, and for acronyms
     defined earlier in ``history`` (``acronym_expansion``, plan S5).
+    ``retrieval_text`` (library and memory search) is resolved for follow-ups
+    by ``_library_memory_target`` (plan S36); ``routing_text`` keeps the
+    legacy expansion.
     """
     raw = (raw_text or "").strip()
     inference = (inference_text or raw).strip()
@@ -166,9 +178,17 @@ def build_resolved_retrieval_query(
     )
     # An acronym defined earlier in the conversation is a safe signal on its
     # own, so this runs whether or not the turn was classified as a follow-up.
-    web_text, expansions = expand_acronyms(web_text, extract_acronym_definitions(history))
+    acronyms = extract_acronym_definitions(history)
+    web_text, expansions = expand_acronyms(web_text, acronyms)
     if expansions and web_reason == "none":
         web_reason = "acronym_expansion"
+    retrieval_text, retrieval_reason = _library_memory_target(
+        raw, inference, follow_up, discourse, history
+    )
+    # No request-frame stripping here (D54): library and memory search embed
+    # the text, and "Tell me about Dr. Evelyn." -> "Dr. Evelyn" pulled a
+    # wrong "Dr." memory into an abstain case (V79).
+    retrieval_text, _retrieval_expansions = expand_acronyms(retrieval_text, acronyms)
     inf_reason = "none"
     inf_conf = 0.0
     if resolved_query is not None and resolved_query.succeeded:
@@ -178,7 +198,7 @@ def build_resolved_retrieval_query(
         raw_text=raw,
         inference_text=inference,
         routing_text=resolve_routing_query(inference, follow_up, discourse),
-        retrieval_text=resolve_retrieval_query(inference, follow_up, discourse),
+        retrieval_text=retrieval_text,
         web_text=web_text,
         web_rewrite_reason=web_reason,
         inference_rewrite_reason=inf_reason,
@@ -187,6 +207,7 @@ def build_resolved_retrieval_query(
         web_subject=track.subject if track else None,
         web_facet=track.facet if track else None,
         web_subject_relation=track.relation if track else "no_prior",
+        retrieval_rewrite_reason=retrieval_reason,
     )
 
 
@@ -232,6 +253,51 @@ def _subject_web_target(
     return text, web_target.rewrite_reason, track
 
 
+def _library_memory_target(
+    raw: str,
+    inference: str,
+    follow_up: FollowUpClassification,
+    discourse: DiscourseState | None,
+    history: list[dict[str, Any]] | None,
+) -> tuple[str, str]:
+    """Library and memory search text for this turn (plan S36, D51).
+
+    S5 and S6 resolved only the web text; library and memory searched the
+    legacy "Regarding X:" expansion, which missed most follow-ups and
+    anchored some topic switches to a wrong word ("Regarding What: ...",
+    V74, V76). Here:
+
+    * the turn continues the tracked subject — S6's subject + facet + cleaned
+      turn, as for the web, unless its only link is a pronoun that points
+      inside the turn ("... and how is it protected?");
+    * otherwise, the turn leans on the conversation without naming a subject
+      (a back-reference, "And on tarmac?", "... then?") — the previous user
+      question in front of the turn. A personal library or memory store is
+      narrow, so the previous question is a safe anchor where the web needs
+      an extracted subject;
+    * otherwise, the turn alone: no legacy anchor;
+    * discourse disabled — the turn alone.
+
+    Returns ``(text, reason)``, reason ``subject`` / ``prior_question`` / ``none``.
+    The caller expands acronyms (S5); request frames stay (D54).
+    """
+    if discourse is None or not inference:
+        return inference, "none"
+    target = resolve_search_target(inference, follow_up, discourse, None)
+    text, _reason, track = _subject_web_target(raw, inference, target, discourse, history)
+    if (
+        track is not None
+        and track.relation == RELATION_CONTINUATION
+        and not (track.reasons == ("back_reference",) and refers_inside_turn(raw))
+    ):
+        return text, ("subject" if text.strip() != inference.strip() else "none")
+    if context_signals(inference):
+        prior = prior_user_turn(history, raw)
+        if prior and prior.lower() not in inference.lower():
+            return f"{prior} {inference}", "prior_question"
+    return inference, "none"
+
+
 def resolve_routing_query(
     prompt: str,
     follow_up: FollowUpClassification,
@@ -246,7 +312,11 @@ def resolve_retrieval_query(
     follow_up: FollowUpClassification,
     discourse: DiscourseState | None,
 ) -> str:
-    """Expanded query for memory/RAG/web search; original prompt if not a follow-up."""
+    """Legacy follow-up expansion ("Regarding X: ..."); original prompt if not a follow-up.
+
+    Feeds ``routing_text``. Library and memory search use
+    ``_library_memory_target`` since plan S36; the web uses ``_subject_web_target``.
+    """
     return resolve_search_target(prompt, follow_up, discourse, None).query
 
 
