@@ -268,6 +268,29 @@ def _build_tier_where_clause(
     return " OR ".join(f"source LIKE '{p}'" for p in uniq)
 
 
+def _offer_memory_shadow(
+    shadow_path: str | None,
+    query: str,
+    pool: dict[str, str] | None,
+    kept_keys: list[str],
+    *,
+    top_k: int,
+) -> None:
+    if not shadow_path or not pool:
+        return
+    from core.knowledge.ranking.library_memory_shadow import offer
+
+    rank = {key: i for i, key in enumerate(kept_keys)}
+    rows = sorted(pool.items(), key=lambda kv: rank.get(kv[0], len(rank)))  # kept rows in rank order first
+    # ``top_k`` sizes the candidate fetch; every mode cites up to MAX_MEMORY_RESULTS.
+    offer(
+        shadow_path,
+        query,
+        [(text, key in rank) for key, text in rows],
+        top_k=min(int(top_k), MAX_MEMORY_RESULTS) if top_k else MAX_MEMORY_RESULTS,
+    )
+
+
 def memory_search(
     query: str,
     query_vector: np.ndarray,
@@ -287,6 +310,7 @@ def memory_search(
     apply_temporal_decay: bool = False,
     query_fingerprint: str | None = None,
     exclude_presentation_preferences: bool = False,
+    shadow_path: str | None = None,
 ) -> dict:
     """
     Memory v6 Retrieval Layer (Safe + Traceable + Phase B link expansion)
@@ -305,6 +329,10 @@ def memory_search(
       ``include_episode`` / ``include_context``) scope the LanceDB WHERE
       clause so plain chat turns see only preferences + context while
       recall / hybrid / narrative turns also see knowledge and episodes.
+    ✔ S34: ``shadow_path`` offers the candidate pool (after the tier filter and
+      the action-boundary check, before the floors and gates) and the kept
+      memories to the cross-encoder shadow pass during a worker turn. It
+      never changes what is kept.
     """
 
     if is_reindex_in_progress():
@@ -385,6 +413,12 @@ def memory_search(
 
         filtered = []
         now_ts = time.time()
+        shadow_pool: dict[str, str] | None = None
+        if shadow_path:
+            from core.knowledge.ranking.library_memory_shadow import collecting
+
+            if collecting():
+                shadow_pool = {}
 
         # ============================================================
         # 2. SCORE + TRACE PIPELINE
@@ -422,6 +456,11 @@ def memory_search(
 
             if not content:
                 continue
+
+            if shadow_pool is not None:
+                from core.knowledge.ranking.library_memory_shadow import memory_passage
+
+                shadow_pool.setdefault(str(lance_row_id(r) or content), memory_passage(content))
 
             has_vector = "vector" in channels
             has_fts = "fts" in channels
@@ -506,6 +545,7 @@ def memory_search(
             })
 
         if not filtered:
+            _offer_memory_shadow(shadow_path, query, shadow_pool, [], top_k=top_k)
             return {"memory_context": "", "memory_sources": []}
 
         filtered.sort(key=lambda x: x["score"], reverse=True)
@@ -521,6 +561,7 @@ def memory_search(
             )
             if not gated:
                 logger.info("[Memory v7] core memory suppressed (relevance gate)")
+                _offer_memory_shadow(shadow_path, query, shadow_pool, [], top_k=top_k)
                 return {"memory_context": "", "memory_sources": []}
             filtered = gated
 
@@ -617,6 +658,13 @@ def memory_search(
             f"[Memory v6] returned={len(context_blocks)} memory + "
             f"{len(expanded_links_seen)} link(s) "
             f"chars={current_chars} trace={trace}"
+        )
+        _offer_memory_shadow(
+            shadow_path,
+            query,
+            shadow_pool,
+            [str(item.get("memory_id") or item["content"]) for item in kept_items],
+            top_k=top_k,
         )
 
         return {

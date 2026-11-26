@@ -223,6 +223,7 @@ from core.knowledge.registry import (
     resolve_turn_preset_id,
 )
 from core.knowledge.types import SERVICE_INTERNAL_CORPUS
+from core.knowledge.ranking import library_memory_shadow as shadow_lm
 from core.knowledge.web_retrieval import run_web_retrieval
 from core.knowledge.spelling import conversation_terms
 from core.knowledge.fetch_provenance import summarize_web_pipeline_outcome
@@ -1244,7 +1245,9 @@ class LLMWorker(QThread):
         except Exception as e:
             logger.debug("[Sidecar] expanded memory embedding failed: %s", e)
             return primary
-        auxiliary = memory_search(expanded, exp_vector, self.store, **kwargs)
+        # S34: only the primary search offers shadow candidates.
+        aux_kwargs = {k: v for k, v in kwargs.items() if k != "shadow_path"}
+        auxiliary = memory_search(expanded, exp_vector, self.store, **aux_kwargs)
         merged = merge_memory_search_results(primary, auxiliary)
         p_n = len(primary.get("memory_sources") or [])
         m_n = len(merged.get("memory_sources") or [])
@@ -1269,7 +1272,9 @@ class LLMWorker(QThread):
         except Exception as e:
             logger.debug("[Sidecar] expanded RAG embedding failed: %s", e)
             return primary
-        auxiliary = rag_search(expanded, exp_vector, self.store, **kwargs)
+        # S34: only the primary search offers shadow candidates.
+        aux_kwargs = {k: v for k, v in kwargs.items() if k != "shadow_path"}
+        auxiliary = rag_search(expanded, exp_vector, self.store, **aux_kwargs)
         merged = merge_rag_search_results(primary, auxiliary)
         p_n = len(primary.get("sources") or [])
         m_n = len(merged.get("sources") or [])
@@ -2199,6 +2204,8 @@ class LLMWorker(QThread):
         if getattr(self, "_debug_exchange_id", None) is None:
             self._debug_exchange_id = next_exchange_id()
         self._exchange_worker_started_at = time.monotonic()
+        # S34 (D48): collect library / recall candidates for shadow scoring after the reply.
+        shadow_lm.begin_turn()
         self._engine_enqueue_at: float | None = None
         log_chat_exchange_begin(
             exchange_id=self._debug_exchange_id,
@@ -2304,6 +2311,8 @@ class LLMWorker(QThread):
                 execution_policy=self._execution_policy_debug_payload(),
             )
             self._completion_output_snapshot = None
+            # S34 (D48): the reply is final; score this turn's shadow candidates off the turn.
+            shadow_lm.score_jobs_async(shadow_lm.end_turn())
             self.context_retrieved.emit(False)
             self.web_search_active.emit(False, False, False)
             self.response_finished.emit(self.session_id, final_text_out)
@@ -3240,6 +3249,8 @@ class LLMWorker(QThread):
                 include_context=True,
                 apply_mmr=True,
                 apply_temporal_decay=True,
+                # S34 (D49): recall gets cross-encoder shadow scores; narrative does not.
+                shadow_path=None if prefer_episode else shadow_lm.PATH_MEMORY_RECALL,
                 query_fingerprint=self._memory_query_fingerprint(
                     mem_q,
                     include_preference=True,
@@ -3327,6 +3338,7 @@ class LLMWorker(QThread):
                 query_vector,
                 query_expansion,
                 source_filter=getattr(self, "_turn_source_filter", None),
+                shadow_path=shadow_lm.PATH_LIBRARY_CHAT,
             )
             # 🔑 Use += to ensure we don't accidentally wipe out other tool data
             tool_context += rag_result.get("llm_context", "")

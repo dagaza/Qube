@@ -20,6 +20,7 @@ def search_library_chunks(
     source_prefix_filter: str | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Run library hybrid search; return normalized chunk rows and audit copy."""
+    from core.knowledge.ranking.library_memory_shadow import PATH_LIBRARY_TOOL
     from mcp.rag_tool import rag_search
 
     result = rag_search(
@@ -29,6 +30,7 @@ def search_library_chunks(
         top_k=top_k,
         source_filter=source_filter,
         source_prefix_filter=source_prefix_filter,
+        shadow_path=PATH_LIBRARY_TOOL,  # S34: offered only during a worker turn
     )
     sources = result.get("sources") or []
     rows: list[dict[str, Any]] = []

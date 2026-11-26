@@ -103,6 +103,47 @@ def _exclude_memory_results(results: list) -> list:
     ]
 
 
+def _shadow_row_key(doc: dict) -> str:
+    """The ``chunk_id`` a kept row gets in ``sources`` (``<source>::<chunk>``)."""
+    source = doc.get("source") or doc.get("filename") or "Unknown Document"
+    raw_cid = doc.get("chunk_id")
+    if raw_cid is None:
+        raw_cid = doc.get("id")
+    return f"{source}::{raw_cid}" if raw_cid is not None else f"{source}::{(doc.get('text') or '')[:64]}"
+
+
+def _shadow_pool(vector_results: list, text_results: list) -> dict[str, str]:
+    """Every candidate both channels returned, before the floors: key -> passage (plan S34)."""
+    from core.knowledge.ranking.library_memory_shadow import library_passage
+
+    pool: dict[str, str] = {}
+    for doc in [*vector_results, *text_results]:
+        key = _shadow_row_key(doc)
+        if key not in pool:
+            pool[key] = library_passage(
+                str(doc.get("source") or doc.get("filename") or ""), str(doc.get("text") or "")
+            )
+    return pool
+
+
+def _offer_shadow(
+    shadow_path: str | None,
+    query: str,
+    pool: dict[str, str] | None,
+    kept_keys: list,
+    *,
+    top_k: int,
+    scoped: bool,
+) -> None:
+    if not shadow_path or not pool:
+        return
+    from core.knowledge.ranking.library_memory_shadow import offer
+
+    rank = {key: i for i, key in enumerate(kept_keys)}
+    rows = sorted(pool.items(), key=lambda kv: rank.get(kv[0], len(rank)))  # kept rows in rank order first
+    offer(shadow_path, query, [(text, key in rank) for key, text in rows], top_k=top_k, scoped=scoped)
+
+
 def rag_search(
     query: str,
     query_vector: np.ndarray,
@@ -111,6 +152,7 @@ def rag_search(
     *,
     source_filter: str | None = None,
     source_prefix_filter: str | None = None,
+    shadow_path: str | None = None,
 ) -> dict:
     """
     RAG v2.3 — Contract-safe retrieval system.
@@ -121,6 +163,10 @@ def rag_search(
     - No UI contract drift
     - Safe fallback behavior across all configurations
     - Strict RAM + context enforcement
+
+    ``shadow_path`` (plan S34): during a worker turn, offer the candidate pool
+    and the kept rows to the cross-encoder shadow pass under that path. It
+    never changes what is kept.
     """
 
     if source_filter and source_prefix_filter:
@@ -186,6 +232,14 @@ def rag_search(
             vector_results = _exclude_memory_results(_exclude_help_corpus_results(vector_results))
             text_results = _exclude_memory_results(_exclude_help_corpus_results(text_results))
 
+        shadow_pool = None
+        scoped = bool(source_filter or source_prefix_filter)
+        if shadow_path:
+            from core.knowledge.ranking.library_memory_shadow import collecting
+
+            if collecting():
+                shadow_pool = _shadow_pool(vector_results, text_results)
+
         had_vector_candidates = bool(vector_results)
         if not had_vector_candidates and text_results:
             filtered_fts: list = []
@@ -229,6 +283,7 @@ def rag_search(
                         ],
                     }
             logger.warning("[RAG] No retrieval results from any channel.")
+            _offer_shadow(shadow_path, query, shadow_pool, [], top_k=top_k, scoped=scoped)
             return {
                 "llm_context": "",
                 "sources": []
@@ -279,6 +334,7 @@ def rag_search(
                     len(vector_results),
                     MIN_RAG_SEMANTIC_SCORE,
                 )
+                _offer_shadow(shadow_path, query, shadow_pool, [], top_k=top_k, scoped=scoped)
                 return {
                     "llm_context": "",
                     "sources": []
@@ -381,6 +437,14 @@ def rag_search(
         logger.info(
             f"[RAG v2.3] Returned {len(context_blocks)} chunks | "
             f"chars={current_chars}"
+        )
+        _offer_shadow(
+            shadow_path,
+            query,
+            shadow_pool,
+            [s.get("chunk_id") for s in sources],
+            top_k=top_k,
+            scoped=scoped,
         )
 
         return {
