@@ -740,6 +740,13 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 - **Branch.** `feat/kr-followups-phase6`, local only at the end of 2026-11-26 (not pushed). It is 11 commits on `origin/main` (`aa3f817`) plus this note. The only other change in the working tree is the owner's own edit to `docs/privacy-policy.md`, which stays out of every commit.
 - **Check first.** Run `git status --porcelain` and `git log --oneline -3`. Then run `.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_s33_library_memory.py tests/test_s34_rerank_scores.py tests/test_s36_library_memory_query.py`: all pass, in about 20 s. The full-suite reference is S36's (Commands, below); there is no need to re-run it before S35.
 - **Next free numbers.** V80 and D55.
+- **Models.** A new session starts with an empty scratch home. The previous session's copies were in its own scratch directory under `/tmp`, which is emptied at boot.
+  - Replays and the tests need no models. A re-capture and live measurement do. S35's gate changes what library and memory search keep, so S35 will probably need a re-capture on all three embedders and a re-recording of the cross-encoder scores.
+  - Before the first such run, set the scratch home up:
+    1. Copy `~/.qube/models/search` (Balanced and the reranker, 212 MB) to `<scratch home>/.qube/models/search`.
+    2. With `HOME=<scratch home>` and without `HF_HUB_OFFLINE`, run `core.bootstrap_search_download.download_embedding_preset_no_progress("fast")`, then the same with `"power"` (65 MB and 1.3 GB, from Hugging Face). Check that each preset directory is populated.
+    3. Run everything after that with `HF_HUB_OFFLINE=1`.
+  - Never download into the owner's real `~/.qube`.
 - **S35 next.** It starts from:
   - **Where the gate applies.** The threshold is −4, with −6 as the alternative (V72). The gate replaces the floor; it does not follow it. The passage includes the file name (`rerank_passage` in `core/knowledge/library_memory_eval.py`). The gated runs are plain-chat library, `@library` and memory recall (D49). Memory recall gates only the preference, knowledge and context tiers. Core memory and narrative keep today's gates (V73).
   - **The simulation.** Take the pool from `rerank_pool`, keep the rows with a cross-encoder score ≥ t, sort them by score and cut to the run's `top_k`. On S36's texts this gives 0 rule-7 regressions at −4 and at −6 (S36's As built).
