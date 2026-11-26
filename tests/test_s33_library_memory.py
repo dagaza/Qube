@@ -16,10 +16,9 @@ from __future__ import annotations
 
 import copy
 import json
-import math
 import re
+import subprocess
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 
@@ -32,7 +31,29 @@ from core.knowledge import library_memory_eval as lme  # noqa: E402
 MODES = ("balanced", "fast", "power")
 FIXTURE_DIR = ROOT / "eval" / "fixtures" / "library_memory"
 BASELINE_DIR = ROOT / "eval" / "library_memory_corpus" / "baselines"
-CURRENT_BASELINE = "lm_s33"  # the baseline today's captures replay to
+CURRENT_BASELINE = "lm_s41"  # the baseline today's captures replay to (S41)
+
+
+_V63_PROBE = """
+import json, math, sys, tempfile
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import numpy as np
+from rag.store import DocumentStore
+dim = 16
+q = np.zeros(dim, dtype=np.float32)
+q[0] = 1.0
+rows = []
+for i, cos in enumerate((0.95, 0.65, 0.5)):
+    v = np.zeros(dim, dtype=np.float32)
+    v[0], v[1] = cos, math.sqrt(1 - cos * cos)
+    rows.append({"vector": v.tolist(), "text": str(cos), "source": f"s{i}.md", "chunk_id": 0})
+with tempfile.TemporaryDirectory() as tmp:
+    store = DocumentStore(Path(tmp), expected_vector_dim=dim, quiet=True)
+    store.add_chunks(rows, rebuild_fts=False)
+    hits = store.table.search(q).limit(3).to_list()
+print(json.dumps([[float(h["text"]), float(h["_distance"])] for h in hits]))
+"""
 
 
 def _capture(mode: str) -> dict:
@@ -159,27 +180,20 @@ class TestS33Findings(unittest.TestCase):
 
     def test_v63_distance_is_squared_l2(self):
         # The documents table uses LanceDB's default metric: _distance = 2 - 2cos on unit vectors,
-        # so the floors' "1 - _distance" is 2cos - 1, not the cosine.
-        import numpy as np
-
-        from rag.store import DocumentStore
-
-        dim = 16
-        q = np.zeros(dim, dtype=np.float32)
-        q[0] = 1.0
-        rows = []
-        for i, cos in enumerate((0.95, 0.65, 0.5)):
-            v = np.zeros(dim, dtype=np.float32)
-            v[0], v[1] = cos, math.sqrt(1 - cos * cos)
-            rows.append({"vector": v.tolist(), "text": str(cos), "source": f"s{i}.md", "chunk_id": 0})
-        with tempfile.TemporaryDirectory() as tmp:
-            store = DocumentStore(Path(tmp), expected_vector_dim=dim, quiet=True)
-            store.add_chunks(rows, rebuild_fts=False)
-            hits = store.table.search(q).limit(3).to_list()
-        for hit in hits:
-            cos = float(hit["text"])
-            self.assertAlmostEqual(float(hit["_distance"]), 2 - 2 * cos, places=4)
-            self.assertAlmostEqual(lme.cosine_from_distance(float(hit["_distance"])), cos, places=4)
+        # so the floors' "1 - _distance" is 2cos - 1, not the cosine. It runs in a child process:
+        # several test files install a lancedb stub at import when the real one is not loaded yet.
+        out = subprocess.run(
+            [sys.executable, "-c", _V63_PROBE, str(ROOT)],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=True,
+        )
+        hits = json.loads(out.stdout.strip().splitlines()[-1])
+        self.assertEqual(len(hits), 3)
+        for cos, distance in hits:
+            self.assertAlmostEqual(distance, 2 - 2 * cos, places=4)
+            self.assertAlmostEqual(lme.cosine_from_distance(distance), cos, places=4)
 
     def test_v64_library_floor_drops_nothing_on_balanced(self):
         report = _s33("balanced")

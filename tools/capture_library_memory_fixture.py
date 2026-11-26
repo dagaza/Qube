@@ -38,6 +38,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--corpus", default=str(lme.DEFAULT_CORPUS))
     parser.add_argument("--out", default=None, help="capture file (default: eval/fixtures/library_memory/captured_<mode>.json)")
     parser.add_argument("--work-dir", default=None, help="where the temporary LanceDB stores go")
+    parser.add_argument(
+        "--now",
+        type=float,
+        default=None,
+        help=(
+            "capture clock in epoch seconds (default: now). Memory timestamps are this minus "
+            "each memory's age, and FTS indexes them, so pass an earlier capture's "
+            "captured_now to reproduce it exactly"
+        ),
+    )
     args = parser.parse_args(argv)
 
     corpus = lme.load_corpus(args.corpus)
@@ -57,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
             Path(work),
             embedder,
             corpus_path=args.corpus,
+            now=args.now,
             embedding_mode=args.embedding_mode,
             model_name=model,
         )

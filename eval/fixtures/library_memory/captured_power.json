@@ -1185,7 +1185,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_bike_commute"
+     ],
      "search_text": "Recommend something to listen to on my commute.",
      "top_k": 5,
      "vector_text": "Recommend something to listen to on my commute."
@@ -1382,7 +1384,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_rust"
+     ],
      "search_text": "Can you suggest a quick dinner for tonight?",
      "top_k": 5,
      "vector_text": "Can you suggest a quick dinner for tonight?"
@@ -3785,7 +3789,7 @@
           "source",
           "text"
          ],
-         "ref": "lisbon_trip_itinerary.md::4"
+         "ref": "kestrel_staff_handbook.md::9"
         }
        ],
        "text": "Explain how photosynthesis works."
@@ -8216,7 +8220,7 @@
           "source",
           "text"
          ],
-         "ref": "linear_algebra_notes.md::6"
+         "ref": "kestrel_staff_handbook.md::6"
         },
         {
          "_score": 3.45475435256958,
@@ -8227,7 +8231,7 @@
           "source",
           "text"
          ],
-         "ref": "kestrel_staff_handbook.md::6"
+         "ref": "linear_algebra_notes.md::6"
         },
         {
          "_score": 3.436737537384033,
@@ -14677,7 +14681,7 @@
          "ref": "lease_harbour_street.md::8"
         },
         {
-         "_score": 6.220351696014404,
+         "_score": 6.2203521728515625,
          "cols": [
           "_score",
           "chunk_id",
@@ -17548,7 +17552,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::9"
+         "ref": "contents_insurance_policy.md::6"
         }
        ],
        "text": "How do I compute a least-squares solution?"
@@ -18105,7 +18109,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::5"
+         "ref": "lease_harbour_street.md::4"
         },
         {
          "_score": 5.0638322830200195,
@@ -18116,7 +18120,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::4"
+         "ref": "lease_harbour_street.md::5"
         }
        ],
        "text": "Can the landlord come into the flat without telling me?"
@@ -21540,7 +21544,7 @@
           "source",
           "text"
          ],
-         "ref": "contents_insurance_policy.md::1"
+         "ref": "ledger_api_design.md::2"
         },
         {
          "_score": 3.906771659851074,
@@ -21551,7 +21555,7 @@
           "source",
           "text"
          ],
-         "ref": "ledger_api_design.md::2"
+         "ref": "contents_insurance_policy.md::1"
         }
        ],
        "text": "What's the rate limit on the Ledger API?"
@@ -36748,7 +36752,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_cat"
+     ],
      "search_text": "How old is What?",
      "top_k": 5,
      "vector_text": "How old is What?"
@@ -37089,7 +37095,12 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_quiet_hours",
+      "mem:mem_bike_commute",
+      "mem:mem_installer",
+      "mem:mem_sister"
+     ],
      "search_text": "Where does Hana work?",
      "top_k": 5,
      "vector_text": "Where does Hana work?"
@@ -37890,7 +37901,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::episode::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:ep_ledger"
+     ],
      "search_text": "What did we decide about the API pagination last time?",
      "top_k": 5,
      "vector_text": "What did we decide about the API pagination last time?"
@@ -38776,7 +38789,10 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::episode::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:ep_ledger",
+      "mem:ep_lease"
+     ],
      "search_text": "What have we been working on lately?",
      "top_k": 5,
      "vector_text": "What have we been working on lately?"
@@ -39069,7 +39085,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_penicillin"
+     ],
      "search_text": "Am I allergic to anything?",
      "top_k": 5,
      "vector_text": "Am I allergic to anything?"
@@ -39458,7 +39476,10 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_mother",
+      "mem:mem_cat"
+     ],
      "search_text": "What's my cat called?",
      "top_k": 5,
      "vector_text": "What's my cat called?"
@@ -39763,7 +39784,10 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_e3_error",
+      "mem:mem_installer"
+     ],
      "search_text": "Who services my heat pump?",
      "top_k": 5,
      "vector_text": "Who services my heat pump?"
@@ -40433,7 +40457,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_rust"
+     ],
      "search_text": "Which programming language do I prefer?",
      "top_k": 5,
      "vector_text": "Which programming language do I prefer?"
@@ -40726,7 +40752,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_manager"
+     ],
      "search_text": "Who is my manager?",
      "top_k": 5,
      "vector_text": "Who is my manager?"
@@ -41115,7 +41143,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_mother"
+     ],
      "search_text": "When is my mum's birthday?",
      "top_k": 5,
      "vector_text": "When is my mum's birthday?"
@@ -41408,7 +41438,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_house_deposit"
+     ],
      "search_text": "What am I saving up for?",
      "top_k": 5,
      "vector_text": "What am I saving up for?"
@@ -42126,7 +42158,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_supervisor"
+     ],
      "search_text": "Remind me who my master's supervisor was.",
      "top_k": 5,
      "vector_text": "Remind me who my master's supervisor was."

@@ -6,10 +6,13 @@ import numpy as np
 
 from core.lance_row_id import LANCE_ROW_ID_SELECT, lance_row_id
 from core.memory_filters import is_memory_actionable
+# The policy functions are aliased: ``memory_search`` takes boolean
+# arguments named ``apply_core_memory_gate`` and ``apply_mmr``, which would
+# otherwise shadow them inside the function (plan V66).
 from core.memory_retrieval_policy import (
     HYBRID_CANDIDATE_MULTIPLIER,
-    apply_core_memory_gate,
-    apply_mmr,
+    apply_core_memory_gate as _policy_core_memory_gate,
+    apply_mmr as _policy_mmr,
     fts_query_token_overlap,
     temporal_decay_multiplier,
     tier_from_source,
@@ -486,10 +489,10 @@ def memory_search(
         filtered.sort(key=lambda x: x["score"], reverse=True)
 
         if apply_mmr:
-            filtered = apply_mmr(filtered, top_k=MAX_MEMORY_RESULTS)
+            filtered = _policy_mmr(filtered, top_k=MAX_MEMORY_RESULTS)
 
         if apply_core_memory_gate:
-            gated = apply_core_memory_gate(
+            gated = _policy_core_memory_gate(
                 filtered,
                 min_score=core_memory_min_score,
                 min_margin=core_memory_min_margin,
