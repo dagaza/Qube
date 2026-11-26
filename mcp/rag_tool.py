@@ -92,6 +92,17 @@ def _exclude_help_corpus_results(results: list) -> list:
     ]
 
 
+def _exclude_memory_results(results: list) -> list:
+    """Drop memory rows: memories live in the same table but are searched by ``memory_search``."""
+    from core.memory_source_migration import MEMORY_SOURCE_PREFIX
+
+    return [
+        doc
+        for doc in results
+        if not str(doc.get("source") or doc.get("filename") or "").startswith(MEMORY_SOURCE_PREFIX)
+    ]
+
+
 def rag_search(
     query: str,
     query_vector: np.ndarray,
@@ -170,8 +181,10 @@ def rag_search(
                 text_results, source_prefix_filter
             )
         else:
-            vector_results = _exclude_help_corpus_results(vector_results)
-            text_results = _exclude_help_corpus_results(text_results)
+            # Unscoped search covers the user's documents only: help rows go
+            # through @help, and memory rows through memory_search (plan V65).
+            vector_results = _exclude_memory_results(_exclude_help_corpus_results(vector_results))
+            text_results = _exclude_memory_results(_exclude_help_corpus_results(text_results))
 
         had_vector_candidates = bool(vector_results)
         if not had_vector_candidates and text_results:

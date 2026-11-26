@@ -14,13 +14,13 @@
   "library_chat": {
    "aggregate": {
     "fixtures": 82,
-    "precision_at_k": 0.2551,
-    "ndcg_at_5": 0.8102,
-    "irrelevant_kept_rate": 0.7449,
-    "relevant_recall": 0.8937,
-    "abstain_correct": 0.878,
+    "precision_at_k": 0.2567,
+    "ndcg_at_5": 0.813,
+    "irrelevant_kept_rate": 0.7433,
+    "relevant_recall": 0.8647,
+    "abstain_correct": 0.8537,
     "subject_in_query": null,
-    "abstain_precision": 0.6154,
+    "abstain_precision": 0.5333,
     "abstain_recall": 0.6154,
     "recency_turns": 0,
     "stale_only_turns": 0,
@@ -46,7 +46,7 @@
     "cross_section": {
      "fixtures": 6,
      "precision_at_k": 0.4333,
-     "ndcg_at_5": 0.5822,
+     "ndcg_at_5": 0.6107,
      "irrelevant_kept_rate": 0.5667,
      "relevant_recall": 0.6944,
      "abstain_correct": 1.0,
@@ -60,13 +60,13 @@
     },
     "fact_lookup": {
      "fixtures": 50,
-     "precision_at_k": 0.256,
-     "ndcg_at_5": 0.9076,
-     "irrelevant_kept_rate": 0.744,
-     "relevant_recall": 1.0,
-     "abstain_correct": 1.0,
+     "precision_at_k": 0.2583,
+     "ndcg_at_5": 0.9079,
+     "irrelevant_kept_rate": 0.7417,
+     "relevant_recall": 0.96,
+     "abstain_correct": 0.96,
      "subject_in_query": null,
-     "abstain_precision": null,
+     "abstain_precision": 0.0,
      "abstain_recall": null,
      "recency_turns": 0,
      "stale_only_turns": 0,
@@ -166,20 +166,20 @@
     "auc_useful_vs_irrelevant": 0.8469
    },
    "abstain_cases": 13,
-   "kept_rows": 343,
-   "memory_rows_kept": 34,
+   "kept_rows": 333,
+   "memory_rows_kept": 0,
    "useful_missed_by_channels": 0
   },
   "library_tool": {
    "aggregate": {
     "fixtures": 82,
-    "precision_at_k": 0.3905,
-    "ndcg_at_5": 0.8065,
-    "irrelevant_kept_rate": 0.6095,
-    "relevant_recall": 0.8575,
-    "abstain_correct": 0.8902,
+    "precision_at_k": 0.402,
+    "ndcg_at_5": 0.8179,
+    "irrelevant_kept_rate": 0.598,
+    "relevant_recall": 0.8502,
+    "abstain_correct": 0.8659,
     "subject_in_query": null,
-    "abstain_precision": 0.6667,
+    "abstain_precision": 0.5714,
     "abstain_recall": 0.6154,
     "recency_turns": 0,
     "stale_only_turns": 0,
@@ -204,10 +204,10 @@
     },
     "cross_section": {
      "fixtures": 6,
-     "precision_at_k": 0.5,
-     "ndcg_at_5": 0.4325,
-     "irrelevant_kept_rate": 0.5,
-     "relevant_recall": 0.3611,
+     "precision_at_k": 0.5556,
+     "ndcg_at_5": 0.4898,
+     "irrelevant_kept_rate": 0.4444,
+     "relevant_recall": 0.4444,
      "abstain_correct": 1.0,
      "subject_in_query": null,
      "abstain_precision": null,
@@ -219,13 +219,13 @@
     },
     "fact_lookup": {
      "fixtures": 50,
-     "precision_at_k": 0.4067,
-     "ndcg_at_5": 0.899,
-     "irrelevant_kept_rate": 0.5933,
-     "relevant_recall": 0.98,
-     "abstain_correct": 1.0,
+     "precision_at_k": 0.4167,
+     "ndcg_at_5": 0.9079,
+     "irrelevant_kept_rate": 0.5833,
+     "relevant_recall": 0.96,
+     "abstain_correct": 0.96,
      "subject_in_query": null,
-     "abstain_precision": null,
+     "abstain_precision": 0.0,
      "abstain_recall": null,
      "recency_turns": 0,
      "stale_only_turns": 0,
@@ -325,8 +325,8 @@
     "auc_useful_vs_irrelevant": 0.8236
    },
    "abstain_cases": 13,
-   "kept_rows": 210,
-   "memory_rows_kept": 26,
+   "kept_rows": 204,
+   "memory_rows_kept": 0,
    "useful_missed_by_channels": 2
   },
   "memory_recall": {
@@ -654,10 +654,10 @@
    "expect": "partial",
    "kept": [
     "aerotherm_hx9_manual.md::6",
-    "mem:mem_e3_error",
     "ledger_api_design.md::6",
-    "mem:mem_installer",
-    "aerotherm_hx9_manual.md::2"
+    "aerotherm_hx9_manual.md::2",
+    "ledger_api_design.md::1",
+    "contents_insurance_policy.md::1"
    ],
    "kept_labels": [
     "relevant",
@@ -666,17 +666,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_e3_error",
-    "mem:mem_installer"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 2,
+   "memory_rows_kept": 0,
    "pool_size": 15,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -709,24 +706,22 @@
    "expect": "partial",
    "kept": [
     "aerotherm_hx9_manual.md::6",
-    "mem:mem_e3_error",
-    "ledger_api_design.md::6"
+    "ledger_api_design.md::6",
+    "aerotherm_hx9_manual.md::2"
    ],
    "kept_labels": [
     "relevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_e3_error"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 9,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -758,30 +753,27 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
-    "mem:mem_e3_error",
     "aerotherm_hx9_manual.md::6",
-    "mem:mem_installer",
     "sourdough_notebook.md::1",
-    "linear_algebra_notes.md::5"
+    "linear_algebra_notes.md::5",
+    "ledger_api_design.md::8",
+    "contents_insurance_policy.md::1"
    ],
    "kept_labels": [
-    "irrelevant",
     "relevant",
+    "irrelevant",
     "irrelevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_e3_error",
-    "mem:mem_installer"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
-   "ndcg_at_5": 0.5213,
+   "ndcg_at_5": 0.8262,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 2,
+   "memory_rows_kept": 0,
    "pool_size": 18,
    "pool_relevant": 1,
    "pool_useful": 2,
@@ -813,26 +805,23 @@
    "top_k": 3,
    "expect": "partial",
    "kept": [
-    "mem:mem_e3_error",
     "aerotherm_hx9_manual.md::6",
-    "mem:mem_installer"
+    "sourdough_notebook.md::1",
+    "linear_algebra_notes.md::5"
    ],
    "kept_labels": [
-    "irrelevant",
     "relevant",
+    "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_e3_error",
-    "mem:mem_installer"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
-   "ndcg_at_5": 0.5213,
+   "ndcg_at_5": 0.8262,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 2,
+   "memory_rows_kept": 0,
    "pool_size": 10,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -867,10 +856,10 @@
    "expect": "partial",
    "kept": [
     "aerotherm_hx9_manual.md::9",
-    "mem:mem_e3_error",
-    "mem:mem_installer",
     "aerotherm_hx9_manual.md::4",
-    "osprey_meeting_notes.md::4"
+    "osprey_meeting_notes.md::4",
+    "sourdough_notebook.md::3",
+    "lease_harbour_street.md::6"
    ],
    "kept_labels": [
     "relevant",
@@ -879,17 +868,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_e3_error",
-    "mem:mem_installer"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 2,
+   "memory_rows_kept": 0,
    "pool_size": 12,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -922,25 +908,22 @@
    "expect": "partial",
    "kept": [
     "aerotherm_hx9_manual.md::9",
-    "mem:mem_e3_error",
-    "mem:mem_installer"
+    "aerotherm_hx9_manual.md::4",
+    "osprey_meeting_notes.md::4"
    ],
    "kept_labels": [
     "relevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_e3_error",
-    "mem:mem_installer"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 2,
+   "memory_rows_kept": 0,
    "pool_size": 9,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -974,9 +957,9 @@
    "kept": [
     "aerotherm_hx9_manual.md::7",
     "aerotherm_hx9_manual.md::4",
-    "mem:mem_installer",
-    "mem:mem_e3_error",
-    "linear_algebra_notes.md::5"
+    "linear_algebra_notes.md::5",
+    "ledger_api_design.md::8",
+    "lease_harbour_street.md::6"
    ],
    "kept_labels": [
     "relevant",
@@ -985,17 +968,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_installer",
-    "mem:mem_e3_error"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 2,
+   "memory_rows_kept": 0,
    "pool_size": 17,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -1029,23 +1009,21 @@
    "kept": [
     "aerotherm_hx9_manual.md::7",
     "aerotherm_hx9_manual.md::4",
-    "mem:mem_installer"
+    "linear_algebra_notes.md::5"
    ],
    "kept_labels": [
     "relevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_installer"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 11,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -1280,8 +1258,8 @@
     "aerotherm_hx9_manual.md::9",
     "aerotherm_hx9_manual.md::8",
     "aerotherm_hx9_manual.md::3",
-    "aerotherm_hx9_manual.md::5",
-    "mem:ep_lease"
+    "aerotherm_hx9_manual.md::7",
+    "aerotherm_hx9_manual.md::5"
    ],
    "kept_labels": [
     "irrelevant",
@@ -1290,16 +1268,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_lease"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.0,
    "ndcg_at_5": null,
    "irrelevant_kept_rate": 1.0,
    "relevant_recall": null,
    "abstain_correct": false,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 16,
    "pool_relevant": 0,
    "pool_useful": 0,
@@ -1480,10 +1456,10 @@
    "expect": "partial",
    "kept": [
     "bike_service_log.md::0",
-    "mem:mem_bike_commute",
     "aerotherm_hx9_manual.md::6",
     "linear_algebra_notes.md::5",
-    "aerotherm_hx9_manual.md::7"
+    "aerotherm_hx9_manual.md::7",
+    "ledger_api_design.md::8"
    ],
    "kept_labels": [
     "relevant",
@@ -1492,16 +1468,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_bike_commute"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 16,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -1534,24 +1508,22 @@
    "expect": "partial",
    "kept": [
     "bike_service_log.md::0",
-    "mem:mem_bike_commute",
-    "aerotherm_hx9_manual.md::6"
+    "aerotherm_hx9_manual.md::6",
+    "linear_algebra_notes.md::5"
    ],
    "kept_labels": [
     "relevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_bike_commute"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 11,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -1684,28 +1656,26 @@
    "expect": "partial",
    "kept": [
     "lease_harbour_street.md::8",
-    "mem:ep_lease",
     "lease_harbour_street.md::0",
     "contents_insurance_policy.md::0",
-    "lease_harbour_street.md::9"
+    "lease_harbour_street.md::9",
+    "ledger_api_design.md::7"
    ],
    "kept_labels": [
     "relevant",
-    "irrelevant",
     "partial",
+    "irrelevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_lease"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.4,
-   "ndcg_at_5": 0.9639,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 12,
    "pool_relevant": 1,
    "pool_useful": 2,
@@ -1738,24 +1708,22 @@
    "expect": "partial",
    "kept": [
     "lease_harbour_street.md::8",
-    "mem:ep_lease",
-    "lease_harbour_street.md::0"
+    "lease_harbour_street.md::0",
+    "contents_insurance_policy.md::0"
    ],
    "kept_labels": [
     "relevant",
-    "irrelevant",
-    "partial"
+    "partial",
+    "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_lease"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.6667,
-   "ndcg_at_5": 0.9639,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.3333,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 8,
    "pool_relevant": 1,
    "pool_useful": 2,
@@ -1790,8 +1758,8 @@
     "lease_harbour_street.md::5",
     "linear_algebra_notes.md::5",
     "aerotherm_hx9_manual.md::0",
-    "mem:mem_cat",
-    "sourdough_notebook.md::3"
+    "sourdough_notebook.md::3",
+    "sourdough_notebook.md::2"
    ],
    "kept_labels": [
     "relevant",
@@ -1800,16 +1768,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_cat"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 17,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -2088,30 +2054,16 @@
    "search_text": "Can the landlord come into the flat without telling me?",
    "top_k": 5,
    "expect": "partial",
-   "kept": [
-    "mem:mem_repaint",
-    "kestrel_staff_handbook.md::2",
-    "kestrel_staff_handbook.md::3",
-    "lease_harbour_street.md::6",
-    "contents_insurance_policy.md::3"
-   ],
-   "kept_labels": [
-    "irrelevant",
-    "irrelevant",
-    "irrelevant",
-    "relevant",
-    "irrelevant"
-   ],
-   "linked_chunks": [
-    "mem:mem_repaint"
-   ],
-   "abstained": false,
-   "precision_at_k": 0.2,
-   "ndcg_at_5": 0.4307,
-   "irrelevant_kept_rate": 0.8,
-   "relevant_recall": 1.0,
-   "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "kept": [],
+   "kept_labels": [],
+   "linked_chunks": [],
+   "abstained": true,
+   "precision_at_k": null,
+   "ndcg_at_5": 0.0,
+   "irrelevant_kept_rate": null,
+   "relevant_recall": 0.0,
+   "abstain_correct": false,
+   "memory_rows_kept": 0,
    "pool_size": 17,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -2142,26 +2094,16 @@
    "search_text": "Can the landlord come into the flat without telling me?",
    "top_k": 3,
    "expect": "partial",
-   "kept": [
-    "mem:mem_repaint",
-    "kestrel_staff_handbook.md::2",
-    "kestrel_staff_handbook.md::3"
-   ],
-   "kept_labels": [
-    "irrelevant",
-    "irrelevant",
-    "irrelevant"
-   ],
-   "linked_chunks": [
-    "mem:mem_repaint"
-   ],
-   "abstained": false,
-   "precision_at_k": 0.0,
+   "kept": [],
+   "kept_labels": [],
+   "linked_chunks": [],
+   "abstained": true,
+   "precision_at_k": null,
    "ndcg_at_5": 0.0,
-   "irrelevant_kept_rate": 1.0,
+   "irrelevant_kept_rate": null,
    "relevant_recall": 0.0,
-   "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "abstain_correct": false,
+   "memory_rows_kept": 0,
    "pool_size": 10,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -2194,9 +2136,9 @@
    "expect": "insufficient",
    "kept": [
     "lease_harbour_street.md::3",
-    "mem:ep_lease",
-    "lease_harbour_street.md::5",
     "kestrel_staff_handbook.md::9",
+    "lease_harbour_street.md::5",
+    "kestrel_staff_handbook.md::10",
     "lease_harbour_street.md::2"
    ],
    "kept_labels": [
@@ -2206,16 +2148,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_lease"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.0,
    "ndcg_at_5": null,
    "irrelevant_kept_rate": 1.0,
    "relevant_recall": null,
    "abstain_correct": false,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 19,
    "pool_relevant": 0,
    "pool_useful": 0,
@@ -2248,7 +2188,7 @@
    "expect": "insufficient",
    "kept": [
     "lease_harbour_street.md::3",
-    "mem:ep_lease",
+    "kestrel_staff_handbook.md::9",
     "lease_harbour_street.md::5"
    ],
    "kept_labels": [
@@ -2256,16 +2196,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_lease"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.0,
    "ndcg_at_5": null,
    "irrelevant_kept_rate": 1.0,
    "relevant_recall": null,
    "abstain_correct": false,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 11,
    "pool_relevant": 0,
    "pool_useful": 0,
@@ -2399,9 +2337,9 @@
    "kept": [
     "contents_insurance_policy.md::0",
     "contents_insurance_policy.md::1",
-    "mem:mem_insurance_quotes",
     "contents_insurance_policy.md::4",
-    "household_budget_2026.md::0"
+    "household_budget_2026.md::0",
+    "household_budget_2026.md::1"
    ],
    "kept_labels": [
     "relevant",
@@ -2410,16 +2348,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_insurance_quotes"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
    "ndcg_at_5": 0.8262,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 15,
    "pool_relevant": 1,
    "pool_useful": 2,
@@ -2453,23 +2389,21 @@
    "kept": [
     "contents_insurance_policy.md::0",
     "contents_insurance_policy.md::1",
-    "mem:mem_insurance_quotes"
+    "contents_insurance_policy.md::4"
    ],
    "kept_labels": [
     "relevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_insurance_quotes"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
    "ndcg_at_5": 0.8262,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 9,
    "pool_relevant": 1,
    "pool_useful": 2,
@@ -3303,9 +3237,9 @@
    "kept": [
     "kestrel_staff_handbook.md::10",
     "kestrel_staff_handbook.md::2",
-    "mem:mem_manager",
     "household_budget_2026.md::2",
-    "kestrel_staff_handbook.md::8"
+    "kestrel_staff_handbook.md::8",
+    "kestrel_staff_handbook.md::1"
    ],
    "kept_labels": [
     "irrelevant",
@@ -3314,16 +3248,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_manager"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.0,
    "ndcg_at_5": null,
    "irrelevant_kept_rate": 1.0,
    "relevant_recall": null,
    "abstain_correct": false,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 16,
    "pool_relevant": 0,
    "pool_useful": 0,
@@ -3357,23 +3289,21 @@
    "kept": [
     "kestrel_staff_handbook.md::10",
     "kestrel_staff_handbook.md::2",
-    "mem:mem_manager"
+    "household_budget_2026.md::2"
    ],
    "kept_labels": [
     "irrelevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_manager"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.0,
    "ndcg_at_5": null,
    "irrelevant_kept_rate": 1.0,
    "relevant_recall": null,
    "abstain_correct": false,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 9,
    "pool_relevant": 0,
    "pool_useful": 0,
@@ -3905,29 +3835,27 @@
    "top_k": 5,
    "expect": "sufficient",
    "kept": [
-    "mem:mem_kofi",
     "heron_meeting_notes.md::4",
     "heron_meeting_notes.md::0",
     "heron_meeting_notes.md::5",
-    "heron_meeting_notes.md::2"
+    "heron_meeting_notes.md::2",
+    "heron_meeting_notes.md::1"
    ],
    "kept_labels": [
-    "irrelevant",
     "partial",
     "partial",
     "relevant",
-    "relevant"
+    "relevant",
+    "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_kofi"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.8,
-   "ndcg_at_5": 0.6154,
+   "ndcg_at_5": 0.7595,
    "irrelevant_kept_rate": 0.2,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 13,
    "pool_relevant": 2,
    "pool_useful": 4,
@@ -3959,25 +3887,23 @@
    "top_k": 3,
    "expect": "sufficient",
    "kept": [
-    "mem:mem_kofi",
     "heron_meeting_notes.md::4",
-    "heron_meeting_notes.md::0"
+    "heron_meeting_notes.md::0",
+    "heron_meeting_notes.md::5"
    ],
    "kept_labels": [
-    "irrelevant",
     "partial",
-    "partial"
+    "partial",
+    "relevant"
    ],
-   "linked_chunks": [
-    "mem:mem_kofi"
-   ],
+   "linked_chunks": [],
    "abstained": false,
-   "precision_at_k": 0.6667,
-   "ndcg_at_5": 0.1942,
-   "irrelevant_kept_rate": 0.3333,
-   "relevant_recall": 0.0,
+   "precision_at_k": 1.0,
+   "ndcg_at_5": 0.5376,
+   "irrelevant_kept_rate": 0.0,
+   "relevant_recall": 0.5,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 7,
    "pool_relevant": 2,
    "pool_useful": 4,
@@ -4009,29 +3935,27 @@
    "top_k": 5,
    "expect": "sufficient",
    "kept": [
-    "mem:mem_kofi",
     "heron_meeting_notes.md::4",
     "project_omega_bluejay.md::3",
     "cover_crop_soil_study.md::12",
-    "heron_meeting_notes.md::2"
+    "heron_meeting_notes.md::2",
+    "osprey_meeting_notes.md::3"
    ],
    "kept_labels": [
     "irrelevant",
     "irrelevant",
     "irrelevant",
-    "irrelevant",
-    "relevant"
+    "relevant",
+    "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_kofi"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
-   "ndcg_at_5": 0.2372,
+   "ndcg_at_5": 0.2641,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 0.5,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 13,
    "pool_relevant": 2,
    "pool_useful": 2,
@@ -4063,25 +3987,23 @@
    "top_k": 3,
    "expect": "sufficient",
    "kept": [
-    "mem:mem_kofi",
     "heron_meeting_notes.md::4",
-    "project_omega_bluejay.md::3"
+    "project_omega_bluejay.md::3",
+    "cover_crop_soil_study.md::12"
    ],
    "kept_labels": [
     "irrelevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_kofi"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.0,
    "ndcg_at_5": 0.0,
    "irrelevant_kept_rate": 1.0,
    "relevant_recall": 0.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 9,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -4115,11 +4037,11 @@
    "top_k": 5,
    "expect": "sufficient",
    "kept": [
-    "mem:mem_tomasz",
+    "osprey_meeting_notes.md::0",
     "osprey_meeting_notes.md::4",
     "linear_algebra_notes.md::5",
-    "osprey_meeting_notes.md::0",
-    "project_omega_bluejay.md::0"
+    "project_omega_bluejay.md::0",
+    "kestrel_staff_handbook.md::8"
    ],
    "kept_labels": [
     "irrelevant",
@@ -4128,16 +4050,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_tomasz"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.0,
    "ndcg_at_5": 0.0,
    "irrelevant_kept_rate": 1.0,
    "relevant_recall": 0.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 16,
    "pool_relevant": 2,
    "pool_useful": 2,
@@ -4169,7 +4089,7 @@
    "top_k": 3,
    "expect": "sufficient",
    "kept": [
-    "mem:mem_tomasz",
+    "osprey_meeting_notes.md::0",
     "osprey_meeting_notes.md::4",
     "linear_algebra_notes.md::5"
    ],
@@ -4178,16 +4098,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_tomasz"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.0,
    "ndcg_at_5": 0.0,
    "irrelevant_kept_rate": 1.0,
    "relevant_recall": 0.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 11,
    "pool_relevant": 2,
    "pool_useful": 2,
@@ -4722,8 +4640,8 @@
     "sourdough_notebook.md::3",
     "sourdough_notebook.md::4",
     "sourdough_notebook.md::1",
-    "mem:ep_sourdough",
-    "project_omega_bluejay.md::3"
+    "project_omega_bluejay.md::3",
+    "sourdough_notebook.md::0"
    ],
    "kept_labels": [
     "relevant",
@@ -4732,16 +4650,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_sourdough"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.4,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 12,
    "pool_relevant": 1,
    "pool_useful": 2,
@@ -4923,9 +4839,9 @@
    "kept": [
     "lisbon_trip_itinerary.md::0",
     "lisbon_trip_itinerary.md::3",
-    "mem:mem_lisbon",
-    "mem:ep_lisbon",
-    "lisbon_trip_itinerary.md::2"
+    "lisbon_trip_itinerary.md::2",
+    "contents_insurance_policy.md::1",
+    "lisbon_trip_itinerary.md::1"
    ],
    "kept_labels": [
     "relevant",
@@ -4934,17 +4850,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_lisbon",
-    "mem:ep_lisbon"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 2,
+   "memory_rows_kept": 0,
    "pool_size": 15,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -4978,23 +4891,21 @@
    "kept": [
     "lisbon_trip_itinerary.md::0",
     "lisbon_trip_itinerary.md::3",
-    "mem:mem_lisbon"
+    "lisbon_trip_itinerary.md::2"
    ],
    "kept_labels": [
     "relevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_lisbon"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 9,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5027,10 +4938,10 @@
    "expect": "partial",
    "kept": [
     "lisbon_trip_itinerary.md::2",
-    "mem:ep_lisbon",
     "lisbon_trip_itinerary.md::4",
     "linear_algebra_notes.md::1",
-    "contents_insurance_policy.md::4"
+    "contents_insurance_policy.md::4",
+    "ledger_api_design.md::3"
    ],
    "kept_labels": [
     "relevant",
@@ -5039,16 +4950,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_lisbon"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 16,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5081,24 +4990,22 @@
    "expect": "partial",
    "kept": [
     "lisbon_trip_itinerary.md::2",
-    "mem:ep_lisbon",
-    "lisbon_trip_itinerary.md::4"
+    "lisbon_trip_itinerary.md::4",
+    "linear_algebra_notes.md::1"
    ],
    "kept_labels": [
     "relevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_lisbon"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 9,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5130,30 +5037,27 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
-    "lisbon_trip_itinerary.md::3",
-    "mem:ep_lisbon",
     "lisbon_trip_itinerary.md::0",
-    "mem:mem_lisbon",
-    "osprey_meeting_notes.md::2"
+    "lisbon_trip_itinerary.md::3",
+    "osprey_meeting_notes.md::2",
+    "lisbon_trip_itinerary.md::4",
+    "lisbon_trip_itinerary.md::2"
    ],
    "kept_labels": [
-    "relevant",
     "irrelevant",
+    "relevant",
     "irrelevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_lisbon",
-    "mem:mem_lisbon"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
-   "ndcg_at_5": 1.0,
+   "ndcg_at_5": 0.6309,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 2,
+   "memory_rows_kept": 0,
    "pool_size": 15,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5185,25 +5089,23 @@
    "top_k": 3,
    "expect": "partial",
    "kept": [
+    "lisbon_trip_itinerary.md::0",
     "lisbon_trip_itinerary.md::3",
-    "mem:ep_lisbon",
-    "lisbon_trip_itinerary.md::0"
+    "osprey_meeting_notes.md::2"
    ],
    "kept_labels": [
-    "relevant",
     "irrelevant",
+    "relevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_lisbon"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
-   "ndcg_at_5": 1.0,
+   "ndcg_at_5": 0.6309,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 9,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5334,30 +5236,16 @@
    "search_text": "What is the Eckart–Young theorem?",
    "top_k": 5,
    "expect": "partial",
-   "kept": [
-    "mem:ep_svd",
-    "linear_algebra_notes.md::3",
-    "linear_algebra_notes.md::2",
-    "contents_insurance_policy.md::1",
-    "aerotherm_hx9_manual.md::6"
-   ],
-   "kept_labels": [
-    "irrelevant",
-    "relevant",
-    "irrelevant",
-    "irrelevant",
-    "irrelevant"
-   ],
-   "linked_chunks": [
-    "mem:ep_svd"
-   ],
-   "abstained": false,
-   "precision_at_k": 0.2,
-   "ndcg_at_5": 0.6309,
-   "irrelevant_kept_rate": 0.8,
-   "relevant_recall": 1.0,
-   "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "kept": [],
+   "kept_labels": [],
+   "linked_chunks": [],
+   "abstained": true,
+   "precision_at_k": null,
+   "ndcg_at_5": 0.0,
+   "irrelevant_kept_rate": null,
+   "relevant_recall": 0.0,
+   "abstain_correct": false,
+   "memory_rows_kept": 0,
    "pool_size": 12,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5388,26 +5276,16 @@
    "search_text": "What is the Eckart–Young theorem?",
    "top_k": 3,
    "expect": "partial",
-   "kept": [
-    "mem:ep_svd",
-    "linear_algebra_notes.md::3",
-    "linear_algebra_notes.md::2"
-   ],
-   "kept_labels": [
-    "irrelevant",
-    "relevant",
-    "irrelevant"
-   ],
-   "linked_chunks": [
-    "mem:ep_svd"
-   ],
-   "abstained": false,
-   "precision_at_k": 0.3333,
-   "ndcg_at_5": 0.6309,
-   "irrelevant_kept_rate": 0.6667,
-   "relevant_recall": 1.0,
-   "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "kept": [],
+   "kept_labels": [],
+   "linked_chunks": [],
+   "abstained": true,
+   "precision_at_k": null,
+   "ndcg_at_5": 0.0,
+   "irrelevant_kept_rate": null,
+   "relevant_recall": 0.0,
+   "abstain_correct": false,
+   "memory_rows_kept": 0,
    "pool_size": 8,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5439,29 +5317,27 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
-    "mem:mem_exam",
     "linear_algebra_notes.md::6",
     "linear_algebra_notes.md::1",
     "cover_crop_soil_study.md::6",
-    "kestrel_staff_handbook.md::8"
+    "kestrel_staff_handbook.md::8",
+    "linear_algebra_notes.md::0"
    ],
    "kept_labels": [
-    "irrelevant",
     "relevant",
+    "irrelevant",
     "irrelevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_exam"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
-   "ndcg_at_5": 0.6309,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 14,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5493,25 +5369,23 @@
    "top_k": 3,
    "expect": "partial",
    "kept": [
-    "mem:mem_exam",
     "linear_algebra_notes.md::6",
-    "linear_algebra_notes.md::1"
+    "linear_algebra_notes.md::1",
+    "cover_crop_soil_study.md::6"
    ],
    "kept_labels": [
-    "irrelevant",
     "relevant",
+    "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_exam"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
-   "ndcg_at_5": 0.6309,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 9,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5643,30 +5517,27 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
-    "mem:mem_ledger_draft",
     "ledger_api_design.md::5",
-    "mem:ep_ledger",
     "ledger_api_design.md::2",
-    "ledger_api_design.md::1"
+    "ledger_api_design.md::1",
+    "contents_insurance_policy.md::0",
+    "ledger_api_design.md::0"
    ],
    "kept_labels": [
-    "irrelevant",
     "relevant",
+    "irrelevant",
     "irrelevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_ledger_draft",
-    "mem:ep_ledger"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
-   "ndcg_at_5": 0.6309,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 2,
+   "memory_rows_kept": 0,
    "pool_size": 15,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5698,25 +5569,23 @@
    "top_k": 3,
    "expect": "partial",
    "kept": [
-    "mem:mem_ledger_draft",
     "ledger_api_design.md::5",
-    "ledger_api_design.md::1"
+    "ledger_api_design.md::1",
+    "ledger_api_design.md::2"
    ],
    "kept_labels": [
-    "irrelevant",
     "relevant",
+    "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_ledger_draft"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
-   "ndcg_at_5": 0.6309,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 9,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5748,30 +5617,27 @@
    "top_k": 5,
    "expect": "partial",
    "kept": [
-    "mem:ep_ledger",
     "ledger_api_design.md::3",
     "ledger_api_design.md::2",
-    "mem:mem_ledger_draft",
-    "ledger_api_design.md::4"
+    "ledger_api_design.md::4",
+    "ledger_api_design.md::1",
+    "kestrel_staff_handbook.md::9"
    ],
    "kept_labels": [
-    "irrelevant",
     "relevant",
+    "irrelevant",
     "irrelevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_ledger",
-    "mem:mem_ledger_draft"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
-   "ndcg_at_5": 0.6309,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 2,
+   "memory_rows_kept": 0,
    "pool_size": 14,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5803,25 +5669,23 @@
    "top_k": 3,
    "expect": "partial",
    "kept": [
-    "mem:ep_ledger",
     "ledger_api_design.md::3",
-    "ledger_api_design.md::2"
+    "ledger_api_design.md::2",
+    "ledger_api_design.md::4"
    ],
    "kept_labels": [
-    "irrelevant",
     "relevant",
+    "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_ledger"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
-   "ndcg_at_5": 0.6309,
+   "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 8,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5856,8 +5720,8 @@
     "ledger_api_design.md::4",
     "ledger_api_design.md::2",
     "contents_insurance_policy.md::1",
-    "mem:ep_ledger",
-    "ledger_api_design.md::0"
+    "ledger_api_design.md::0",
+    "ledger_api_design.md::5"
    ],
    "kept_labels": [
     "relevant",
@@ -5866,16 +5730,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_ledger"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 16,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -5957,8 +5819,8 @@
    "kept": [
     "ledger_api_design.md::1",
     "ledger_api_design.md::2",
-    "mem:ep_ledger",
     "ledger_api_design.md::6",
+    "ledger_api_design.md::5",
     "ledger_api_design.md::4"
    ],
    "kept_labels": [
@@ -5968,16 +5830,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_ledger"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 14,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -6010,8 +5870,8 @@
    "expect": "partial",
    "kept": [
     "ledger_api_design.md::1",
-    "ledger_api_design.md::2",
-    "ledger_api_design.md::6"
+    "ledger_api_design.md::6",
+    "ledger_api_design.md::2"
    ],
    "kept_labels": [
     "relevant",
@@ -6059,9 +5919,9 @@
    "kept": [
     "household_budget_2026.md::2",
     "household_budget_2026.md::4",
-    "mem:mem_house_deposit",
     "lease_harbour_street.md::2",
-    "lease_harbour_street.md::1"
+    "lease_harbour_street.md::1",
+    "linear_algebra_notes.md::5"
    ],
    "kept_labels": [
     "relevant",
@@ -6070,16 +5930,14 @@
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_house_deposit"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.2,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.8,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 14,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -6113,23 +5971,21 @@
    "kept": [
     "household_budget_2026.md::2",
     "household_budget_2026.md::4",
-    "mem:mem_house_deposit"
+    "lease_harbour_street.md::2"
    ],
    "kept_labels": [
     "relevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_house_deposit"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 8,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -7758,25 +7614,22 @@
    "expect": "partial",
    "kept": [
     "aerotherm_hx9_manual.md::6",
-    "mem:mem_e3_error",
-    "mem:mem_installer"
+    "linear_algebra_notes.md::5",
+    "ledger_api_design.md::5"
    ],
    "kept_labels": [
     "relevant",
     "irrelevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:mem_e3_error",
-    "mem:mem_installer"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.3333,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.6667,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 2,
+   "memory_rows_kept": 0,
    "pool_size": 10,
    "pool_relevant": 1,
    "pool_useful": 1,
@@ -8222,23 +8075,21 @@
    "kept": [
     "linear_algebra_notes.md::3",
     "linear_algebra_notes.md::5",
-    "mem:ep_svd"
+    "linear_algebra_notes.md::4"
    ],
    "kept_labels": [
     "relevant",
     "relevant",
     "irrelevant"
    ],
-   "linked_chunks": [
-    "mem:ep_svd"
-   ],
+   "linked_chunks": [],
    "abstained": false,
    "precision_at_k": 0.6667,
    "ndcg_at_5": 1.0,
    "irrelevant_kept_rate": 0.3333,
    "relevant_recall": 1.0,
    "abstain_correct": true,
-   "memory_rows_kept": 1,
+   "memory_rows_kept": 0,
    "pool_size": 7,
    "pool_relevant": 2,
    "pool_useful": 2,

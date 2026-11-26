@@ -3270,11 +3270,11 @@
       }
      ],
      "kept": [
-      "mem:mem_rust",
-      "kestrel_staff_handbook.md::8",
-      "contents_insurance_policy.md::1",
       "linear_algebra_notes.md::4",
-      "linear_algebra_notes.md::1"
+      "kestrel_staff_handbook.md::8",
+      "linear_algebra_notes.md::1",
+      "contents_insurance_policy.md::1",
+      "aerotherm_hx9_manual.md::7"
      ],
      "search_text": "What is the best way to learn Python?",
      "top_k": 5,
@@ -3429,9 +3429,9 @@
       }
      ],
      "kept": [
-      "mem:mem_rust",
+      "linear_algebra_notes.md::4",
       "kestrel_staff_handbook.md::8",
-      "contents_insurance_policy.md::1"
+      "linear_algebra_notes.md::1"
      ],
      "search_text": "What is the best way to learn Python?",
      "top_k": 3,
@@ -3831,7 +3831,7 @@
           "source",
           "text"
          ],
-         "ref": "lisbon_trip_itinerary.md::4"
+         "ref": "kestrel_staff_handbook.md::9"
         }
        ],
        "text": "Explain how photosynthesis works."
@@ -4023,9 +4023,9 @@
      ],
      "kept": [
       "kestrel_staff_handbook.md::9",
-      "mem:mem_sourdough",
-      "mem:mem_sister",
+      "contents_insurance_policy.md::3",
       "millbrook_tramways_history.txt::3",
+      "kestrel_staff_handbook.md::7",
       "millbrook_tramways_history.txt::4"
      ],
      "search_text": "Who wrote Pride and Prejudice?",
@@ -4160,7 +4160,7 @@
      ],
      "kept": [
       "kestrel_staff_handbook.md::9",
-      "mem:mem_sourdough",
+      "contents_insurance_policy.md::3",
       "millbrook_tramways_history.txt::3"
      ],
      "search_text": "Who wrote Pride and Prejudice?",
@@ -5076,8 +5076,8 @@
       "bike_service_log.md::1",
       "bike_service_log.md::0",
       "bike_service_log.md::2",
-      "mem:mem_bike_commute",
-      "millbrook_tramways_history.txt::4"
+      "millbrook_tramways_history.txt::4",
+      "ledger_api_design.md::3"
      ],
      "search_text": "When did I last replace the brake pads on the bike?",
      "top_k": 5,
@@ -5483,9 +5483,9 @@
      ],
      "kept": [
       "bike_service_log.md::0",
-      "mem:mem_bike_commute",
-      "aerotherm_hx9_manual.md::6",
       "cover_crop_soil_study.md::3",
+      "aerotherm_hx9_manual.md::6",
+      "cover_crop_soil_study.md::9",
       "linear_algebra_notes.md::5"
      ],
      "search_text": "What tyre pressure should I run on gravel?",
@@ -5642,7 +5642,7 @@
      ],
      "kept": [
       "bike_service_log.md::0",
-      "mem:mem_bike_commute",
+      "cover_crop_soil_study.md::3",
       "aerotherm_hx9_manual.md::6"
      ],
      "search_text": "What tyre pressure should I run on gravel?",
@@ -6301,9 +6301,9 @@
      ],
      "kept": [
       "household_budget_2026.md::4",
-      "mem:mem_house_deposit",
       "household_budget_2026.md::2",
       "lease_harbour_street.md::1",
+      "household_budget_2026.md::0",
       "lease_harbour_street.md::2"
      ],
      "search_text": "How much am I saving each month for the house deposit?",
@@ -6460,8 +6460,8 @@
      ],
      "kept": [
       "household_budget_2026.md::4",
-      "mem:mem_house_deposit",
-      "household_budget_2026.md::2"
+      "household_budget_2026.md::2",
+      "household_budget_2026.md::0"
      ],
      "search_text": "How much am I saving each month for the house deposit?",
      "top_k": 3,
@@ -8316,7 +8316,7 @@
           "source",
           "text"
          ],
-         "ref": "linear_algebra_notes.md::6"
+         "ref": "kestrel_staff_handbook.md::6"
         },
         {
          "_score": 3.45475435256958,
@@ -8327,7 +8327,7 @@
           "source",
           "text"
          ],
-         "ref": "kestrel_staff_handbook.md::6"
+         "ref": "linear_algebra_notes.md::6"
         },
         {
          "_score": 3.436737537384033,
@@ -9166,8 +9166,8 @@
       "kestrel_staff_handbook.md::10",
       "kestrel_staff_handbook.md::6",
       "kestrel_staff_handbook.md::7",
-      "mem:mem_manager",
-      "household_budget_2026.md::2"
+      "household_budget_2026.md::2",
+      "kestrel_staff_handbook.md::2"
      ],
      "search_text": "What is Kestrel's employer pension contribution?",
      "top_k": 5,
@@ -10799,11 +10799,11 @@
       }
      ],
      "kept": [
-      "mem:mem_tomasz",
-      "osprey_meeting_notes.md::4",
       "kestrel_staff_handbook.md::8",
+      "osprey_meeting_notes.md::4",
+      "heron_meeting_notes.md::0",
       "linear_algebra_notes.md::5",
-      "project_omega_bluejay.md::0"
+      "household_budget_2026.md::4"
      ],
      "search_text": "What's the budget for Project Heron?",
      "top_k": 5,
@@ -10958,9 +10958,9 @@
       }
      ],
      "kept": [
-      "mem:mem_tomasz",
+      "kestrel_staff_handbook.md::8",
       "osprey_meeting_notes.md::4",
-      "kestrel_staff_handbook.md::8"
+      "heron_meeting_notes.md::0"
      ],
      "search_text": "What's the budget for Project Heron?",
      "top_k": 3,
@@ -11197,11 +11197,11 @@
       }
      ],
      "kept": [
-      "mem:mem_kofi",
-      "project_omega_bluejay.md::3",
       "heron_meeting_notes.md::4",
-      "cover_crop_soil_study.md::12",
-      "project_omega_bluejay.md::1"
+      "project_omega_bluejay.md::3",
+      "project_omega_bluejay.md::1",
+      "project_omega_bluejay.md::2",
+      "heron_meeting_notes.md::0"
      ],
      "search_text": "Why was the Heron launch delayed?",
      "top_k": 5,
@@ -11356,9 +11356,9 @@
       }
      ],
      "kept": [
-      "mem:mem_kofi",
+      "heron_meeting_notes.md::4",
       "project_omega_bluejay.md::3",
-      "heron_meeting_notes.md::4"
+      "project_omega_bluejay.md::1"
      ],
      "search_text": "Why was the Heron launch delayed?",
      "top_k": 3,
@@ -11606,10 +11606,10 @@
       }
      ],
      "kept": [
-      "mem:mem_kofi",
       "heron_meeting_notes.md::0",
       "heron_meeting_notes.md::4",
       "heron_meeting_notes.md::5",
+      "heron_meeting_notes.md::2",
       "heron_meeting_notes.md::1"
      ],
      "search_text": "When is the Heron app launching?",
@@ -11765,9 +11765,9 @@
       }
      ],
      "kept": [
-      "mem:mem_kofi",
       "heron_meeting_notes.md::0",
-      "heron_meeting_notes.md::4"
+      "heron_meeting_notes.md::4",
+      "heron_meeting_notes.md::5"
      ],
      "search_text": "When is the Heron app launching?",
      "top_k": 3,
@@ -12015,11 +12015,11 @@
       }
      ],
      "kept": [
-      "mem:mem_e3_error",
       "aerotherm_hx9_manual.md::6",
-      "mem:mem_installer",
       "aerotherm_hx9_manual.md::3",
-      "aerotherm_hx9_manual.md::1"
+      "sourdough_notebook.md::1",
+      "aerotherm_hx9_manual.md::1",
+      "linear_algebra_notes.md::5"
      ],
      "search_text": "My heat pump shows E3, what should I do?",
      "top_k": 5,
@@ -12174,9 +12174,9 @@
       }
      ],
      "kept": [
-      "mem:mem_e3_error",
       "aerotherm_hx9_manual.md::6",
-      "mem:mem_installer"
+      "aerotherm_hx9_manual.md::3",
+      "sourdough_notebook.md::1"
      ],
      "search_text": "My heat pump shows E3, what should I do?",
      "top_k": 3,
@@ -12834,10 +12834,10 @@
      ],
      "kept": [
       "aerotherm_hx9_manual.md::6",
-      "mem:mem_e3_error",
       "ledger_api_design.md::6",
-      "mem:mem_installer",
-      "aerotherm_hx9_manual.md::2"
+      "aerotherm_hx9_manual.md::2",
+      "aerotherm_hx9_manual.md::3",
+      "ledger_api_design.md::1"
      ],
      "search_text": "What do the error codes on my heat pump mean?",
      "top_k": 5,
@@ -12993,8 +12993,8 @@
      ],
      "kept": [
       "aerotherm_hx9_manual.md::6",
-      "mem:mem_e3_error",
-      "ledger_api_design.md::6"
+      "ledger_api_design.md::6",
+      "aerotherm_hx9_manual.md::3"
      ],
      "search_text": "What do the error codes on my heat pump mean?",
      "top_k": 3,
@@ -13243,10 +13243,10 @@
      ],
      "kept": [
       "aerotherm_hx9_manual.md::7",
-      "mem:mem_installer",
-      "mem:mem_e3_error",
       "aerotherm_hx9_manual.md::4",
-      "aerotherm_hx9_manual.md::3"
+      "linear_algebra_notes.md::5",
+      "aerotherm_hx9_manual.md::3",
+      "ledger_api_design.md::8"
      ],
      "search_text": "How often should I clean the heat pump filter?",
      "top_k": 5,
@@ -13402,8 +13402,8 @@
      ],
      "kept": [
       "aerotherm_hx9_manual.md::7",
-      "mem:mem_installer",
-      "mem:mem_e3_error"
+      "aerotherm_hx9_manual.md::4",
+      "linear_algebra_notes.md::5"
      ],
      "search_text": "How often should I clean the heat pump filter?",
      "top_k": 3,
@@ -13655,7 +13655,7 @@
       "aerotherm_hx9_manual.md::3",
       "aerotherm_hx9_manual.md::8",
       "aerotherm_hx9_manual.md::1",
-      "mem:ep_lease"
+      "lease_harbour_street.md::8"
      ],
      "search_text": "Which refrigerant does the Aerotherm HX-9 use?",
      "top_k": 5,
@@ -14470,9 +14470,9 @@
      ],
      "kept": [
       "aerotherm_hx9_manual.md::9",
-      "mem:mem_installer",
-      "mem:mem_e3_error",
       "aerotherm_hx9_manual.md::3",
+      "osprey_meeting_notes.md::4",
+      "aerotherm_hx9_manual.md::6",
       "aerotherm_hx9_manual.md::4"
      ],
      "search_text": "How long is the heat pump warranty?",
@@ -14629,8 +14629,8 @@
      ],
      "kept": [
       "aerotherm_hx9_manual.md::9",
-      "mem:mem_installer",
-      "mem:mem_e3_error"
+      "aerotherm_hx9_manual.md::3",
+      "osprey_meeting_notes.md::4"
      ],
      "search_text": "How long is the heat pump warranty?",
      "top_k": 3,
@@ -14797,7 +14797,7 @@
          "ref": "lease_harbour_street.md::8"
         },
         {
-         "_score": 6.220351696014404,
+         "_score": 6.2203521728515625,
          "cols": [
           "_score",
           "chunk_id",
@@ -15000,7 +15000,7 @@
          "ref": "lease_harbour_street.md::8"
         },
         {
-         "_score": 6.220351696014404,
+         "_score": 6.2203521728515625,
          "cols": [
           "_score",
           "chunk_id",
@@ -16108,8 +16108,8 @@
       "contents_insurance_policy.md::0",
       "contents_insurance_policy.md::1",
       "household_budget_2026.md::0",
-      "mem:mem_insurance_quotes",
-      "contents_insurance_policy.md::3"
+      "contents_insurance_policy.md::3",
+      "contents_insurance_policy.md::4"
      ],
      "search_text": "What is the excess on my contents insurance?",
      "top_k": 5,
@@ -16266,7 +16266,7 @@
      "kept": [
       "contents_insurance_policy.md::0",
       "contents_insurance_policy.md::1",
-      "mem:mem_insurance_quotes"
+      "contents_insurance_policy.md::3"
      ],
      "search_text": "What is the excess on my contents insurance?",
      "top_k": 3,
@@ -16868,11 +16868,11 @@
       }
      ],
      "kept": [
-      "mem:ep_svd",
       "linear_algebra_notes.md::3",
       "linear_algebra_notes.md::0",
       "linear_algebra_notes.md::2",
-      "linear_algebra_notes.md::4"
+      "linear_algebra_notes.md::4",
+      "contents_insurance_policy.md::1"
      ],
      "search_text": "What is the Eckart–Young theorem?",
      "top_k": 5,
@@ -17016,9 +17016,9 @@
       }
      ],
      "kept": [
-      "mem:ep_svd",
       "linear_algebra_notes.md::3",
-      "linear_algebra_notes.md::0"
+      "linear_algebra_notes.md::0",
+      "linear_algebra_notes.md::2"
      ],
      "search_text": "What is the Eckart–Young theorem?",
      "top_k": 3,
@@ -17266,11 +17266,11 @@
       }
      ],
      "kept": [
-      "mem:mem_exam",
       "linear_algebra_notes.md::6",
       "linear_algebra_notes.md::1",
       "linear_algebra_notes.md::0",
-      "linear_algebra_notes.md::5"
+      "linear_algebra_notes.md::5",
+      "linear_algebra_notes.md::2"
      ],
      "search_text": "What can I bring to the linear algebra exam?",
      "top_k": 5,
@@ -17425,8 +17425,8 @@
       }
      ],
      "kept": [
-      "mem:mem_exam",
       "linear_algebra_notes.md::6",
+      "linear_algebra_notes.md::1",
       "linear_algebra_notes.md::0"
      ],
      "search_text": "What can I bring to the linear algebra exam?",
@@ -18022,7 +18022,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::4"
+         "ref": "lease_harbour_street.md::5"
         },
         {
          "_score": 5.0638322830200195,
@@ -18033,7 +18033,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::5"
+         "ref": "lease_harbour_street.md::4"
         },
         {
          "_score": 4.174102306365967,
@@ -18438,10 +18438,10 @@
       }
      ],
      "kept": [
-      "mem:ep_lease",
       "lease_harbour_street.md::8",
       "lease_harbour_street.md::0",
       "lease_harbour_street.md::6",
+      "ledger_api_design.md::7",
       "lease_harbour_street.md::1"
      ],
      "search_text": "Is there a break clause in my lease?",
@@ -18586,9 +18586,9 @@
       }
      ],
      "kept": [
-      "mem:ep_lease",
       "lease_harbour_street.md::8",
-      "lease_harbour_street.md::0"
+      "lease_harbour_street.md::0",
+      "lease_harbour_street.md::6"
      ],
      "search_text": "Is there a break clause in my lease?",
      "top_k": 3,
@@ -18838,9 +18838,9 @@
      "kept": [
       "lease_harbour_street.md::5",
       "linear_algebra_notes.md::5",
-      "mem:mem_cat",
-      "mem:ep_lease",
-      "sourdough_notebook.md::3"
+      "lease_harbour_street.md::8",
+      "sourdough_notebook.md::3",
+      "lease_harbour_street.md::4"
      ],
      "search_text": "Can I keep a cat in the flat?",
      "top_k": 5,
@@ -18997,7 +18997,7 @@
      "kept": [
       "lease_harbour_street.md::5",
       "linear_algebra_notes.md::5",
-      "mem:mem_cat"
+      "lease_harbour_street.md::8"
      ],
      "search_text": "Can I keep a cat in the flat?",
      "top_k": 3,
@@ -19236,8 +19236,8 @@
      "kept": [
       "lease_harbour_street.md::2",
       "contents_insurance_policy.md::2",
-      "mem:mem_house_deposit",
       "household_budget_2026.md::4",
+      "contents_insurance_policy.md::0",
       "linear_algebra_notes.md::1"
      ],
      "search_text": "How much is the deposit and how is it protected?",
@@ -19395,7 +19395,7 @@
      "kept": [
       "lease_harbour_street.md::2",
       "contents_insurance_policy.md::2",
-      "mem:mem_house_deposit"
+      "household_budget_2026.md::4"
      ],
      "search_text": "How much is the deposit and how is it protected?",
      "top_k": 3,
@@ -20462,9 +20462,9 @@
      ],
      "kept": [
       "lease_harbour_street.md::3",
-      "mem:ep_lease",
-      "lease_harbour_street.md::2",
       "kestrel_staff_handbook.md::9",
+      "lease_harbour_street.md::2",
+      "kestrel_staff_handbook.md::10",
       "lease_harbour_street.md::1"
      ],
      "search_text": "Does the lease say who pays for a parking space?",
@@ -20621,7 +20621,7 @@
      ],
      "kept": [
       "lease_harbour_street.md::3",
-      "mem:ep_lease",
+      "kestrel_staff_handbook.md::9",
       "lease_harbour_street.md::2"
      ],
      "search_text": "Does the lease say who pays for a parking space?",
@@ -20873,7 +20873,7 @@
       "ledger_api_design.md::4",
       "ledger_api_design.md::2",
       "ledger_api_design.md::0",
-      "mem:ep_ledger",
+      "ledger_api_design.md::5",
       "contents_insurance_policy.md::1"
      ],
      "search_text": "What happens if I retry a transfer with the same idempotency key?",
@@ -21279,11 +21279,11 @@
       }
      ],
      "kept": [
-      "mem:ep_ledger",
       "ledger_api_design.md::3",
       "ledger_api_design.md::2",
-      "mem:mem_ledger_draft",
-      "ledger_api_design.md::4"
+      "ledger_api_design.md::4",
+      "ledger_api_design.md::1",
+      "ledger_api_design.md::7"
      ],
      "search_text": "How does pagination work in Ledger API v2?",
      "top_k": 5,
@@ -21438,9 +21438,9 @@
       }
      ],
      "kept": [
-      "mem:ep_ledger",
       "ledger_api_design.md::3",
-      "ledger_api_design.md::2"
+      "ledger_api_design.md::2",
+      "ledger_api_design.md::1"
      ],
      "search_text": "How does pagination work in Ledger API v2?",
      "top_k": 3,
@@ -21688,11 +21688,11 @@
       }
      ],
      "kept": [
-      "mem:mem_ledger_draft",
       "ledger_api_design.md::5",
-      "mem:ep_ledger",
       "ledger_api_design.md::2",
-      "ledger_api_design.md::1"
+      "ledger_api_design.md::1",
+      "contents_insurance_policy.md::0",
+      "ledger_api_design.md::0"
      ],
      "search_text": "What's the rate limit on the Ledger API?",
      "top_k": 5,
@@ -21847,9 +21847,9 @@
       }
      ],
      "kept": [
-      "mem:mem_ledger_draft",
       "ledger_api_design.md::5",
-      "ledger_api_design.md::1"
+      "ledger_api_design.md::1",
+      "ledger_api_design.md::2"
      ],
      "search_text": "What's the rate limit on the Ledger API?",
      "top_k": 3,
@@ -22099,8 +22099,8 @@
      "kept": [
       "ledger_api_design.md::1",
       "ledger_api_design.md::5",
-      "mem:ep_ledger",
       "ledger_api_design.md::2",
+      "ledger_api_design.md::6",
       "ledger_api_design.md::4"
      ],
      "search_text": "How long are Ledger access tokens valid?",
@@ -22257,8 +22257,8 @@
      ],
      "kept": [
       "ledger_api_design.md::1",
-      "mem:ep_ledger",
-      "ledger_api_design.md::5"
+      "ledger_api_design.md::5",
+      "ledger_api_design.md::6"
      ],
      "search_text": "How long are Ledger access tokens valid?",
      "top_k": 3,
@@ -22506,11 +22506,11 @@
       }
      ],
      "kept": [
-      "mem:mem_lisbon",
-      "mem:ep_lisbon",
       "lisbon_trip_itinerary.md::0",
       "lisbon_trip_itinerary.md::3",
-      "osprey_meeting_notes.md::2"
+      "osprey_meeting_notes.md::2",
+      "lisbon_trip_itinerary.md::4",
+      "lisbon_trip_itinerary.md::2"
      ],
      "search_text": "How much is the Lisbon trip going to cost?",
      "top_k": 5,
@@ -22665,9 +22665,9 @@
       }
      ],
      "kept": [
-      "mem:mem_lisbon",
-      "mem:ep_lisbon",
-      "lisbon_trip_itinerary.md::0"
+      "lisbon_trip_itinerary.md::0",
+      "lisbon_trip_itinerary.md::3",
+      "osprey_meeting_notes.md::2"
      ],
      "search_text": "How much is the Lisbon trip going to cost?",
      "top_k": 3,
@@ -22916,10 +22916,10 @@
      ],
      "kept": [
       "lisbon_trip_itinerary.md::0",
-      "mem:mem_lisbon",
       "lisbon_trip_itinerary.md::3",
-      "mem:ep_lisbon",
-      "lisbon_trip_itinerary.md::2"
+      "lisbon_trip_itinerary.md::2",
+      "lisbon_trip_itinerary.md::1",
+      "contents_insurance_policy.md::1"
      ],
      "search_text": "What time is my flight to Lisbon?",
      "top_k": 5,
@@ -23075,8 +23075,8 @@
      ],
      "kept": [
       "lisbon_trip_itinerary.md::0",
-      "mem:mem_lisbon",
-      "lisbon_trip_itinerary.md::3"
+      "lisbon_trip_itinerary.md::3",
+      "lisbon_trip_itinerary.md::2"
      ],
      "search_text": "What time is my flight to Lisbon?",
      "top_k": 3,
@@ -23324,11 +23324,11 @@
       }
      ],
      "kept": [
-      "mem:ep_lisbon",
       "lisbon_trip_itinerary.md::2",
       "lisbon_trip_itinerary.md::4",
       "lisbon_trip_itinerary.md::0",
-      "mem:mem_lisbon"
+      "linear_algebra_notes.md::1",
+      "project_omega_bluejay.md::1"
      ],
      "search_text": "When is the Sintra day trip and how do we get there?",
      "top_k": 5,
@@ -23483,9 +23483,9 @@
       }
      ],
      "kept": [
-      "mem:ep_lisbon",
       "lisbon_trip_itinerary.md::2",
-      "lisbon_trip_itinerary.md::4"
+      "lisbon_trip_itinerary.md::4",
+      "lisbon_trip_itinerary.md::0"
      ],
      "search_text": "When is the Sintra day trip and how do we get there?",
      "top_k": 3,
@@ -23981,7 +23981,7 @@
           "source",
           "text"
          ],
-         "ref": "osprey_meeting_notes.md::1"
+         "ref": "sourdough_notebook.md::2"
         }
        ],
        "text": "What about sick days?"
@@ -24355,9 +24355,9 @@
      "kept": [
       "millbrook_tramways_history.txt::5",
       "kestrel_staff_handbook.md::9",
-      "mem:ep_ledger",
-      "mem:mem_supervisor",
-      "millbrook_tramways_history.txt::2"
+      "millbrook_tramways_history.txt::2",
+      "linear_algebra_notes.md::1",
+      "heron_meeting_notes.md::1"
      ],
      "search_text": "Who decided that?",
      "top_k": 5,
@@ -24514,7 +24514,7 @@
      "kept": [
       "millbrook_tramways_history.txt::5",
       "kestrel_staff_handbook.md::9",
-      "mem:ep_ledger"
+      "linear_algebra_notes.md::1"
      ],
      "search_text": "Who decided that?",
      "top_k": 3,
@@ -24900,8 +24900,8 @@
      ],
      "kept": [
       "aerotherm_hx9_manual.md::6",
-      "mem:mem_installer",
-      "mem:mem_e3_error"
+      "aerotherm_hx9_manual.md::3",
+      "linear_algebra_notes.md::5"
      ],
      "search_text": "my heat pump how do I reset it?",
      "top_k": 3,
@@ -26764,10 +26764,10 @@
      ],
      "kept": [
       "lease_harbour_street.md::2",
-      "mem:mem_house_deposit",
-      "heron_meeting_notes.md::2",
       "ledger_api_design.md::8",
-      "mem:ep_lease"
+      "heron_meeting_notes.md::2",
+      "ledger_api_design.md::2",
+      "lease_harbour_street.md::5"
      ],
      "search_text": "Regarding Yes: Is there an extra deposit for it?",
      "top_k": 5,
@@ -26923,7 +26923,7 @@
      ],
      "kept": [
       "lease_harbour_street.md::2",
-      "mem:mem_house_deposit",
+      "ledger_api_design.md::2",
       "heron_meeting_notes.md::2"
      ],
      "search_text": "Yes Is there an extra deposit for it?",
@@ -27742,7 +27742,7 @@
      "kept": [
       "linear_algebra_notes.md::3",
       "linear_algebra_notes.md::5",
-      "mem:ep_svd"
+      "linear_algebra_notes.md::4"
      ],
      "search_text": "singular value decomposition How does it relate to PCA?",
      "top_k": 3,
@@ -28403,7 +28403,7 @@
       "project_omega_bluejay.md::3",
       "project_omega_bluejay.md::1",
       "project_omega_bluejay.md::2",
-      "mem:mem_tomasz"
+      "project_omega_bluejay.md::4"
      ],
      "search_text": "How many blue jays were counted in 2025?",
      "top_k": 5,
@@ -29254,8 +29254,8 @@
      "kept": [
       "household_budget_2026.md::4",
       "project_omega_bluejay.md::3",
-      "heron_meeting_notes.md::2",
       "osprey_meeting_notes.md::4",
+      "heron_meeting_notes.md::2",
       "household_budget_2026.md::2"
      ],
      "search_text": "Did Project Osprey stay within budget?",
@@ -30073,8 +30073,8 @@
       "sourdough_notebook.md::0",
       "sourdough_notebook.md::3",
       "sourdough_notebook.md::1",
-      "mem:ep_sourdough",
-      "mem:mem_sourdough"
+      "linear_algebra_notes.md::5",
+      "sourdough_notebook.md::2"
      ],
      "search_text": "How do I feed my sourdough starter?",
      "top_k": 5,
@@ -30231,7 +30231,7 @@
      "kept": [
       "sourdough_notebook.md::0",
       "sourdough_notebook.md::3",
-      "mem:ep_sourdough"
+      "sourdough_notebook.md::1"
      ],
      "search_text": "How do I feed my sourdough starter?",
      "top_k": 3,
@@ -30449,8 +30449,8 @@
       "sourdough_notebook.md::3",
       "sourdough_notebook.md::4",
       "sourdough_notebook.md::1",
-      "mem:ep_sourdough",
-      "mem:mem_sourdough"
+      "project_omega_bluejay.md::3",
+      "sourdough_notebook.md::0"
      ],
      "search_text": "Why is my sourdough flat and spreading in the oven?",
      "top_k": 5,
@@ -30607,7 +30607,7 @@
      "kept": [
       "sourdough_notebook.md::3",
       "sourdough_notebook.md::4",
-      "mem:ep_sourdough"
+      "sourdough_notebook.md::1"
      ],
      "search_text": "Why is my sourdough flat and spreading in the oven?",
      "top_k": 3,
