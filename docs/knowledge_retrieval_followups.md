@@ -735,7 +735,29 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 
 **State.** Phase 0 (S14–S16) is merged to `main` as PR #75 (`267f042`, squash). Phase 1 (S40, S17–S20) is merged as PR #76 (`7997755`, squash); its stage commits (S17 `e2136dd`, S40 `57545a8`, S18 `4f88385`, S19 `b05a67c`, S20 `6695542`, CHANGELOG `da76bee`) live on `feat/kr-followups-phase1`. Phase 2 is in progress on `feat/kr-followups-phase2`, branched from `7997755`: S21 is done in three commits, shared-pool scoring `359306e`, the replay merge `7dca68c` (V54, D34) and the section-number title key `962f5d5`. S22 is done in four: the key gate `1c9a85f` (D35), stamped route refreshes `78f2585` (D39), the retirements and pack changes `0e2f58b` (D36–D38) and the IETF RFC fix `0ac14f2` (D38). S23 is done in two: Crossref in the physics pack `018ad6c` (D40) and whole-name trial matching `db5a0ee` (D41). Its CHANGELOG commit follows them. Phase 2 is merged as PR #77 (`aa3f817`, squash, 2026-11-25; its CI passed). Phase 6 is in progress on `feat/kr-followups-phase6`, branched from `aa3f817`. S33 is done in `bb85c2a` (fixtures, harness and baselines on all three embedders; V63–V68, D42, D43). S41 is done in four code commits: V66 `0da9ce3` (D44), V65 `4062248`, D45 `e5fc8f4` and D46 `4bb3a58`; D47 kept the core-memory margin; V69, V70; docs `e8e64a1`. S34 is done in `2e30b28` (shadow pass after the reply, D48, D49) and `94edc21` (recorded cross-encoder scores, V71–V73), with V74, V75 and the order change D50; docs `4d3e061`. S36 is done in `b70f0df` (library and memory follow-ups resolved, D51–D54, V76–V79). **Next:** S35 (D50), and the D26 salvage fix; after Phase 6, 4 → 5 → 7 (D23).
 
-**Starting a phase** (Phase 4 next):
+**Resume point (end of 2026-11-26).**
+
+- **Branch.** `feat/kr-followups-phase6`, local only at the end of 2026-11-26 (not pushed). It is 11 commits on `origin/main` (`aa3f817`) plus this note. The only other change in the working tree is the owner's own edit to `docs/privacy-policy.md`, which stays out of every commit.
+- **Check first.** Run `git status --porcelain` and `git log --oneline -3`. Then run `.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_s33_library_memory.py tests/test_s34_rerank_scores.py tests/test_s36_library_memory_query.py`: all pass, in about 20 s. The full-suite reference is S36's (Commands, below); there is no need to re-run it before S35.
+- **Next free numbers.** V80 and D55.
+- **S35 next.** It starts from:
+  - **Where the gate applies.** The threshold is −4, with −6 as the alternative (V72). The gate replaces the floor; it does not follow it. The passage includes the file name (`rerank_passage` in `core/knowledge/library_memory_eval.py`). The gated runs are plain-chat library, `@library` and memory recall (D49). Memory recall gates only the preference, knowledge and context tiers. Core memory and narrative keep today's gates (V73).
+  - **The simulation.** Take the pool from `rerank_pool`, keep the rows with a cross-encoder score ≥ t, sort them by score and cut to the run's `top_k`. On S36's texts this gives 0 rule-7 regressions at −4 and at −6 (S36's As built).
+  - **Replay.** `recorded_rerank_scorer` (same module) feeds the recorded scores to `rerank.set_reranker_scorer_for_tests`, so tests and the harness need no model. Re-record the scores after every re-capture (Commands).
+  - **Open inputs.**
+    - When to say "not found in your documents": the best score per case separates abstain cases only partly (V72).
+    - The reranker question includes the previous question on resolved follow-ups. Under the simulated gate, multi-turn irrelevant kept rises 0.12 → 0.20 (S36).
+    - Person-mismatched recall phrasings ("my sister" vs "The user's sister", V72).
+    - Fallback-first: without the reranker, today's floors are unchanged.
+  - **Owner decisions.** The wording, and the threshold (−4 or −6), each presented with its measurement.
+- **Then D26, the salvage fix.** Three places are involved, and V40 has the mechanism:
+  - `_bound_session_history` (`workers/llm_worker.py`) collects `dropped_ids` from the message-count window only.
+  - S17's token fit, `HistoryWindow` (`core/retrieval_budget.py`), drops more messages and collects none.
+  - `_process_salvage` (`workers/enrichment_worker.py`) consumes the ids.
+  - Tests: `tests/test_memory_salvage.py` and `tests/test_s17_history_window.py`. Salvage stays off by default.
+- **Then close Phase 6.** Make the CHANGELOG `[Unreleased]` commit, ask before pushing, then open the PR from the template; never merge. Raise Track 0 with the owner before Phase 4.
+
+**Starting a phase** (Phase 4 next, once Phase 6 is closed):
 
 1. Check the previous phase's PR: `gh pr view <n> --json state,mergedAt` and `gh pr checks <n>`. If it is merged, `git fetch origin` and branch `feat/kr-followups-phase<N>` from `origin/main`. If it is still open and the owner wants to go on, branch from its head and rebase after the merge, as Phase 1 did. PRs land as one squash commit, so rebase with `git rebase --onto main <old base commit> <branch>`.
 2. Record a Track 0 checkpoint row (§4, §8), as counts only. Run these in `~/.qube/logs`: `grep -c '\[QuerySlots\] shadow' qube.log`, `grep -c query_slots_gate routing_debug.log`, `grep -c '"event": "citation_grounding"' llm_debug.log`. For traces: `.venv/bin/python -c "from core.knowledge.retrieval_trace_reader import read_retrieval_traces as r; print(len(r(limit=100000)))"`.
@@ -747,6 +769,10 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 - **Measure before you change anything.** Put a finding that contradicts the plan in a V-row, and stop to check with the owner if it invalidates the stage (rule 6).
 - **Owner decisions.** Present the measured options, with a recommendation, as a question. Record the answer as a D-row. Behaviour defaults, enabling or dropping a feature, and anything the stage's "Decisions" line names are the owner's.
 - **Close out.** Write the "As built" block, the §8 rows (deliverables, tests with the full-suite count, acceptance) and "Last reviewed". Then ask before committing.
+- **Commits.**
+  - Code first: a one-line summary ending in `(SN, Dnn…)`, a bullet body, a metrics paragraph, then the Co-Authored-By line.
+  - Docs second, so they can cite the code hash: `Knowledge-retrieval follow-ups, SN: … (Vnn–Vmm, Dnn–Dmm)`.
+  - Fixtures go with the code they replay against: the replay tests fail on either alone.
 
 **Each phase:**
 
@@ -804,6 +830,15 @@ A new session has no memory of earlier ones. Read this section, then §3–§6, 
 - **Qwen3 `<think>` pre-fill.** The pre-fill is per task: `QWEN3_THINK_PREFILL_TASKS` in `core/sidecar_prompts.py`. A sidecar task newly used on the raw path, including S29's slot steering, is evaluated the S19 way before it joins the set. Changing the `<think>` handling or the thread counts globally is the owner's call.
 - **Measurement machine.** Ryzen 7 7840HS (8 cores / 16 threads), llama-cpp-python 0.3.35, CPU only. GPU builds, Apple P/E cores and the running app's turns were not measured in Phases 0–1. Say so when a result depends on them.
 - **Release smoke script.** Do not run `scripts/release/smoke_linux_dist.sh` locally: it kills processes named `Qube`.
+
+**Working practices (learned in Phase 6).**
+
+- **Background jobs.** A capture, eval or suite reads the code while it runs.
+  - Don't change the working tree (`git stash`, `checkout`, `reset`) while one is running. At S36, one Power capture ran 17 cases on stashed code and had to be re-run.
+  - To compare against HEAD, use `git worktree add <scratch>/head HEAD`, and remove the worktree afterwards.
+  - Run one heavy job at a time. Under a concurrent capture, `tests/test_router_centroid_install.py` failed twice; it passes alone.
+- **Query-text changes.** Dump `case_query`'s texts for every case before and after, single-turn cases too, and measure every case whose text changes. S36's scratch measurement replayed only the multi-turn cases, and missed V79 until the re-capture.
+- **Scratch directories.** They belong to one session and get cleared, so a new session cannot rely on earlier scripts. Each As-built block describes its method; rebuild the scripts from it.
 
 **Open items from Phases 0–2 and 6.**
 
