@@ -545,13 +545,13 @@
   "memory_core": {
    "aggregate": {
     "fixtures": 10,
-    "precision_at_k": 0.5,
-    "ndcg_at_5": 0.067,
-    "irrelevant_kept_rate": 0.5,
-    "relevant_recall": 0.0,
-    "abstain_correct": 0.5,
+    "precision_at_k": 0.6667,
+    "ndcg_at_5": 0.2099,
+    "irrelevant_kept_rate": 0.3333,
+    "relevant_recall": 0.2,
+    "abstain_correct": 0.6,
     "subject_in_query": null,
-    "abstain_precision": 0.375,
+    "abstain_precision": 0.4286,
     "abstain_recall": 1.0,
     "recency_turns": 0,
     "stale_only_turns": 0,
@@ -576,11 +576,11 @@
     },
     "core_memory": {
      "fixtures": 6,
-     "precision_at_k": 0.5,
-     "ndcg_at_5": 0.0782,
-     "irrelevant_kept_rate": 0.5,
-     "relevant_recall": 0.0,
-     "abstain_correct": 0.3333,
+     "precision_at_k": 0.6667,
+     "ndcg_at_5": 0.2449,
+     "irrelevant_kept_rate": 0.3333,
+     "relevant_recall": 0.2,
+     "abstain_correct": 0.5,
      "subject_in_query": null,
      "abstain_precision": 0.0,
      "abstain_recall": null,
@@ -637,7 +637,7 @@
     "auc_useful_vs_irrelevant": 0.555
    },
    "abstain_cases": 3,
-   "kept_rows": 2,
+   "kept_rows": 3,
    "memory_rows_kept": null,
    "useful_missed_by_channels": 0
   }
@@ -9410,15 +9410,19 @@
    "search_text": "Write a short note to my landlord asking if I can repaint the bedroom.",
    "top_k": 5,
    "expect": "partial",
-   "kept": [],
-   "kept_labels": [],
+   "kept": [
+    "mem:mem_repaint"
+   ],
+   "kept_labels": [
+    "relevant"
+   ],
    "linked_chunks": [],
-   "abstained": true,
-   "precision_at_k": null,
-   "ndcg_at_5": 0.0,
-   "irrelevant_kept_rate": null,
-   "relevant_recall": 0.0,
-   "abstain_correct": false,
+   "abstained": false,
+   "precision_at_k": 1.0,
+   "ndcg_at_5": 1.0,
+   "irrelevant_kept_rate": 0.0,
+   "relevant_recall": 1.0,
+   "abstain_correct": true,
    "memory_rows_kept": null,
    "pool_size": 12,
    "pool_relevant": 1,

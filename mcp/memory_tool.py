@@ -97,31 +97,53 @@ _PROPER_NOUN_STOPWORDS: frozenset[str] = frozenset(
 )
 
 
+_PROPER_NOUN_TITLES: frozenset[str] = frozenset({"Dr", "Mr", "Mrs", "Ms", "Mx", "Prof", "St"})
+_PROPER_NOUN_CLITIC_RE = re.compile(r"(?:'s|'re|'ve|'ll|'d|'m|n't|')$")
+_PROPER_NOUN_PREV_WORD_RE = re.compile(r"[A-Za-z]+\.?$")
+
+
+def _starts_sentence(before: str) -> bool:
+    """True when the token after ``before`` (already right-stripped) opens a sentence."""
+    if not before:
+        return True
+    if before[-1] not in ".!?":
+        return False
+    prev = _PROPER_NOUN_PREV_WORD_RE.findall(before)
+    return not (prev and prev[0].rstrip(".") in _PROPER_NOUN_TITLES)  # "Dr. Evelyn"
+
+
 def _extract_query_proper_nouns(query: str) -> list[str]:
     """Extract distinctive proper-noun tokens from the query.
 
-    Returns tokens case-preserved. Sentence-initial stopwords (``Tell``,
-    ``Who``, ``What``, ``My``, ``Can``, etc.) are excluded — they would
-    otherwise trigger the overlap gate spuriously on every query.
+    Returns tokens case-preserved, with possessives and contractions stripped
+    ("Kofi's" -> "Kofi"). Skipped (plan V67, D46):
+
+    * the first word of each sentence: its capital says nothing, and sentence
+      starters ("What's", "Am", "Write", "Help", "Explain") used to count as
+      names and drop every memory;
+    * titles ("Dr", "Mrs", ...): "Dr. Evelyn" requires "Evelyn";
+    * the stopwords below, single characters and repeats.
+
+    A name that opens the question ("Kofi's birthday?") is therefore not
+    required; the semantic floor still applies.
     """
     if not query:
         return []
-    # Strip everything but letters so "Dr." and "Dr.Evelyn" (no space) also
-    # yield both "Dr" and "Evelyn".
-    raw = _PROPER_NOUN_TOKEN_RE.findall(query)
     out: list[str] = []
     seen: set[str] = set()
-    for t in raw:
-        if t in _PROPER_NOUN_STOPWORDS:
+    for match in _PROPER_NOUN_TOKEN_RE.finditer(query):
+        token = _PROPER_NOUN_CLITIC_RE.sub("", match.group(0))
+        if _starts_sentence(query[: match.start()].rstrip()):
             continue
-        # Skip single-char tokens ("I").
-        if len(t) < 2:
+        if token in _PROPER_NOUN_TITLES or token in _PROPER_NOUN_STOPWORDS:
             continue
-        key = t.lower()
+        if len(token) < 2:
+            continue
+        key = token.lower()
         if key in seen:
             continue
         seen.add(key)
-        out.append(t)
+        out.append(token)
     return out
 
 

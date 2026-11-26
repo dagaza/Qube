@@ -1976,7 +1976,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_repaint"
+     ],
      "search_text": "Write a short note to my landlord asking if I can repaint the bedroom.",
      "top_k": 5,
      "vector_text": "Write a short note to my landlord asking if I can repaint the bedroom."
@@ -3612,7 +3614,7 @@
           "source",
           "text"
          ],
-         "ref": "kestrel_staff_handbook.md::9"
+         "ref": "lisbon_trip_itinerary.md::4"
         },
         {
          "_score": 2.4506192207336426,
@@ -3623,7 +3625,7 @@
           "source",
           "text"
          ],
-         "ref": "lisbon_trip_itinerary.md::4"
+         "ref": "kestrel_staff_handbook.md::9"
         },
         {
          "_score": 2.4299755096435547,
@@ -17956,7 +17958,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::4"
+         "ref": "lease_harbour_street.md::5"
         },
         {
          "_score": 5.0638322830200195,
@@ -17967,7 +17969,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::5"
+         "ref": "lease_harbour_street.md::4"
         },
         {
          "_score": 4.174102306365967,

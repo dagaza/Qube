@@ -1976,7 +1976,9 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_repaint"
+     ],
      "search_text": "Write a short note to my landlord asking if I can repaint the bedroom.",
      "top_k": 5,
      "vector_text": "Write a short note to my landlord asking if I can repaint the bedroom."
@@ -19887,7 +19889,7 @@
          "ref": "lease_harbour_street.md::5"
         },
         {
-         "_score": 5.805500507354736,
+         "_score": 5.8055009841918945,
          "cols": [
           "_score",
           "chunk_id",
@@ -21532,7 +21534,7 @@
           "source",
           "text"
          ],
-         "ref": "ledger_api_design.md::2"
+         "ref": "contents_insurance_policy.md::1"
         },
         {
          "_score": 3.906771659851074,
@@ -21543,7 +21545,7 @@
           "source",
           "text"
          ],
-         "ref": "contents_insurance_policy.md::1"
+         "ref": "ledger_api_design.md::2"
         }
        ],
        "text": "What's the rate limit on the Ledger API?"
@@ -23833,7 +23835,7 @@
           "source",
           "text"
          ],
-         "ref": "osprey_meeting_notes.md::1"
+         "ref": "sourdough_notebook.md::2"
         }
        ],
        "text": "What about sick days?"

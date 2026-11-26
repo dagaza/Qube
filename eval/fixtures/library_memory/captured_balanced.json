@@ -1972,7 +1972,13 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_repaint",
+      "mem:mem_house_deposit",
+      "mem:mem_quiet_hours",
+      "mem:mem_exam",
+      "mem:mem_insurance_quotes"
+     ],
      "search_text": "Write a short note to my landlord asking if I can repaint the bedroom.",
      "top_k": 5,
      "vector_text": "Write a short note to my landlord asking if I can repaint the bedroom."
@@ -2308,7 +2314,7 @@
        "limit": 6,
        "rows": [
         {
-         "_score": 8.677135467529297,
+         "_score": 8.677136421203613,
          "cols": [
           "_score",
           "chunk_id",
@@ -3628,7 +3634,7 @@
           "source",
           "text"
          ],
-         "ref": "kestrel_staff_handbook.md::9"
+         "ref": "lisbon_trip_itinerary.md::4"
         },
         {
          "_score": 2.4506192207336426,
@@ -3639,7 +3645,7 @@
           "source",
           "text"
          ],
-         "ref": "lisbon_trip_itinerary.md::4"
+         "ref": "kestrel_staff_handbook.md::9"
         },
         {
          "_score": 2.4299755096435547,
@@ -3831,7 +3837,7 @@
           "source",
           "text"
          ],
-         "ref": "lisbon_trip_itinerary.md::4"
+         "ref": "kestrel_staff_handbook.md::9"
         }
        ],
        "text": "Explain how photosynthesis works."
@@ -18022,7 +18028,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::5"
+         "ref": "lease_harbour_street.md::4"
         },
         {
          "_score": 5.0638322830200195,
@@ -18033,7 +18039,7 @@
           "source",
           "text"
          ],
-         "ref": "lease_harbour_street.md::4"
+         "ref": "lease_harbour_street.md::5"
         },
         {
          "_score": 4.174102306365967,
@@ -20015,7 +20021,7 @@
          "ref": "lease_harbour_street.md::5"
         },
         {
-         "_score": 5.8055009841918945,
+         "_score": 5.805500507354736,
          "cols": [
           "_score",
           "chunk_id",
@@ -21670,7 +21676,7 @@
           "source",
           "text"
          ],
-         "ref": "ledger_api_design.md::2"
+         "ref": "contents_insurance_policy.md::1"
         },
         {
          "_score": 3.906771659851074,
@@ -21681,7 +21687,7 @@
           "source",
           "text"
          ],
-         "ref": "contents_insurance_policy.md::1"
+         "ref": "ledger_api_design.md::2"
         }
        ],
        "text": "What's the rate limit on the Ledger API?"
@@ -23981,7 +23987,7 @@
           "source",
           "text"
          ],
-         "ref": "osprey_meeting_notes.md::1"
+         "ref": "sourdough_notebook.md::2"
         }
        ],
        "text": "What about sick days?"
@@ -34810,7 +34816,13 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_sister",
+      "mem:mem_spelling",
+      "mem:mem_bullets",
+      "mem:mem_mother",
+      "mem:mem_hybrid"
+     ],
      "search_text": "What's my blood type?",
      "top_k": 5,
      "vector_text": "What's my blood type?"
@@ -35592,9 +35604,32 @@
        ],
        "text": "What's my car's registration number?",
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
+      },
+      {
+       "kind": "scan",
+       "limit": 1,
+       "rows": [
+        {
+         "cols": [
+          "chunk_id",
+          "meta_json",
+          "source",
+          "text"
+         ],
+         "ref": "lease_harbour_street.md::6"
+        }
+       ],
+       "where": "source = 'lease_harbour_street.md' AND chunk_id = 6"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_cat",
+      "mem:mem_mother",
+      "mem:mem_hybrid",
+      "mem:mem_landlord",
+      "mem:mem_ledger_draft",
+      "lease_harbour_street.md::6"
+     ],
      "search_text": "What's my car's registration number?",
      "top_k": 5,
      "vector_text": "What's my car's registration number?"
@@ -35887,9 +35922,7 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [
-      "mem:mem_supervisor"
-     ],
+     "kept": [],
      "search_text": "Tell me about Dr. Evelyn.",
      "top_k": 5,
      "vector_text": "Tell me about Dr. Evelyn."
@@ -39346,7 +39379,13 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_penicillin",
+      "mem:mem_vegetarian",
+      "mem:mem_coffee",
+      "mem:mem_bullets",
+      "mem:mem_mother"
+     ],
      "search_text": "Am I allergic to anything?",
      "top_k": 5,
      "vector_text": "Am I allergic to anything?"
@@ -39735,7 +39774,12 @@
        "where": "source LIKE 'qube_memory::preference::%' OR source LIKE 'qube_memory::knowledge::%' OR source LIKE 'qube_memory::context::%' OR source LIKE 'qube_memory::legacy::%'"
       }
      ],
-     "kept": [],
+     "kept": [
+      "mem:mem_cat",
+      "mem:mem_installer",
+      "mem:mem_mother",
+      "mem:mem_sister"
+     ],
      "search_text": "What's my cat called?",
      "top_k": 5,
      "vector_text": "What's my cat called?"
