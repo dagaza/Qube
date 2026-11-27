@@ -2620,7 +2620,7 @@
       ],
       "doc_id": "faq.library_pro_depth",
       "heading": "Precision retrieval",
-      "answer": "**Precision retrieval** reranks Library hits with a second bi-encoder pass after hybrid search and MMR. Toggle it under **Settings \u2192 Knowledge \u2192 Library Pro depth** (Pro license required). Adds query latency; no re-import needed.",
+      "answer": "**Precision retrieval** reranks Library hits with a second bi-encoder pass after hybrid search and MMR. When the **relevance reranker** is installed and on, it orders Library search instead, and this pass runs only on searches limited to one document and on questions the reranker skips. Toggle it under **Settings \u2192 Knowledge \u2192 Library Pro depth** (Pro license required). Adds query latency; no re-import needed.",
       "action_id": "open_settings_knowledge"
     },
     {

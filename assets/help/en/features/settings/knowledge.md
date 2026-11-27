@@ -54,7 +54,7 @@ Open **Settings → Knowledge → Retrieval profile**. The Conversations tools p
 | Toggle | Effect |
 |--------|--------|
 | **Default precision ingest on import** | Pre-selects **Precision indexing** in the Library import dialog (you still choose per upload). Semantic re-segmentation at indexing time. **Re-import documents** to change their mode. |
-| **Precision retrieval** | Second bi-encoder rerank after hybrid search + MMR on each Library query. |
+| **Precision retrieval** | Second bi-encoder rerank after hybrid search + MMR. When the **relevance reranker** is installed and on, it orders Library search instead, so this pass runs only on searches limited to one document, on questions the reranker skips (such as non-English ones) and when the reranker is off. |
 
 Standard structural chunking, hybrid search, MMR, and **Search quality** presets remain **free**. See [Library Pro depth FAQ](../../faq/library-pro-depth.md) and [Enable Library Pro depth workflow](../../workflows/enable-library-pro-depth.md).
 

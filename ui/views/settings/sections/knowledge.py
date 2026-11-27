@@ -119,10 +119,11 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
 
     _reranker_tip = (
-        "Scores web and knowledge sources against your question with a small local "
-        "cross-encoder (~87 MB, Xenova/ms-marco-MiniLM-L-6-v2) so off-topic sources "
-        "can be dropped. Runs on your device; nothing leaves it. Turning this off "
-        "uses the keyword/embedding ranking only."
+        "Scores web and knowledge sources, Library passages and saved memories "
+        "against your question with a small local cross-encoder (~87 MB, "
+        "Xenova/ms-marco-MiniLM-L-6-v2) so off-topic results can be dropped. Runs on "
+        "your device; nothing leaves it. Turning this off uses the keyword/embedding "
+        "ranking only."
     )
     host.knowledge_reranker_toggle = PrestigeToggle()
     host.knowledge_reranker_label = QLabel("Relevance reranker for knowledge sources")
@@ -172,7 +173,10 @@ def build_section(host, *, is_dark: bool) -> QWidget:
     )
     rerank_tip = (
         "Precision retrieval reranks Library hits with a second bi-encoder pass after "
-        "hybrid search and MMR. Adds latency on each Library query. "
+        "hybrid search and MMR. With the relevance reranker on, the reranker orders "
+        "Library search instead, and this pass runs only on searches limited to one "
+        "document and on questions the reranker skips. Adds latency on each Library "
+        "query it runs on. "
         "Requires a Qube Pro license."
     )
 
