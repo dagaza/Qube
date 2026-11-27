@@ -1530,6 +1530,9 @@ class LLMWorker(QThread):
         max_history_messages; single-message truncation remains as a safety cap.
         """
         if not history:
+            self._turn_history_ids = []
+            self._turn_window_dropped_ids = []
+            self._pending_salvage_message_ids = []
             return []
 
         max_single = self.CHAT_HISTORY_SINGLE_MESSAGE_MAX_CHARS
@@ -1553,6 +1556,19 @@ class LLMWorker(QThread):
         while windowed and windowed[0].get("role") == "assistant":
             windowed = windowed[1:]
 
+        # D26 (V40): ``capped`` carries no message ids, so the prompt never sees
+        # them. The window keeps a suffix of ``history`` (as S17's token fit
+        # keeps a suffix of what it gets), so the ids line up by position:
+        # ``_turn_history_ids`` for the kept messages, and the dropped prefix
+        # for memory v7 salvage.
+        ids = [str(m.get("id")) if m.get("id") else None for m in history]
+        n_dropped = n_before - len(windowed)
+        self._turn_history_ids = ids[n_dropped:]
+        self._turn_window_dropped_ids = [i for i in ids[:n_dropped] if i]
+        self._pending_salvage_message_ids = (
+            list(self._turn_window_dropped_ids) if get_enable_memory_v7_salvage() else []
+        )
+
         if n_before > len(windowed):
             logger.info(
                 "[LLM] Chat history windowed: using last %d of %d messages (max_history_messages=%d)",
@@ -1560,16 +1576,30 @@ class LLMWorker(QThread):
                 n_before,
                 limit,
             )
-            if get_enable_memory_v7_salvage():
-                windowed_ids = {m.get("id") for m in windowed if m.get("id")}
-                dropped_ids: list[str] = []
-                for m in capped:
-                    mid = m.get("id")
-                    if mid and mid not in windowed_ids:
-                        dropped_ids.append(str(mid))
-                self._pending_salvage_message_ids = dropped_ids[:24]
 
         return windowed
+
+    def _note_token_fit_salvage(self, window: HistoryWindow, n_fitted: int) -> None:
+        """D26: add the messages S17's token fit dropped to this turn's salvage ids.
+
+        The fit drops the oldest ``window.dropped`` of the ``n_fitted`` messages
+        ``_bound_session_history`` kept; their ids follow the message window's,
+        oldest first. Every dropped id is sent: memory v7 salvage takes each
+        message once (``EnrichmentWorker._process_salvage``).
+        """
+        if not get_enable_memory_v7_salvage():
+            return
+        window_ids = list(getattr(self, "_turn_window_dropped_ids", None) or [])
+        kept_ids = list(getattr(self, "_turn_history_ids", None) or [])
+        fit_ids: list[str] = []
+        if window.dropped:
+            if len(kept_ids) == n_fitted:
+                fit_ids = [i for i in kept_ids[: window.dropped] if i]
+            else:
+                logger.debug(
+                    "[LLM] salvage: token-fit ids skipped (%d ids for %d messages)", len(kept_ids), n_fitted
+                )
+        self._pending_salvage_message_ids = window_ids + fit_ids
 
     # ============================================================
     def clean_text_for_tts(self, text):
@@ -2329,6 +2359,8 @@ class LLMWorker(QThread):
         # T3.3: reset tool-aware enrichment skip / mode flags for this turn.
         self._reset_turn_enrichment_flags()
         self._pending_salvage_message_ids = []
+        self._turn_history_ids: list[str | None] = []
+        self._turn_window_dropped_ids: list[str] = []
         self._turn_all_ui_sources: list = []
         self._turn_evidence_bundle = None
 
@@ -4598,6 +4630,7 @@ class LLMWorker(QThread):
             extra_context_chars=extra_context_chars,
             count_tokens=turn_count_tokens,
         )
+        self._note_token_fit_salvage(history_window, len([m for m in (history or []) if isinstance(m, dict)]))
         history = history_window.messages
         retrieval_budget = self._retrieval_budget_for_turn(
             history,
