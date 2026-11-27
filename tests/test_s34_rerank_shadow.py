@@ -105,7 +105,8 @@ class TestRecord(_ShadowCase):
         self.assertEqual(rec["pool_max"], 5.0)
         self.assertEqual(rec["pool_at_or_above"], {"-6": 2, "-4": 1, "0": 1})
         self.assertEqual(rec["kept_below"], {"-6": 0, "-4": 1, "0": 1})
-        self.assertEqual((rec["calibrated_keep"], rec["would_keep"], rec["would_abstain"]), (-4.0, 1, False))
+        # S35 (D55, D59): the log's calibrated keep is the gate's threshold, -6.
+        self.assertEqual((rec["calibrated_keep"], rec["would_keep"], rec["would_abstain"]), (-6.0, 2, False))
 
     def test_the_log_line_holds_no_text(self):
         job = self._job()
@@ -257,12 +258,15 @@ class TestMemorySearchShadow(_ShadowCase):
         self.assertTrue(shadow.begin_turn())
         out = self._run(shadow.PATH_MEMORY_RECALL)
         (job,) = shadow.end_turn()
+        # S35 (D56, D59): memories are offered as the first-person passage the gate scores.
         passages = {c.passage: c.kept for c in job.candidates}
-        self.assertEqual(set(passages), {r and json.loads(r["text"])["content"] for r in self.ROWS})
-        self.assertEqual({p for p, k in passages.items() if k}, {s["content"] for s in out["memory_sources"]})
+        self.assertEqual(set(passages), {shadow.memory_passage(json.loads(r["text"])["content"]) for r in self.ROWS})
+        self.assertEqual(
+            {p for p, k in passages.items() if k}, {shadow.memory_passage(s["content"]) for s in out["memory_sources"]}
+        )
         kept_in_order = [c.passage for c in job.candidates if c.kept]
-        self.assertEqual(kept_in_order, [s["content"] for s in out["memory_sources"]])  # rank order
-        self.assertFalse(passages["The user bakes sourdough."])
+        self.assertEqual(kept_in_order, [shadow.memory_passage(s["content"]) for s in out["memory_sources"]])  # rank order
+        self.assertFalse(passages[shadow.memory_passage("The user bakes sourdough.")])
         self.assertEqual(job.top_k, 5)
 
 

@@ -32,6 +32,7 @@ import copy
 import hashlib
 import json
 import math
+import re
 import time
 import types
 from dataclasses import dataclass
@@ -82,6 +83,9 @@ LIBRARY_RUNS = (RUN_LIBRARY_CHAT, RUN_LIBRARY_TOOL)
 RUNS = (*LIBRARY_RUNS, *MEMORY_MODES)
 
 LIBRARY_CHAT_TOP_K = 5  # llm_worker calls rag_search without top_k
+# Plan S35: the runs the cross-encoder gate decides (D55); core memory and
+# narrative keep their floors and gates (D49).
+GATED_RUNS = (RUN_LIBRARY_CHAT, RUN_LIBRARY_TOOL, "memory_recall")
 MEMORY_PREFIX = "qube_memory::"
 MEMORY_KEY_PREFIX = "mem:"
 
@@ -616,15 +620,103 @@ class _ReplayQuery:
         return self._rows_fn(self._record)
 
 
-class ReplayTable:
-    """Fake table that serves recorded calls in order (offline replay)."""
+class _ScanByWhere:
+    """A link-lookup scan served by its ``where`` clause (gated replays, plan S35)."""
 
-    def __init__(self, calls: Sequence[dict[str, Any]], rows_fn: Callable[[dict], list[dict]]):
-        self._calls = list(calls)
+    def __init__(self, table: "ReplayTable"):
+        self._table = table
+        self._query: _ReplayQuery | None = None
+
+    def where(self, clause, *args, **kwargs):
+        record = self._table._take_scan(clause)
+        self._query = _ReplayQuery(record, self._table._rows_fn)
+        return self
+
+    def limit(self, n):
+        if self._query is None:
+            raise ReplayMismatch("scan without a where clause")
+        self._query.limit(n)
+        return self
+
+    def to_list(self):
+        if self._query is None:
+            raise ReplayMismatch("scan without a where clause")
+        return self._query.to_list()
+
+
+_LINK_LOOKUP = re.compile(r"^source = '((?:[^']|'')*)' AND chunk_id = (-?\d+)$")
+
+
+def link_lookup_record(clause: str, chunk_rows: dict[str, dict]) -> dict[str, Any] | None:
+    """The scan record ``memory_tool._lookup_rag_chunk`` would capture for ``clause``.
+
+    ``None`` when ``clause`` is not a link lookup. A chunk the store does not
+    hold gives no rows, as the live table would.
+    """
+    m = _LINK_LOOKUP.match(str(clause or ""))
+    if not m:
+        return None
+    ref = chunk_key(m.group(1).replace("''", "'"), int(m.group(2)))
+    rows = []
+    if ref in chunk_rows:
+        rows = [{"cols": sorted(c for c in chunk_rows[ref] if c != "vector"), "ref": ref}]
+    return {"kind": "scan", "limit": 1, "rows": rows, "where": str(clause)}
+
+
+class ReplayTable:
+    """Fake table that serves recorded calls in order (offline replay).
+
+    ``scans_by_where`` (plan S35): the gate can keep other memories than the
+    floors, so a gated replay may skip a recorded link lookup, ask for the
+    recorded ones in another order, or ask for one the floors never made.
+    Vector and FTS calls are still served in order. A scan is matched by its
+    ``where`` clause; an unrecorded one is answered from the captured chunk
+    table (``link_lookup_record``: the lookup is ``source = … AND chunk_id =
+    …``, and the capture holds every chunk of the store). Any other scan is
+    refused.
+    """
+
+    def __init__(
+        self,
+        calls: Sequence[dict[str, Any]],
+        rows_fn: Callable[[dict], list[dict]],
+        *,
+        scans_by_where: bool = False,
+        chunk_rows: dict[str, dict] | None = None,
+    ):
+        self._scans_by_where = bool(scans_by_where)
+        self._chunk_rows = chunk_rows or {}
+        self.synthesized_scans = 0
         self._rows_fn = rows_fn
         self.served = 0
+        # Lookups the capture did not record. ``memory_search`` swallows a
+        # failed lookup, so ``complete`` refuses the replay instead.
+        self.scan_misses: list[str] = []
+        if self._scans_by_where:
+            self._calls = [r for r in calls if r.get("kind") != "scan"]
+            self._scans = [r for r in calls if r.get("kind") == "scan"]
+        else:
+            self._calls = list(calls)
+            self._scans = []
+
+    def _take_scan(self, clause: str) -> dict[str, Any]:
+        for i, record in enumerate(self._scans):
+            if record.get("where") == clause:
+                return self._scans.pop(i)
+        record = link_lookup_record(clause, self._chunk_rows)
+        if record is not None:
+            self.synthesized_scans += 1
+            return record
+        self.scan_misses.append(str(clause))
+        raise ReplayMismatch(f"scan where={clause!r} was not captured")
+
+    def complete(self) -> bool:
+        """Every recorded call was served (with ``scans_by_where``: every vector and FTS call)."""
+        return self.served == len(self._calls) and not self.scan_misses
 
     def search(self, query=None, query_type=None, **kwargs):
+        if self._scans_by_where and query is None and query_type is None:
+            return _ScanByWhere(self)
         if self.served >= len(self._calls):
             raise ReplayMismatch("more searches than captured")
         record = self._calls[self.served]
@@ -665,21 +757,34 @@ def run_production_call(
     query_vector: Any,
     *,
     library_tool_k: int,
+    relevance_gate: bool = False,
 ) -> dict[str, Any]:
-    """Call the production retrieval function for one case and run."""
+    """Call the production retrieval function for one case and run.
+
+    ``relevance_gate`` (plan S35) passes the gate flag the worker passes on
+    the gated runs; the gate itself runs only when a reranker (or a recorded
+    scorer) is available.
+    """
     q = case_query(case, run)
+    gate = bool(relevance_gate and run in GATED_RUNS)
     if run in LIBRARY_RUNS:
         from mcp.rag_tool import rag_search
 
         top_k = LIBRARY_CHAT_TOP_K if run == RUN_LIBRARY_CHAT else library_tool_k
-        out = rag_search(q.search_text, query_vector, store, top_k=top_k)
-        return {"top_k": top_k, "sources": out.get("sources") or []}
+        kwargs = {"relevance_gate": True} if gate else {}
+        out = rag_search(q.search_text, query_vector, store, top_k=top_k, **kwargs)
+        return {"top_k": top_k, "sources": out.get("sources") or [], "sufficiency": out.get("sufficiency")}
     from mcp.memory_tool import MAX_MEMORY_RESULTS, memory_search
 
-    out = memory_search(q.search_text, query_vector, store, **memory_kwargs(run))
+    kwargs = {"relevance_gate": True} if gate else {}
+    out = memory_search(q.search_text, query_vector, store, **memory_kwargs(run), **kwargs)
     # ``top_k`` only sizes the candidate fetch; every mode cites up to
     # MAX_MEMORY_RESULTS rows (the core-memory gate keeps all or none).
-    return {"top_k": MAX_MEMORY_RESULTS, "sources": out.get("memory_sources") or []}
+    return {
+        "top_k": MAX_MEMORY_RESULTS,
+        "sources": out.get("memory_sources") or [],
+        "sufficiency": out.get("sufficiency"),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -866,7 +971,22 @@ class _ReplayStore:
 
 
 def replay_run(capture: dict[str, Any], case: dict[str, Any], run: str) -> list[str]:
-    """Replay one case and run offline; returns the kept row keys in order."""
+    """Replay one case and run offline under today's floors; returns the kept row keys in order."""
+    return replay_run_state(capture, case, run)[0]
+
+
+def replay_run_state(
+    capture: dict[str, Any],
+    case: dict[str, Any],
+    run: str,
+    *,
+    relevance_gate: bool = False,
+) -> tuple[list[str], str | None]:
+    """Replay one case and run; the kept row keys and the gate state (plan S35).
+
+    With ``relevance_gate`` the gated runs ask for the gate; install a scorer
+    first (``gated_replay``), or the gate falls back to the floors.
+    """
     rec = capture["cases"][str(case["id"])]
     rec_run = rec["runs"][run]
     q = case_query(case, run)
@@ -876,7 +996,12 @@ def replay_run(capture: dict[str, Any], case: dict[str, Any], run: str) -> list[
             f"({q.search_text!r} / {q.vector_text!r}); re-capture"
         )
     table = _row_table(capture, rec["store"])
-    fake = ReplayTable(rec_run["calls"], _rows_fn(table))
+    fake = ReplayTable(
+        rec_run["calls"],
+        _rows_fn(table),
+        scans_by_where=relevance_gate,
+        chunk_rows=capture["stores"][rec["store"]]["chunks"],
+    )
     store = _ReplayStore(fake)
     st = capture["stores"][rec["store"]]
     with frozen_memory_clock(capture["captured_now"]):
@@ -886,10 +1011,45 @@ def replay_run(capture: dict[str, Any], case: dict[str, Any], run: str) -> list[
             store,
             _zero_vector(capture["vector_dim"]),
             library_tool_k=int(capture["library_tool_top_k"]),
+            relevance_gate=relevance_gate,
         )
-    if fake.served != len(rec_run["calls"]):
+    if not fake.complete():
+        if fake.scan_misses:
+            raise ReplayMismatch(f"{case['id']}/{run}: link lookup not captured ({fake.scan_misses[0]}); re-capture")
         raise ReplayMismatch(f"{case['id']}/{run}: {fake.served} of {len(rec_run['calls'])} searches made")
-    return [source_ref(s, st["chunks"], st["memories"]) for s in out["sources"]]
+    return [source_ref(s, st["chunks"], st["memories"]) for s in out["sources"]], out.get("sufficiency")
+
+
+@contextlib.contextmanager
+def gated_replay(
+    captures: Sequence[dict[str, Any]],
+    corpus: dict[str, Any],
+    recorded: dict[str, Any],
+) -> Iterator[list[str]]:
+    """Install the recorded cross-encoder scores for gated replays (plan S35).
+
+    ``rerank_texts`` turns a scorer error into "unscored", which would make an
+    unrecorded passage fall back to the floors silently; the yielded list
+    collects every such miss so the caller can refuse the replay.
+    """
+    from core.knowledge.ranking import rerank
+
+    replay = recorded_rerank_scorer(captures, corpus, recorded)
+    misses: list[str] = []
+
+    def scorer(question: str, docs: list[str]) -> list[float]:
+        try:
+            return replay(question, docs)
+        except ReplayMismatch as exc:
+            misses.append(str(exc))
+            raise
+
+    previous = rerank._test_scorer
+    rerank.set_reranker_scorer_for_tests(scorer)
+    try:
+        yield misses
+    finally:
+        rerank.set_reranker_scorer_for_tests(previous)
 
 
 # ---------------------------------------------------------------------------
@@ -1000,13 +1160,37 @@ def score_run(
     }
 
 
-def evaluate_capture(capture: dict[str, Any], corpus: dict[str, Any]) -> list[dict[str, Any]]:
-    """Replay every case and run; one report per (case, run)."""
+def evaluate_capture(
+    capture: dict[str, Any],
+    corpus: dict[str, Any],
+    *,
+    rerank_scores: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Replay every case and run; one report per (case, run).
+
+    With ``rerank_scores`` (plan S35) the gated runs replay through the
+    cross-encoder gate on the recorded scores, as production runs with the
+    reranker; each of their reports also carries the gate's ``sufficiency``.
+    Without, every run replays today's floors (production without the reranker).
+    """
+    if rerank_scores is None:
+        reports = []
+        for case in corpus.get("cases") or []:
+            for run in case_runs(case):
+                kept = replay_run(capture, case, run)
+                reports.append(score_run(capture, case, run, kept))
+        return reports
     reports = []
-    for case in corpus.get("cases") or []:
-        for run in case_runs(case):
-            kept = replay_run(capture, case, run)
-            reports.append(score_run(capture, case, run, kept))
+    with gated_replay([capture], corpus, rerank_scores) as misses:
+        for case in corpus.get("cases") or []:
+            for run in case_runs(case):
+                kept, state = replay_run_state(capture, case, run, relevance_gate=True)
+                if misses:
+                    raise ReplayMismatch(f"{case['id']}/{run}: {misses[0]}")
+                rep = score_run(capture, case, run, kept)
+                if run in GATED_RUNS:
+                    rep["sufficiency"] = state
+                reports.append(rep)
     return reports
 
 
@@ -1109,21 +1293,64 @@ def _round_metrics(obj: Any) -> Any:
     return obj
 
 
-def build_report(capture: dict[str, Any], corpus: dict[str, Any], *, stage: str = "") -> dict[str, Any]:
-    reports = evaluate_capture(capture, corpus)
-    return _round_metrics(
-        {
-            "schema": REPORT_SCHEMA,
-            "stage": stage,
-            "corpus_fingerprint": capture.get("corpus_fingerprint"),
-            "embedding_mode": capture.get("embedding_mode"),
-            "model": capture.get("model"),
-            "floors": capture.get("floors"),
-            "library_tool_top_k": capture.get("library_tool_top_k"),
-            "summary": summarize(reports),
-            "cases": [{k: v for k, v in r.items() if k != "scores"} for r in reports],
+def gate_summary(reports: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Plan S35: per gated run, the gate's states against the labelled expectation.
+
+    ``not_found`` counts the turns that get "not in your documents" / "I don't
+    have that saved" (state ``insufficient``): on abstain cases (right) and on
+    answerable cases (wrong).
+    """
+    out: dict[str, Any] = {}
+    for run in GATED_RUNS:
+        reps = [r for r in reports if r["run"] == run and "sufficiency" in r]
+        if not reps:
+            continue
+        states: dict[str, int] = {}
+        for r in reps:
+            states[str(r["sufficiency"])] = states.get(str(r["sufficiency"]), 0) + 1
+        abstain = [r for r in reps if r["expect"] == "insufficient"]
+        answerable = [r for r in reps if r["expect"] != "insufficient"]
+        out[run] = {
+            "states": dict(sorted(states.items())),
+            "not_found_abstain": sum(1 for r in abstain if r["sufficiency"] == "insufficient"),
+            "abstain_cases": len(abstain),
+            "not_found_answerable": sum(1 for r in answerable if r["sufficiency"] == "insufficient"),
+            "answerable_cases": len(answerable),
+            "state_matches_expect": sum(1 for r in reps if r["sufficiency"] == r["expect"]),
         }
-    )
+    return out
+
+
+def build_report(
+    capture: dict[str, Any],
+    corpus: dict[str, Any],
+    *,
+    stage: str = "",
+    rerank_scores: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    reports = evaluate_capture(capture, corpus, rerank_scores=rerank_scores)
+    report: dict[str, Any] = {
+        "schema": REPORT_SCHEMA,
+        "stage": stage,
+        "corpus_fingerprint": capture.get("corpus_fingerprint"),
+        "embedding_mode": capture.get("embedding_mode"),
+        "model": capture.get("model"),
+        "floors": capture.get("floors"),
+        "library_tool_top_k": capture.get("library_tool_top_k"),
+    }
+    if rerank_scores is not None:
+        from core.knowledge.ranking.library_memory_gate import LIBRARY_THRESHOLDS, MEMORY_RECALL_THRESHOLDS
+
+        report["relevance_gate"] = {
+            "model": rerank_scores.get("model"),
+            "runs": list(GATED_RUNS),
+            "library": {"keep": LIBRARY_THRESHOLDS.keep, "strong": LIBRARY_THRESHOLDS.strong},
+            "memory_recall": {"keep": MEMORY_RECALL_THRESHOLDS.keep, "strong": MEMORY_RECALL_THRESHOLDS.strong},
+            "states": gate_summary(reports),
+        }
+    report["summary"] = summarize(reports)
+    report["cases"] = [{k: v for k, v in r.items() if k != "scores"} for r in reports]
+    return _round_metrics(report)
 
 
 def compare_reports(current: dict[str, Any], baseline: dict[str, Any]) -> list[dict[str, Any]]:

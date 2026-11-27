@@ -547,6 +547,43 @@ RETRIEVAL_INSUFFICIENT_SUFFIX: str = (
     "not as findings from the sources."
 )
 
+# Plan S35 (D57): the library gate found passages in the user's documents but
+# kept none. Distinct from the web wording: the documents were searched, not
+# the web, and nothing failed.
+LIBRARY_INSUFFICIENT_SUFFIX: str = (
+    " IMPORTANT: Qube searched the user's documents for this question and found "
+    "passages, but none of them address it, so no document sources are provided. "
+    "Your first sentence MUST say that their documents don't cover this (for "
+    "example: \"Your documents don't cover this.\"). Do NOT say the search failed, "
+    "that you cannot access their files, or that you searched the web. Do NOT emit "
+    "bracket citation tokens such as [1], [2], or [W]. You may then answer from "
+    "general knowledge, labelled clearly as general knowledge and not as something "
+    "from their documents."
+)
+
+# Plan S35 (D57): the memory-recall gate found saved memories but kept none.
+MEMORY_INSUFFICIENT_SUFFIX: str = (
+    " IMPORTANT: Qube searched the user's saved memories for this question and "
+    "found entries, but none of them answer it, so no memory sources are provided. "
+    "Your first sentence MUST say that you don't have that saved (for example: "
+    "\"I don't have that saved.\"). Do NOT guess or invent personal details. Do NOT "
+    "say the search failed. Do NOT emit bracket citation tokens such as [1], [2], "
+    "or [W]."
+)
+
+# Plan S35 (D57): both gates ran on a hybrid turn and kept nothing.
+LIBRARY_AND_MEMORY_INSUFFICIENT_SUFFIX: str = (
+    " IMPORTANT: Qube searched the user's documents and saved memories for this "
+    "question and found entries, but none of them address it, so no sources are "
+    "provided. Your first sentence MUST say that you don't have that saved and "
+    "their documents don't cover it (for example: \"I don't have that saved, and "
+    "your documents don't cover it.\"). Do NOT say the search failed, that you "
+    "cannot access their files, or that you searched the web. Do NOT guess or "
+    "invent personal details. Do NOT emit bracket citation tokens such as [1], [2], "
+    "or [W]. You may then answer from general knowledge, labelled clearly as "
+    "general knowledge and not as something from their documents or memories."
+)
+
 # Plan S4: one-line note prepended to the evidence pack on a ``partial`` turn.
 RETRIEVAL_PARTIAL_NOTE: str = (
     "[Evidence note: these sources only partly address the question. Cite them "

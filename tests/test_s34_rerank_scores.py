@@ -6,7 +6,8 @@ cross-encoder's score for every candidate of every run of the three captures
 reports. These tests check the recording covers the captures, replays through
 the production shadow path, and the S34 findings (V71, V73) as recorded.
 Today's captures report to ``CURRENT_RERANK`` (re-recorded after S36 changed
-the follow-up search texts); ``lm_s34_rerank_*`` stay S34's record.
+the follow-up search texts, and after S35 scored memories in the first person,
+D56); ``lm_s34_rerank_*`` stay S34's record.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ from core.knowledge.ranking import rerank  # noqa: E402
 MODES = ("balanced", "fast", "power")
 FIXTURE_DIR = ROOT / "eval" / "fixtures" / "library_memory"
 BASELINE_DIR = ROOT / "eval" / "library_memory_corpus" / "baselines"
-CURRENT_RERANK = "lm_s36_rerank"  # what today's captures and recording report (S36)
+CURRENT_RERANK = "lm_s35_rerank"  # what today's captures and recording report (S35)
 
 
 def _report(mode: str, stage: str = "lm_s34_rerank") -> dict:

@@ -393,8 +393,9 @@ def build_empty_bundle(
 ) -> EvidenceBundle:
     """Empty bundle after sentinel drop, gate failure, or no results.
 
-    ``sufficiency`` is honoured by the scientific (S4) and the web, trusted and
-    finance builders (S7); internal-corpus and legal keep ``"unscored"``.
+    ``sufficiency`` is honoured by the scientific (S4), the web, trusted and
+    finance builders (S7) and, since S35, internal-corpus; legal keeps
+    ``"unscored"``.
     """
     if knowledge_service == SERVICE_TRUSTED_KNOWLEDGE:
         return build_trusted_knowledge_bundle(
@@ -436,6 +437,8 @@ def build_empty_bundle(
             rejected_count=rejected_count,
             latency_ms=latency_ms,
             stop_reason=stop_reason,
+            sufficiency=sufficiency,
+            sufficiency_rationale=sufficiency_rationale,
         )
     if knowledge_service == SERVICE_FINANCE_KNOWLEDGE:
         return build_finance_knowledge_bundle(
@@ -1039,8 +1042,14 @@ def build_internal_corpus_bundle(
     adapter_calls: tuple[str, ...] = ("lancedb_library",),
     stop_reason: str = "budget_exhausted",
     knowledge_service: str = SERVICE_INTERNAL_CORPUS,
+    sufficiency: str = _SUFFICIENCY_UNSCORED,
+    sufficiency_rationale: str = "",
 ) -> EvidenceBundle:
-    """Build an internal-corpus bundle from LanceDB library chunk rows."""
+    """Build an internal-corpus bundle from LanceDB library chunk rows.
+
+    ``sufficiency`` (plan S35) is the library gate's state; ``insufficient``
+    on an empty bundle gives the "not in your documents" wording (D57).
+    """
     retrieved_at = time.time()
     sources = tuple(
         _library_chunk_to_evidence(row, index=i, retrieved_at=retrieved_at)
@@ -1048,6 +1057,10 @@ def build_internal_corpus_bundle(
     )
     coverage, coverage_rationale = _compute_internal_corpus_coverage(sources)
     confidence = _compute_internal_corpus_confidence(sources)
+    # S35: the state is recorded on the bundle; coverage and confidence keep
+    # their legacy values (D58: a partial state changes nothing the model sees).
+    if not sources and sufficiency_rationale:
+        coverage_rationale = sufficiency_rationale
 
     warnings: list[str] = []
     if sources and all(s.fetch_status == "snippet" for s in sources):
@@ -1082,6 +1095,7 @@ def build_internal_corpus_bundle(
         conflicts=(),
         stop_reason=stop_reason,
         adapter_calls=adapter_calls,
+        sufficiency=sufficiency,
     )
 
 

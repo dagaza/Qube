@@ -3251,6 +3251,8 @@ class LLMWorker(QThread):
                 apply_temporal_decay=True,
                 # S34 (D49): recall gets cross-encoder shadow scores; narrative does not.
                 shadow_path=None if prefer_episode else shadow_lm.PATH_MEMORY_RECALL,
+                # S35 (D55): and the cross-encoder gate in place of the floors.
+                relevance_gate=not prefer_episode,
                 query_fingerprint=self._memory_query_fingerprint(
                     mem_q,
                     include_preference=True,
@@ -3339,6 +3341,7 @@ class LLMWorker(QThread):
                 query_expansion,
                 source_filter=getattr(self, "_turn_source_filter", None),
                 shadow_path=shadow_lm.PATH_LIBRARY_CHAT,
+                relevance_gate=True,  # S35 (D55); a file-scoped search keeps the floors
             )
             # 🔑 Use += to ensure we don't accidentally wipe out other tool data
             tool_context += rag_result.get("llm_context", "")
@@ -4266,7 +4269,23 @@ class LLMWorker(QThread):
             _gate_bundle is not None
             and str(getattr(_gate_bundle, "sufficiency", "") or "") == "partial"
             and all_ui_sources
+            # S35 (D58): @library records its state without the partial note.
+            and str(getattr(_gate_bundle, "knowledge_service", "") or "") != SERVICE_INTERNAL_CORPUS
         )
+        # S35 (D57): plain-chat library search or memory recall found candidates
+        # and the cross-encoder gate kept none ("not in your documents").
+        library_insufficient = bool(
+            str((rag_result or {}).get("sufficiency") or "") == "insufficient" and not all_ui_sources
+        )
+        memory_insufficient = bool(
+            str((mem_result or {}).get("sufficiency") or "") == "insufficient" and not all_ui_sources
+        )
+        if isinstance(decision, dict):
+            for _key, _res in (("library_gate", rag_result), ("memory_gate", mem_result)):
+                _diag = (_res or {}).get("relevance_gate") if isinstance(_res, dict) else None
+                if isinstance(_diag, dict) and _diag:
+                    # Counts and scores only: the dropped chunks' file names stay out of the log.
+                    decision[_key] = {k: v for k, v in _diag.items() if k != "rerank_dropped"}
 
         if (
             execution_route in ("MEMORY", "RAG", "HYBRID", "WEB", "INTERNET")
@@ -4871,6 +4890,8 @@ class LLMWorker(QThread):
             explicit_web_empty_results=explicit_web_empty_results,
             composer_web_empty=composer_web_empty,
             retrieval_insufficient=retrieval_insufficient,
+            library_insufficient=library_insufficient,
+            memory_insufficient=memory_insufficient,
             prior_web_empty_follow_up=prior_web_empty_follow_up,
             scientific_medical_disclaimer=scientific_medical_disclaimer,
             financial_disclaimer=financial_disclaimer,

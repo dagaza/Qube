@@ -18,10 +18,14 @@ whether a passage answers the question, and the memories those turns need
 (a diet preference for "suggest a dinner", session summaries for "what have
 we been working on?") score like unrelated rows (V73).
 
-Passages are built the way a gate would read them: a chunk as
-``rerank_row_text`` with its file name as the title, a memory as its content.
-The thresholds below come from the S34 calibration (V72) and only label the
-counts in the log; S35 decides the gate.
+Passages are built the way the gate reads them: a chunk as
+``rerank_row_text`` with its file name as the title, a memory as its content
+in the first person (S35, D56: memories are stored as "The user's sister …",
+questions ask "my sister …"). Since S35 the gate
+(``core.knowledge.ranking.library_memory_gate``) scores these searches before
+the reply; a gated search offers its own scores (``offer_scored``), so the log
+line costs no second scoring. Searches the gate skips (scoped, reranker
+unavailable) still offer their pool, scored after the reply.
 
 Never raises. A search running outside a worker turn offers nothing.
 """
@@ -30,6 +34,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 from collections.abc import Iterable, Sequence
@@ -44,15 +49,13 @@ PATH_LIBRARY_TOOL = "library_tool"  # @library
 PATH_MEMORY_RECALL = "memory_recall"  # MEMORY / HYBRID route, not narrative
 SHADOW_PATHS = (PATH_LIBRARY_CHAT, PATH_LIBRARY_TOOL, PATH_MEMORY_RECALL)
 
-# S34 calibration on the S33 corpus (V72), with the cross-encoder in place of
-# the floor: -4 and -6 are the two candidates for chunks (file name in the
-# passage) and recall memories. -4 keeps fewer irrelevant rows, -6 a little
-# more nDCG. ``would_keep`` / ``would_abstain`` use -4; the counts at -6 and 0
-# are logged too. S35 chooses.
+# The gate's keep threshold per path (S35, D55: -6 on all three, chosen over
+# S34's -4 on S36's texts, V80). ``would_keep`` / ``would_abstain`` use it; the
+# counts at -6, -4 and 0 are logged too.
 CALIBRATED_KEEP: dict[str, float] = {
-    PATH_LIBRARY_CHAT: -4.0,
-    PATH_LIBRARY_TOOL: -4.0,
-    PATH_MEMORY_RECALL: -4.0,
+    PATH_LIBRARY_CHAT: -6.0,
+    PATH_LIBRARY_TOOL: -6.0,
+    PATH_MEMORY_RECALL: -6.0,
 }
 SHADOW_THRESHOLDS: tuple[float, ...] = (-6.0, -4.0, 0.0)
 MAX_CANDIDATES = rerank.DEFAULT_MAX_ROWS
@@ -71,6 +74,10 @@ class ShadowJob:
     top_k: int
     scoped: bool
     candidates: tuple[ShadowCandidate, ...]
+    # S35: a gated search hands over the scores it already has (one per
+    # candidate, same order) and its scoring latency; ``None`` = score later.
+    scores: tuple[float, ...] | None = None
+    latency_ms: float | None = None
 
 
 _lock = threading.Lock()
@@ -83,8 +90,26 @@ def library_passage(source: str, text: str) -> str:
     return rerank.rerank_row_text({"title": str(source or ""), "snippet": str(text or "")})
 
 
+_USER_POSSESSIVE = re.compile(r"\b([Tt])he user['’]s\b")
+_USER = re.compile(r"\b([Tt])he user\b")
+
+
+def first_person(text: str) -> str:
+    """"The user's sister …" -> "My sister …", "the user" -> "me" (S35, D56).
+
+    Memories are written about "the user"; recall questions are asked as "my …"
+    / "I …". The cross-encoder scored that person mismatch low ("What does my
+    sister do for a living?" -8.17 against "The user's sister Hana is …";
+    -5.33 in the first person, V82). Only the text the cross-encoder reads
+    changes: the stored memory and what the model is shown do not.
+    """
+    text = _USER_POSSESSIVE.sub(lambda m: "My" if m.group(1) == "T" else "my", text)
+    return _USER.sub(lambda m: "I" if m.group(1) == "T" else "me", text)
+
+
 def memory_passage(content: str) -> str:
-    return " ".join(str(content or "").split())[: rerank.DEFAULT_TEXT_CHARS]
+    """A memory as the gate scores it: its content, truncated, in the first person (D56)."""
+    return first_person(" ".join(str(content or "").split())[: rerank.DEFAULT_TEXT_CHARS])
 
 
 def begin_turn() -> bool:
@@ -131,6 +156,44 @@ def offer(
             _jobs.append(job)
 
 
+def offer_scored(
+    path: str,
+    question: str,
+    candidates: Sequence[tuple[str, bool, float]],
+    *,
+    top_k: int,
+    scoped: bool = False,
+    latency_ms: float | None = None,
+) -> None:
+    """Record a gated search: ``(passage, kept, score)`` per candidate (S35). No-op outside a turn.
+
+    The log line then reports the gate's own scores; nothing is scored twice.
+    """
+    if not _active or path not in SHADOW_PATHS:
+        return
+    try:
+        rows = [(str(p), bool(k), float(s)) for p, k, s in candidates if str(p or "").strip()]
+        if not rows:
+            return
+        rows = [r for r in rows if r[1]] + [r for r in rows if not r[1]]
+        rows = rows[:MAX_CANDIDATES]
+        job = ShadowJob(
+            path,
+            str(question or ""),
+            int(top_k),
+            bool(scoped),
+            tuple(ShadowCandidate(p, k) for p, k, _s in rows),
+            scores=tuple(s for _p, _k, s in rows),
+            latency_ms=None if latency_ms is None else float(latency_ms),
+        )
+    except Exception:
+        logger.debug("[RerankShadow] offer_scored failed", exc_info=True)
+        return
+    with _lock:
+        if _active:
+            _jobs.append(job)
+
+
 def end_turn() -> list[ShadowJob]:
     """Stop collecting and return the turn's jobs."""
     global _active
@@ -154,25 +217,31 @@ def score_job(job: ShadowJob) -> dict:
         "kept": sum(1 for c in job.candidates if c.kept),
         "top_k": job.top_k,
         "scoped": job.scoped,
+        "gated": job.scores is not None,
         "skipped_reason": None,
     }
     try:
-        reason = rerank.unavailable_reason(job.question)
-        if reason is not None:
-            record["skipped_reason"] = reason
-            return record
-        started = time.perf_counter()
-        result = rerank.rerank_texts(job.question, [c.passage for c in job.candidates])
-        if result is None:
-            record["skipped_reason"] = rerank.SKIP_ERROR
-            return record
-        scores = result.scores
+        if job.scores is not None:  # S35: the gate already scored this pool
+            scores = tuple(job.scores)
+            latency_ms = job.latency_ms
+        else:
+            reason = rerank.unavailable_reason(job.question)
+            if reason is not None:
+                record["skipped_reason"] = reason
+                return record
+            started = time.perf_counter()
+            result = rerank.rerank_texts(job.question, [c.passage for c in job.candidates])
+            if result is None:
+                record["skipped_reason"] = rerank.SKIP_ERROR
+                return record
+            scores = result.scores
+            latency_ms = (time.perf_counter() - started) * 1000.0
         kept_scores = [s for s, c in zip(scores, job.candidates) if c.kept]
         keep = CALIBRATED_KEEP[job.path]
         above_keep = sum(1 for s in scores if s >= keep)
         record.update(
             {
-                "latency_ms": round((time.perf_counter() - started) * 1000.0, 1),
+                "latency_ms": None if latency_ms is None else round(float(latency_ms), 1),
                 "threads": rerank.reranker_threads(),
                 "kept_scores": [round(s, 2) for s in kept_scores],
                 "pool_max": round(max(scores), 2),

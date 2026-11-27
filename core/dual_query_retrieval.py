@@ -100,10 +100,15 @@ def merge_memory_search_results(primary: dict, auxiliary: dict) -> dict:
         chars += len(line)
         blocks.append(line)
 
-    return {
-        "memory_context": "\n".join(blocks),
-        "memory_sources": merged,
-    }
+    return _carry_gate_state(
+        primary,
+        auxiliary,
+        {
+            "memory_context": "\n".join(blocks),
+            "memory_sources": merged,
+        },
+        "memory_sources",
+    )
 
 
 def merge_rag_search_results(primary: dict, auxiliary: dict) -> dict:
@@ -120,10 +125,38 @@ def merge_rag_search_results(primary: dict, auxiliary: dict) -> dict:
         if content:
             parts.append(f"--- SOURCE {i}: {fname} ---\n{content}")
 
-    return {
-        "llm_context": "\n\n".join(parts),
-        "sources": merged,
-    }
+    return _carry_gate_state(
+        primary,
+        auxiliary,
+        {
+            "llm_context": "\n\n".join(parts),
+            "sources": merged,
+        },
+        "sources",
+    )
+
+
+def _carry_gate_state(primary: dict, auxiliary: dict, out: dict, sources_key: str) -> dict:
+    """Plan S35: the merged search's relevance-gate state.
+
+    The state of the search whose rows were kept (the primary's when it kept
+    any); with nothing kept, ``insufficient`` when either search was gated to
+    nothing. Searches without a gate add no keys.
+    """
+    states = (primary.get("sufficiency"), auxiliary.get("sufficiency"))
+    if not any(states):
+        return out
+    if out.get(sources_key):
+        state = states[0] if primary.get(sources_key) else states[1]
+    elif "insufficient" in states:
+        state = "insufficient"
+    else:
+        state = states[0] or states[1]
+    out["sufficiency"] = state or "unscored"
+    diag = primary.get("relevance_gate") or auxiliary.get("relevance_gate")
+    if diag:
+        out["relevance_gate"] = diag
+    return out
 
 
 def merge_web_search_results(

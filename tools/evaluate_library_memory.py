@@ -12,6 +12,11 @@ and category, plus what the relevance floors keep and drop.
 With ``--rerank-scores eval/fixtures/library_memory/rerank_scores.json`` it
 reports the recorded cross-encoder scores of each run's candidates instead,
 per label, next to the embedding score (plan S34).
+
+With ``--gate-scores eval/fixtures/library_memory/rerank_scores.json`` the
+gated runs (plain-chat library, ``@library``, memory recall) replay through
+the cross-encoder gate on those recorded scores, as production runs with the
+reranker (plan S35). Without it, every run replays today's floors.
 """
 
 from __future__ import annotations
@@ -38,6 +43,15 @@ def format_text(report: dict) -> str:
     lines = [
         f"embedding: {report.get('embedding_mode')} ({report.get('model')})  floors: {report.get('floors')}",
     ]
+    gate = report.get("relevance_gate")
+    if gate:
+        lines.append(f"relevance gate (S35): library {gate['library']}  memory recall {gate['memory_recall']}")
+        for run, g in gate["states"].items():
+            lines.append(
+                f"  {run}: states {g['states']}; not found on {g['not_found_abstain']}/{g['abstain_cases']} abstain "
+                f"and {g['not_found_answerable']}/{g['answerable_cases']} answerable cases; "
+                f"state = expect {g['state_matches_expect']}"
+            )
     for run, s in report["summary"].items():
         a = s["aggregate"]
         f = s["floor"]
@@ -111,6 +125,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--rerank-scores", default=None, help="recorded cross-encoder scores: report their distributions (S34)"
     )
+    parser.add_argument(
+        "--gate-scores", default=None, help="recorded cross-encoder scores: replay the gated runs through the gate (S35)"
+    )
     args = parser.parse_args(argv)
 
     corpus = lme.load_corpus(args.corpus)
@@ -125,7 +142,8 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.out).write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         print(json.dumps(report, indent=1, ensure_ascii=False) if args.json else format_rerank_text(report))
         return 0
-    report = lme.build_report(capture, corpus, stage=args.stage)
+    gate_scores = lme.load_json(args.gate_scores) if args.gate_scores else None
+    report = lme.build_report(capture, corpus, stage=args.stage, rerank_scores=gate_scores)
 
     if args.out:
         Path(args.out).write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")

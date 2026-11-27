@@ -153,6 +153,7 @@ def rag_search(
     source_filter: str | None = None,
     source_prefix_filter: str | None = None,
     shadow_path: str | None = None,
+    relevance_gate: bool = False,
 ) -> dict:
     """
     RAG v2.3 — Contract-safe retrieval system.
@@ -167,8 +168,200 @@ def rag_search(
     ``shadow_path`` (plan S34): during a worker turn, offer the candidate pool
     and the kept rows to the cross-encoder shadow pass under that path. It
     never changes what is kept.
-    """
 
+    ``relevance_gate`` (plan S35, D55): on an unscoped search, the S3
+    cross-encoder decides what is kept in place of the semantic floor, the
+    FTS overlap check and the fusion order
+    (``core.knowledge.ranking.library_memory_gate``). The result then carries
+    ``sufficiency`` (``sufficient`` / ``partial`` / ``insufficient`` /
+    ``none`` / ``unscored``) and ``relevance_gate`` (counts and scores, no
+    text). Without the reranker, or on a scoped search, today's floors apply
+    unchanged and ``sufficiency`` is ``unscored``.
+    """
+    gate_note: dict = {}
+    out = _rag_search(
+        query,
+        query_vector,
+        store,
+        top_k,
+        source_filter=source_filter,
+        source_prefix_filter=source_prefix_filter,
+        shadow_path=shadow_path,
+        relevance_gate=relevance_gate,
+        gate_note=gate_note,
+    )
+    if relevance_gate and "sufficiency" not in out:
+        from core.knowledge.ranking.library_memory_gate import STATE_UNSCORED
+
+        out["sufficiency"] = str(gate_note.get("state") or STATE_UNSCORED)
+        out["relevance_gate"] = dict(gate_note) or {"mode": "gate", "state": STATE_UNSCORED}
+    return out
+
+
+def _build_rag_context(ordered_results: list, top_k: int) -> tuple[list[str], list[dict], int, list]:
+    """Context blocks, UI sources, chars and the docs used, from ranked rows (section 3)."""
+    context_blocks = []
+    sources = []
+    used = []
+
+    current_chars = 0
+
+    for i, doc in enumerate(ordered_results[:top_k], start=1):
+
+        text = (doc.get("text") or "").strip()
+        source = doc.get("source") or doc.get("filename") or "Unknown Document"
+
+        if not text:
+            continue
+
+        chunk_size = len(text)
+
+        # HARD STOP: prevents memory / KV-cache overflow
+        if current_chars + chunk_size > MAX_CONTEXT_CHARS:
+            logger.warning(
+                f"[RAG] Context limit reached: "
+                f"{current_chars}/{MAX_CONTEXT_CHARS}"
+            )
+            break
+
+        current_chars += chunk_size
+
+        source_header = format_rag_source_header(source, doc.get("meta_json"))
+
+        # LLM context block
+        context_blocks.append(
+            f"--- SOURCE {i}: {source_header} ---\n{text}"
+        )
+
+        # UI CONTRACT (NEVER CHANGE THIS SHAPE)
+        # Phase B (memory enrichment): ``chunk_id`` is an ADDITIVE field —
+        # ``id`` (1..n citation) and the other three contract fields are
+        # unchanged. ``chunk_id`` is encoded as ``"<source>::<chunk_int>"``
+        # so the memory tool can look the exact chunk back up later
+        # (chunk_id alone is not unique across documents).
+        raw_cid = doc.get("chunk_id")
+        if raw_cid is None:
+            raw_cid = doc.get("id")
+        chunk_id_val = (
+            f"{source}::{raw_cid}" if raw_cid is not None else None
+        )
+        sources.append({
+            "id": i,
+            "filename": source,
+            "content": text,
+            "type": "rag",
+            "chunk_id": chunk_id_val,
+        })
+        used.append(doc)
+
+    return context_blocks, sources, current_chars, used
+
+
+def _gated_rag_search(
+    query: str,
+    vector_results: list,
+    text_results: list,
+    *,
+    top_k: int,
+    scoped: bool,
+    shadow_path: str | None,
+    gate_note: dict,
+) -> dict | None:
+    """Plan S35: keep the pool rows the cross-encoder scores >= keep, best first.
+
+    ``None`` when there is nothing to judge or the reranker cannot run; the
+    caller then applies today's floors (``gate_note`` says why).
+    """
+    from core.knowledge.ranking.library_memory_gate import (
+        LIBRARY_THRESHOLDS,
+        STATE_INSUFFICIENT,
+        STATE_NONE,
+        dropped_for_diag,
+        gate_passages,
+        kept_diag,
+    )
+    from core.knowledge.ranking.library_memory_shadow import collecting, library_passage, offer_scored
+    from core.knowledge.ranking.sufficiency import assess_sufficiency
+
+    pool: dict[str, dict] = {}
+    for doc in [*vector_results, *text_results]:
+        key = _shadow_row_key(doc)
+        if key not in pool:
+            pool[key] = doc
+    if not pool:
+        gate_note.update({"mode": "gate", "state": STATE_NONE})
+        return None
+    keys = list(pool)
+    passages = [
+        library_passage(str(pool[k].get("source") or pool[k].get("filename") or ""), str(pool[k].get("text") or ""))
+        for k in keys
+    ]
+    gate = gate_passages(query, passages, LIBRARY_THRESHOLDS)
+    if gate is None:
+        from core.knowledge.ranking.library_memory_gate import skipped_diag
+
+        gate_note.update(skipped_diag(query))
+        return None
+
+    ranked = [pool[keys[i]] for i in gate.kept_indices]
+    context_blocks, sources, current_chars, used = _build_rag_context(ranked, top_k)
+    score_of = {keys[i]: gate.scores[i] for i in range(len(gate.scores))}
+    used_keys = [_shadow_row_key(d) for d in used]
+    kept_scores = [score_of[k] for k in used_keys]
+    state = assess_sufficiency(kept_scores, gate.thresholds).state.value if kept_scores else STATE_INSUFFICIENT
+    diag = kept_diag(gate.diag, kept_scores)
+    diag["state"] = state
+    kept_set = set(gate.kept_indices)
+    diag["rerank_dropped"] = dropped_for_diag(
+        [
+            (str(pool[keys[i]].get("source") or pool[keys[i]].get("filename") or ""), gate.scores[i])
+            for i in range(len(gate.scores))
+            if i not in kept_set
+        ]
+    )
+    logger.info(
+        "[RAG] relevance gate: state=%s kept=%d of %d (keep=%.1f, best=%s, %.0f ms)",
+        state,
+        len(sources),
+        len(keys),
+        gate.thresholds.keep,
+        f"{max(gate.scores):.2f}" if gate.scores else "-",
+        gate.latency_ms,
+    )
+    if shadow_path and collecting():
+        used_set = set(used_keys)
+        order = used_keys + [k for k in keys[: len(gate.scores)] if k not in used_set]
+        idx = {k: i for i, k in enumerate(keys)}
+        offer_scored(
+            shadow_path,
+            query,
+            [(passages[idx[k]], k in used_set, gate.scores[idx[k]]) for k in order],
+            top_k=top_k,
+            scoped=scoped,
+            latency_ms=gate.latency_ms,
+        )
+    if context_blocks:
+        logger.info(f"[RAG v2.3] Returned {len(context_blocks)} chunks | chars={current_chars}")
+    return {
+        "llm_context": "\n\n".join(context_blocks),
+        "sources": sources,
+        "sufficiency": state,
+        "relevance_gate": diag,
+    }
+
+
+def _rag_search(
+    query: str,
+    query_vector: np.ndarray,
+    store: DocumentStore,
+    top_k: int = 5,
+    *,
+    source_filter: str | None = None,
+    source_prefix_filter: str | None = None,
+    shadow_path: str | None = None,
+    relevance_gate: bool = False,
+    gate_note: dict,
+) -> dict:
     if source_filter and source_prefix_filter:
         raise ValueError("source_filter and source_prefix_filter are mutually exclusive")
     scope = ""
@@ -180,6 +373,7 @@ def rag_search(
 
     if is_reindex_in_progress():
         logger.info("[RAG] Retrieval suppressed while library reprocessing is active.")
+        gate_note.update({"mode": "gate", "state": "unscored", "skipped_reason": "reindex_in_progress"})
         return {"llm_context": "", "sources": []}
 
     try:
@@ -239,6 +433,24 @@ def rag_search(
 
             if collecting():
                 shadow_pool = _shadow_pool(vector_results, text_results)
+
+        # S35 (D55): the cross-encoder gate replaces the floors and the fusion
+        # order below; without the reranker they apply unchanged.
+        if relevance_gate:
+            if scoped:
+                gate_note.update({"mode": "gate", "state": "unscored", "skipped_reason": "scoped"})
+            else:
+                gated = _gated_rag_search(
+                    query,
+                    vector_results,
+                    text_results,
+                    top_k=top_k,
+                    scoped=scoped,
+                    shadow_path=shadow_path,
+                    gate_note=gate_note,
+                )
+                if gated is not None:
+                    return gated
 
         had_vector_candidates = bool(vector_results)
         if not had_vector_candidates and text_results:
@@ -378,57 +590,7 @@ def rag_search(
         # 3. CONTEXT BUILDER (HARD SAFETY + UI CONTRACT ENFORCEMENT)
         # ============================================================
 
-        context_blocks = []
-        sources = []
-
-        current_chars = 0
-
-        for i, doc in enumerate(ordered_results[:top_k], start=1):
-
-            text = (doc.get("text") or "").strip()
-            source = doc.get("source") or doc.get("filename") or "Unknown Document"
-
-            if not text:
-                continue
-
-            chunk_size = len(text)
-
-            # HARD STOP: prevents memory / KV-cache overflow
-            if current_chars + chunk_size > MAX_CONTEXT_CHARS:
-                logger.warning(
-                    f"[RAG] Context limit reached: "
-                    f"{current_chars}/{MAX_CONTEXT_CHARS}"
-                )
-                break
-
-            current_chars += chunk_size
-
-            source_header = format_rag_source_header(source, doc.get("meta_json"))
-
-            # LLM context block
-            context_blocks.append(
-                f"--- SOURCE {i}: {source_header} ---\n{text}"
-            )
-
-            # UI CONTRACT (NEVER CHANGE THIS SHAPE)
-            # Phase B (memory enrichment): ``chunk_id`` is an ADDITIVE field —
-            # ``id`` (1..n citation) and the other three contract fields are
-            # unchanged. ``chunk_id`` is encoded as ``"<source>::<chunk_int>"``
-            # so the memory tool can look the exact chunk back up later
-            # (chunk_id alone is not unique across documents).
-            raw_cid = doc.get("chunk_id")
-            if raw_cid is None:
-                raw_cid = doc.get("id")
-            chunk_id_val = (
-                f"{source}::{raw_cid}" if raw_cid is not None else None
-            )
-            sources.append({
-                "id": i,
-                "filename": source,
-                "content": text,
-                "type": "rag",
-                "chunk_id": chunk_id_val,
-            })
+        context_blocks, sources, current_chars, _used = _build_rag_context(ordered_results, top_k)
 
         # ============================================================
         # 4. FINAL RESPONSE
