@@ -243,7 +243,9 @@ def build_settings_knowledge_tour(host) -> OnboardingTour:
             title="Precision retrieval",
             body=(
                 "Reranks Library hits with a second bi-encoder pass after hybrid search "
-                "and MMR. Adds query latency; no re-import needed. Requires a Pro license."
+                "and MMR. With the relevance reranker on, it runs only on searches limited "
+                "to one document and on questions the reranker skips. Adds query latency; "
+                "no re-import needed. Requires a Pro license."
             ),
             target_getter=lambda h: _sv(h).library_precision_rerank_toggle,
             on_enter=_open_library_pro,

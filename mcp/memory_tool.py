@@ -6,10 +6,13 @@ import numpy as np
 
 from core.lance_row_id import LANCE_ROW_ID_SELECT, lance_row_id
 from core.memory_filters import is_memory_actionable
+# The policy functions are aliased: ``memory_search`` takes boolean
+# arguments named ``apply_core_memory_gate`` and ``apply_mmr``, which would
+# otherwise shadow them inside the function (plan V66).
 from core.memory_retrieval_policy import (
     HYBRID_CANDIDATE_MULTIPLIER,
-    apply_core_memory_gate,
-    apply_mmr,
+    apply_core_memory_gate as _policy_core_memory_gate,
+    apply_mmr as _policy_mmr,
     fts_query_token_overlap,
     temporal_decay_multiplier,
     tier_from_source,
@@ -94,31 +97,53 @@ _PROPER_NOUN_STOPWORDS: frozenset[str] = frozenset(
 )
 
 
+_PROPER_NOUN_TITLES: frozenset[str] = frozenset({"Dr", "Mr", "Mrs", "Ms", "Mx", "Prof", "St"})
+_PROPER_NOUN_CLITIC_RE = re.compile(r"(?:'s|'re|'ve|'ll|'d|'m|n't|')$")
+_PROPER_NOUN_PREV_WORD_RE = re.compile(r"[A-Za-z]+\.?$")
+
+
+def _starts_sentence(before: str) -> bool:
+    """True when the token after ``before`` (already right-stripped) opens a sentence."""
+    if not before:
+        return True
+    if before[-1] not in ".!?":
+        return False
+    prev = _PROPER_NOUN_PREV_WORD_RE.findall(before)
+    return not (prev and prev[0].rstrip(".") in _PROPER_NOUN_TITLES)  # "Dr. Evelyn"
+
+
 def _extract_query_proper_nouns(query: str) -> list[str]:
     """Extract distinctive proper-noun tokens from the query.
 
-    Returns tokens case-preserved. Sentence-initial stopwords (``Tell``,
-    ``Who``, ``What``, ``My``, ``Can``, etc.) are excluded — they would
-    otherwise trigger the overlap gate spuriously on every query.
+    Returns tokens case-preserved, with possessives and contractions stripped
+    ("Kofi's" -> "Kofi"). Skipped (plan V67, D46):
+
+    * the first word of each sentence: its capital says nothing, and sentence
+      starters ("What's", "Am", "Write", "Help", "Explain") used to count as
+      names and drop every memory;
+    * titles ("Dr", "Mrs", ...): "Dr. Evelyn" requires "Evelyn";
+    * the stopwords below, single characters and repeats.
+
+    A name that opens the question ("Kofi's birthday?") is therefore not
+    required; the semantic floor still applies.
     """
     if not query:
         return []
-    # Strip everything but letters so "Dr." and "Dr.Evelyn" (no space) also
-    # yield both "Dr" and "Evelyn".
-    raw = _PROPER_NOUN_TOKEN_RE.findall(query)
     out: list[str] = []
     seen: set[str] = set()
-    for t in raw:
-        if t in _PROPER_NOUN_STOPWORDS:
+    for match in _PROPER_NOUN_TOKEN_RE.finditer(query):
+        token = _PROPER_NOUN_CLITIC_RE.sub("", match.group(0))
+        if _starts_sentence(query[: match.start()].rstrip()):
             continue
-        # Skip single-char tokens ("I").
-        if len(t) < 2:
+        if token in _PROPER_NOUN_TITLES or token in _PROPER_NOUN_STOPWORDS:
             continue
-        key = t.lower()
+        if len(token) < 2:
+            continue
+        key = token.lower()
         if key in seen:
             continue
         seen.add(key)
-        out.append(t)
+        out.append(token)
     return out
 
 
@@ -243,6 +268,77 @@ def _build_tier_where_clause(
     return " OR ".join(f"source LIKE '{p}'" for p in uniq)
 
 
+def _offer_memory_shadow(
+    shadow_path: str | None,
+    query: str,
+    pool: dict[str, str] | None,
+    kept_keys: list[str],
+    *,
+    top_k: int,
+) -> None:
+    if not shadow_path or not pool:
+        return
+    from core.knowledge.ranking.library_memory_shadow import offer
+
+    rank = {key: i for i, key in enumerate(kept_keys)}
+    rows = sorted(pool.items(), key=lambda kv: rank.get(kv[0], len(rank)))  # kept rows in rank order first
+    # ``top_k`` sizes the candidate fetch; every mode cites up to MAX_MEMORY_RESULTS.
+    offer(
+        shadow_path,
+        query,
+        [(text, key in rank) for key, text in rows],
+        top_k=min(int(top_k), MAX_MEMORY_RESULTS) if top_k else MAX_MEMORY_RESULTS,
+    )
+
+
+def _gated_memory_result(
+    query: str,
+    gate_pool: dict,
+    gate,
+    kept_items: list[dict],
+    *,
+    shadow_path: str | None,
+    top_k: int,
+    extra: dict,
+) -> dict:
+    """Plan S35: the gated recall result, its state and diag, and the shadow offer."""
+    from core.knowledge.ranking.library_memory_gate import STATE_INSUFFICIENT, kept_diag
+    from core.knowledge.ranking.library_memory_shadow import collecting, offer_scored
+    from core.knowledge.ranking.sufficiency import assess_sufficiency
+
+    keys = list(gate_pool)
+    score_of = {keys[i]: gate.scores[i] for i in range(len(gate.scores))}
+    kept_keys = [str(item.get("memory_id") or item["content"]) for item in kept_items]
+    kept_scores = [score_of[k] for k in kept_keys if k in score_of]
+    state = assess_sufficiency(kept_scores, gate.thresholds).state.value if kept_scores else STATE_INSUFFICIENT
+    diag = kept_diag(gate.diag, kept_scores)
+    diag["state"] = state
+    logger.info(
+        "[Memory v7] relevance gate: state=%s kept=%d of %d (keep=%.1f, best=%s, %.0f ms)",
+        state,
+        len(kept_items),
+        len(keys),
+        gate.thresholds.keep,
+        f"{max(gate.scores):.2f}" if gate.scores else "-",
+        gate.latency_ms,
+    )
+    if shadow_path and collecting():
+        kept_set = set(kept_keys)
+        order = kept_keys + [k for k in keys[: len(gate.scores)] if k not in kept_set]
+        offer_scored(
+            shadow_path,
+            query,
+            [(gate_pool[k][0], k in kept_set, score_of[k]) for k in order if k in score_of],
+            top_k=min(int(top_k), MAX_MEMORY_RESULTS) if top_k else MAX_MEMORY_RESULTS,
+            latency_ms=gate.latency_ms,
+        )
+    out = {"memory_context": "", "memory_sources": []}
+    out.update(extra)
+    out["sufficiency"] = state
+    out["relevance_gate"] = diag
+    return out
+
+
 def memory_search(
     query: str,
     query_vector: np.ndarray,
@@ -262,6 +358,8 @@ def memory_search(
     apply_temporal_decay: bool = False,
     query_fingerprint: str | None = None,
     exclude_presentation_preferences: bool = False,
+    shadow_path: str | None = None,
+    relevance_gate: bool = False,
 ) -> dict:
     """
     Memory v6 Retrieval Layer (Safe + Traceable + Phase B link expansion)
@@ -280,10 +378,76 @@ def memory_search(
       ``include_episode`` / ``include_context``) scope the LanceDB WHERE
       clause so plain chat turns see only preferences + context while
       recall / hybrid / narrative turns also see knowledge and episodes.
+    ✔ S34: ``shadow_path`` offers the candidate pool (after the tier filter and
+      the action-boundary check, before the floors and gates) and the kept
+      memories to the cross-encoder shadow pass during a worker turn. It
+      never changes what is kept.
+    ✔ S35 (D55, D56): ``relevance_gate`` on a recall search (no core-memory
+      gate, no episode preference) lets the S3 cross-encoder decide what is
+      kept in place of the distance cutoff, the semantic floor, the FTS
+      overlap check, the score order and MMR. Memories are scored in the
+      first person. The proper-noun check stays, on the kept rows. The
+      result carries ``sufficiency`` and ``relevance_gate`` (counts and
+      scores, no text). Without the reranker today's path applies unchanged.
     """
+    gate_note: dict = {}
+    out = _memory_search(
+        query,
+        query_vector,
+        store,
+        top_k,
+        trace,
+        prefer_episode,
+        include_preference=include_preference,
+        include_knowledge=include_knowledge,
+        include_episode=include_episode,
+        include_context=include_context,
+        apply_core_memory_gate=apply_core_memory_gate,
+        core_memory_min_score=core_memory_min_score,
+        core_memory_min_margin=core_memory_min_margin,
+        apply_mmr=apply_mmr,
+        apply_temporal_decay=apply_temporal_decay,
+        query_fingerprint=query_fingerprint,
+        exclude_presentation_preferences=exclude_presentation_preferences,
+        shadow_path=shadow_path,
+        relevance_gate=relevance_gate,
+        gate_note=gate_note,
+    )
+    if relevance_gate and "sufficiency" not in out:
+        from core.knowledge.ranking.library_memory_gate import STATE_UNSCORED
+
+        out["sufficiency"] = str(gate_note.get("state") or STATE_UNSCORED)
+        out["relevance_gate"] = dict(gate_note) or {"mode": "gate", "state": STATE_UNSCORED}
+    return out
+
+
+def _memory_search(
+    query: str,
+    query_vector: np.ndarray,
+    store,
+    top_k: int = 5,
+    trace: bool = False,
+    prefer_episode: bool = False,
+    *,
+    include_preference: bool = True,
+    include_knowledge: bool = False,
+    include_episode: bool = False,
+    include_context: bool = True,
+    apply_core_memory_gate: bool = False,
+    core_memory_min_score: float | None = None,
+    core_memory_min_margin: float | None = None,
+    apply_mmr: bool = False,
+    apply_temporal_decay: bool = False,
+    query_fingerprint: str | None = None,
+    exclude_presentation_preferences: bool = False,
+    shadow_path: str | None = None,
+    relevance_gate: bool = False,
+    gate_note: dict,
+) -> dict:
 
     if is_reindex_in_progress():
         logger.info("[Memory] Retrieval suppressed while library reprocessing is active.")
+        gate_note.update({"mode": "gate", "state": "unscored", "skipped_reason": "reindex_in_progress"})
         return {"memory_context": "", "memory_sources": []}
 
     logger.info(
@@ -342,6 +506,7 @@ def memory_search(
             logger.debug("[Memory v7] FTS search unavailable: %s", e)
 
         if not vector_results and not text_results:
+            gate_note.update({"mode": "gate", "state": "none"})
             return {"memory_context": "", "memory_sources": []}
 
         def _mem_doc_id(doc: dict) -> str:
@@ -356,10 +521,25 @@ def memory_search(
         else:
             fused = fuse_ranked_results(vector_results, text_results, doc_id_fn=_mem_doc_id)
         if not fused:
+            gate_note.update({"mode": "gate", "state": "none"})
             return {"memory_context": "", "memory_sources": []}
 
         filtered = []
         now_ts = time.time()
+        shadow_pool: dict[str, str] | None = None
+        if shadow_path:
+            from core.knowledge.ranking.library_memory_shadow import collecting
+
+            if collecting():
+                shadow_pool = {}
+        # S35: the gate's pool (every candidate before the floors, as the shadow
+        # pass sees it), only on recall searches.
+        gate_pool: dict[str, tuple[str, dict]] | None = None
+        if relevance_gate:
+            if apply_core_memory_gate or prefer_episode:
+                gate_note.update({"mode": "gate", "state": "unscored", "skipped_reason": "not_recall"})
+            else:
+                gate_pool = {}
 
         # ============================================================
         # 2. SCORE + TRACE PIPELINE
@@ -398,6 +578,11 @@ def memory_search(
             if not content:
                 continue
 
+            if shadow_pool is not None:
+                from core.knowledge.ranking.library_memory_shadow import memory_passage
+
+                shadow_pool.setdefault(str(lance_row_id(r) or content), memory_passage(content))
+
             has_vector = "vector" in channels
             has_fts = "fts" in channels
             vector_reliable = (
@@ -406,6 +591,42 @@ def memory_search(
                 and semantic_score >= MIN_SEMANTIC_SCORE
             )
             fts_only = has_fts and not vector_reliable
+
+            if gate_pool is not None:
+                from core.knowledge.ranking.library_memory_shadow import memory_passage
+
+                gate_key = str(lance_row_id(r) or content)
+                if gate_key not in gate_pool:
+                    gate_score = (
+                        semantic_score * 0.55
+                        + confidence * 0.20
+                        + min(strength, 10) / 10 * 0.10
+                        + max(0.0, min(1.0, decay)) * 0.15
+                    )
+                    if fts_only:
+                        gate_score = max(gate_score, confidence * 0.35 + 0.25)
+                    if apply_temporal_decay:
+                        gate_score *= temporal_decay_multiplier(tier_from_source(str(source)), payload, now=now_ts)
+                    gate_pool[gate_key] = (
+                        memory_passage(content),
+                        {
+                            "memory_id": lance_row_id(r),
+                            "content": content,
+                            "confidence": confidence,
+                            "distance": distance,
+                            "category": category,
+                            "strength": strength,
+                            "score": gate_score,
+                            "links_to_document_ids": [str(x) for x in links if x],
+                            "_row": r,
+                            # The proper-noun check stays under the gate, on the kept rows.
+                            "_proper_noun_ok": not (
+                                query_proper_nouns
+                                and not fts_only
+                                and not _content_has_any_token(content, query_proper_nouns)
+                            ),
+                        },
+                    )
 
             if fts_only and not fts_query_token_overlap(query, content):
                 if trace:
@@ -480,22 +701,50 @@ def memory_search(
                 "_row": r,
             })
 
+        gate = None
+        if gate_pool:
+            from core.knowledge.ranking.library_memory_gate import (
+                MEMORY_RECALL_THRESHOLDS,
+                gate_passages,
+                skipped_diag,
+            )
+
+            gate_keys = list(gate_pool)
+            gate = gate_passages(query, [gate_pool[k][0] for k in gate_keys], MEMORY_RECALL_THRESHOLDS)
+            if gate is None:
+                gate_note.update(skipped_diag(query))
+            else:
+                filtered = [
+                    gate_pool[gate_keys[i]][1]
+                    for i in gate.kept_indices
+                    if gate_pool[gate_keys[i]][1]["_proper_noun_ok"]
+                ]
+        elif gate_pool is not None:
+            gate_note.update({"mode": "gate", "state": "none"})
+
         if not filtered:
+            if gate is not None:
+                return _gated_memory_result(
+                    query, gate_pool, gate, [], shadow_path=shadow_path, top_k=top_k, extra={}
+                )
+            _offer_memory_shadow(shadow_path, query, shadow_pool, [], top_k=top_k)
             return {"memory_context": "", "memory_sources": []}
 
-        filtered.sort(key=lambda x: x["score"], reverse=True)
+        if gate is None:
+            filtered.sort(key=lambda x: x["score"], reverse=True)
 
-        if apply_mmr:
-            filtered = apply_mmr(filtered, top_k=MAX_MEMORY_RESULTS)
+        if apply_mmr and gate is None:
+            filtered = _policy_mmr(filtered, top_k=MAX_MEMORY_RESULTS)
 
         if apply_core_memory_gate:
-            gated = apply_core_memory_gate(
+            gated = _policy_core_memory_gate(
                 filtered,
                 min_score=core_memory_min_score,
                 min_margin=core_memory_min_margin,
             )
             if not gated:
                 logger.info("[Memory v7] core memory suppressed (relevance gate)")
+                _offer_memory_shadow(shadow_path, query, shadow_pool, [], top_k=top_k)
                 return {"memory_context": "", "memory_sources": []}
             filtered = gated
 
@@ -592,6 +841,23 @@ def memory_search(
             f"[Memory v6] returned={len(context_blocks)} memory + "
             f"{len(expanded_links_seen)} link(s) "
             f"chars={current_chars} trace={trace}"
+        )
+        if gate is not None:
+            return _gated_memory_result(
+                query,
+                gate_pool,
+                gate,
+                kept_items,
+                shadow_path=shadow_path,
+                top_k=top_k,
+                extra={"memory_context": "\n".join(context_blocks), "memory_sources": sources},
+            )
+        _offer_memory_shadow(
+            shadow_path,
+            query,
+            shadow_pool,
+            [str(item.get("memory_id") or item["content"]) for item in kept_items],
+            top_k=top_k,
         )
 
         return {

@@ -22,7 +22,7 @@
 |---------|--------|--------------|-----------------|
 | **Precision ingest** | **Library → Import (+)** dialog | **Precision indexing (Pro)** uses embedding-similarity breakpoints during indexing (on top of standard structural chunking) | **Much slower indexing** — often 10–100× more embedding work; precision-indexed docs show a **gem** badge in the sidebar |
 | **Default precision on import** | **Settings → Knowledge → Library Pro depth** | Pre-selects **Precision indexing** in the import dialog when licensed (optional; you can still pick **Normal indexing** per upload) | Same indexing cost when you keep that choice |
-| **Precision retrieval** | Same Settings card | **Reranks** Library hits with a second bi-encoder pass after hybrid search and MMR | **Extra latency** on each Library query; no re-import needed |
+| **Precision retrieval** | Same Settings card | **Reranks** Library hits with a second bi-encoder pass after hybrid search and MMR. When the **relevance reranker** is installed and on, it orders Library search instead, and this pass runs only on searches limited to one document and on questions the reranker skips | **Extra latency** on each Library query it runs on; no re-import needed |
 
 **What stays free:** Standard structural chunking, hybrid vector + text search, MMR diversity, breadcrumb citations, and **Search quality** embedding presets (**Fast**, **Balanced**, **Power**). Pro depth is an optional second layer—not “making Library work.”
 
@@ -64,7 +64,7 @@ library pro features, high quality ingest, precision chunking, semantic ingest, 
 1. **Import a Pro license** — Obtain a `.qube-license` file from your purchase or administrator. Open **Settings → License → Import license file**. Team and Enterprise licenses include Pro Library depth.
 2. **Index with precision** — **Library → +**, pick files, choose **Precision indexing (Pro)** in the dialog. Wait for indexing to finish; confirm the **gem** badge appears on the document row.
 3. **Optional: default precision on import** — **Settings → Knowledge → Library Pro depth → Default precision ingest on import** pre-selects precision in the import dialog. Read the cost warning before saving.
-4. **Enable precision retrieval** — Toggle **Precision retrieval** on the same card. Takes effect on the **next** Library query (`@[tool:library]`, Local Knowledge Base, or automatic triggers)—no re-import needed.
+4. **Enable precision retrieval** — Toggle **Precision retrieval** on the same card. Takes effect on the **next** Library query (`@[tool:library]`, Local Knowledge Base, or automatic triggers)—no re-import needed. With the relevance reranker on, it applies only where the reranker does not run.
 5. **Disable after trial** — Turn Settings toggles off; standard chunking and MMR retrieval resume. Previously indexed precision chunks remain until you re-ingest those files.
 6. **Check license status** — If toggles snap off after restart, re-import the license or contact support—cached license may have been removed via **Remove cached license**.
 

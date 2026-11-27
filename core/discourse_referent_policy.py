@@ -43,6 +43,18 @@ _TOPIC_CHANGE = re.compile(
     r"\b(?:let'?s talk about|switch(?:ing)? to|change topic to|new topic:?)\s+",
     re.I,
 )
+# Plan S36 (D52): before "'s", these words are a contraction ("What's my cat
+# called?" = "What is"), never a possessor.
+_CONTRACTION_HEADS = frozenset(
+    "what who where when why how that it there here he she this let".split()
+)
+# Plan S36 (D52): answer particles, wh-words and connectives are never a
+# referent ("Yes. Your lease allows one cat" does not make "Yes" the topic).
+_NON_REFERENT_WORDS = frozenset(
+    "yes no yeah yep yup nope sure ok okay right correct exactly indeed absolutely "
+    "certainly definitely hi hello thanks sorry unfortunately well "
+    "what who where when why how which and so but then".split()
+)
 _STOP_NOUNS = frozenset({
     "flowers", "flower", "trees", "tree", "species", "parks", "park",
     "examples", "items", "types", "kinds", "varieties", "plants", "animals",
@@ -79,17 +91,22 @@ def extract_entity_and_aspect(user_text: str) -> EntityAspectParse:
     if m:
         entity = _normalize_entity(m.group(1))
         aspect = _normalize_aspect(m.group(2))
-        if entity and aspect:
+        if entity and aspect and not _is_contraction_head(entity):
             return EntityAspectParse(entity, aspect, _infer_entity_type(entity, s))
 
     m = _POSSESSIVE_HEAD.search(s)
     if m:
         entity = _normalize_entity(m.group(1))
         aspect = _normalize_aspect(m.group(2))
-        if entity and aspect and len(aspect) >= 2:
+        if entity and aspect and len(aspect) >= 2 and not _is_contraction_head(entity):
             return EntityAspectParse(entity, aspect, _infer_entity_type(entity, s))
 
     return EntityAspectParse(None, None, "unknown")
+
+
+def _is_contraction_head(entity: str) -> bool:
+    words = (entity or "").split()
+    return bool(words) and words[-1].lower() in _CONTRACTION_HEADS
 
 
 def _infer_entity_type(entity: str, context: str = "") -> TopicType:
@@ -125,6 +142,10 @@ def validate_referent_candidate(
     r = (referent or "").strip()
     if not r:
         return False, "empty"
+
+    words = re.findall(r"[A-Za-z']+", r.lower())
+    if words and all(w in _NON_REFERENT_WORDS for w in words):
+        return False, "non_referent_word"
 
     from core.discourse_prompt_rewrite import score_rewrite_anchor
 

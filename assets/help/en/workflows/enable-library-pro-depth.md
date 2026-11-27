@@ -26,13 +26,13 @@ enable pro library, turn on precision ingest, turn on precision retrieval, libra
 3. **Open Library Pro depth** — Go to **Settings → Knowledge** and scroll to **Library Pro depth**. Both toggles should be enabled (clickable). If not, confirm the license tier includes Pro capabilities.
 4. **Optional: default precision on import** — Turn on **Default precision ingest on import** to pre-select precision in the import dialog. Read the confirmation dialog (indexing can take much longer). Click continue to save the preference.
 5. **Import with precision** — Click **+** in **Library**, pick files, then in **Choose indexing mode** select **Precision indexing (Pro)**. Precision-indexed documents show a **gem** badge in the sidebar. To change mode later, re-import (overwrite when prompted).
-6. **Optional: precision retrieval** — Turn on **Precision retrieval**. No re-import needed; the next Library query uses the rerank pass.
+6. **Optional: precision retrieval** — Turn on **Precision retrieval**. No re-import needed; the next Library query uses the rerank pass. With the **relevance reranker** installed and on, the reranker orders Library search instead, and this pass runs only on searches limited to one document and on questions the reranker skips.
 7. **Verify in chat** — Attach **`@[tool:library]`** or enable **Local Knowledge Base**, ask a question grounded in your Library, and check citations. Use **Sources → INSPECT RETRIEVAL** if you need to debug empty results.
 
 ## Tips
 
 - Run **Prepare search models** under **Search quality** before ingesting or searching—Pro depth does not replace embedding model setup.
-- Start with **precision retrieval** if you want better ordering without re-indexing everything.
+- Without the relevance reranker, start with **precision retrieval** if you want better ordering without re-indexing everything.
 - Use **precision ingest** for dense PDFs, contracts, and long technical papers where section boundaries matter most.
 
 ## Related

@@ -223,6 +223,7 @@ from core.knowledge.registry import (
     resolve_turn_preset_id,
 )
 from core.knowledge.types import SERVICE_INTERNAL_CORPUS
+from core.knowledge.ranking import library_memory_shadow as shadow_lm
 from core.knowledge.web_retrieval import run_web_retrieval
 from core.knowledge.spelling import conversation_terms
 from core.knowledge.fetch_provenance import summarize_web_pipeline_outcome
@@ -1244,7 +1245,9 @@ class LLMWorker(QThread):
         except Exception as e:
             logger.debug("[Sidecar] expanded memory embedding failed: %s", e)
             return primary
-        auxiliary = memory_search(expanded, exp_vector, self.store, **kwargs)
+        # S34: only the primary search offers shadow candidates.
+        aux_kwargs = {k: v for k, v in kwargs.items() if k != "shadow_path"}
+        auxiliary = memory_search(expanded, exp_vector, self.store, **aux_kwargs)
         merged = merge_memory_search_results(primary, auxiliary)
         p_n = len(primary.get("memory_sources") or [])
         m_n = len(merged.get("memory_sources") or [])
@@ -1269,7 +1272,9 @@ class LLMWorker(QThread):
         except Exception as e:
             logger.debug("[Sidecar] expanded RAG embedding failed: %s", e)
             return primary
-        auxiliary = rag_search(expanded, exp_vector, self.store, **kwargs)
+        # S34: only the primary search offers shadow candidates.
+        aux_kwargs = {k: v for k, v in kwargs.items() if k != "shadow_path"}
+        auxiliary = rag_search(expanded, exp_vector, self.store, **aux_kwargs)
         merged = merge_rag_search_results(primary, auxiliary)
         p_n = len(primary.get("sources") or [])
         m_n = len(merged.get("sources") or [])
@@ -1525,6 +1530,9 @@ class LLMWorker(QThread):
         max_history_messages; single-message truncation remains as a safety cap.
         """
         if not history:
+            self._turn_history_ids = []
+            self._turn_window_dropped_ids = []
+            self._pending_salvage_message_ids = []
             return []
 
         max_single = self.CHAT_HISTORY_SINGLE_MESSAGE_MAX_CHARS
@@ -1548,6 +1556,19 @@ class LLMWorker(QThread):
         while windowed and windowed[0].get("role") == "assistant":
             windowed = windowed[1:]
 
+        # D26 (V40): ``capped`` carries no message ids, so the prompt never sees
+        # them. The window keeps a suffix of ``history`` (as S17's token fit
+        # keeps a suffix of what it gets), so the ids line up by position:
+        # ``_turn_history_ids`` for the kept messages, and the dropped prefix
+        # for memory v7 salvage.
+        ids = [str(m.get("id")) if m.get("id") else None for m in history]
+        n_dropped = n_before - len(windowed)
+        self._turn_history_ids = ids[n_dropped:]
+        self._turn_window_dropped_ids = [i for i in ids[:n_dropped] if i]
+        self._pending_salvage_message_ids = (
+            list(self._turn_window_dropped_ids) if get_enable_memory_v7_salvage() else []
+        )
+
         if n_before > len(windowed):
             logger.info(
                 "[LLM] Chat history windowed: using last %d of %d messages (max_history_messages=%d)",
@@ -1555,16 +1576,30 @@ class LLMWorker(QThread):
                 n_before,
                 limit,
             )
-            if get_enable_memory_v7_salvage():
-                windowed_ids = {m.get("id") for m in windowed if m.get("id")}
-                dropped_ids: list[str] = []
-                for m in capped:
-                    mid = m.get("id")
-                    if mid and mid not in windowed_ids:
-                        dropped_ids.append(str(mid))
-                self._pending_salvage_message_ids = dropped_ids[:24]
 
         return windowed
+
+    def _note_token_fit_salvage(self, window: HistoryWindow, n_fitted: int) -> None:
+        """D26: add the messages S17's token fit dropped to this turn's salvage ids.
+
+        The fit drops the oldest ``window.dropped`` of the ``n_fitted`` messages
+        ``_bound_session_history`` kept; their ids follow the message window's,
+        oldest first. Every dropped id is sent: memory v7 salvage takes each
+        message once (``EnrichmentWorker._process_salvage``).
+        """
+        if not get_enable_memory_v7_salvage():
+            return
+        window_ids = list(getattr(self, "_turn_window_dropped_ids", None) or [])
+        kept_ids = list(getattr(self, "_turn_history_ids", None) or [])
+        fit_ids: list[str] = []
+        if window.dropped:
+            if len(kept_ids) == n_fitted:
+                fit_ids = [i for i in kept_ids[: window.dropped] if i]
+            else:
+                logger.debug(
+                    "[LLM] salvage: token-fit ids skipped (%d ids for %d messages)", len(kept_ids), n_fitted
+                )
+        self._pending_salvage_message_ids = window_ids + fit_ids
 
     # ============================================================
     def clean_text_for_tts(self, text):
@@ -2199,6 +2234,8 @@ class LLMWorker(QThread):
         if getattr(self, "_debug_exchange_id", None) is None:
             self._debug_exchange_id = next_exchange_id()
         self._exchange_worker_started_at = time.monotonic()
+        # S34 (D48): collect library / recall candidates for shadow scoring after the reply.
+        shadow_lm.begin_turn()
         self._engine_enqueue_at: float | None = None
         log_chat_exchange_begin(
             exchange_id=self._debug_exchange_id,
@@ -2304,6 +2341,8 @@ class LLMWorker(QThread):
                 execution_policy=self._execution_policy_debug_payload(),
             )
             self._completion_output_snapshot = None
+            # S34 (D48): the reply is final; score this turn's shadow candidates off the turn.
+            shadow_lm.score_jobs_async(shadow_lm.end_turn())
             self.context_retrieved.emit(False)
             self.web_search_active.emit(False, False, False)
             self.response_finished.emit(self.session_id, final_text_out)
@@ -2320,6 +2359,8 @@ class LLMWorker(QThread):
         # T3.3: reset tool-aware enrichment skip / mode flags for this turn.
         self._reset_turn_enrichment_flags()
         self._pending_salvage_message_ids = []
+        self._turn_history_ids: list[str | None] = []
+        self._turn_window_dropped_ids: list[str] = []
         self._turn_all_ui_sources: list = []
         self._turn_evidence_bundle = None
 
@@ -3240,6 +3281,10 @@ class LLMWorker(QThread):
                 include_context=True,
                 apply_mmr=True,
                 apply_temporal_decay=True,
+                # S34 (D49): recall gets cross-encoder shadow scores; narrative does not.
+                shadow_path=None if prefer_episode else shadow_lm.PATH_MEMORY_RECALL,
+                # S35 (D55): and the cross-encoder gate in place of the floors.
+                relevance_gate=not prefer_episode,
                 query_fingerprint=self._memory_query_fingerprint(
                     mem_q,
                     include_preference=True,
@@ -3327,6 +3372,8 @@ class LLMWorker(QThread):
                 query_vector,
                 query_expansion,
                 source_filter=getattr(self, "_turn_source_filter", None),
+                shadow_path=shadow_lm.PATH_LIBRARY_CHAT,
+                relevance_gate=True,  # S35 (D55); a file-scoped search keeps the floors
             )
             # 🔑 Use += to ensure we don't accidentally wipe out other tool data
             tool_context += rag_result.get("llm_context", "")
@@ -3696,6 +3743,28 @@ class LLMWorker(QThread):
             preset_overrides = resolve_preset_retrieval_overrides(
                 getattr(self, "_composer_knowledge_tool", None)
             )
+            if (
+                turn_knowledge_service == SERVICE_INTERNAL_CORPUS
+                and resolved_retrieval.retrieval_text
+                and resolved_retrieval.retrieval_text != web_semantic
+            ):
+                # S36 (D51): a library search resolves follow-ups like plain-chat
+                # library search, not like a web search.
+                web_semantic = resolved_retrieval.retrieval_text
+                web_query = apply_tool_policy(
+                    web_semantic,
+                    preference_policy,
+                    tool="internet",
+                )
+                try:
+                    web_query_vector = self.embedding_cache.get_embedding(web_semantic)
+                except Exception:
+                    web_query_vector = None
+                if isinstance(decision, dict):
+                    decision["library_query_resolved"] = web_query
+                    decision["library_query_rewrite_reason"] = (
+                        resolved_retrieval.retrieval_rewrite_reason
+                    )
             library_store = (
                 self.store
                 if turn_knowledge_service == SERVICE_INTERNAL_CORPUS
@@ -4232,7 +4301,23 @@ class LLMWorker(QThread):
             _gate_bundle is not None
             and str(getattr(_gate_bundle, "sufficiency", "") or "") == "partial"
             and all_ui_sources
+            # S35 (D58): @library records its state without the partial note.
+            and str(getattr(_gate_bundle, "knowledge_service", "") or "") != SERVICE_INTERNAL_CORPUS
         )
+        # S35 (D57): plain-chat library search or memory recall found candidates
+        # and the cross-encoder gate kept none ("not in your documents").
+        library_insufficient = bool(
+            str((rag_result or {}).get("sufficiency") or "") == "insufficient" and not all_ui_sources
+        )
+        memory_insufficient = bool(
+            str((mem_result or {}).get("sufficiency") or "") == "insufficient" and not all_ui_sources
+        )
+        if isinstance(decision, dict):
+            for _key, _res in (("library_gate", rag_result), ("memory_gate", mem_result)):
+                _diag = (_res or {}).get("relevance_gate") if isinstance(_res, dict) else None
+                if isinstance(_diag, dict) and _diag:
+                    # Counts and scores only: the dropped chunks' file names stay out of the log.
+                    decision[_key] = {k: v for k, v in _diag.items() if k != "rerank_dropped"}
 
         if (
             execution_route in ("MEMORY", "RAG", "HYBRID", "WEB", "INTERNET")
@@ -4545,6 +4630,7 @@ class LLMWorker(QThread):
             extra_context_chars=extra_context_chars,
             count_tokens=turn_count_tokens,
         )
+        self._note_token_fit_salvage(history_window, len([m for m in (history or []) if isinstance(m, dict)]))
         history = history_window.messages
         retrieval_budget = self._retrieval_budget_for_turn(
             history,
@@ -4837,6 +4923,8 @@ class LLMWorker(QThread):
             explicit_web_empty_results=explicit_web_empty_results,
             composer_web_empty=composer_web_empty,
             retrieval_insufficient=retrieval_insufficient,
+            library_insufficient=library_insufficient,
+            memory_insufficient=memory_insufficient,
             prior_web_empty_follow_up=prior_web_empty_follow_up,
             scientific_medical_disclaimer=scientific_medical_disclaimer,
             financial_disclaimer=financial_disclaimer,

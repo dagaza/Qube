@@ -31,6 +31,9 @@ from core.memory_filters import (
     EXPLICIT_WEB_EMPTY_SUFFIX,
     COMPOSER_WEB_EMPTY_SUFFIX,
     RETRIEVAL_INSUFFICIENT_SUFFIX,
+    LIBRARY_INSUFFICIENT_SUFFIX,
+    MEMORY_INSUFFICIENT_SUFFIX,
+    LIBRARY_AND_MEMORY_INSUFFICIENT_SUFFIX,
     CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX,
     SCIENTIFIC_MEDICAL_DISCLAIMER_SUFFIX,
     FINANCIAL_DISCLAIMER_SUFFIX,
@@ -230,6 +233,8 @@ def build_prompt_blocks(
     explicit_web_empty_results: bool = False,
     composer_web_empty: bool = False,
     retrieval_insufficient: bool = False,
+    library_insufficient: bool = False,
+    memory_insufficient: bool = False,
     prior_web_empty_follow_up: bool = False,
     scientific_medical_disclaimer: bool = False,
     financial_disclaimer: bool = False,
@@ -300,9 +305,25 @@ def build_prompt_blocks(
     elif retrieval_insufficient:
         # S4: sources were found but the relevance gate kept none. Takes
         # precedence over the web-empty wording ("search returned nothing").
+        # S35 (D57): on @library the documents were searched, not the web.
         no_sources = True
         persona = _BASE_PERSONA
-        suffixes.append(RETRIEVAL_INSUFFICIENT_SUFFIX)
+        suffixes.append(
+            LIBRARY_INSUFFICIENT_SUFFIX
+            if service == "internal_corpus"
+            else RETRIEVAL_INSUFFICIENT_SUFFIX
+        )
+    elif library_insufficient or memory_insufficient:
+        # S35 (D57): plain-chat library search or memory recall found
+        # candidates and the cross-encoder gate kept none.
+        no_sources = True
+        persona = _BASE_PERSONA
+        if library_insufficient and memory_insufficient:
+            suffixes.append(LIBRARY_AND_MEMORY_INSUFFICIENT_SUFFIX)
+        elif library_insufficient:
+            suffixes.append(LIBRARY_INSUFFICIENT_SUFFIX)
+        else:
+            suffixes.append(MEMORY_INSUFFICIENT_SUFFIX)
     elif explicit_web_empty_results:
         no_sources = True
         persona = _BASE_PERSONA
@@ -452,6 +473,8 @@ def build_prompt_blocks(
         and not rag_capability_blocked
         and not explicit_web_empty_results
         and not retrieval_insufficient
+        and not library_insufficient
+        and not memory_insufficient
     ):
         no_sources = True
         suffixes.append(CHAT_FOLLOW_UP_WEB_EMPTY_SUFFIX)

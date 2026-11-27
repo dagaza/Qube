@@ -145,6 +145,9 @@ class EnrichmentWorker(QThread):
         self._session_turns_since_summary: dict[str, int] = {}
         self._session_last_turn_ts: dict[str, float] = {}
         self._salvage_last_ts: dict[str, float] = {}
+        # D26: message ids already salvaged, per session (in memory; a restart
+        # forgets them). Each dropped message is salvaged once.
+        self._salvaged_ids: dict[str, set[str]] = {}
         self._last_daily_rollup_ts = 0.0
 
     # ============================================================
@@ -554,9 +557,22 @@ class EnrichmentWorker(QThread):
         self._last_facts_stored = 0
 
     def _process_salvage(self, payload: dict) -> None:
-        """v7: extract durable facts from messages dropped by history windowing."""
+        """v7: extract durable facts from messages dropped by history windowing.
+
+        D26: the worker sends every message id the message window and S17's
+        token fit dropped, oldest first. A run takes the oldest ones this
+        session has not salvaged yet, up to ``SALVAGE_MAX_MESSAGES``, so each
+        message is salvaged once and its facts are not reinforced again on
+        every later turn. A run that is rate-limited, waits in vain for the
+        chat model or cannot read the session marks nothing.
+        """
         session_id = str(payload.get("session_id") or "")
-        msg_ids = list(payload.get("salvage_message_ids") or [])[:SALVAGE_MAX_MESSAGES]
+        done = self._salvaged_ids.get(session_id) or set()
+        msg_ids = [
+            mid
+            for mid in dict.fromkeys(str(i) for i in (payload.get("salvage_message_ids") or []) if i)
+            if mid not in done
+        ][:SALVAGE_MAX_MESSAGES]
         if not session_id or not msg_ids:
             return
 
@@ -577,7 +593,8 @@ class EnrichmentWorker(QThread):
             return
 
         id_set = set(msg_ids)
-        messages = [m for m in all_messages if m.get("id") in id_set]
+        messages = [m for m in all_messages if str(m.get("id")) in id_set]
+        self._salvaged_ids.setdefault(session_id, set()).update(msg_ids)
         if not messages:
             return
 
