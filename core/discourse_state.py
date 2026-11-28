@@ -121,8 +121,10 @@ class DiscourseState:
     last_explicit_turn_index: int = -1
     confidence: float = 0.0
     # Plan S6: conversation subject kept apart from the current turn's facet
-    # (``core.discourse_subject``). ``active_topic`` keeps its legacy meaning
-    # for routing and prompt hints; only the web/retrieval query reads these.
+    # (``core.discourse_subject``). The web and retrieval text read these; since
+    # plan S28 (D65) routing and the prompt hints read ``continued_subject()``.
+    # ``active_topic`` keeps its legacy value (it can hold a facet such as
+    # "hotels there", or the turn's own words).
     subject: Optional[str] = None
     facet: Optional[str] = None
     subject_relation: str = "no_prior"
@@ -131,12 +133,21 @@ class DiscourseState:
     # stand for it; "it" / "its" still do.
     referent_asked_who: bool = False
 
+    def continued_subject(self) -> Optional[str]:
+        """The tracked subject when the current turn continues it, else ``None`` (plan S28, D65)."""
+        from core.discourse_subject import RELATION_CONTINUATION
+
+        subject = (self.subject or "").strip()
+        if subject and self.subject_relation == RELATION_CONTINUATION:
+            return subject
+        return None
+
     def salience_anchor(self) -> Optional[str]:
-        """Prefer resolved referent over topic for prompt injection."""
+        """Prefer resolved referent over the continued subject for prompt injection."""
         ref = (self.active_referent or "").strip()
         if ref:
             return ref
-        topic = (self.active_topic or "").strip()
+        topic = self.continued_subject() or ""
         if topic and not is_deictic_topic_phrase(topic):
             return topic
         return None

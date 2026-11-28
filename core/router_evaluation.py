@@ -437,7 +437,8 @@ def simulate_execution_route(
         and follow_up is not None
         and getattr(follow_up, "active", False)
         and discourse_state is not None
-        and getattr(discourse_state, "active_topic", None)
+        # Plan S28 (D65, D66): the subject the follow-up continues, as in LLMWorker.
+        and discourse_state.continued_subject()
         and execution_route in ("MEMORY", "RAG", "HYBRID")
         and not narrative_active
         and not decision.get("recall_fusion")

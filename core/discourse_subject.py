@@ -19,9 +19,9 @@ Each turn relates to the tracked subject as one of
   guessed (no anchoring);
 * ``no_prior``     — there is no tracked subject yet.
 
-A facet never replaces the subject; only ``new_subject`` does. Only the web /
+A facet never replaces the subject; only ``new_subject`` does. The web /
 retrieval query uses this (``discourse_query.build_resolved_retrieval_query``);
-routing and prompt text keep the legacy ``DiscourseState.active_topic``.
+routing and the prompt hints read ``DiscourseState.continued_subject()`` (plan S28).
 
 Pure functions; deterministic; no I/O.
 """

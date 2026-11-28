@@ -2853,11 +2853,14 @@ class LLMWorker(QThread):
             execution_route = "HYBRID"
             decision["recall_fusion"] = True
 
+        # Plan S28 (D65, D66): a follow-up stays in chat only when it continues the
+        # tracked subject; the legacy active_topic can be a facet or the turn's
+        # own words ("What did we decide last time?" lost its memory recall).
         if (
             discourse_enabled
             and follow_up.active
             and discourse_state
-            and discourse_state.active_topic
+            and discourse_state.continued_subject()
             and execution_route in ("MEMORY", "RAG", "HYBRID")
             and not explicit_remember_active
             and not scoped_library_active
@@ -2866,8 +2869,8 @@ class LLMWorker(QThread):
             and not attachment_patch
         ):
             logger.info(
-                "[Discourse] follow-up topic %r; downgrading route %s -> NONE",
-                discourse_state.active_topic,
+                "[Discourse] follow-up on subject %r; downgrading route %s -> NONE",
+                discourse_state.continued_subject(),
                 execution_route,
             )
             execution_route = "NONE"
@@ -3045,7 +3048,7 @@ class LLMWorker(QThread):
                 discourse_enabled
                 and follow_up.active
                 and discourse_state
-                and discourse_state.active_topic
+                and discourse_state.continued_subject()
                 and execution_route == "WEB"
             ):
                 decision["discourse_web_query_expanded"] = True
