@@ -57,9 +57,18 @@ _LEADING_CONNECTIVE = re.compile(r"^(?:and|so|also|but|then|ok|okay|alright)\b[\
 _ELLIPSIS = re.compile(r"^(?:what|how)\s+about\s+(.+?)\s*[?.!]*$", re.I)
 # "What are the symptoms?", "Is there a cure?": a short lowercase facet with no
 # attached subject ("the symptoms of diabetes" names its own subject).
+# Plan S27 (cause 3): "What's the contribution limit this year?" is a facet too:
+# "what's" and a closing time phrase ("this year", "now", "in 2027").
 _FACET_QUESTION = re.compile(
-    r"^(?i:(?:what|which)\s+(?:are|is|were|was)\s+the|(?:is|are)\s+there\s+(?:a|an|any))\s+"
-    r"([a-z][a-z-]*(?:\s+[a-z][a-z-]*){0,2})\s*[?.!]*$"
+    r"^(?i:(?:what|which)\s+(?:are|is|were|was)\s+the|what(?:'s|’s|'re|’re)\s+the"
+    r"|(?:is|are)\s+there\s+(?:a|an|any))\s+"
+    r"([a-z][a-z-]*(?:\s+[a-z][a-z-]*){0,2}?)"
+    r"(?i:\s+(?:(?:this|next|last)\s+(?:year|month|week)|now|today|nowadays|these\s+days"
+    r"|right\s+now|at\s+the\s+moment|in\s+\d{4}))?\s*[?.!]*$"
+)
+# "What about to Sydney?", "What about in winter?": a facet, not a new subject.
+_PREPOSITION_LEAD = re.compile(
+    r"^(?:to|from|in|on|at|for|with|during|after|before|by|near|via|without|under|over)\s+", re.I
 )
 _ATTACHING_WORDS = frozenset("of for in on about with to from between".split())
 _BARE_ELLIPSIS = re.compile(r"^(?:and\s+)?(?:in|for|with|on|at|during|after|before)\s+.+$", re.I)
@@ -477,7 +486,7 @@ def relate_turn(
         target = ellipsis.group(1).strip()
         # "what about the cost?" / "what about 3.14?" ask about the subject;
         # "what about Rust?" / "what about vaccines?" may name a new one.
-        if _ARTICLE.match(target) or not is_subject_like(target):
+        if _ARTICLE.match(target) or _PREPOSITION_LEAD.match(target) or not is_subject_like(target):
             return RELATION_CONTINUATION, subject, _ARTICLE.sub("", target), ("ellipsis_facet",)
         return RELATION_NEW_SUBJECT, normalize_subject(target), None, ("ellipsis_new_subject",)
     facet_q = _FACET_QUESTION.match(body)

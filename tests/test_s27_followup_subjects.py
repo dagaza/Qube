@@ -9,6 +9,10 @@ Cause 2: an earlier statement or instruction whose subject no rule found ("My
 father has type 2 diabetes.", "Explain how a heat pump works."). The fallbacks run
 only on turns already answered (``earlier_turn``), and never on a question: an
 earlier question reaches the search as itself (S36's ``prior_question``).
+
+Cause 3: the follow-up's own noun replaced the subject. "What's the contribution
+limit this year?" is a facet question like "What is the contribution limit?"
+(V91, D64), and "What about in winter?" is a facet, not the new subject "in winter".
 """
 from __future__ import annotations
 
@@ -164,6 +168,44 @@ class TestEarlierStatementSubject(unittest.TestCase):
                 _fu, state, r = build_discourse_resolution(turn, [_u(prior), _a(answer)])
                 self.assertEqual(r.web_text, expected)
                 self.assertEqual(r.retrieval_text, expected)
+
+
+
+class TestFacetFollowUps(unittest.TestCase):
+    """Cause 3: a facet of the subject is not a new subject."""
+
+    ROTH = [_u("What is a Roth IRA?"), _a("A retirement account funded with after-tax money.")]
+    PUMP = [_u("What is a heat pump?"), _a("It moves heat from outside air into a home.")]
+
+    def _web(self, history, turn: str) -> str:
+        return build_discourse_resolution(turn, history)[2].web_text
+
+    def test_a_facet_question_with_what_s_or_a_time_phrase(self):
+        for turn in (
+            "What's the contribution limit this year?",
+            "What is the contribution limit this year?",
+            "What's the income limit now?",
+        ):
+            with self.subTest(turn=turn):
+                self.assertEqual(self._web(self.ROTH, turn), f"Roth IRA {turn}")
+
+    def test_a_question_that_names_its_own_subject_is_not_a_facet(self):
+        for turn in ("What's the population of Iceland?", "What is the capital of Peru?", "What's the rent on my flat?"):
+            with self.subTest(turn=turn):
+                self.assertEqual(self._web(self.ROTH, turn), turn)
+
+    def test_what_about_a_preposition_is_a_facet(self):
+        for turn, expected in (
+            ("What about in winter?", "heat pump in winter"),
+            ("And what about for a small flat?", "heat pump for a small flat"),
+        ):
+            with self.subTest(turn=turn):
+                self.assertEqual(self._web(self.PUMP, turn), expected)
+
+    def test_what_about_a_name_is_still_a_new_subject(self):
+        _fu, state, r = build_discourse_resolution("What about Rust?", self.PUMP)
+        self.assertEqual(r.web_text, "What about Rust?")
+        self.assertEqual(state.subject, "Rust")
 
 
 if __name__ == "__main__":

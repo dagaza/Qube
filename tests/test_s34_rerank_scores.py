@@ -28,7 +28,7 @@ from core.knowledge.ranking import rerank  # noqa: E402
 MODES = ("balanced", "fast", "power")
 FIXTURE_DIR = ROOT / "eval" / "fixtures" / "library_memory"
 BASELINE_DIR = ROOT / "eval" / "library_memory_corpus" / "baselines"
-CURRENT_RERANK = "lm_s35_rerank"  # what today's captures and recording report (S35)
+CURRENT_RERANK = "lm_s27_rerank"  # what today's captures and recording report (S27, D64; lm_s35_rerank_* is S35's record)
 
 
 def _report(mode: str, stage: str = "lm_s34_rerank") -> dict:

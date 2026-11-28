@@ -175,30 +175,6 @@
    "mem:mem_tomasz": -11.2085,
    "mem:mem_vegetarian": -10.9238
   },
-  "And what's the parking fee?": {
-   "aerotherm_hx9_manual.md::6": -11.3523,
-   "contents_insurance_policy.md::0": -11.1933,
-   "contents_insurance_policy.md::1": -11.2391,
-   "contents_insurance_policy.md::2": -10.8434,
-   "contents_insurance_policy.md::3": -11.2905,
-   "contents_insurance_policy.md::4": -11.2359,
-   "heron_meeting_notes.md::2": -11.2005,
-   "household_budget_2026.md::0": -11.1709,
-   "household_budget_2026.md::1": -11.3741,
-   "household_budget_2026.md::3": -9.7323,
-   "kestrel_staff_handbook.md::5": -10.7509,
-   "lease_harbour_street.md::1": -9.7028,
-   "lease_harbour_street.md::2": -10.8933,
-   "lease_harbour_street.md::3": -10.7789,
-   "lease_harbour_street.md::5": -11.1085,
-   "lease_harbour_street.md::7": -11.3512,
-   "lease_harbour_street.md::9": -10.6337,
-   "lisbon_trip_itinerary.md::3": -11.2653,
-   "millbrook_tramways_history.txt::0": -11.283,
-   "millbrook_tramways_history.txt::1": -11.2742,
-   "millbrook_tramways_history.txt::5": -11.3164,
-   "osprey_meeting_notes.md::1": -11.1677
-  },
   "Can I carry over unused holiday to next year?": {
    "contents_insurance_policy.md::0": -11.4669,
    "contents_insurance_policy.md::2": -11.4553,
@@ -490,7 +466,6 @@
    "aerotherm_hx9_manual.md::0": -11.2943,
    "aerotherm_hx9_manual.md::6": -11.3382,
    "contents_insurance_policy.md::4": -11.4056,
-   "contents_insurance_policy.md::6": -11.3965,
    "cover_crop_soil_study.md::2": -11.3702,
    "cover_crop_soil_study.md::6": -11.4222,
    "household_budget_2026.md::0": -11.4487,
@@ -1044,7 +1019,8 @@
    "lisbon_trip_itinerary.md::3": -11.4901,
    "millbrook_tramways_history.txt::1": -11.2744,
    "osprey_meeting_notes.md::1": -11.4551,
-   "project_omega_bluejay.md::2": -11.181
+   "project_omega_bluejay.md::2": -11.181,
+   "sourdough_notebook.md::2": -11.3439
   },
   "What alert thresholds were agreed for the warehouse sensors?": {
    "aerotherm_hx9_manual.md::2": -11.4204,
@@ -1900,25 +1876,6 @@
    "mem:mem_rust": -11.2701,
    "mem:mem_spelling": -11.2157
   },
-  "What's the maximum page size?": {
-   "aerotherm_hx9_manual.md::1": -11.23,
-   "aerotherm_hx9_manual.md::3": -11.2337,
-   "aerotherm_hx9_manual.md::6": -11.4223,
-   "contents_insurance_policy.md::0": -11.4001,
-   "contents_insurance_policy.md::1": -11.3861,
-   "contents_insurance_policy.md::4": -11.4282,
-   "cover_crop_soil_study.md::12": -11.4311,
-   "heron_meeting_notes.md::2": -11.3392,
-   "household_budget_2026.md::0": -11.4868,
-   "household_budget_2026.md::1": -11.4372,
-   "household_budget_2026.md::2": -11.4833,
-   "kestrel_staff_handbook.md::0": -11.386,
-   "ledger_api_design.md::3": 5.0957,
-   "ledger_api_design.md::5": -11.2647,
-   "linear_algebra_notes.md::5": -11.3677,
-   "millbrook_tramways_history.txt::5": -11.3747,
-   "osprey_meeting_notes.md::1": -11.4006
-  },
   "What's the meal allowance when travelling for work?": {
    "contents_insurance_policy.md::0": -11.1713,
    "contents_insurance_policy.md::1": -11.2915,
@@ -2486,6 +2443,29 @@
    "lease_harbour_street.md::8": -10.2122,
    "lisbon_trip_itinerary.md::4": -11.4402
   },
+  "my flat what's the parking fee?": {
+   "aerotherm_hx9_manual.md::6": -11.4336,
+   "contents_insurance_policy.md::0": -11.3301,
+   "contents_insurance_policy.md::1": -11.3905,
+   "contents_insurance_policy.md::2": -11.3837,
+   "contents_insurance_policy.md::5": -11.4187,
+   "household_budget_2026.md::0": -11.2841,
+   "household_budget_2026.md::1": -11.4153,
+   "household_budget_2026.md::2": -11.4748,
+   "household_budget_2026.md::3": -10.7418,
+   "household_budget_2026.md::4": -11.4346,
+   "kestrel_staff_handbook.md::5": -11.2307,
+   "lease_harbour_street.md::0": -11.3645,
+   "lease_harbour_street.md::1": -9.6238,
+   "lease_harbour_street.md::2": -11.0418,
+   "lease_harbour_street.md::3": -11.1716,
+   "lease_harbour_street.md::5": -11.3113,
+   "lease_harbour_street.md::9": -11.0599,
+   "millbrook_tramways_history.txt::0": -11.3771,
+   "millbrook_tramways_history.txt::1": -11.3828,
+   "millbrook_tramways_history.txt::5": -11.4122,
+   "sourdough_notebook.md::3": -11.2683
+  },
   "my heat pump how do I reset it?": {
    "aerotherm_hx9_manual.md::0": -8.7507,
    "aerotherm_hx9_manual.md::1": -10.9583,
@@ -2503,6 +2483,22 @@
    "linear_algebra_notes.md::1": -11.2829,
    "linear_algebra_notes.md::5": -11.3655,
    "lisbon_trip_itinerary.md::1": -11.4143
+  },
+  "pagination work in the Ledger API What's the maximum page size?": {
+   "aerotherm_hx9_manual.md::1": -11.4961,
+   "contents_insurance_policy.md::1": -11.4983,
+   "kestrel_staff_handbook.md::4": -11.5027,
+   "ledger_api_design.md::0": -6.0035,
+   "ledger_api_design.md::1": -8.0619,
+   "ledger_api_design.md::2": -8.2433,
+   "ledger_api_design.md::3": 7.9532,
+   "ledger_api_design.md::4": -6.7831,
+   "ledger_api_design.md::5": -5.5873,
+   "ledger_api_design.md::6": -7.7566,
+   "ledger_api_design.md::7": -7.0838,
+   "ledger_api_design.md::8": -8.4155,
+   "millbrook_tramways_history.txt::0": -11.474,
+   "millbrook_tramways_history.txt::5": -11.492
   },
   "singular value decomposition How does it relate to PCA?": {
    "aerotherm_hx9_manual.md::1": -11.4944,
