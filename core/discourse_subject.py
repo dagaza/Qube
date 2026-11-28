@@ -262,8 +262,78 @@ def _activity_subject(text: str) -> Optional[str]:
     return obj
 
 
-def extract_turn_subject(text: str) -> Optional[str]:
-    """The subject a single turn names on its own, or ``None``."""
+# ---------------------------------------------------------------------------
+# Earlier turns (plan S27, cause 2): subjects no rule above finds
+# ---------------------------------------------------------------------------
+# Only for a statement or an instruction ("My father has type 2 diabetes.",
+# "Explain how a heat pump works."). An earlier question already reaches the
+# search as itself (S36's ``prior_question``), and the subject of a question
+# such as "Where was Mozart born?" is often in its answer.
+
+# "Explain how a heat pump works."
+_HOW_WORKS_ANYWHERE = re.compile(r"\bhow\s+(?:a|an|the)\s+([a-z][a-z0-9 -]*?)\s+works?\b", re.I)
+# "My father has type 2 diabetes." / "Our cat was diagnosed with kidney disease."
+_POSSESSIVE_STATEMENT = re.compile(
+    r"^(?:my|our|his|her|their)\s+(?:[a-z]+\s+){1,2}?"
+    r"(?:(?:is|was|were|has been|have been)\s+)?(?:just\s+|recently\s+)?"
+    r"(?:has|have|had|got|bought|uses|use|runs|run|is|are|was|were|[a-z]+ed)\s+"
+    r"(?:with\s+)?(?:(?:a|an|the|some)\s+)?(.+?)\s*[.!?]*$",
+    re.I,
+)
+_OBJECT_TAIL = re.compile(r"\s+(?:for|because|since|when|after|before|and|but|so)\s+.*$", re.I)
+# One capitalised word that is not the first of its sentence ("We just moved to
+# Rotterdam."), with a following capitalised word, letter or version
+# ("PostgreSQL 16").
+_NAME_WORD = re.compile(r"[A-Z][A-Za-z0-9]*")
+_NAME_TAIL = re.compile(r"[A-Z]|\d+(?:\.\d+)*")
+_CALENDAR_WORDS = frozenset(
+    "january february march april may june july august september october november december "
+    "monday tuesday wednesday thursday friday saturday sunday".split()
+)
+
+
+def _single_name(text: str) -> Optional[str]:
+    words = (text or "").split()
+    for i in range(1, len(words)):
+        if words[i - 1][-1:] in ".?!:":
+            continue
+        word = words[i].strip(",;:?!.()\"'")
+        if not _NAME_WORD.fullmatch(word) or word == "I" or word.lower() in _CALENDAR_WORDS:
+            continue
+        span = [word]
+        for j in range(i + 1, len(words)):
+            nxt = words[j].strip(",;:?!.()\"'")
+            if words[j - 1][-1:] in ",;:.?!" or not (_NAME_WORD.fullmatch(nxt) or _NAME_TAIL.fullmatch(nxt)):
+                break
+            span.append(nxt)
+        return " ".join(span)
+    return None
+
+
+def _is_question(cleaned: str) -> bool:
+    s = (cleaned or "").strip()
+    return s.endswith("?") or bool(_WH_LEAD.match(s) or _YES_NO_LEAD.match(s))
+
+
+def _earlier_turn_subject(cleaned: str) -> Optional[str]:
+    if _is_question(cleaned):
+        return None
+    m = _HOW_WORKS_ANYWHERE.search(cleaned)
+    if m:
+        return m.group(1)
+    m = _POSSESSIVE_STATEMENT.match(cleaned)
+    if m:
+        return _OBJECT_TAIL.sub("", m.group(1))
+    return _single_name(cleaned)
+
+
+def extract_turn_subject(text: str, *, earlier_turn: bool = False) -> Optional[str]:
+    """The subject a single turn names on its own, or ``None``.
+
+    ``earlier_turn`` (plan S27) adds fallbacks for a turn already answered: on
+    the current turn a found subject would make it a new question, so they
+    stay off there.
+    """
     from core.discourse_state import _extract_topic_from_text
 
     cleaned = _strip_connective(clean_turn(text))
@@ -287,7 +357,13 @@ def extract_turn_subject(text: str) -> Optional[str]:
     subject = normalize_subject(_activity_subject(cleaned))
     if subject:
         return subject
-    return normalize_subject(_framed_noun_phrase(text, cleaned))
+    subject = normalize_subject(_framed_noun_phrase(text, cleaned))
+    if subject or not earlier_turn:
+        return subject
+    subject = normalize_subject(_earlier_turn_subject(cleaned))
+    if subject and not _is_back_reference(subject):
+        return subject
+    return None
 
 
 def _norm_words(text: str) -> str:
@@ -371,15 +447,17 @@ def relate_turn(
     subject: Optional[str],
     *,
     acronyms: dict[str, str] | None = None,
+    earlier_turn: bool = False,
 ) -> tuple[str, Optional[str], Optional[str], tuple[str, ...]]:
     """How ``turn`` relates to the tracked ``subject``.
 
-    Returns ``(relation, new_subject, facet, reasons)``.
+    Returns ``(relation, new_subject, facet, reasons)``. ``earlier_turn``: the
+    turn is in the history being replayed (``extract_turn_subject``).
     """
     raw = _COMPOSER_TOKEN.sub("", turn or "").strip()
     cleaned = clean_turn(raw)
     body = _strip_connective(cleaned)
-    own = extract_turn_subject(raw)
+    own = extract_turn_subject(raw, earlier_turn=earlier_turn)
     if _TOPIC_CHANGE.search(raw):
         return RELATION_NEW_SUBJECT, own, None, ("topic_change",)
     if not subject:
@@ -526,7 +604,9 @@ def track_subject(
         if role != "user":
             continue
         text = _content(message)
-        relation, new_subject, turn_facet, _reasons = relate_turn(text, subject, acronyms=acronyms)
+        relation, new_subject, turn_facet, _reasons = relate_turn(
+            text, subject, acronyms=acronyms, earlier_turn=True
+        )
         if relation in (RELATION_NEW_SUBJECT, RELATION_NO_PRIOR):
             subject, subject_question = new_subject, clean_turn(text) if new_subject else None
         elif relation == RELATION_NONE:

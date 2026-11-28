@@ -4,6 +4,11 @@ Cause 1: a sentence-initial auxiliary, modal, wh-word or connective is not part 
 a name. ``_PROPER_NAME`` accepts a lowercase word after "the" / "of" / "and" (for
 "Slay the Spire"), so "Is the second one stable?" gave the topic "Is the second",
 and both patterns glued the first word onto a real name ("Does Apple").
+
+Cause 2: an earlier statement or instruction whose subject no rule found ("My
+father has type 2 diabetes.", "Explain how a heat pump works."). The fallbacks run
+only on turns already answered (``earlier_turn``), and never on a question: an
+earlier question reaches the search as itself (S36's ``prior_question``).
 """
 from __future__ import annotations
 
@@ -16,6 +21,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.discourse_state import _extract_topic_candidate, extract_assistant_referent  # noqa: E402
+from core.discourse_subject import extract_turn_subject  # noqa: E402
 from core.query_resolution_evaluation import build_discourse_resolution  # noqa: E402
 
 
@@ -108,6 +114,56 @@ class TestInTurnReference(unittest.TestCase):
         ):
             with self.subTest(turn=turn):
                 self.assertEqual(self._web(prior, answer, turn), expected)
+
+
+class TestEarlierStatementSubject(unittest.TestCase):
+    """Cause 2: the subject of an earlier statement or instruction."""
+
+    def test_an_earlier_statement_names_its_subject(self):
+        for turn, subject in (
+            ("My father has type 2 diabetes.", "type 2 diabetes"),
+            ("Our cat was diagnosed with kidney disease.", "kidney disease"),
+            ("My daughter was just diagnosed with asthma.", "asthma"),
+            ("My doctor prescribed sertraline for anxiety.", "sertraline"),
+            ("My dentist recommended a water flosser.", "water flosser"),
+            ("Our main database is PostgreSQL 16.", "PostgreSQL 16"),
+            ("We just moved to Rotterdam.", "Rotterdam"),
+            ("Explain how a heat pump works.", "heat pump"),
+        ):
+            with self.subTest(turn=turn):
+                self.assertEqual(extract_turn_subject(turn, earlier_turn=True), subject)
+
+    def test_the_current_turn_is_unchanged(self):
+        for turn in ("My father has type 2 diabetes.", "We just moved to Rotterdam.", "Explain how a heat pump works."):
+            with self.subTest(turn=turn):
+                self.assertIsNone(extract_turn_subject(turn))
+
+    def test_an_earlier_question_gets_no_fallback_subject(self):
+        for turn in (
+            "When is the Heron app launching?",
+            "Where was Mozart born?",
+            "Which company makes the Model Y?",
+            "How many days of annual leave do I get at Kestrel?",
+            "How long does it take to fly from London to Tokyo?",
+        ):
+            with self.subTest(turn=turn):
+                self.assertIsNone(extract_turn_subject(turn, earlier_turn=True))
+
+    def test_the_follow_up_carries_the_subject(self):
+        for prior, answer, turn, expected in (
+            ("My father has type 2 diabetes.", "That is common; diet and exercise help.",
+             "Is it hereditary?", "type 2 diabetes Is it hereditary?"),
+            ("We just moved to Rotterdam.", "Welcome! It is a lively port city.",
+             "What's the weather like there?", "Rotterdam What's the weather like there?"),
+            ("Explain how a heat pump works.", "It moves heat from the outside air into the house.",
+             "Is it noisy?", "heat pump Is it noisy?"),
+            ("My dentist recommended a water flosser.", "They clean between teeth with a jet of water.",
+             "How often should I use it?", "water flosser How often should I use it?"),
+        ):
+            with self.subTest(turn=turn):
+                _fu, state, r = build_discourse_resolution(turn, [_u(prior), _a(answer)])
+                self.assertEqual(r.web_text, expected)
+                self.assertEqual(r.retrieval_text, expected)
 
 
 if __name__ == "__main__":
