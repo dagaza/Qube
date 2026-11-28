@@ -1,0 +1,853 @@
+{
+ "schema": "qube.answer_type_recorded.v1",
+ "recorded": "2026-11-28",
+ "model": "Qwen3-1.7B-Q6_K.gguf",
+ "chat_format": "chatml",
+ "threads": [
+  4,
+  8
+ ],
+ "params": {
+  "max_tokens": 4,
+  "temperature": 0.0
+ },
+ "cases": [
+  {
+   "set": "dev",
+   "id": "ant_ai_followup",
+   "category": "scientific_evidence/sts_humanities",
+   "gold": "scholarly",
+   "question": "How does actor-network theory (ANT) analyze artificial intelligence systems?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "fin_apple_10k",
+   "category": "finance_knowledge/finance_filings",
+   "gold": "reference",
+   "question": "Apple annual report 10-K revenue",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "fin_tesla_10q",
+   "category": "finance_knowledge/finance_filings",
+   "gold": "reference",
+   "question": "Tesla latest quarterly report 10-Q",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "kq_ace_hf_single",
+   "category": "scientific_evidence/biomedical",
+   "gold": "scholarly",
+   "question": "ACE inhibitors heart failure outcomes randomized trials",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "kq_affirmation_followup",
+   "category": "general_web/multi_turn",
+   "gold": "practical",
+   "question": "Can you give an example of the OAuth 2.0 authorization code flow?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "kq_no_good_sources",
+   "category": "scientific_evidence/abstain",
+   "gold": "scholarly",
+   "question": "How does actor-network theory analyze large language model deployment?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "kq_recency_news",
+   "category": "general_web/recency",
+   "gold": "reference",
+   "question": "What is the latest US inflation rate?",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  },
+  {
+   "set": "dev",
+   "id": "kq_trusted_who",
+   "category": "trusted_knowledge/health_official",
+   "gold": "reference",
+   "question": "WHO air quality guidelines particulate matter",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "mt_acronym_ms_treatment",
+   "category": "trusted_knowledge/multi_turn",
+   "gold": "reference",
+   "question": "How is multiple sclerosis (MS) treated?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "mt_ant_followup_live",
+   "category": "scientific_evidence/sts_humanities",
+   "gold": "scholarly",
+   "question": "How does actor-network theory (ANT) analyze artificial intelligence?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "mt_ellipsis_python",
+   "category": "general_web/multi_turn",
+   "gold": "reference",
+   "question": "What is new in Python 3.14?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "mt_facet_shift_heat_pump",
+   "category": "general_web/multi_turn",
+   "gold": "reference",
+   "question": "How much does it cost to install a heat pump?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "mt_pronoun_statins",
+   "category": "scientific_evidence/multi_turn",
+   "gold": "scholarly",
+   "question": "What are the side effects of statins in older adults?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "mt_topic_switch_ethanol",
+   "category": "general_web/multi_turn",
+   "gold": "reference",
+   "question": "What is the boiling point of ethanol?",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  },
+  {
+   "set": "dev",
+   "id": "s13_chem_her_catalysts",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "Which catalysts work best for the hydrogen evolution reaction in water splitting?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "s13_econ_qe_inflation",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "Does quantitative easing raise inflation?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "s13_econ_tariffs_gdp",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "What is the effect of tariffs on GDP growth?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "s13_phys_bell_tests",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "What do loophole-free Bell test experiments show about quantum entanglement?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "s13_phys_ligo_detection",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "How are gravitational waves detected by LIGO?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "s13_qt_guideline_plantar",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "What is the standard of care for plantar fasciitis?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "s13_qt_patent_batteries",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "Patent landscape for solid-state battery electrolytes",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "s13_qt_standard_nist_csf",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "practical",
+   "question": "What does the NIST cybersecurity framework specify?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "s13_qt_statistics_euro_unemployment",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "reference",
+   "question": "What is the current unemployment rate in the euro area?",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  },
+  {
+   "set": "dev",
+   "id": "s13_qt_statistics_lagos",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "reference",
+   "question": "Population estimate for Lagos from census data",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "s13_qt_trial_registry_psilocybin",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "Are there phase 3 clinical trials of psilocybin for depression recruiting patients?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "s13_trial_dapa_hf",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "What were the main results of the DAPA-HF trial?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "s13_trial_emperor_reduced",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "What did the EMPEROR-Reduced trial show for empagliflozin in heart failure?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "s13_trial_false_consensus",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "What is the scientific consensus on the safety of glyphosate?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "s13_trial_paradigm_hf",
+   "category": "scientific_evidence/heuristic_trigger",
+   "gold": "scholarly",
+   "question": "What did the PARADIGM-HF trial find for sacubitril-valsartan?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_abstain_city_council",
+   "category": "scientific_evidence/abstain",
+   "gold": "reference",
+   "question": "What did the Cluj-Napoca city council decide about bike lanes in October 2026?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "sci_abstain_fictional_drug",
+   "category": "scientific_evidence/abstain",
+   "gold": "scholarly",
+   "question": "Clinical trials of zelvoraxine for migraine",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_bio_fasting_insulin",
+   "category": "scientific_evidence/biomedical",
+   "gold": "scholarly",
+   "question": "Does intermittent fasting improve insulin sensitivity?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_bio_microplastics",
+   "category": "scientific_evidence/biomedical",
+   "gold": "scholarly",
+   "question": "Long-term effects of microplastics on human health",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_chem_perovskite_degradation",
+   "category": "scientific_evidence/physical_econ",
+   "gold": "scholarly",
+   "question": "Why do perovskite solar cells degrade?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_cs_oauth_flow",
+   "category": "scientific_evidence/cs_engineering",
+   "gold": "practical",
+   "question": "How does the OAuth 2.0 authorization code flow work?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "sci_cs_rust_ownership",
+   "category": "scientific_evidence/cs_engineering",
+   "gold": "scholarly",
+   "question": "How does Rust's ownership model prevent memory safety bugs?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_cs_self_attention",
+   "category": "scientific_evidence/cs_engineering",
+   "gold": "scholarly",
+   "question": "How does self-attention work in transformer models?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_econ_minimum_wage",
+   "category": "scientific_evidence/physical_econ",
+   "gold": "scholarly",
+   "question": "Effect of minimum wage increases on employment",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_homograph_python_everglades",
+   "category": "scientific_evidence/acronym_homograph",
+   "gold": "scholarly",
+   "question": "Burmese python impact on Everglades mammals",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_hum_printing_press_reformation",
+   "category": "scientific_evidence/sts_humanities",
+   "gold": "scholarly",
+   "question": "What role did the printing press play in the Protestant Reformation?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_phys_dark_matter",
+   "category": "scientific_evidence/physical_econ",
+   "gold": "scholarly",
+   "question": "What is the observational evidence for dark matter?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_psych_sleep_memory",
+   "category": "scientific_evidence/social_science",
+   "gold": "scholarly",
+   "question": "How does sleep deprivation affect memory consolidation?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_soc_remote_work_productivity",
+   "category": "scientific_evidence/social_science",
+   "gold": "scholarly",
+   "question": "Does remote work affect employee productivity?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_soc_social_media_depression",
+   "category": "scientific_evidence/social_science",
+   "gold": "scholarly",
+   "question": "What does research say about social media use and adolescent depression?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "sci_sts_scot",
+   "category": "scientific_evidence/sts_humanities",
+   "gold": "scholarly",
+   "question": "What is the social construction of technology (SCOT) approach?",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  },
+  {
+   "set": "dev",
+   "id": "trusted_abstain_fictional",
+   "category": "trusted_knowledge/abstain",
+   "gold": "reference",
+   "question": "Official WHO guidance on the Varnex-7 nasal implant",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  },
+  {
+   "set": "dev",
+   "id": "trusted_cdc_mmr_doses",
+   "category": "trusted_knowledge/health_official",
+   "gold": "reference",
+   "question": "How many doses of the MMR vaccine do children need?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "trusted_census_texas_population",
+   "category": "trusted_knowledge/official_statistics",
+   "gold": "reference",
+   "question": "What is the population of Texas according to the US Census?",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  },
+  {
+   "set": "dev",
+   "id": "web_abstain_fictional_product",
+   "category": "general_web/abstain",
+   "gold": "practical",
+   "question": "Zorblax 9000 smart toaster firmware update instructions",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "web_acronym_gdpr_erasure",
+   "category": "general_web/acronym_homograph",
+   "gold": "reference",
+   "question": "GDPR right to erasure exceptions",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "web_def_heat_pump",
+   "category": "general_web/definition",
+   "gold": "reference",
+   "question": "how does a heat pump work",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "web_def_roth_ira",
+   "category": "general_web/definition",
+   "gold": "reference",
+   "question": "What is a Roth IRA?",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  },
+  {
+   "set": "dev",
+   "id": "web_def_sourdough_starter",
+   "category": "general_web/definition",
+   "gold": "practical",
+   "question": "what is a sourdough starter and how do i keep it alive",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "web_entity_bled_castle",
+   "category": "general_web/entity_lookup",
+   "gold": "reference",
+   "question": "Bled Castle opening hours",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "web_entity_framework_laptop",
+   "category": "general_web/entity_lookup",
+   "gold": "reference",
+   "question": "Framework Laptop 13 battery life review",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "dev",
+   "id": "web_entity_sydney_opera_house",
+   "category": "general_web/entity_lookup",
+   "gold": "reference",
+   "question": "who designed the sydney opera house",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  },
+  {
+   "set": "dev",
+   "id": "web_homograph_jaguar",
+   "category": "general_web/acronym_homograph",
+   "gold": "reference",
+   "question": "How fast can a jaguar run?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "web_howto_descale_kettle",
+   "category": "general_web/how_to",
+   "gold": "practical",
+   "question": "how to descale an electric kettle with vinegar",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "web_howto_git_undo_commit",
+   "category": "general_web/how_to",
+   "gold": "practical",
+   "question": "how do I undo the last git commit but keep my changes",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "web_howto_python_venv",
+   "category": "general_web/how_to",
+   "gold": "practical",
+   "question": "how to create a python virtual environment on windows",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "web_recency_ecb_rate",
+   "category": "general_web/recency",
+   "gold": "reference",
+   "question": "What is the current ECB deposit facility rate?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "web_recency_iphone_latest",
+   "category": "general_web/recency",
+   "gold": "reference",
+   "question": "What is the newest iPhone model?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "dev",
+   "id": "web_recency_python_release",
+   "category": "general_web/recency",
+   "gold": "reference",
+   "question": "What is the latest stable Python version?",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  },
+  {
+   "set": "heldout",
+   "id": "comp_docker_port",
+   "category": "computing",
+   "gold": "practical",
+   "question": "How do I expose a port from a Docker container to the host?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "comp_kerberos_ticket",
+   "category": "computing",
+   "gold": "practical",
+   "question": "How does Kerberos issue a service ticket to a client?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "comp_pair_programming",
+   "category": "computing",
+   "gold": "scholarly",
+   "question": "Does pair programming reduce defects compared with solo programming?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "comp_code_review",
+   "category": "computing",
+   "gold": "scholarly",
+   "question": "How does code review affect software quality?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "comp_cors_acronym",
+   "category": "computing",
+   "gold": "reference",
+   "question": "What does CORS stand for in web development?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "health_inhaler_spacer",
+   "category": "health",
+   "gold": "practical",
+   "question": "How do I use an asthma inhaler with a spacer?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "health_bp_home",
+   "category": "health",
+   "gold": "practical",
+   "question": "How should I measure my blood pressure at home?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "health_metformin",
+   "category": "health",
+   "gold": "scholarly",
+   "question": "How does metformin lower blood glucose?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "health_quit_smoking",
+   "category": "health",
+   "gold": "scholarly",
+   "question": "What is the most effective way to quit smoking?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "health_fat_soluble",
+   "category": "health",
+   "gold": "reference",
+   "question": "Which vitamins are fat-soluble?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "home_bleed_radiator",
+   "category": "home_everyday",
+   "gold": "practical",
+   "question": "How do I bleed a radiator?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "home_store_herbs",
+   "category": "home_everyday",
+   "gold": "practical",
+   "question": "What's the best way to store fresh herbs?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "home_microwave_nutrients",
+   "category": "home_everyday",
+   "gold": "scholarly",
+   "question": "Does microwaving vegetables destroy more nutrients than boiling them?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "home_houseplants_air",
+   "category": "home_everyday",
+   "gold": "scholarly",
+   "question": "Do houseplants improve indoor air quality?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "home_everest_boiling",
+   "category": "home_everyday",
+   "gold": "reference",
+   "question": "At what temperature does water boil on the summit of Mount Everest?",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  },
+  {
+   "set": "heldout",
+   "id": "money_dispute_charge",
+   "category": "money_law",
+   "gold": "practical",
+   "question": "How do I dispute a charge on my credit card?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "money_small_claims",
+   "category": "money_law",
+   "gold": "practical",
+   "question": "How do I file a small claims case against my landlord?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "money_active_funds",
+   "category": "money_law",
+   "gold": "scholarly",
+   "question": "Do actively managed funds beat index funds after fees?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "money_rent_control",
+   "category": "money_law",
+   "gold": "scholarly",
+   "question": "What are the effects of rent control on housing supply?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "money_will_trust",
+   "category": "money_law",
+   "gold": "reference",
+   "question": "What is the difference between a will and a living trust?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "sci_ph_calibrate",
+   "category": "science_nature",
+   "gold": "practical",
+   "question": "How do I calibrate a pH meter?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "sci_telescope_collimate",
+   "category": "science_nature",
+   "gold": "practical",
+   "question": "How do I collimate a Newtonian telescope?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "sci_neonicotinoids",
+   "category": "science_nature",
+   "gold": "scholarly",
+   "question": "Do neonicotinoid pesticides harm honeybee colonies?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "sci_ocean_acidification",
+   "category": "science_nature",
+   "gold": "scholarly",
+   "question": "How does ocean acidification affect coral reefs?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "sci_moon_distance",
+   "category": "science_nature",
+   "gold": "reference",
+   "question": "How far is the Moon from the Earth?",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  },
+  {
+   "set": "heldout",
+   "id": "learn_anki_cards",
+   "category": "learning_society",
+   "gold": "practical",
+   "question": "How do I make flashcards in Anki?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "learn_apa_book",
+   "category": "learning_society",
+   "gold": "practical",
+   "question": "How do I format a book citation in APA style?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "learn_spaced_repetition",
+   "category": "learning_society",
+   "gold": "scholarly",
+   "question": "Does spaced repetition improve long-term retention?",
+   "raw": "RESEARCH",
+   "answer_type": "scholarly"
+  },
+  {
+   "set": "heldout",
+   "id": "learn_bullying",
+   "category": "learning_society",
+   "gold": "scholarly",
+   "question": "How can schools reduce bullying?",
+   "raw": "GUIDE",
+   "answer_type": "practical"
+  },
+  {
+   "set": "heldout",
+   "id": "learn_bologna_founded",
+   "category": "learning_society",
+   "gold": "reference",
+   "question": "When was the University of Bologna founded?",
+   "raw": "REFERENCE",
+   "answer_type": "reference"
+  }
+ ]
+}

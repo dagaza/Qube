@@ -64,7 +64,8 @@ class TitleSelectionDetail:
 # Plan S19 (D9): raw-path tasks whose ChatML prompt gets Qwen3's empty think block
 # pre-filled, so the completion is not cut at "<think>" by the "\n\n" stop. Opt-in
 # per task: each entry needs its own evaluation and an owner decision (D-row).
-# ``query_slots`` pre-fills in its own builder (S9); titles use the chat path.
+# ``query_slots`` and ``answer_type`` pre-fill in their own builders (S9, S30);
+# titles use the chat path.
 # Kept out after evaluation: contradiction_judge (D29), source_digest (D30),
 # companion_line (D33: copies its prompt's example line). reflection_label uses a
 # flat prompt that never opens a think block and works as shipped (V49).
@@ -110,6 +111,8 @@ def task_inference_params(task: SidecarTask) -> dict[str, Any]:
         SidecarTask.companion_line: {"max_tokens": 64, "temperature": 0.35},
         # Two short lines (measured 5-23 tokens); greedy for replayable output.
         SidecarTask.query_slots: {"max_tokens": 32, "temperature": 0.0},
+        # One word (S30: GUIDE / REFERENCE / RESEARCH); greedy for replayable output.
+        SidecarTask.answer_type: {"max_tokens": 4, "temperature": 0.0},
     }
     return dict(defaults.get(task, {"max_tokens": 128, "temperature": 0.2}))
 
@@ -156,6 +159,15 @@ def _build_task_prompt(
         return build_slot_prompt(
             history=kwargs.get("history") or [],
             prompt=str(kwargs.get("prompt") or ""),
+            chat_format=chat_format,
+            model_path=model_path,
+        )
+
+    if task == SidecarTask.answer_type:
+        from core.answer_type_llm import build_answer_type_prompt
+
+        return build_answer_type_prompt(
+            question=str(kwargs.get("question") or ""),
             chat_format=chat_format,
             model_path=model_path,
         )
@@ -1385,6 +1397,14 @@ def parse_task_output(task: SidecarTask, raw: str, **kwargs: Any) -> SidecarResu
             ok=True,
             task=task,
         )
+
+    if task == SidecarTask.answer_type:
+        from core.answer_type_llm import parse_answer_type_output
+
+        kind = parse_answer_type_output(text)
+        if kind is None:
+            return SidecarResult(ok=False, error="parse_fail", task=task, text=text)
+        return SidecarResult(text=text, parsed={"answer_type": kind}, confidence=0.5, ok=True, task=task)
 
     if task == SidecarTask.query_rewrite:
         parsed = _parse_query_rewrite_json(text)

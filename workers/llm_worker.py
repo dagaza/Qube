@@ -258,8 +258,10 @@ from core.app_settings import (
     get_sidecar_query_rewrite_enabled,
     get_sidecar_query_slots_shadow_enabled,
     get_sidecar_query_slots_timeout_ms,
+    get_knowledge_answer_type_shadow_enabled,
 )
 from core.query_slots_llm import run_shadow_slot_extraction
+from core.answer_type_llm import run_shadow_answer_type
 from core.dual_query_retrieval import merge_memory_search_results, merge_rag_search_results
 from core.sidecar_query_rewrite import propose_query_expansion
 from core.shadow_retrieval_policy import (
@@ -3737,6 +3739,22 @@ class LLMWorker(QThread):
                 ),
                 default_service=get_default_knowledge_service(),
             )
+            # Plan S30 (shadow, D67): which kind of source answers a question sent
+            # to Evidence. Logs one line; never changes the service or the sources.
+            try:
+                answer_type_gate = run_shadow_answer_type(
+                    question=web_semantic or web_query,
+                    service=turn_knowledge_service,
+                    composer_tool=getattr(self, "_composer_knowledge_tool", None),
+                    sidecar_client=self._sidecar_client,
+                    enabled=get_knowledge_answer_type_shadow_enabled(),
+                    queue_depth=get_sidecar_telemetry().queue_depth(),
+                    session_id=str(self.session_id or ""),
+                )
+                if isinstance(decision, dict):
+                    decision["answer_type_gate"] = answer_type_gate
+            except Exception as e:
+                logger.debug("[AnswerType] shadow scheduling failed: %s", e)
             turn_adapter_filter = adapter_filter_for_composer_tool(
                 getattr(self, "_composer_knowledge_tool", None)
             )

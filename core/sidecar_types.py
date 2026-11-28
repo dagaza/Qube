@@ -17,6 +17,8 @@ class SidecarTask(str, Enum):
     companion_line = "companion_line"
     # Plan S9: SUBJECT / FACET slots for unresolved follow-ups (shadow mode).
     query_slots = "query_slots"
+    # Plan S30: which kind of source answers a question sent to Evidence (shadow mode).
+    answer_type = "answer_type"
 
 
 @dataclass
