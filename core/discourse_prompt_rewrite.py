@@ -263,7 +263,8 @@ def resolve_discourse_prompt_rewrite(
                 applied=True,
             )
 
-    topic = (discourse.active_topic or "").strip() if discourse else ""
+    # Plan S28 (D65): the subject the turn continues, not the legacy active_topic.
+    topic = (discourse.continued_subject() or "") if discourse else ""
     if topic and not is_deictic_topic_phrase(topic):
         score = score_rewrite_anchor(topic, user_message=original)
         if score.usable and score.confidence >= REWRITE_CONFIDENCE_MIN:
@@ -303,7 +304,8 @@ def select_salience_anchor(
                 reason = "referent_salience_with_rewrite"
             return referent, score.confidence, reason
 
-    topic = (discourse.active_topic or "").strip()
+    # Plan S28 (D65): the subject the turn continues, not the legacy active_topic.
+    topic = discourse.continued_subject() or ""
     if topic and not is_deictic_topic_phrase(topic):
         score = score_rewrite_anchor(topic, user_message=user_message)
         if score.usable and score.confidence >= REWRITE_CONFIDENCE_MIN:

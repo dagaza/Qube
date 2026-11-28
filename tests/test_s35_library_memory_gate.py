@@ -36,8 +36,8 @@ from mcp.rag_tool import rag_search  # noqa: E402
 MODES = ("balanced", "fast", "power")
 FIXTURE_DIR = ROOT / "eval" / "fixtures" / "library_memory"
 BASELINE_DIR = ROOT / "eval" / "library_memory_corpus" / "baselines"
-CURRENT_GATED_BASELINE = "lm_s35"  # gated replays of today's captures and recording (S35)
-FALLBACK_BASELINE = "lm_s36"  # the floors: production without the reranker
+CURRENT_GATED_BASELINE = "lm_s27_gated"  # S35's gate on today's captures and recording (S27, D64; lm_s35_* is S35's record)
+FALLBACK_BASELINE = "lm_s27"  # the floors: production without the reranker (S27)
 
 
 def _scorer_from(table: dict[str, float], default: float = -11.0, calls: list | None = None):

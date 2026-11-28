@@ -496,6 +496,8 @@ def build_retrieval_outcome_snapshot(
         ),
         # Plan S9: why the shadow slot extractor did / did not run this turn.
         "query_slots_gate": str(decision.get("query_slots_gate") or ""),
+        # Plan S30: why the shadow answer type did / did not ask the sidecar this turn.
+        "answer_type_gate": str(decision.get("answer_type_gate") or ""),
         # Plan S10: n_ctx-derived retrieval block budget (chars, tokens, reason).
         "retrieval_budget": (
             dict(decision.get("retrieval_budget"))

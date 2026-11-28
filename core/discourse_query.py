@@ -4,13 +4,14 @@ Topic-aware query expansion for routing and retrieval (not user-visible text).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from core.composer_attachments import is_web_composer_tool
 from core.composer_skills import substantive_composer_prompt
 from core.discourse_acronyms import expand_acronyms, extract_acronym_definitions
 from core.discourse_subject import (
+    REASON_PEOPLE_REFERENCE,
     RELATION_CONTINUATION,
     RELATION_NO_PRIOR,
     compose_retrieval_text,
@@ -289,6 +290,7 @@ def _library_memory_target(
         track is not None
         and track.relation == RELATION_CONTINUATION
         and not (track.reasons == ("back_reference",) and refers_inside_turn(raw))
+        and track.reasons != (REASON_PEOPLE_REFERENCE,)
     ):
         return text, ("subject" if text.strip() != inference.strip() else "none")
     if context_signals(inference):
@@ -303,7 +305,13 @@ def resolve_routing_query(
     follow_up: FollowUpClassification,
     discourse: DiscourseState | None,
 ) -> str:
-    """Semantic query for cognitive router embedding input."""
+    """Semantic query for cognitive router embedding input.
+
+    Plan S28 (D65): the expansion anchors on the referent or on the subject the
+    turn continues, never on the legacy ``active_topic``.
+    """
+    if discourse is not None:
+        discourse = replace(discourse, active_topic=discourse.continued_subject())
     return resolve_retrieval_query(prompt, follow_up, discourse)
 
 
@@ -549,14 +557,22 @@ def should_veto_ungrounded_web_follow_up(
     discourse: DiscourseState | None,
 ) -> bool:
     """
-    Veto WEB only when a follow-up query is deictic and we cannot expand it
-    with an active topic (search would be literally "tips for this").
+    Veto WEB only when a follow-up query is deictic and its web text has no
+    anchor (search would be literally "tips for this").
+
+    Plan S28 (D65): the anchor is a referent or the subject the turn continues.
+    The legacy ``active_topic`` counts only when no subject was tracked, the one
+    case where the web text still expands with it (``_subject_web_target``).
     """
     if not follow_up.active:
         return False
     if discourse and (
         (discourse.active_referent or "").strip()
-        or (discourse.active_topic or "").strip()
+        or discourse.continued_subject()
+        or (
+            discourse.subject_relation == RELATION_NO_PRIOR
+            and (discourse.active_topic or "").strip()
+        )
     ):
         return False
     return follow_up.kind.value != "none"

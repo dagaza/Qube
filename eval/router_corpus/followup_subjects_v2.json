@@ -1,0 +1,538 @@
+{
+  "schema": "qube.followup_subjects.v1",
+  "version": 2,
+  "created": "2026-11-28",
+  "label_source": "model",
+  "description": "Plan S27 held-out follow-up set v2, written 2026-11-28 and committed before any resolver or LLM run on it. Same format and scoring as followup_subjects_v1.json: 'gold_subject' must appear in the web text (plural/hyphen-insensitive; any one of 'gold_any' also counts). 'must_not_anchor' cases are topic switches whose web text must NOT contain the prior subject. New phrasings of the S9 residual shapes (list references, facet nouns, facet questions about something else, multi-hop referents, statement openers without an -ing verb), other follow-up shapes, and topic switches.",
+  "cases": [
+    {
+      "id": "fs2_list_second_cause",
+      "category": "list_reference",
+      "prompt": "Can you explain the second one in more detail?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What are the main causes of inflation?"
+        },
+        {
+          "role": "assistant",
+          "content": "There are three main ones: 1. Demand-pull inflation, when demand outpaces supply. 2. Cost-push inflation, when production costs rise. 3. Built-in inflation, driven by wage and price expectations."
+        }
+      ],
+      "gold_subject": "cost-push inflation",
+      "gold_any": [
+        "cost-push"
+      ]
+    },
+    {
+      "id": "fs2_list_last_option",
+      "category": "list_reference",
+      "prompt": "How expensive is the last option to run?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What are my options for heating a small flat?"
+        },
+        {
+          "role": "assistant",
+          "content": "Common options are: - a heat pump - electric storage heaters - infrared panels"
+        }
+      ],
+      "gold_subject": "infrared panels",
+      "gold_any": [
+        "infrared"
+      ]
+    },
+    {
+      "id": "fs2_list_inline_ordinal",
+      "category": "list_reference",
+      "prompt": "Is the second one stable?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What are the most common sorting algorithms?"
+        },
+        {
+          "role": "assistant",
+          "content": "The common ones are quicksort, merge sort and heapsort."
+        }
+      ],
+      "gold_subject": "merge sort"
+    },
+    {
+      "id": "fs2_facet_noun_heat_pump",
+      "category": "facet_noun",
+      "prompt": "Does the heat pump make a big difference in winter?",
+      "history": [
+        {
+          "role": "user",
+          "content": "I'm thinking of buying a Kia EV6."
+        },
+        {
+          "role": "assistant",
+          "content": "The EV6 is a well-reviewed electric crossover with fast charging."
+        }
+      ],
+      "gold_subject": "Kia EV6",
+      "gold_any": [
+        "EV6"
+      ]
+    },
+    {
+      "id": "fs2_facet_noun_partial_index",
+      "category": "facet_noun",
+      "prompt": "Would a partial index help with slow lookups on the orders table?",
+      "history": [
+        {
+          "role": "user",
+          "content": "Our main database is PostgreSQL 16."
+        },
+        {
+          "role": "assistant",
+          "content": "PostgreSQL 16 brought logical replication improvements and faster bulk loading."
+        }
+      ],
+      "gold_subject": "PostgreSQL",
+      "gold_any": [
+        "Postgres"
+      ]
+    },
+    {
+      "id": "fs2_facet_noun_second_dose",
+      "category": "facet_noun",
+      "prompt": "Is the second dose worse than the first?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is the shingles vaccine?"
+        },
+        {
+          "role": "assistant",
+          "content": "Shingrix is a two-dose vaccine that protects adults against shingles."
+        }
+      ],
+      "gold_subject": "Shingrix",
+      "gold_any": [
+        "shingles vaccine",
+        "shingles"
+      ]
+    },
+    {
+      "id": "fs2_facet_other_pot_size",
+      "category": "facet_question",
+      "prompt": "How big should the pot be?",
+      "history": [
+        {
+          "role": "user",
+          "content": "How do I grow tomatoes on a balcony?"
+        },
+        {
+          "role": "assistant",
+          "content": "Use a large pot, a sunny spot and water them regularly."
+        }
+      ],
+      "gold_subject": "tomatoes"
+    },
+    {
+      "id": "fs2_facet_other_water_temp",
+      "category": "facet_question",
+      "prompt": "What water temperature is comfortable?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What's the best way to learn to swim as an adult?"
+        },
+        {
+          "role": "assistant",
+          "content": "Start with lessons in a shallow pool and practise floating and breathing."
+        }
+      ],
+      "gold_subject": "swimming",
+      "gold_any": [
+        "swim"
+      ]
+    },
+    {
+      "id": "fs2_multi_hop_visa",
+      "category": "multi_hop",
+      "prompt": "Do I need a visa to travel there?",
+      "history": [
+        {
+          "role": "user",
+          "content": "Which country has the tallest building in the world?"
+        },
+        {
+          "role": "assistant",
+          "content": "The tallest building, the Burj Khalifa, is in the United Arab Emirates, in Dubai."
+        }
+      ],
+      "gold_subject": "United Arab Emirates",
+      "gold_any": [
+        "UAE",
+        "Dubai"
+      ]
+    },
+    {
+      "id": "fs2_multi_hop_visit",
+      "category": "multi_hop",
+      "prompt": "What's the best time of year to visit there?",
+      "history": [
+        {
+          "role": "user",
+          "content": "Where was Mozart born?"
+        },
+        {
+          "role": "assistant",
+          "content": "Mozart was born in Salzburg, in 1756."
+        }
+      ],
+      "gold_subject": "Salzburg"
+    },
+    {
+      "id": "fs2_multi_hop_company",
+      "category": "multi_hop",
+      "prompt": "Who runs it now?",
+      "history": [
+        {
+          "role": "user",
+          "content": "Which company makes the Model Y?"
+        },
+        {
+          "role": "assistant",
+          "content": "The Model Y is made by Tesla."
+        }
+      ],
+      "gold_subject": "Tesla"
+    },
+    {
+      "id": "fs2_statement_diabetes",
+      "category": "statement_opener",
+      "prompt": "Which foods should he avoid?",
+      "history": [
+        {
+          "role": "user",
+          "content": "My father has type 2 diabetes."
+        },
+        {
+          "role": "assistant",
+          "content": "Type 2 diabetes is manageable with diet, exercise and medication."
+        }
+      ],
+      "gold_subject": "type 2 diabetes",
+      "gold_any": [
+        "diabetes"
+      ]
+    },
+    {
+      "id": "fs2_statement_moved",
+      "category": "statement_opener",
+      "prompt": "Are there good international schools?",
+      "history": [
+        {
+          "role": "user",
+          "content": "We just moved to Rotterdam."
+        },
+        {
+          "role": "assistant",
+          "content": "Rotterdam is a lively port city with modern architecture."
+        }
+      ],
+      "gold_subject": "Rotterdam"
+    },
+    {
+      "id": "fs2_statement_cat_kidney",
+      "category": "statement_opener",
+      "prompt": "What should we feed her?",
+      "history": [
+        {
+          "role": "user",
+          "content": "Our cat was diagnosed with kidney disease."
+        },
+        {
+          "role": "assistant",
+          "content": "Chronic kidney disease is common in older cats and can be managed."
+        }
+      ],
+      "gold_subject": "kidney disease",
+      "gold_any": [
+        "kidney"
+      ]
+    },
+    {
+      "id": "fs2_pronoun_telescope",
+      "category": "pronoun",
+      "prompt": "How far away from Earth is it?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is the James Webb Space Telescope?"
+        },
+        {
+          "role": "assistant",
+          "content": "It's an infrared space telescope launched in December 2021."
+        }
+      ],
+      "gold_subject": "James Webb Space Telescope",
+      "gold_any": [
+        "James Webb",
+        "JWST"
+      ]
+    },
+    {
+      "id": "fs2_pronoun_author",
+      "category": "pronoun",
+      "prompt": "Did he win a Nobel Prize?",
+      "history": [
+        {
+          "role": "user",
+          "content": "Who wrote Thinking, Fast and Slow?"
+        },
+        {
+          "role": "assistant",
+          "content": "Daniel Kahneman wrote it; it was published in 2011."
+        }
+      ],
+      "gold_subject": "Daniel Kahneman",
+      "gold_any": [
+        "Kahneman"
+      ]
+    },
+    {
+      "id": "fs2_deictic_flosser",
+      "category": "deictic",
+      "prompt": "Is that better than normal floss?",
+      "history": [
+        {
+          "role": "user",
+          "content": "My dentist recommended a water flosser."
+        },
+        {
+          "role": "assistant",
+          "content": "Water flossers use a stream of water to clean between teeth."
+        }
+      ],
+      "gold_subject": "water flosser"
+    },
+    {
+      "id": "fs2_implicit_roth_limit",
+      "category": "implicit",
+      "prompt": "What's the contribution limit this year?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is a Roth IRA?"
+        },
+        {
+          "role": "assistant",
+          "content": "A Roth IRA is a US retirement account funded with after-tax money."
+        }
+      ],
+      "gold_subject": "Roth IRA"
+    },
+    {
+      "id": "fs2_implicit_heat_pump_cost",
+      "category": "implicit",
+      "prompt": "What does installation usually cost?",
+      "history": [
+        {
+          "role": "user",
+          "content": "Explain how a heat pump works."
+        },
+        {
+          "role": "assistant",
+          "content": "A heat pump moves heat from outside air into your home using a refrigerant cycle."
+        }
+      ],
+      "gold_subject": "heat pump"
+    },
+    {
+      "id": "fs2_ellipsis_minimum_wage",
+      "category": "ellipsis",
+      "prompt": "And in France?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is the minimum wage in Germany?"
+        },
+        {
+          "role": "assistant",
+          "content": "Germany's minimum wage is set by law and reviewed regularly."
+        }
+      ],
+      "gold_subject": "minimum wage"
+    },
+    {
+      "id": "fs2_ellipsis_flight",
+      "category": "ellipsis",
+      "prompt": "What about to Sydney?",
+      "history": [
+        {
+          "role": "user",
+          "content": "How long does it take to fly from London to Tokyo?"
+        },
+        {
+          "role": "assistant",
+          "content": "A direct flight takes about 14 hours."
+        }
+      ],
+      "gold_subject": "London",
+      "gold_any": [
+        "flight",
+        "fly"
+      ]
+    },
+    {
+      "id": "fs2_affirmation_pico",
+      "category": "affirmation",
+      "prompt": "Yes please.",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is a Raspberry Pi Pico?"
+        },
+        {
+          "role": "assistant",
+          "content": "It's a small microcontroller board. Would you like a starter project idea?"
+        }
+      ],
+      "gold_subject": "Raspberry Pi Pico",
+      "gold_any": [
+        "Pico"
+      ]
+    },
+    {
+      "id": "fs2_switch_peru",
+      "category": "topic_switch",
+      "prompt": "What is the capital of Peru?",
+      "history": [
+        {
+          "role": "user",
+          "content": "We're renovating our kitchen."
+        },
+        {
+          "role": "assistant",
+          "content": "Kitchen renovations usually start with the layout and the budget."
+        }
+      ],
+      "gold_subject": "Peru",
+      "must_not_anchor": [
+        "kitchen"
+      ]
+    },
+    {
+      "id": "fs2_switch_kettle",
+      "category": "topic_switch",
+      "prompt": "How do I descale a kettle?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is the EU's Digital Markets Act?"
+        },
+        {
+          "role": "assistant",
+          "content": "The DMA regulates large online platforms designated as gatekeepers."
+        }
+      ],
+      "gold_subject": "kettle",
+      "must_not_anchor": [
+        "Digital Markets Act",
+        "DMA"
+      ]
+    },
+    {
+      "id": "fs2_switch_mona_lisa",
+      "category": "topic_switch",
+      "prompt": "Who painted the Mona Lisa?",
+      "history": [
+        {
+          "role": "user",
+          "content": "Tell me about the Roman Colosseum."
+        },
+        {
+          "role": "assistant",
+          "content": "The Colosseum is an amphitheatre in Rome, completed in 80 AD."
+        }
+      ],
+      "gold_subject": "Mona Lisa",
+      "must_not_anchor": [
+        "Colosseum"
+      ]
+    },
+    {
+      "id": "fs2_switch_ethanol",
+      "category": "topic_switch",
+      "prompt": "What is the boiling point of ethanol?",
+      "history": [
+        {
+          "role": "user",
+          "content": "I'm learning to play the guitar."
+        },
+        {
+          "role": "assistant",
+          "content": "Start with basic chords and practise a little every day."
+        }
+      ],
+      "gold_subject": "ethanol",
+      "must_not_anchor": [
+        "guitar"
+      ]
+    },
+    {
+      "id": "fs2_switch_by_the_way",
+      "category": "topic_switch",
+      "prompt": "By the way, how many moons does Jupiter have?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What is a 401(k)?"
+        },
+        {
+          "role": "assistant",
+          "content": "A 401(k) is a US employer-sponsored retirement plan."
+        }
+      ],
+      "gold_subject": "Jupiter",
+      "must_not_anchor": [
+        "401"
+      ]
+    },
+    {
+      "id": "fs2_switch_after_list",
+      "category": "topic_switch",
+      "prompt": "How do bees make honey?",
+      "history": [
+        {
+          "role": "user",
+          "content": "What are the main causes of inflation?"
+        },
+        {
+          "role": "assistant",
+          "content": "There are three main ones: 1. Demand-pull inflation, when demand outpaces supply. 2. Cost-push inflation, when production costs rise. 3. Built-in inflation, driven by wage and price expectations."
+        }
+      ],
+      "gold_subject": "honey",
+      "must_not_anchor": [
+        "inflation"
+      ]
+    },
+    {
+      "id": "fs2_switch_after_statement",
+      "category": "topic_switch",
+      "prompt": "What's the population of Iceland?",
+      "history": [
+        {
+          "role": "user",
+          "content": "Our team uses Jira for tracking work."
+        },
+        {
+          "role": "assistant",
+          "content": "Jira is widely used for issue tracking in software teams."
+        }
+      ],
+      "gold_subject": "Iceland",
+      "must_not_anchor": [
+        "Jira"
+      ]
+    }
+  ]
+}

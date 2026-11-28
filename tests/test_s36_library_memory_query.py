@@ -65,14 +65,16 @@ RESOLVED = [
     ("mem_mt_cat_age", "What's my cat called? How old is she?", "prior_question"),
     ("mem_mt_supervisor_field", "Who was my master's supervisor? What field was that in?", "prior_question"),
     ("mem_mt_sister_city", "Where does Hana work?", "none"),  # the pronoun rewrite already resolved it
+    # Plan S27 (V91, D64): "What's the …?" is a facet question like "What is the …?".
+    # S36 searched these two as typed only because of the contraction.
+    ("lib_mt_led_page_size", "pagination work in the Ledger API What's the maximum page size?", "subject"),
+    ("lib_mt_parking_absent", "my flat what's the parking fee?", "subject"),
 ]
 # Follow-ups with no reference signal: searched as typed (V76).
 AS_TYPED = [
     "lib_mt_hb_sick_days",
-    "lib_mt_led_page_size",
     "lib_mt_lis_palace_entry",
     "lib_mt_tram_eastern",
-    "lib_mt_parking_absent",
     "mem_mt_api_decision",
 ]
 

@@ -75,6 +75,8 @@ KEY_KNOWLEDGE_SOURCE_PREFERENCES = "qube.knowledge.source_preferences"
 KEY_KNOWLEDGE_RERANKER_ENABLED = "qube.knowledge.reranker.enabled"
 # Plan S11: post-stream citation grounding telemetry (log-only; never edits answers).
 KEY_KNOWLEDGE_CITATION_GROUNDING_ENABLED = "qube.knowledge.citation_grounding_telemetry_enabled"
+# Plan S30 (D67): log which kind of source answers an Evidence question (log-only).
+KEY_KNOWLEDGE_ANSWER_TYPE_SHADOW = "qube.knowledge.answer_type_shadow_enabled"
 KEY_KNOWLEDGE_PROVIDER_CREDENTIALS = "qube.knowledge.provider_credentials"
 KEY_DEFAULT_KNOWLEDGE_SERVICE = "qube.knowledge.default_service"
 KEY_SKILLS_ENABLED = "qube.skills.enabled"
@@ -741,6 +743,15 @@ def get_sidecar_query_slots_shadow_enabled() -> bool:
     return get_sidecar_enabled() and bool(
         _store().get(KEY_SIDECAR_QUERY_SLOTS_SHADOW, True)
     )
+
+
+def get_knowledge_answer_type_shadow_enabled() -> bool:
+    """Shadow answer type on Evidence turns (plan S30, log-only).
+
+    Independent of the sidecar switch: without the sidecar the line still carries
+    the word rule's answer.
+    """
+    return bool(_store().get(KEY_KNOWLEDGE_ANSWER_TYPE_SHADOW, True))
 
 
 def get_sidecar_query_slots_timeout_ms() -> int:

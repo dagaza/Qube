@@ -31,7 +31,7 @@ from core.knowledge import library_memory_eval as lme  # noqa: E402
 MODES = ("balanced", "fast", "power")
 FIXTURE_DIR = ROOT / "eval" / "fixtures" / "library_memory"
 BASELINE_DIR = ROOT / "eval" / "library_memory_corpus" / "baselines"
-CURRENT_BASELINE = "lm_s36"  # the baseline today's captures replay to (S36)
+CURRENT_BASELINE = "lm_s27"  # the baseline today's captures replay to (S27, D64; lm_s36_* is S36's record)
 
 
 _V63_PROBE = """

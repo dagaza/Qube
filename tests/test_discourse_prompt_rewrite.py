@@ -101,10 +101,14 @@ class TestPromptRewrite(unittest.TestCase):
         self.assertTrue(result.rewrite_reason.startswith("query_"))
 
     def test_no_rewrite_for_bad_topic_anchor(self) -> None:
+        # Plan S28 (D65): the prompt hint anchors on the subject the turn continues,
+        # so the bad anchor reaches the check through that subject.
         state = DiscourseState(
             active_topic="18",
             topic_type="unknown",
             confidence=0.55,
+            subject="18",
+            subject_relation="continuation",
         )
         prompt = "What about its elevation?"
         follow_up = FollowUpClassification(FollowUpKind.ANAPHORIC, 0.85)
@@ -117,6 +121,21 @@ class TestPromptRewrite(unittest.TestCase):
         self.assertFalse(result.applied)
         self.assertEqual(result.grounded, prompt)
         self.assertIn("anchor_rejected", result.rewrite_reason)
+
+    def test_legacy_topic_alone_is_not_an_anchor(self) -> None:
+        # Plan S28 (D65): with no tracked subject, active_topic is not read at all.
+        state = DiscourseState(active_topic="18", topic_type="unknown", confidence=0.55)
+        prompt = "What about its elevation?"
+        follow_up = FollowUpClassification(FollowUpKind.ANAPHORIC, 0.85)
+        result = resolve_discourse_prompt_rewrite(
+            user_message=prompt,
+            resolved_query=None,
+            follow_up=follow_up,
+            discourse=state,
+        )
+        self.assertFalse(result.applied)
+        self.assertEqual(result.grounded, prompt)
+        self.assertEqual(result.rewrite_reason, "none")
 
     def test_no_generic_fallback_prefix(self) -> None:
         state = DiscourseState(active_topic="18", confidence=0.5)
