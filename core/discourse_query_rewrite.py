@@ -34,6 +34,8 @@ _POSSESSIVE_HEAD = re.compile(
 )
 _PRONOUN_SUBJ = re.compile(r"\b(he|she|they)\b", re.I)
 _PRONOUN_OBJ = re.compile(r"\b(him|her|them)\b", re.I)
+_PRONOUN_SUBJ_PLURAL = re.compile(r"\b(they)\b", re.I)
+_PRONOUN_OBJ_PLURAL = re.compile(r"\b(them)\b", re.I)
 _LEADING_AND = re.compile(r"^\s*and\s+", re.I)
 _POPULATION_FRAME = re.compile(
     r"^\s*(?:and\s+)?(?:what\s+is\s+)?(?:the\s+)?(?:size\s+of\s+)?(?:its|their|his|her)\s+population\b",
@@ -141,7 +143,13 @@ def resolve_ambiguous_user_query(
         result = ResolvedUserQuery(original, resolved, tuple(subs), 0.85, "frame_template")
         return _finalize_resolved_query(result, discourse)
 
-    if has_possessive_anaphor(working):
+    # Plan S27 (V92): after "Who wrote X?", "he" / "she" / "his" / "her" are the
+    # person in the answer, not X.
+    person_pronouns_ok = not getattr(discourse, "referent_asked_who", False)
+
+    head = _POSSESSIVE_HEAD.search(working)
+    person_possessive = bool(head and head.group(1).lower() in ("his", "her"))
+    if has_possessive_anaphor(working) and (person_pronouns_ok or not person_possessive):
         def _repl(m: re.Match[str]) -> str:
             pron = m.group(1)
             noun = m.group(2)
@@ -155,23 +163,25 @@ def resolve_ambiguous_user_query(
             confidence = 0.82
 
     rtype = getattr(discourse, "referent_type", "unknown")
-    if _PRONOUN_SUBJ.search(working) and rtype in ("person", "entity"):
+    pronoun_subj = _PRONOUN_SUBJ if person_pronouns_ok else _PRONOUN_SUBJ_PLURAL
+    pronoun_obj = _PRONOUN_OBJ if person_pronouns_ok else _PRONOUN_OBJ_PLURAL
+    if pronoun_subj.search(working) and rtype in ("person", "entity"):
         def _subj(m: re.Match[str]) -> str:
             subs.append((m.group(0), referent))
             return referent
 
-        new_working = _PRONOUN_SUBJ.sub(_subj, working, count=1)
+        new_working = pronoun_subj.sub(_subj, working, count=1)
         if new_working != working:
             working = new_working
             reason = "pronoun_substitution"
             confidence = max(confidence, 0.80)
 
-    if _PRONOUN_OBJ.search(working) and rtype in ("person", "entity"):
+    if pronoun_obj.search(working) and rtype in ("person", "entity"):
         def _obj(m: re.Match[str]) -> str:
             subs.append((m.group(0), referent))
             return referent
 
-        new_working = _PRONOUN_OBJ.sub(_obj, working, count=1)
+        new_working = pronoun_obj.sub(_obj, working, count=1)
         if new_working != working:
             working = new_working
             reason = "pronoun_substitution"

@@ -126,6 +126,10 @@ class DiscourseState:
     subject: Optional[str] = None
     facet: Optional[str] = None
     subject_relation: str = "no_prior"
+    # Plan S27 (V92): the referent is what a who-question asked about ("Who wrote
+    # Pride and Prejudice?"). Its maker is in the answer, so "he" / "she" do not
+    # stand for it; "it" / "its" still do.
+    referent_asked_who: bool = False
 
     def salience_anchor(self) -> Optional[str]:
         """Prefer resolved referent over topic for prompt injection."""
@@ -699,7 +703,28 @@ def update_discourse_state(
         subject=track.subject,
         facet=track.facet,
         subject_relation=track.relation,
+        referent_asked_who=_referent_asked_who(history, current_prompt, state.active_referent),
     )
+
+
+def _referent_asked_who(history: list[dict[str, Any]], current_prompt: str, referent: Optional[str]) -> bool:
+    """The latest earlier user turn naming ``referent`` asks who made it (plan S27, V92)."""
+    from core.discourse_subject import _WHO_Q, clean_turn, mentions_subject
+
+    if not referent:
+        return False
+    current = " ".join((current_prompt or "").split())
+    users = [
+        str(m.get("content") or "")
+        for m in history or []
+        if isinstance(m, dict) and str(m.get("role", "")).lower() == "user"
+    ]
+    if users and " ".join(users[-1].split()) == current:
+        users = users[:-1]
+    for text in reversed(users):
+        if mentions_subject(text, referent):
+            return bool(_WHO_Q.match(clean_turn(text)))
+    return False
 
 
 def _update_topic_and_referent(

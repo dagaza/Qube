@@ -25,6 +25,11 @@ question's answer names a person, place or entity, used for the next turn only w
 its reference fits ("there" a place, "he" a person, "it" the answer to "which
 company ..."). An ordinal ("the second one", "the last option") picks an item of a
 numbered, bulleted or inline list in the previous answer.
+
+V92: the pronoun rewrite turned "she" into a work's title ("Who wrote Pride and
+Prejudice?" -> "When did she die?" -> "When did Pride and Prejudice die?"). After a
+who-question about the referent, "he" / "she" / "his" / "her" are left alone; "it" /
+"its" still name the work.
 """
 from __future__ import annotations
 
@@ -44,6 +49,9 @@ from core.discourse_subject import (  # noqa: E402
     normalize_subject,
     track_subject,
 )
+from core.discourse_intent import classify_follow_up  # noqa: E402
+from core.discourse_query_rewrite import resolve_ambiguous_user_query  # noqa: E402
+from core.discourse_state import update_discourse_state  # noqa: E402
 from core.query_resolution_evaluation import build_discourse_resolution  # noqa: E402
 
 
@@ -327,6 +335,49 @@ class TestAnswerReferents(unittest.TestCase):
                 track = track_subject([_u(prior), _a(answer)], turn)
                 self.assertNotEqual(track.reasons, (REASON_LIST_ITEM,))
                 self.assertNotIn("Shingrix", self._web(prior, answer, turn))
+
+
+
+class TestWhoQuestionPronouns(unittest.TestCase):
+    """V92: a person pronoun is not rewritten to the work a who-question asked about."""
+
+    def _rewrites(self, question: str, answer: str, turn: str) -> list[str]:
+        """The rewrite with no prior state (the eval harness) and with the worker's prior state."""
+        first = [_u(question)]
+        history = first + [_a(answer), _u(turn)]
+        out = []
+        for prior in (None, update_discourse_state(first, None, question)):
+            state = update_discourse_state(history, prior, turn)
+            follow_up = classify_follow_up(turn, history, state)
+            out.append(resolve_ambiguous_user_query(turn, state, follow_up).resolved)
+        return out
+
+    def test_he_and_she_are_not_the_work(self):
+        for question, answer, turn in (
+            ("Who wrote Pride and Prejudice?", "Jane Austen wrote it in 1813.", "When did she die?"),
+            ("Who painted The Starry Night?", "Vincent van Gogh painted it in 1889.", "Where did he live?"),
+            ("Who wrote Pride and Prejudice?", "Jane Austen wrote it in 1813.", "What was her first novel?"),
+        ):
+            with self.subTest(turn=turn):
+                self.assertEqual(self._rewrites(question, answer, turn), [turn, turn])
+
+    def test_the_web_text_names_the_person(self):
+        _fu, _st, r = build_discourse_resolution(
+            "When did she die?", [_u("Who wrote Pride and Prejudice?"), _a("Jane Austen wrote it in 1813.")]
+        )
+        self.assertEqual(r.web_text, "Jane Austen When did she die?")
+
+    def test_its_still_names_the_work(self):
+        self.assertEqual(
+            self._rewrites("Who wrote Pride and Prejudice?", "Jane Austen wrote it in 1813.", "What is its plot?"),
+            ["What is Pride and Prejudice's plot?"] * 2,
+        )
+
+    def test_a_person_referent_is_still_rewritten(self):
+        self.assertEqual(
+            self._rewrites("Tell me about Marie Curie.", "Marie Curie was a physicist.", "When did she die?"),
+            ["When did Marie Curie die?"] * 2,
+        )
 
 
 if __name__ == "__main__":
