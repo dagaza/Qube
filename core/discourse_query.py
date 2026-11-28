@@ -11,6 +11,7 @@ from core.composer_attachments import is_web_composer_tool
 from core.composer_skills import substantive_composer_prompt
 from core.discourse_acronyms import expand_acronyms, extract_acronym_definitions
 from core.discourse_subject import (
+    REASON_PEOPLE_REFERENCE,
     RELATION_CONTINUATION,
     RELATION_NO_PRIOR,
     compose_retrieval_text,
@@ -289,6 +290,7 @@ def _library_memory_target(
         track is not None
         and track.relation == RELATION_CONTINUATION
         and not (track.reasons == ("back_reference",) and refers_inside_turn(raw))
+        and track.reasons != (REASON_PEOPLE_REFERENCE,)
     ):
         return text, ("subject" if text.strip() != inference.strip() else "none")
     if context_signals(inference):

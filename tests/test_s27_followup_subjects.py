@@ -13,6 +13,12 @@ earlier question reaches the search as itself (S36's ``prior_question``).
 Cause 3: the follow-up's own noun replaced the subject. "What's the contribution
 limit this year?" is a facet question like "What is the contribution limit?"
 (V91, D64), and "What about in winter?" is a facet, not the new subject "in winter".
+
+Cause 4: references the tracker missed. "he" / "her" for a person named only by a
+role ("My father has type 2 diabetes." -> "Which foods should he avoid?"), on the
+web; library and memory keep S36's previous question for these (D51). "that" as
+the subject of a question ("Is that better than normal floss?") and a locative
+"there" inside the sentence ("What's the weather like there in April?").
 """
 from __future__ import annotations
 
@@ -25,7 +31,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.discourse_state import _extract_topic_candidate, extract_assistant_referent  # noqa: E402
-from core.discourse_subject import extract_turn_subject  # noqa: E402
+from core.discourse_subject import extract_turn_subject, has_back_reference, normalize_subject  # noqa: E402
 from core.query_resolution_evaluation import build_discourse_resolution  # noqa: E402
 
 
@@ -206,6 +212,54 @@ class TestFacetFollowUps(unittest.TestCase):
         _fu, state, r = build_discourse_resolution("What about Rust?", self.PUMP)
         self.assertEqual(r.web_text, "What about Rust?")
         self.assertEqual(state.subject, "Rust")
+
+
+
+class TestMissedReferences(unittest.TestCase):
+    """Cause 4: back-references the tracker missed."""
+
+    def _resolve(self, prior: str, answer: str, turn: str):
+        return build_discourse_resolution(turn, [_u(prior), _a(answer)])[2]
+
+    def test_a_people_pronoun_carries_the_subject_on_the_web(self):
+        for prior, answer, turn, web in (
+            ("My father has type 2 diabetes.", "Diet and exercise help a lot.",
+             "Which foods should he avoid?", "type 2 diabetes Which foods should he avoid?"),
+            ("Our cat was diagnosed with kidney disease.", "Many cats live for years with it.",
+             "What should we feed her?", "kidney disease What should we feed her?"),
+        ):
+            with self.subTest(turn=turn):
+                r = self._resolve(prior, answer, turn)
+                self.assertEqual(r.web_text, web)
+                # Library and memory: S36's previous question, unchanged (D51).
+                self.assertEqual(r.retrieval_text, f"{prior} {turn}")
+                self.assertEqual(r.retrieval_rewrite_reason, "prior_question")
+
+    def test_that_as_the_subject_of_a_question(self):
+        r = self._resolve("My dentist recommended a water flosser.", "They clean between teeth with a jet of water.",
+                          "Is that better than normal floss?")
+        self.assertEqual(r.web_text, "water flosser Is that better than normal floss?")
+        for turn in ("What does that cost?", "How much does that cost?", "Is that true?"):
+            with self.subTest(turn=turn):
+                self.assertTrue(has_back_reference(turn))
+
+    def test_there_inside_the_sentence(self):
+        r = self._resolve("Which city is the capital of Australia?", "The capital of Australia is Canberra.",
+                          "What's the weather like there in April?")
+        self.assertEqual(r.web_text, "Canberra What's the weather like there in April?")
+        for turn in ("How many people live there?", "Can I get there by train?"):
+            with self.subTest(turn=turn):
+                self.assertTrue(has_back_reference(turn))
+
+    def test_existential_there_is_not_a_reference(self):
+        for turn in ("Are there good international schools?", "Is there a cure?", "Were there any survivors?",
+                     "Why are there so many?", "I think there is a problem"):
+            with self.subTest(turn=turn):
+                self.assertFalse(has_back_reference(turn))
+
+    def test_a_closing_called_is_not_part_of_the_subject(self):
+        self.assertEqual(normalize_subject("my cat called"), "my cat")
+        self.assertEqual(normalize_subject("the dog named"), "dog")
 
 
 if __name__ == "__main__":

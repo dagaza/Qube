@@ -98,14 +98,31 @@ _DEICTIC_BARE = re.compile(
 )
 _TRAILING_ONE = re.compile(r"\b(?:one|ones)\s*[?.!]*\s*$", re.I)
 # Locative "there" ("live there?", "from there"), not existential "is there a cure".
-_THERE_REF = re.compile(r"\b(?:in|from|to|out)\s+there\b|\bthere\s*[?.!]*\s*$", re.I)
+# Plan S27 (cause 4): also inside the sentence ("What's the weather like there in
+# April?"), when no form of "be" or a quantifier stands next to it.
+_THERE_REF = re.compile(
+    r"\b(?:in|from|to|out)\s+there\b|\bthere\s*[?.!]*\s*$"
+    r"|\b(?!(?:is|are|was|were|be|been|being|isn't|aren't|wasn't|weren't)\b)[a-z]+\s+there\b"
+    r"(?!\s+(?:is|are|was|were|be|been|isn't|aren't|wasn't|weren't|a|an|any|some|no|many|much|more|enough)\b)",
+    re.I,
+)
+# Plan S27 (cause 4): "that" as the subject of a question ("Is that better than
+# normal floss?", "What does that cost?"); a clause "that" does not open a question.
+_THAT_SUBJECT = re.compile(
+    r"^(?:(?:what|why|how(?:\s+(?:much|many|long|often|well))?|when|where)\s+)?"
+    r"(?:is|was|are|were|does|did|do|can|could|will|would|should|has|isn't|wasn't|doesn't|didn't)"
+    r"\s+that\b",
+    re.I,
+)
 
 _ARTICLE = re.compile(r"^(?:a|an|the)\s+", re.I)
 _FACET_PREFIX = re.compile(r"^(?:new|latest|changes?)\s+(?:in|with|for)\s+", re.I)
 # "space made of", "aspirin used for": the question's dangling facet, not the subject.
 _DANGLING_FACET = re.compile(
     r"\s+(?:(?:made|composed|used|known|caused|famous|good|bad|responsible)\s+)?"
-    r"(?:of|for|by|from|with|like|about|to|in|on)$",
+    r"(?:of|for|by|from|with|like|about|to|in|on)$"
+    # Plan S27 (cause 4): "What's my cat called?" names "my cat".
+    r"|\s+(?:called|named)$",
     re.I,
 )
 _TRAILING_JUNK = re.compile(r"[\s?!.,;:<>\"']+$")
@@ -416,7 +433,7 @@ def _is_back_reference(text: str) -> bool:
     t = text or ""
     if _DEICTIC_NP.search(t) or _DEICTIC_BARE.search(t) or _TRAILING_ONE.search(t):
         return True
-    if _THERE_REF.search(t):
+    if _THERE_REF.search(t) or _THAT_SUBJECT.match(t.strip()):
         return True
     if _PRONOUN_REF.search(_DUMMY_IT.sub(" ", t)):
         return True
@@ -451,6 +468,10 @@ def _offer_from(assistant_text: str) -> Optional[str]:
     return None
 
 
+# A continuation whose only link is a people pronoun (plan S27, cause 4).
+REASON_PEOPLE_REFERENCE = "people_reference"
+
+
 def relate_turn(
     turn: str,
     subject: Optional[str],
@@ -481,6 +502,12 @@ def relate_turn(
         return RELATION_CONTINUATION, subject, _facet(), ("mentions_subject",)
     if _is_back_reference(body) and not refers_inside_turn(body):
         return RELATION_CONTINUATION, subject, _facet(), ("back_reference",)
+    if _PEOPLE_REF.search(body) and not refers_inside_turn(body):
+        # Plan S27 (cause 4): "he" / "her" refer back on the web too ("My father has
+        # type 2 diabetes." -> "Which foods should he avoid?"). A named person is
+        # already resolved by the pronoun rewrite. Library and memory search keep
+        # S36's previous question for these (D51).
+        return RELATION_CONTINUATION, subject, _facet(), (REASON_PEOPLE_REFERENCE,)
     ellipsis = _ELLIPSIS.match(body)
     if ellipsis:
         target = ellipsis.group(1).strip()
@@ -684,6 +711,7 @@ def compose_retrieval_text(turn: str, track: SubjectTrack) -> Optional[str]:
 
 
 __all__ = [
+    "REASON_PEOPLE_REFERENCE",
     "RELATION_CONTINUATION",
     "RELATION_NEW_SUBJECT",
     "RELATION_NONE",
