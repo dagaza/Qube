@@ -1,0 +1,207 @@
+{
+ "schema": "qube.source_kind.v1",
+ "version": 1,
+ "created": "2026-11-28",
+ "label_source": "model",
+ "description": "Plan S30 held-out set v1, written 2026-11-28 and committed before any signal or LLM run on it. Synthetic questions labelled by the kind of source that answers them. 'scholarly': research literature or scientific data answers it, so the Evidence service is the right one. 'practical': documentation, a specification, a manual or a how-to guide answers it. 'reference': a general reference page answers it. Each case is asked twice, as 'invocations' says. The dev set is the knowledge-quality fixtures (eval/fixtures/knowledge_quality/); nothing is tuned on this file.",
+ "labels": {
+  "scholarly": "research literature or scientific data answers it",
+  "practical": "documentation, a specification, a manual or a how-to guide answers it",
+  "reference": "a general reference page answers it"
+ },
+ "invocations": {
+  "explicit": "@[tool:evidence] {prompt}",
+  "default": "{prompt}, with Evidence as the default knowledge service"
+ },
+ "cases": [
+  {
+   "id": "comp_docker_port",
+   "category": "computing",
+   "source_kind": "practical",
+   "prompt": "How do I expose a port from a Docker container to the host?"
+  },
+  {
+   "id": "comp_kerberos_ticket",
+   "category": "computing",
+   "source_kind": "practical",
+   "prompt": "How does Kerberos issue a service ticket to a client?",
+   "note": "'How does X work' form; the answer is in the protocol specification and its documentation"
+  },
+  {
+   "id": "comp_pair_programming",
+   "category": "computing",
+   "source_kind": "scholarly",
+   "prompt": "Does pair programming reduce defects compared with solo programming?"
+  },
+  {
+   "id": "comp_code_review",
+   "category": "computing",
+   "source_kind": "scholarly",
+   "prompt": "How does code review affect software quality?",
+   "note": "'How does X' form; answered by empirical software-engineering studies"
+  },
+  {
+   "id": "comp_cors_acronym",
+   "category": "computing",
+   "source_kind": "reference",
+   "prompt": "What does CORS stand for in web development?"
+  },
+  {
+   "id": "health_inhaler_spacer",
+   "category": "health",
+   "source_kind": "practical",
+   "prompt": "How do I use an asthma inhaler with a spacer?"
+  },
+  {
+   "id": "health_bp_home",
+   "category": "health",
+   "source_kind": "practical",
+   "prompt": "How should I measure my blood pressure at home?"
+  },
+  {
+   "id": "health_metformin",
+   "category": "health",
+   "source_kind": "scholarly",
+   "prompt": "How does metformin lower blood glucose?",
+   "note": "'How does X' mechanism question; answered by research literature"
+  },
+  {
+   "id": "health_quit_smoking",
+   "category": "health",
+   "source_kind": "scholarly",
+   "prompt": "What is the most effective way to quit smoking?",
+   "note": "practical wording; answered by cessation trials and reviews"
+  },
+  {
+   "id": "health_fat_soluble",
+   "category": "health",
+   "source_kind": "reference",
+   "prompt": "Which vitamins are fat-soluble?"
+  },
+  {
+   "id": "home_bleed_radiator",
+   "category": "home_everyday",
+   "source_kind": "practical",
+   "prompt": "How do I bleed a radiator?"
+  },
+  {
+   "id": "home_store_herbs",
+   "category": "home_everyday",
+   "source_kind": "practical",
+   "prompt": "What's the best way to store fresh herbs?",
+   "note": "same 'best way' wording as health_quit_smoking"
+  },
+  {
+   "id": "home_microwave_nutrients",
+   "category": "home_everyday",
+   "source_kind": "scholarly",
+   "prompt": "Does microwaving vegetables destroy more nutrients than boiling them?"
+  },
+  {
+   "id": "home_houseplants_air",
+   "category": "home_everyday",
+   "source_kind": "scholarly",
+   "prompt": "Do houseplants improve indoor air quality?"
+  },
+  {
+   "id": "home_everest_boiling",
+   "category": "home_everyday",
+   "source_kind": "reference",
+   "prompt": "At what temperature does water boil on the summit of Mount Everest?"
+  },
+  {
+   "id": "money_dispute_charge",
+   "category": "money_law",
+   "source_kind": "practical",
+   "prompt": "How do I dispute a charge on my credit card?"
+  },
+  {
+   "id": "money_small_claims",
+   "category": "money_law",
+   "source_kind": "practical",
+   "prompt": "How do I file a small claims case against my landlord?"
+  },
+  {
+   "id": "money_active_funds",
+   "category": "money_law",
+   "source_kind": "scholarly",
+   "prompt": "Do actively managed funds beat index funds after fees?"
+  },
+  {
+   "id": "money_rent_control",
+   "category": "money_law",
+   "source_kind": "scholarly",
+   "prompt": "What are the effects of rent control on housing supply?"
+  },
+  {
+   "id": "money_will_trust",
+   "category": "money_law",
+   "source_kind": "reference",
+   "prompt": "What is the difference between a will and a living trust?"
+  },
+  {
+   "id": "sci_ph_calibrate",
+   "category": "science_nature",
+   "source_kind": "practical",
+   "prompt": "How do I calibrate a pH meter?",
+   "note": "lab procedure; answered by the instrument's manual"
+  },
+  {
+   "id": "sci_telescope_collimate",
+   "category": "science_nature",
+   "source_kind": "practical",
+   "prompt": "How do I collimate a Newtonian telescope?"
+  },
+  {
+   "id": "sci_neonicotinoids",
+   "category": "science_nature",
+   "source_kind": "scholarly",
+   "prompt": "Do neonicotinoid pesticides harm honeybee colonies?"
+  },
+  {
+   "id": "sci_ocean_acidification",
+   "category": "science_nature",
+   "source_kind": "scholarly",
+   "prompt": "How does ocean acidification affect coral reefs?"
+  },
+  {
+   "id": "sci_moon_distance",
+   "category": "science_nature",
+   "source_kind": "reference",
+   "prompt": "How far is the Moon from the Earth?"
+  },
+  {
+   "id": "learn_anki_cards",
+   "category": "learning_society",
+   "source_kind": "practical",
+   "prompt": "How do I make flashcards in Anki?",
+   "note": "pairs with learn_spaced_repetition"
+  },
+  {
+   "id": "learn_apa_book",
+   "category": "learning_society",
+   "source_kind": "practical",
+   "prompt": "How do I format a book citation in APA style?",
+   "note": "academic wording; answered by the style guide"
+  },
+  {
+   "id": "learn_spaced_repetition",
+   "category": "learning_society",
+   "source_kind": "scholarly",
+   "prompt": "Does spaced repetition improve long-term retention?"
+  },
+  {
+   "id": "learn_bullying",
+   "category": "learning_society",
+   "source_kind": "scholarly",
+   "prompt": "How can schools reduce bullying?",
+   "note": "'How can' wording; answered by intervention studies"
+  },
+  {
+   "id": "learn_bologna_founded",
+   "category": "learning_society",
+   "source_kind": "reference",
+   "prompt": "When was the University of Bologna founded?"
+  }
+ ]
+}
