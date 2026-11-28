@@ -175,6 +175,25 @@ class TestCaptures(unittest.TestCase):
             lme.replay_run(cap, case, lme.RUN_LIBRARY_CHAT)
 
 
+class TestCorpusFingerprint(unittest.TestCase):
+    def test_windows_checkout_gives_the_recorded_fingerprint(self):
+        """Git on Windows checks the corpus out with CRLF line endings (``core.autocrlf``)."""
+        from unittest import mock
+
+        read_bytes = Path.read_bytes
+
+        def crlf_checkout(path):
+            data = read_bytes(path)
+            if b"\r" in data:
+                return data
+            return data.replace(b"\n", b"\r\n")
+
+        recorded = _capture("balanced")["corpus_fingerprint"]
+        with mock.patch.object(Path, "read_bytes", crlf_checkout):
+            self.assertEqual(lme.corpus_fingerprint(), recorded)
+        self.assertEqual(lme.corpus_fingerprint(), recorded)
+
+
 class TestS33Findings(unittest.TestCase):
     """The S33 findings, read from the S33 baselines (they stay true after later stages)."""
 
