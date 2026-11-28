@@ -618,6 +618,127 @@ def _window(history: Iterable[Any], current_prompt: str) -> list[dict[str, Any]]
     return turns[-SUBJECT_WINDOW_MESSAGES:]
 
 
+# ---------------------------------------------------------------------------
+# Referents in the assistant's answer (plan S27, cause 5)
+# ---------------------------------------------------------------------------
+# The previous answer names what the next turn refers to: "Where was Mozart
+# born?" -> "Mozart was born in Salzburg." -> "visit there"; "The common ones are
+# quicksort, merge sort and heapsort." -> "Is the second one stable?". Each is
+# used only for the next user turn, and only when that turn's reference fits.
+
+REASON_ANSWER_REFERENT = "answer_referent"
+REASON_LIST_ITEM = "list_item"
+
+_PLACE_NOUNS = "country|countries|city|cities|town|state|capital|place|island|region|province"
+_PERSON_NOUNS = "person|author|writer|scientist|artist|painter|composer|inventor|founder|president|leader"
+_WHICH_NOUN = re.compile(
+    r"^(?:which|what)\s+(" + _PLACE_NOUNS + "|" + _PERSON_NOUNS + r"|company|companies|firm|brand|team|"
+    r"band|book|film|movie|app|university|language|planet|river|mountain|game|car|model|product)\b",
+    re.I,
+)
+_WHERE_Q = re.compile(r"^where\s+(?:is|was|are|were|did|does|do)\b", re.I)
+_WHO_Q = re.compile(
+    r"^who\s+(?:wrote|founded|invented|discovered|painted|directed|composed|created|built|designed|"
+    r"developed|started|owns|runs|leads|makes|made)\b",
+    re.I,
+)
+_ANSWER_NAME = re.compile(
+    r"\b([A-Z][\w'’-]*(?:\s+(?:of|the|and|de|von|van)\s+[A-Z][\w'’-]*|\s+[A-Z][\w'’-]*)*)"
+)
+_NOT_A_NAME = frozenset(
+    "the a an it its he she they this that these those there here yes no in on at by i we you "
+    "his her their our my your".split()
+)
+_LOCATIVE_NAME = re.compile(
+    r"\b(?:in|at|from|near)\s+(?:the\s+)?([A-Z][\w'’-]*(?:\s+(?:of|the|and)\s+[A-Z][\w'’-]*|\s+[A-Z][\w'’-]*)*)"
+)
+
+
+def _answer_names(sentence: str, question: str, pattern: re.Pattern[str]) -> list[str]:
+    q = _norm_words(question)
+    out: list[str] = []
+    for name in pattern.findall(sentence or ""):
+        words = name.split()
+        while words and words[0].lower() in _NOT_A_NAME:
+            words = words[1:]
+        if not words or (len(words) == 1 and words[0] == "I"):
+            continue
+        cand = " ".join(words)
+        if f" {_norm_words(cand).strip()} " in q:
+            continue  # the question named it: not the answer
+        out.append(cand)
+    return out
+
+
+def _typed_answer_referent(question: str, answer: str) -> Optional[tuple[str, str]]:
+    """``(name, kind)`` the answer gives a who / where / which-N question; kind is place, person or entity."""
+    q = clean_turn(question or "")
+    sentence = re.split(r"(?<=[.!?])\s+|\n", (answer or "").strip(), maxsplit=1)[0]
+    if not q or not sentence:
+        return None
+    which = _WHICH_NOUN.match(q)
+    if _WHERE_Q.match(q) or (which and re.fullmatch(_PLACE_NOUNS, which.group(1).lower())):
+        names = _answer_names(sentence, q, _LOCATIVE_NAME) or _answer_names(sentence, q, _ANSWER_NAME)
+        return (names[0], "place") if names else None
+    if _WHO_Q.match(q) or (which and re.fullmatch(_PERSON_NOUNS, which.group(1).lower())):
+        names = _answer_names(sentence, q, _ANSWER_NAME)
+        return (names[0], "person") if names else None
+    if which:
+        names = _answer_names(sentence, q, _ANSWER_NAME)
+        return (names[0], "entity") if names else None
+    return None
+
+
+def _referent_fits(turn: str, kind: str) -> bool:
+    t = clean_turn(turn or "")
+    if kind == "place":
+        return bool(_THERE_REF.search(t))
+    if kind == "person":
+        return bool(_PEOPLE_REF.search(t))
+    return bool(_PRONOUN_REF.search(_DUMMY_IT.sub(" ", t)) or _THERE_REF.search(t))
+
+
+_ORDINALS = {"first": 0, "second": 1, "third": 2, "fourth": 3, "fifth": 4, "last": -1, "final": -1}
+_ORDINAL_REF = re.compile(
+    r"\bthe\s+(first|second|third|fourth|fifth|last|final)\s+(?:one|option|item|point|cause|reason|step|"
+    r"choice|suggestion|idea|example|method|approach|type|kind|factor|way|tip|algorithm|answer)s?\b",
+    re.I,
+)
+_NUMBERED_ITEM = re.compile(r"(?:^|\s)\d+[.)]\s+(.+?)(?=\s+\d+[.)]\s+|$)", re.S)
+_BULLET_SPLIT = re.compile(r"(?:^|\s)[-*•]\s+")
+_INLINE_LIST = re.compile(r"\b(?:are|include|includes|including|:)\s+([^.:;]+?,[^.:;]+?\b(?:and|or)\b[^.:;]+)", re.I)
+_ITEM_TAIL = re.compile(r"\s*(?:[,;:(]|\s[-–—]\s|\s(?:when|which|where|that|because|if)\s).*$", re.S | re.I)
+
+
+def _list_items(answer: str) -> list[str]:
+    text = " ".join((answer or "").split())
+    items = [m.group(1) for m in _NUMBERED_ITEM.finditer(text)]
+    if len(items) < 2:
+        parts = _BULLET_SPLIT.split(text)
+        items = parts[1:] if len(parts) > 2 else []
+    if len(items) < 2:
+        m = _INLINE_LIST.search(text)
+        items = re.split(r",\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+", m.group(1)) if m else []
+    out = []
+    for item in items:
+        item = _ITEM_TAIL.sub("", item).strip(" .")
+        item = _ARTICLE.sub("", item).strip()
+        if item and len(item.split()) <= 6:
+            out.append(item)
+    return out if len(out) >= 2 else []
+
+
+def _list_item_for(turn: str, answer: str) -> Optional[str]:
+    m = _ORDINAL_REF.search(turn or "")
+    if not m:
+        return None
+    items = _list_items(answer)
+    index = _ORDINALS[m.group(1).lower()]
+    if not items or index >= len(items):
+        return None
+    return items[index]
+
+
 def track_subject(
     history: list[dict[str, Any]] | None,
     current_prompt: str,
@@ -632,6 +753,7 @@ def track_subject(
     subject: Optional[str] = None
     subject_question: Optional[str] = None
     last_assistant = ""
+    pending: Optional[tuple[str, str]] = None  # (name, kind) the last answer gave (S27)
     for i, message in enumerate(turns):
         role = _role(message)
         if role == "assistant":
@@ -640,9 +762,17 @@ def track_subject(
         if role != "user":
             continue
         text = _content(message)
-        relation, new_subject, turn_facet, _reasons = relate_turn(
-            text, subject, acronyms=acronyms, earlier_turn=True
-        )
+        item = _list_item_for(text, last_assistant) if last_assistant else None
+        if item:
+            relation, new_subject, turn_facet = RELATION_CONTINUATION, item, None
+            subject, subject_question = item, None
+        else:
+            if pending and _referent_fits(text, pending[1]):
+                subject, subject_question = pending[0], None
+            relation, new_subject, turn_facet, _reasons = relate_turn(
+                text, subject, acronyms=acronyms, earlier_turn=True
+            )
+        pending = None
         if relation in (RELATION_NEW_SUBJECT, RELATION_NO_PRIOR):
             subject, subject_question = new_subject, clean_turn(text) if new_subject else None
         elif relation == RELATION_NONE:
@@ -653,9 +783,16 @@ def track_subject(
                 referent = _answer_referent(text, _content(nxt))
                 if referent:
                     subject = referent
+                else:
+                    pending = _typed_answer_referent(text, _content(nxt))
         if relation == RELATION_CONTINUATION and subject_question and turn_facet:
             subject_question = _substitute_parallel(subject_question, turn_facet) or subject_question
 
+    item = _list_item_for(current_prompt, last_assistant) if last_assistant else None
+    if item:
+        return SubjectTrack(item, None, RELATION_CONTINUATION, None, None, (REASON_LIST_ITEM,))
+    if pending and _referent_fits(current_prompt, pending[1]):
+        subject, subject_question = pending[0], None
     relation, new_subject, facet, reasons = relate_turn(current_prompt, subject, acronyms=acronyms)
     # An offer ("Would you like an example of …?") is what a bare acceptance means.
     offer = _offer_from(last_assistant) if reasons == ("affirmation",) else None
@@ -688,6 +825,9 @@ def compose_retrieval_text(turn: str, track: SubjectTrack) -> Optional[str]:
         return None
     subject = track.subject or ""
     body = _strip_connective(clean_turn(turn))
+    if track.reasons == (REASON_LIST_ITEM,):
+        # "Is the second one stable?" -> "Is merge sort stable?" (plan S27, cause 5)
+        return _ORDINAL_REF.sub(lambda _m: subject, body, count=1)
     if mentions_subject(body, subject):
         return body
     ellipsis = _ELLIPSIS.match(body)
@@ -711,6 +851,8 @@ def compose_retrieval_text(turn: str, track: SubjectTrack) -> Optional[str]:
 
 
 __all__ = [
+    "REASON_ANSWER_REFERENT",
+    "REASON_LIST_ITEM",
     "REASON_PEOPLE_REFERENCE",
     "RELATION_CONTINUATION",
     "RELATION_NEW_SUBJECT",

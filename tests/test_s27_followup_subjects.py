@@ -19,6 +19,12 @@ role ("My father has type 2 diabetes." -> "Which foods should he avoid?"), on th
 web; library and memory keep S36's previous question for these (D51). "that" as
 the subject of a question ("Is that better than normal floss?") and a locative
 "there" inside the sentence ("What's the weather like there in April?").
+
+Cause 5: the referent is in the assistant's answer. A who / where / which-N
+question's answer names a person, place or entity, used for the next turn only when
+its reference fits ("there" a place, "he" a person, "it" the answer to "which
+company ..."). An ordinal ("the second one", "the last option") picks an item of a
+numbered, bulleted or inline list in the previous answer.
 """
 from __future__ import annotations
 
@@ -31,7 +37,13 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.discourse_state import _extract_topic_candidate, extract_assistant_referent  # noqa: E402
-from core.discourse_subject import extract_turn_subject, has_back_reference, normalize_subject  # noqa: E402
+from core.discourse_subject import (  # noqa: E402
+    REASON_LIST_ITEM,
+    extract_turn_subject,
+    has_back_reference,
+    normalize_subject,
+    track_subject,
+)
 from core.query_resolution_evaluation import build_discourse_resolution  # noqa: E402
 
 
@@ -260,6 +272,61 @@ class TestMissedReferences(unittest.TestCase):
     def test_a_closing_called_is_not_part_of_the_subject(self):
         self.assertEqual(normalize_subject("my cat called"), "my cat")
         self.assertEqual(normalize_subject("the dog named"), "dog")
+
+
+
+class TestAnswerReferents(unittest.TestCase):
+    """Cause 5: the next turn refers to what the answer named."""
+
+    def _web(self, prior: str, answer: str, turn: str) -> str:
+        return build_discourse_resolution(turn, [_u(prior), _a(answer)])[2].web_text
+
+    def test_the_answer_names_the_referent(self):
+        for prior, answer, turn, web in (
+            ("Where was Beethoven born?", "Beethoven was born in Bonn in 1770.",
+             "How do I get there from Cologne?", "Bonn How do I get there from Cologne?"),
+            ("Which company makes the Galaxy S24?", "The Galaxy S24 is made by Samsung.",
+             "Where is it based?", "Samsung Where is it based?"),
+            ("Which country has the tallest building in the world?",
+             "The tallest building, the Burj Khalifa, is in the United Arab Emirates, in Dubai.",
+             "Do I need a visa to travel there?", "United Arab Emirates Do I need a visa to travel there?"),
+            ("Who wrote Thinking, Fast and Slow?", "Daniel Kahneman wrote it; it was published in 2011.",
+             "Did he win a Nobel Prize?", "Daniel Kahneman Did he win a Nobel Prize?"),
+        ):
+            with self.subTest(turn=turn):
+                self.assertEqual(self._web(prior, answer, turn), web)
+
+    def test_a_reference_that_does_not_fit_keeps_the_question_subject(self):
+        # "it" after a where-question is the thing asked about, not the place.
+        web = self._web("Where is the Eiffel Tower?", "The Eiffel Tower is in Paris, France.", "How tall is it?")
+        self.assertIn("Eiffel Tower", web)
+        self.assertNotIn("Paris", web)
+        # "his" is a person; the answer named a place.
+        web = self._web("Where was Beethoven born?", "Beethoven was born in Bonn in 1770.", "What was his first symphony?")
+        self.assertNotIn("Bonn", web)
+
+    def test_an_ordinal_picks_the_list_item(self):
+        for answer, turn, web in (
+            ("Popular choices are:\n1. Python, for its readable syntax.\n2. JavaScript, for the web.\n3. Scratch, for children.",
+             "Is the first one free?", "Is Python free?"),
+            ("A few options:\n- lower the thermostat\n- insulate the loft\n- draught-proof the windows",
+             "How much does the second option cost?", "How much does insulate the loft cost?"),
+            ("Good sources include oranges, kiwis and strawberries.", "Are the last ones easy to grow?",
+             "Are strawberries easy to grow?"),
+        ):
+            with self.subTest(turn=turn):
+                self.assertEqual(self._web("Which ones would you suggest?", answer, turn), web)
+
+    def test_an_ordinal_without_a_list_is_not_resolved(self):
+        for prior, answer, turn in (
+            ("What is the shingles vaccine?", "Shingrix is given as two doses, two to six months apart.",
+             "Is the second dose worse than the first?"),
+            ("Tell me about Rust.", "Rust is a systems programming language.", "Is the second one faster?"),
+        ):
+            with self.subTest(turn=turn):
+                track = track_subject([_u(prior), _a(answer)], turn)
+                self.assertNotEqual(track.reasons, (REASON_LIST_ITEM,))
+                self.assertNotIn("Shingrix", self._web(prior, answer, turn))
 
 
 if __name__ == "__main__":
