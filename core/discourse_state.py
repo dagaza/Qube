@@ -53,6 +53,32 @@ _PROPER_NAME = re.compile(
     r"\b((?:The\s+)?[A-Z][a-z0-9]+"
     r"(?:\s+(?:the|of|and)\s+[A-Za-z][a-z0-9]+|\s+[A-Z][a-z0-9]+)+)\b"
 )
+# Plan S27 (cause 1): a sentence-initial auxiliary, modal, wh-word or connective is
+# capitalised by its position, not because it belongs to a name. "Is the second one
+# stable?" gave the topic "Is the second", and "Does Apple make laptops?" gave
+# "Does Apple". The word (and a "the" after it) is dropped; what is left counts
+# only if it still starts with a capital, which is then real evidence of a name.
+_LEAD_FUNCTION_WORDS = frozenset(
+    "is are was were am do does did can could will would shall should may might must "
+    "has have had what which who whom whose when where why how and but or so also then".split()
+)
+
+
+def _name_candidates(pattern: re.Pattern[str], text: str) -> list[str]:
+    """``pattern``'s matches in ``text`` without a leading function word."""
+    out: list[str] = []
+    for match in pattern.findall(text or ""):
+        words = match.split()
+        if words and words[0].lower() in _LEAD_FUNCTION_WORDS:
+            words = words[1:]
+            if words and words[0].lower() == "the":
+                words = words[1:]
+            if not words or not words[0][:1].isupper():
+                continue
+        out.append(" ".join(words))
+    return out
+
+
 _LIST_INTRODUCER = re.compile(
     r"\b(?:such as|like|including|featuring|e\.g\.|for example)\s+",
     re.I,
@@ -234,12 +260,12 @@ def _extract_topic_candidate(text: str) -> tuple[Optional[str], TopicType]:
         if topic:
             return topic, "concept"
 
-    names = _PROPER_NAME.findall(s)
+    names = _name_candidates(_PROPER_NAME, s)
     if names:
         topic = max(names, key=len).strip()
         return topic[:120], _infer_topic_type(topic, s)
 
-    titles = _TITLE_CASE.findall(s)
+    titles = _name_candidates(_TITLE_CASE, s)
     if titles:
         topic = max(titles, key=len)
         return topic[:120], _infer_topic_type(topic, s)
@@ -284,7 +310,7 @@ def extract_assistant_referent(content: str) -> Optional[str]:
             return candidate
 
     scan = _strip_list_clause(first)
-    names = _PROPER_NAME.findall(scan)
+    names = _name_candidates(_PROPER_NAME, scan)
     if names:
         candidate = max(names, key=len).strip()[:120]
         usable, _ = validate_referent_candidate(
@@ -293,7 +319,7 @@ def extract_assistant_referent(content: str) -> Optional[str]:
         if usable:
             return candidate
 
-    titles = _TITLE_CASE.findall(scan)
+    titles = _name_candidates(_TITLE_CASE, scan)
     if titles:
         candidate = max(titles, key=len).strip()[:120]
         usable, _ = validate_referent_candidate(
@@ -314,12 +340,12 @@ def _assistant_topic_hint(content: str) -> tuple[Optional[str], TopicType]:
     if topic and validate_stored_discourse_topic(topic):
         return topic, ttype
     scan = _strip_list_clause(first)
-    names = _PROPER_NAME.findall(scan)
+    names = _name_candidates(_PROPER_NAME, scan)
     if names:
         topic = names[0].strip()
         if validate_stored_discourse_topic(topic):
             return topic[:120], _infer_topic_type(topic, first)
-    titles = _TITLE_CASE.findall(scan)
+    titles = _name_candidates(_TITLE_CASE, scan)
     if titles:
         topic = titles[0]
         if validate_stored_discourse_topic(topic):
