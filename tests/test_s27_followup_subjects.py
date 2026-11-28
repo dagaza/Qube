@@ -73,5 +73,42 @@ class TestLeadFunctionWords(unittest.TestCase):
         self.assertNotEqual(state.active_topic, "Is the garbage")
 
 
+class TestInTurnReference(unittest.TestCase):
+    """V90: a reference that points inside the turn does not carry the earlier subject.
+
+    "How much is the deposit and how is it protected?": "it" is the deposit. The
+    web path counted it as a back-reference; S36's ``refers_inside_turn`` was
+    used only for library and memory search.
+    """
+
+    def _web(self, prior: str, answer: str, turn: str) -> str:
+        _fu, _st, r = build_discourse_resolution(turn, [_u(prior), _a(answer)])
+        return r.web_text
+
+    def test_the_turn_is_searched_as_it_is(self):
+        for prior, answer, turn in (
+            ("Tell me about Kestrel.", "Kestrel is a software company.",
+             "How much is the deposit and how is it protected?"),
+            ("What is the singular value decomposition?", "It factors a matrix into three matrices.",
+             "Is my bike covered if it's stolen from the shared bike store?"),
+            ("What's the rent on my flat?", "It is 950 a month.",
+             "When is the Sintra day trip and how do we get there?"),
+        ):
+            with self.subTest(turn=turn):
+                self.assertEqual(self._web(prior, answer, turn), turn)
+
+    def test_a_reference_out_of_the_turn_still_carries_the_subject(self):
+        for prior, answer, turn, expected in (
+            ("What is the singular value decomposition?", "It factors a matrix into three matrices.",
+             "How does it relate to PCA?", "singular value decomposition How does it relate to PCA?"),
+            ("Tell me about Kestrel.", "Kestrel is a software company.",
+             "Is it profitable and how big is it?", "Kestrel Is it profitable and how big is it?"),
+            ("What is a heat pump?", "A heat pump moves heat from outside air into a home.",
+             "How efficient is it in winter?", "heat pump How efficient is it in winter?"),
+        ):
+            with self.subTest(turn=turn):
+                self.assertEqual(self._web(prior, answer, turn), expected)
+
+
 if __name__ == "__main__":
     unittest.main()

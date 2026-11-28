@@ -392,7 +392,7 @@ def relate_turn(
 
     if mentions_subject(raw, subject, acronyms):
         return RELATION_CONTINUATION, subject, _facet(), ("mentions_subject",)
-    if _is_back_reference(body):
+    if _is_back_reference(body) and not refers_inside_turn(body):
         return RELATION_CONTINUATION, subject, _facet(), ("back_reference",)
     ellipsis = _ELLIPSIS.match(body)
     if ellipsis:
