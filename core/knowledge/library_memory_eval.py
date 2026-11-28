@@ -237,13 +237,23 @@ def validate_corpus(corpus: dict[str, Any], chunks: dict[str, dict[str, Any]] | 
     return problems
 
 
+def _committed_bytes(path: Path) -> bytes:
+    """``path``'s bytes with LF line endings, as the files are committed."""
+    return path.read_bytes().replace(b"\r\n", b"\n")
+
+
 def corpus_fingerprint(corpus_path: Path | str = DEFAULT_CORPUS) -> str:
-    """Hash of the corpus file and every fixture document."""
+    """Hash of the corpus file and every fixture document.
+
+    The files are hashed with LF line endings. Git on Windows checks text files
+    out with CRLF (``core.autocrlf``), which gave the Windows CI job another
+    hash for the same corpus.
+    """
     corpus = load_corpus(corpus_path)
-    h = hashlib.sha256(Path(corpus_path).read_bytes())
+    h = hashlib.sha256(_committed_bytes(Path(corpus_path)))
     for p in list_doc_paths(corpus):
         h.update(p.name.encode("utf-8"))
-        h.update(p.read_bytes())
+        h.update(_committed_bytes(p))
     return h.hexdigest()[:16]
 
 
